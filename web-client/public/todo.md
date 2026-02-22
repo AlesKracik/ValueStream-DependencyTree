@@ -10,12 +10,8 @@
 * [x] left click on feature goes to feature page
     * [x] allow adding/removing customers
     * [x] allow adding/removing epics
-* add new feature
-* add new customer
 * [x] jira plugin / polling
     * [x] Sync Epic details from Jira via proxy
-* read/write epic details from Jira
-    * configure different jira versions (cloud, server)
-* write user documentation
+* [x] write user documentation
 * retrospectively update PRD
 * write tests
