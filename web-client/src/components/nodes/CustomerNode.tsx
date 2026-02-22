@@ -1,0 +1,110 @@
+import { memo } from 'react';
+import { Handle, Position } from '@xyflow/react';
+
+interface CustomerNodeData {
+    label: string;
+    existingTcv: number;
+    potentialTcv: number;
+    maxTcv: number;
+    baseSize: number;
+    highlightMode?: 'all' | 'existing' | 'potential' | 'none';
+}
+
+export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
+    // We assume data.maxTcv is the maximum potential TCV across all customers
+    const potentialRatio = data.maxTcv > 0 ? data.potentialTcv / data.maxTcv : 0.5;
+    const existingRatio = data.maxTcv > 0 ? data.existingTcv / data.maxTcv : 0;
+
+    // Calculate sizes
+    const outerSize = data.baseSize * 0.6 + (data.baseSize * 0.8 * potentialRatio);
+    // Inner size shouldn't be larger than outer size. If they are equal, they perfectly overlap.
+    const innerSize = Math.min(outerSize, data.baseSize * 0.6 + (data.baseSize * 0.8 * existingRatio));
+
+    const hlMode = data.highlightMode || 'all';
+    // If hlMode is 'none', the entire node is dimmed via its parent wrapper container, so we leave it 100% visible relative to the dim.
+    const potentialOpacity = (hlMode === 'all' || hlMode === 'potential' || hlMode === 'none') ? 1 : 0.15;
+    const existingOpacity = (hlMode === 'all' || hlMode === 'existing' || hlMode === 'none') ? 1 : 0.15;
+
+    return (
+        <div style={{ position: 'relative', width: outerSize, height: outerSize }}>
+            {/* Outer Circle (Potential TCV) */}
+            <div
+                style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: `${outerSize}px`,
+                    height: `${outerSize}px`,
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)', // Light Blue, transparent
+                    border: '2px dashed rgba(59, 130, 246, 0.6)',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'center',
+                    paddingTop: '8px', // offset text slightly
+                    transition: 'all 0.2s',
+                    boxSizing: 'border-box',
+                    opacity: potentialOpacity
+                }}
+            >
+                {/* Potential Text */}
+                <span style={{ fontSize: `${Math.max(9, outerSize * 0.08)}px`, color: '#60a5fa', fontWeight: 'bold' }}>
+                    + ${(data.potentialTcv / 1000).toFixed(0)}k
+                </span>
+
+                {/* Target Handle for Potential Connections */}
+                <Handle
+                    type="source"
+                    position={Position.Right}
+                    id="potential"
+                    style={{ background: '#60a5fa', width: '6px', height: '6px', right: '-3px' }}
+                />
+            </div>
+
+            {/* Inner Circle (Existing TCV) */}
+            <div
+                style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: `${innerSize}px`,
+                    height: `${innerSize}px`,
+                    borderRadius: '50%',
+                    backgroundColor: '#3b82f6', // Solid Light Blue
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                    border: '3px solid rgba(255, 255, 255, 0.2)',
+                    transition: 'all 0.2s',
+                    textAlign: 'center',
+                    boxSizing: 'border-box',
+                    opacity: existingOpacity
+                }}
+            >
+                <div style={{ fontWeight: 'bold', fontSize: `${Math.max(12, innerSize * 0.14)}px` }}>
+                    {data.label}
+                </div>
+                <div style={{ fontSize: `${Math.max(10, innerSize * 0.12)}px`, opacity: 0.9 }}>
+                    ${(data.existingTcv / 1000).toFixed(0)}k
+                </div>
+
+                {/* Target Handle for Existing Connections */}
+                <Handle
+                    type="source"
+                    position={Position.Right}
+                    id="existing"
+                    style={{ background: '#fff', width: '6px', height: '6px', right: '-3px' }}
+                />
+            </div>
+
+            {/* Input handle (just in case) */}
+            <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
+        </div>
+    );
+});
+
+export default CustomerNode;

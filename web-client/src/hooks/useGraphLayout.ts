@@ -1,0 +1,497 @@
+import { useMemo } from 'react';
+import { differenceInDays, parseISO, min, max, format } from 'date-fns';
+import type { Node, Edge } from '@xyflow/react';
+import type { DashboardData } from '../types/models';
+
+export function useGraphLayout(
+    data: DashboardData | null,
+    hoveredNodeId: string | null = null,
+    sprintOffset: number = 0,
+    customerFilter: string = '',
+    featureFilter: string = '',
+    teamFilter: string = ''
+) {
+    return useMemo(() => {
+        if (!data) return { nodes: [], edges: [] };
+
+        const nodes: Node[] = [];
+        const edges: Edge[] = [];
+
+        // Column X coordinates
+        const COL_CUSTOMER_X = 0;
+        const COL_FEATURE_X = 350;
+        const COL_TEAM_X = 700;
+
+        // Calculate visible sets based on filters
+        const cf = customerFilter.toLowerCase();
+        const ff = featureFilter.toLowerCase();
+        const tf = teamFilter.toLowerCase();
+        const isFilterActive = cf || ff || tf;
+
+        const visibleCustomers = new Set<string>();
+        const visibleFeatures = new Set<string>();
+        const visibleTeams = new Set<string>();
+        const visibleEpics = new Set<string>();
+
+        if (!isFilterActive) {
+            data.customers.forEach(c => visibleCustomers.add(c.id));
+            data.features.forEach(f => visibleFeatures.add(f.id));
+            data.teams.forEach(t => visibleTeams.add(t.id));
+            data.epics.forEach(e => visibleEpics.add(e.id));
+        } else {
+            data.features.forEach(f => {
+                const fMatches = !ff || f.name.toLowerCase().includes(ff);
+                if (!fMatches) return;
+
+                const c_links = f.customer_targets.map(ct => data.customers.find(c => c.id === ct.customer_id)).filter(Boolean) as any[];
+                const epics = data.epics.filter(e => e.feature_id === f.id);
+
+                const validC = c_links.filter(c => !cf || c.name.toLowerCase().includes(cf));
+                const validEpics = epics.filter(e => {
+                    const team = data.teams.find(t => t.id === e.team_id);
+                    return team && (!tf || team.name.toLowerCase().includes(tf));
+                });
+
+                if (cf && validC.length === 0) return;
+                if (tf && validEpics.length === 0) return;
+
+                visibleFeatures.add(f.id);
+                validC.forEach(c => visibleCustomers.add(c.id));
+                validEpics.forEach(e => {
+                    visibleEpics.add(e.id);
+                    visibleTeams.add(e.team_id);
+                });
+            });
+        }
+
+        // 1. Process Customers (Column 1)
+        // Sort Highest TCV to Lowest
+        const maxTcv = Math.max(...data.customers.map(c => c.potential_tcv), 1);
+        const sortedCustomers = [...data.customers]
+            .filter(c => visibleCustomers.has(c.id))
+            .sort((a, b) => b.potential_tcv - a.potential_tcv);
+
+        sortedCustomers.forEach((customer, index) => {
+            const sizeRatio = maxTcv > 0 ? customer.potential_tcv / maxTcv : 0.5;
+            const nodeSize = 100 * 0.6 + (100 * 0.8 * sizeRatio);
+
+            nodes.push({
+                id: `customer-${customer.id}`,
+                type: 'customerNode',
+                position: { x: COL_CUSTOMER_X - (nodeSize / 2), y: index * 180 + 100 - (nodeSize / 2) },
+                data: {
+                    label: customer.name,
+                    existingTcv: customer.existing_tcv,
+                    potentialTcv: customer.potential_tcv,
+                    maxTcv: maxTcv,
+                    baseSize: 100, // base px size
+                    highlightMode: 'all', // Default mode
+                },
+            });
+        });
+
+        // 2. Process Features (Column 2)
+        // Sort Lowest Total Effort to Highest
+        const featuresWithEpicMds = [...data.features]
+            .filter(f => visibleFeatures.has(f.id))
+            .map(f => {
+                const epicsForFeature = data.epics.filter(e => e.feature_id === f.id && visibleEpics.has(e.id));
+                const epicMdsSum = epicsForFeature.reduce((sum, e) => sum + e.remaining_md, 0);
+                return {
+                    ...f,
+                    epicMdsSum,
+                    displayEffort: Math.max(f.total_effort_mds || 0, epicMdsSum)
+                };
+            });
+
+        const maxEffort = Math.max(...featuresWithEpicMds.map(f => f.displayEffort), 1);
+        const sortedFeatures = featuresWithEpicMds.sort((a, b) => a.displayEffort - b.displayEffort);
+
+        sortedFeatures.forEach((feature, index) => {
+            const sizeRatio = maxEffort > 0 ? feature.displayEffort / maxEffort : 0.5;
+            const nodeSize = 100 * 0.6 + (100 * 0.8 * sizeRatio);
+
+            nodes.push({
+                id: `feature-${feature.id}`,
+                type: 'featureNode',
+                position: { x: COL_FEATURE_X - (nodeSize / 2), y: index * 180 + 100 - (nodeSize / 2) },
+                data: {
+                    label: feature.name,
+                    effortMds: feature.total_effort_mds,
+                    epicMds: feature.epicMdsSum,
+                    maxEffortId: maxEffort,
+                    baseSize: 100,
+                },
+            });
+
+            // 3. Create Edges (Customer -> Feature)
+            // Thickness proportional to ROI: Potential_TCV / Total_Effort_MDs
+            feature.customer_targets.forEach((target) => {
+                if (!visibleCustomers.has(target.customer_id)) return;
+                const customer = data.customers.find(c => c.id === target.customer_id);
+                if (customer) {
+                    const targetTcv = target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv;
+                    const roi = targetTcv / feature.total_effort_mds;
+                    // Normalize stroke width between 2px and 8px based on some arbitrary high ROI value (e.g., 20k/MD)
+                    const normalizedStrokeWidth = Math.min(8, Math.max(2, (roi / 20000) * 8));
+
+                    edges.push({
+                        id: `edge-${target.customer_id}-${feature.id}-${target.tcv_type}`,
+                        source: `customer-${target.customer_id}`,
+                        sourceHandle: target.tcv_type, // 'existing' or 'potential'
+                        target: `feature-${feature.id}`,
+                        type: 'default',
+                        style: {
+                            strokeWidth: normalizedStrokeWidth,
+                            stroke: '#b0b0b0',
+                        },
+                    });
+                }
+            });
+        });
+
+        // 4. Pre-process Gantt Lanes and Sprints to calculate Team Y positions
+        // Compute capacities over ALL teams
+        const maxCapacity = Math.max(...data.teams.map(t => t.total_capacity_mds), 1);
+        const sprints = data.sprints || [];
+        const visibleSprints = sprints.slice(sprintOffset, sprintOffset + 6);
+
+        // Calculate visual boundaries based on visible window
+        const windowStartDate = visibleSprints.length > 0 ? parseISO(visibleSprints[0].start_date) : new Date();
+        const windowEndDate = visibleSprints.length > 0 ? parseISO(visibleSprints[visibleSprints.length - 1].end_date) : new Date();
+
+        const sprintWidthTracker: Record<string, number> = {};
+
+        const PIXELS_PER_DAY = 20;
+        const COL_GANTT_START_X = COL_TEAM_X + 250;
+
+        sprints.forEach((sprint) => {
+            const startStr = parseISO(sprint.start_date);
+            const endStr = parseISO(sprint.end_date);
+            const days = differenceInDays(endStr, startStr) + 1;
+            const width = days * PIXELS_PER_DAY;
+            sprintWidthTracker[sprint.id] = width;
+        });
+
+        const teamLanes: Record<string, { endDates: Date[] }> = {};
+        const teamMaxLanes: Record<string, number> = {};
+        const teamSprintUsage: Record<string, Record<string, number>> = {};
+
+        data.teams.forEach(team => {
+            teamLanes[team.id] = { endDates: [] };
+            teamMaxLanes[team.id] = 0;
+            teamSprintUsage[team.id] = {};
+            sprints.forEach(s => teamSprintUsage[team.id][s.id] = 0);
+        });
+
+        const sortedEpics = [...(data.epics || [])].sort((a, b) => parseISO(a.target_start).getTime() - parseISO(b.target_start).getTime());
+        const epicLanes: Record<string, number> = {};
+
+        sortedEpics.forEach(epic => {
+            const team = data.teams.find(t => t.id === epic.team_id);
+            if (!team) return;
+
+            const start = parseISO(epic.target_start);
+            const end = parseISO(epic.target_end);
+            const duration = differenceInDays(end, start) + 1;
+
+            const lanes = teamLanes[team.id].endDates;
+            let laneIdx = 0;
+            while (laneIdx < lanes.length && start <= lanes[laneIdx]) {
+                laneIdx++;
+            }
+            lanes[laneIdx] = end;
+
+            epicLanes[epic.id] = laneIdx;
+            if (laneIdx + 1 > teamMaxLanes[team.id]) {
+                teamMaxLanes[team.id] = laneIdx + 1;
+            }
+
+            sprints.forEach((sprint) => {
+                const sprintStart = parseISO(sprint.start_date);
+                const sprintEnd = parseISO(sprint.end_date);
+
+                const overlapStart = max([start, sprintStart]);
+                const overlapEnd = min([end, sprintEnd]);
+
+                if (overlapStart <= overlapEnd) {
+                    const overlapDays = differenceInDays(overlapEnd, overlapStart) + 1;
+                    const proportion = overlapDays / duration;
+                    teamSprintUsage[team.id][sprint.id] += (epic.remaining_md * proportion);
+                }
+            });
+        });
+
+        const teamBaseY: Record<string, number> = {};
+        let currentLaneTop = 10; // start a bit down
+
+        const sortedTeams = [...data.teams]
+            .filter(t => visibleTeams.has(t.id))
+            .sort((a, b) => b.total_capacity_mds - a.total_capacity_mds);
+
+        sortedTeams.forEach((team) => {
+            const maxLanes = Math.max(teamMaxLanes[team.id] || 1, 1);
+            // Height needed for lanes: maxLanes * 45. Add padding for header (sprint capacity) and bottom space.
+            const teamHeight = Math.max(180, (maxLanes * 45) + 100);
+            const baseY = currentLaneTop + teamHeight / 2;
+            teamBaseY[team.id] = baseY;
+            currentLaneTop += teamHeight;
+
+            const sizeRatio = maxCapacity > 0 ? team.total_capacity_mds / maxCapacity : 0.5;
+            const nodeSize = 100 * 0.6 + (100 * 0.8 * sizeRatio);
+
+            nodes.push({
+                id: `team-${team.id}`,
+                type: 'teamNode',
+                position: { x: COL_TEAM_X - (nodeSize / 2), y: baseY - (nodeSize / 2) },
+                data: {
+                    label: team.name,
+                    capacityMds: team.total_capacity_mds,
+                    maxCapacity: maxCapacity,
+                    baseSize: 100,
+                },
+            });
+        });
+
+        // 5. Create Edges (Feature -> Team)
+        data.epics.forEach(epic => {
+            if (!visibleFeatures.has(epic.feature_id) || !visibleTeams.has(epic.team_id) || !visibleEpics.has(epic.id)) return;
+
+            const normalizedStrokeWidth = Math.min(8, Math.max(2, (epic.remaining_md / 20) * 8));
+            edges.push({
+                id: `edge-${epic.feature_id}-${epic.team_id}-${epic.id}`,
+                source: `feature-${epic.feature_id}`,
+                target: `team-${epic.team_id}`,
+                type: 'default',
+                style: {
+                    strokeWidth: normalizedStrokeWidth,
+                    stroke: '#b0b0b0',
+                },
+            });
+        });
+
+        // 6. Process Timeline and Gantt Bars
+        if (data.epics && data.epics.length > 0) {
+            sortedEpics.forEach(epic => {
+                if (!visibleEpics.has(epic.id)) return;
+
+                const team = data.teams.find(t => t.id === epic.team_id);
+                if (!team) return;
+
+                const baseY = teamBaseY[team.id];
+                const start = parseISO(epic.target_start);
+                const end = parseISO(epic.target_end);
+
+                // Only render if it overlaps the visible window
+                if (end < windowStartDate || start > windowEndDate) return;
+
+                const renderStart = max([start, windowStartDate]);
+                const renderEnd = min([end, windowEndDate]);
+
+                const daysOffset = Math.max(0, differenceInDays(renderStart, windowStartDate));
+                // Ensure duration doesn't go negative or 0 if start == end
+                const duration = Math.max(1, differenceInDays(renderEnd, renderStart) + 1);
+
+                const laneIdx = epicLanes[epic.id];
+                const maxLanes = Math.max(teamMaxLanes[team.id] || 1, 1);
+
+                // Center vertically around baseY
+                const ganttStartY = baseY - ((maxLanes - 1) * 45) / 2;
+                const yPos = ganttStartY + (laneIdx * 45);
+
+                const feature = data.features.find(f => f.id === epic.feature_id);
+
+                nodes.push({
+                    id: `gantt-${epic.id}`,
+                    type: 'ganttBarNode',
+                    position: {
+                        x: COL_GANTT_START_X + (daysOffset * PIXELS_PER_DAY),
+                        y: yPos
+                    },
+                    data: {
+                        label: `${feature?.name || 'Task'} (${epic.remaining_md} MDs)`,
+                        width: duration * PIXELS_PER_DAY,
+                        color: '#8b5cf6',
+                        jiraKey: epic.jira_key,
+                        jiraBaseUrl: data?.settings?.jira_base_url,
+                        epicId: epic.id,
+                        targetStart: epic.target_start,
+                        targetEnd: epic.target_end
+                    },
+                });
+
+                edges.push({
+                    id: `edge-team-gantt-${epic.id}`,
+                    source: `team-${epic.team_id}`,
+                    target: `gantt-${epic.id}`,
+                    type: 'default',
+                    style: {
+                        strokeWidth: 1.5,
+                        stroke: '#b0b0b0',
+                        opacity: 0.5,
+                    },
+                });
+            });
+
+            // Generate Sprint Capacity Nodes
+            sortedTeams.forEach((team) => {
+                const baseY = teamBaseY[team.id];
+                const maxLanes = Math.max(teamMaxLanes[team.id] || 1, 1);
+                const ganttStartY = baseY - ((maxLanes - 1) * 45) / 2;
+
+                let sprintXOffset = 0;
+
+                visibleSprints.forEach((sprint) => {
+                    const usage = Math.round(teamSprintUsage[team.id][sprint.id] * 10) / 10;
+
+                    const sprintStartDate = parseISO(sprint.start_date);
+                    const sprintEndDate = parseISO(sprint.end_date);
+                    // Determine where this sprint actually starts visually from windowStartDate
+                    const actualDaysOffset = differenceInDays(sprintStartDate, windowStartDate);
+
+                    const width = sprintWidthTracker[sprint.id];
+
+                    nodes.push({
+                        id: `sprint-cap-${team.id}-${sprint.id}`,
+                        type: 'sprintCapacityNode',
+                        position: {
+                            x: COL_GANTT_START_X + (actualDaysOffset * PIXELS_PER_DAY),
+                            y: ganttStartY - 45 // Fixed gap above the top-most lane
+                        },
+                        data: {
+                            sprintLabel: sprint.name,
+                            startDate: format(sprintStartDate, 'MMM d'),
+                            endDate: format(sprintEndDate, 'MMM d'),
+                            usedMds: usage,
+                            totalCapacityMds: team.sprint_capacity_overrides?.[sprint.id] ?? team.total_capacity_mds, // Use override if present
+                            isOverridden: team.sprint_capacity_overrides?.[sprint.id] !== undefined,
+                            width: width - 10,
+                        },
+                        selectable: false,
+                    });
+
+                    sprintXOffset += width;
+                });
+            });
+
+            // Calculate extents for the Today line
+            let topY = Infinity;
+            let bottomY = -Infinity;
+            sortedTeams.forEach(t => {
+                const baseY = teamBaseY[t.id];
+                const maxLanes = Math.max(teamMaxLanes[t.id] || 1, 1);
+                const ganttStartY = baseY - ((maxLanes - 1) * 45) / 2;
+                const ganttEndY = ganttStartY + (maxLanes * 45);
+                if (ganttStartY < topY) topY = ganttStartY;
+                if (ganttEndY > bottomY) bottomY = ganttEndY;
+            });
+            topY -= 45; // Include sprint capacity headers
+
+            const today = new Date();
+            const todayOffsetDays = differenceInDays(today, windowStartDate);
+
+            // Render line if it fits around our viewport
+            if (todayOffsetDays >= -10 && todayOffsetDays <= (visibleSprints.length * 15)) {
+                nodes.push({
+                    id: 'today-line',
+                    type: 'todayLineNode',
+                    position: {
+                        x: COL_GANTT_START_X + (todayOffsetDays * PIXELS_PER_DAY),
+                        y: topY
+                    },
+                    data: {
+                        height: bottomY - topY,
+                        dateStr: format(today, 'MMM d')
+                    },
+                    selectable: false,
+                    draggable: false,
+                    zIndex: 50 // ensure it sits on top of everything
+                });
+            }
+        }
+
+        // Apply Highlights
+        if (hoveredNodeId) {
+            const hNodes = new Set<string>();
+            const hEdges = new Set<string>();
+            const hHandles = new Map<string, Set<string>>();
+
+            const markHandle = (nodeId: string, handleId: string) => {
+                if (!hHandles.has(nodeId)) hHandles.set(nodeId, new Set());
+                if (handleId) hHandles.get(nodeId)!.add(handleId);
+            };
+
+            // Utility to traverse downstream
+            const traceDownstream = (currentNodeId: string) => {
+                hNodes.add(currentNodeId);
+                const outgoingEdges = edges.filter(e => e.source === currentNodeId);
+                outgoingEdges.forEach(e => {
+                    hEdges.add(e.id);
+                    markHandle(e.source, e.sourceHandle || '');
+                    if (!hNodes.has(e.target)) {
+                        traceDownstream(e.target);
+                    }
+                });
+            };
+
+            // Utility to traverse upstream
+            const traceUpstream = (currentNodeId: string) => {
+                // Ensure the current node is added even if it has no incoming edges (base case handled by both traces)
+                hNodes.add(currentNodeId);
+                const incomingEdges = edges.filter(e => e.target === currentNodeId);
+                incomingEdges.forEach(e => {
+                    hEdges.add(e.id);
+                    markHandle(e.source, e.sourceHandle || '');
+                    if (!hNodes.has(e.source)) {
+                        traceUpstream(e.source);
+                    }
+                });
+            };
+
+            // Start traversal from hovered node in both directions
+            traceDownstream(hoveredNodeId);
+            traceUpstream(hoveredNodeId);
+
+            // Apply styles to all nodes and edges based on sets
+            const dimStyle = { opacity: 0.15, transition: 'opacity 0.2s' };
+            const highlightStyle = { opacity: 1, transition: 'opacity 0.2s' };
+
+            nodes.forEach(n => {
+                // Sprint headers are ignored from dimming for nicer UX
+                if (n.type !== 'sprintCapacityNode') {
+                    const isHighlighted = hNodes.has(n.id);
+                    n.style = { ...n.style, ...(isHighlighted ? highlightStyle : dimStyle) };
+
+                    if (n.type === 'customerNode') {
+                        let mode = 'none';
+                        if (isHighlighted) {
+                            if (n.id === hoveredNodeId) {
+                                mode = 'all';
+                            } else {
+                                const handles = hHandles.get(n.id);
+                                if (handles && handles.size > 0) {
+                                    if (handles.has('existing') && handles.has('potential')) mode = 'all';
+                                    else if (handles.has('existing')) mode = 'existing';
+                                    else if (handles.has('potential')) mode = 'potential';
+                                } else {
+                                    mode = 'all';
+                                }
+                            }
+                        }
+                        n.data = { ...n.data, highlightMode: mode };
+                    }
+                }
+            });
+            edges.forEach(e => {
+                e.style = {
+                    ...e.style,
+                    opacity: hEdges.has(e.id) ? 1 : 0.05,
+                    stroke: hEdges.has(e.id) ? '#3b82f6' : (e.style?.stroke || '#b0b0b0'), // make highlighted edges blue for visibility
+                    transition: 'all 0.2s'
+                };
+            });
+        }
+
+        return { nodes, edges };
+    }, [data, hoveredNodeId, sprintOffset, customerFilter, featureFilter, teamFilter]);
+}

@@ -1,0 +1,381 @@
+{
+  "$schema": "./schema.json",
+  "customers": [
+    {
+      "id": "c1",
+      "name": "Acme Corp",
+      "existing_tcv": 100000,
+      "potential_tcv": 250000
+    },
+    {
+      "id": "c2",
+      "name": "GlobalTech",
+      "existing_tcv": 80000,
+      "potential_tcv": 150000
+    },
+    {
+      "id": "c3",
+      "name": "Startup Inc",
+      "existing_tcv": 20000,
+      "potential_tcv": 50000
+    }
+  ],
+  "features": [
+    {
+      "id": "f1",
+      "name": "SSO Integration",
+      "total_effort_mds": 15,
+      "customer_targets": [
+        {
+          "customer_id": "c1",
+          "tcv_type": "existing"
+        },
+        {
+          "customer_id": "c2",
+          "tcv_type": "existing"
+        }
+      ]
+    },
+    {
+      "id": "f2",
+      "name": "Advanced Analytics",
+      "total_effort_mds": 30,
+      "customer_targets": [
+        {
+          "customer_id": "c2",
+          "tcv_type": "potential"
+        },
+        {
+          "customer_id": "c3",
+          "tcv_type": "potential"
+        }
+      ]
+    },
+    {
+      "id": "f3",
+      "name": "Mobile App Sync",
+      "total_effort_mds": 20,
+      "customer_targets": [
+        {
+          "customer_id": "c1",
+          "tcv_type": "potential"
+        }
+      ]
+    },
+    {
+      "id": "f4",
+      "name": "API Access Layer",
+      "total_effort_mds": 20,
+      "customer_targets": [
+        {
+          "customer_id": "c1",
+          "tcv_type": "potential"
+        },
+        {
+          "customer_id": "c2",
+          "tcv_type": "potential"
+        }
+      ]
+    },
+    {
+      "id": "f5",
+      "name": "White Labeling",
+      "total_effort_mds": 40,
+      "customer_targets": [
+        {
+          "customer_id": "c2",
+          "tcv_type": "existing"
+        },
+        {
+          "customer_id": "c3",
+          "tcv_type": "potential"
+        }
+      ]
+    },
+    {
+      "id": "f6",
+      "name": "Role-based Access",
+      "total_effort_mds": 25,
+      "customer_targets": [
+        {
+          "customer_id": "c1",
+          "tcv_type": "existing"
+        },
+        {
+          "customer_id": "c2",
+          "tcv_type": "existing"
+        }
+      ]
+    },
+    {
+      "id": "f7",
+      "name": "Data Export Engine",
+      "total_effort_mds": 15,
+      "customer_targets": [
+        {
+          "customer_id": "c1",
+          "tcv_type": "potential"
+        },
+        {
+          "customer_id": "c3",
+          "tcv_type": "potential"
+        }
+      ]
+    },
+    {
+      "id": "f8",
+      "name": "Audit Logging",
+      "total_effort_mds": 10,
+      "customer_targets": [
+        {
+          "customer_id": "c2",
+          "tcv_type": "potential"
+        },
+        {
+          "customer_id": "c3",
+          "tcv_type": "existing"
+        }
+      ]
+    },
+    {
+      "id": "f9",
+      "name": "MFA Integration",
+      "total_effort_mds": 20,
+      "customer_targets": [
+        {
+          "customer_id": "c1",
+          "tcv_type": "existing"
+        },
+        {
+          "customer_id": "c3",
+          "tcv_type": "existing"
+        }
+      ]
+    }
+  ],
+  "teams": [
+    {
+      "id": "t1",
+      "name": "Frontend Team",
+      "total_capacity_mds": 40,
+      "jira_team_id": "JIRA-T1",
+      "sprint_capacity_overrides": {
+        "s2": 60
+      }
+    },
+    {
+      "id": "t2",
+      "name": "Backend Team",
+      "total_capacity_mds": 50,
+      "jira_team_id": "JIRA-T2"
+    },
+    {
+      "id": "t3",
+      "name": "Mobile Team",
+      "total_capacity_mds": 25,
+      "jira_team_id": "JIRA-T3"
+    }
+  ],
+  "sprints": [
+    {
+      "id": "s1",
+      "name": "Sprint 1",
+      "start_date": "2026-02-12",
+      "end_date": "2026-02-25"
+    },
+    {
+      "id": "s2",
+      "name": "Sprint 2",
+      "start_date": "2026-02-26",
+      "end_date": "2026-03-11"
+    },
+    {
+      "id": "s3",
+      "name": "Sprint 3",
+      "start_date": "2026-03-12",
+      "end_date": "2026-03-25"
+    },
+    {
+      "id": "s4",
+      "name": "Sprint 4",
+      "start_date": "2026-03-26",
+      "end_date": "2026-04-07"
+    },
+    {
+      "id": "s5",
+      "name": "Sprint 5",
+      "start_date": "2026-04-08",
+      "end_date": "2026-04-21"
+    },
+    {
+      "id": "s6",
+      "name": "Sprint 6",
+      "start_date": "2026-04-22",
+      "end_date": "2026-05-05"
+    },
+    {
+      "id": "s7",
+      "name": "Sprint 7",
+      "start_date": "2026-05-06",
+      "end_date": "2026-05-19"
+    },
+    {
+      "id": "s8",
+      "name": "Sprint 8",
+      "start_date": "2026-05-20",
+      "end_date": "2026-06-02"
+    },
+    {
+      "id": "s9",
+      "name": "Sprint 9",
+      "start_date": "2026-06-03",
+      "end_date": "2026-06-16"
+    },
+    {
+      "id": "s10",
+      "name": "Sprint 10",
+      "start_date": "2026-06-17",
+      "end_date": "2026-06-30"
+    }
+  ],
+  "epics": [
+    {
+      "id": "a1",
+      "feature_id": "f1",
+      "team_id": "t1",
+      "remaining_md": 10,
+      "target_start": "2026-02-12",
+      "target_end": "2026-02-22",
+      "jira_key": "PROJ-101"
+    },
+    {
+      "id": "a6",
+      "feature_id": "f1",
+      "team_id": "t1",
+      "remaining_md": 10,
+      "target_start": "2026-02-26",
+      "target_end": "2026-03-09",
+      "jira_key": "PROJ-102"
+    },
+    {
+      "id": "a7",
+      "feature_id": "f1",
+      "team_id": "t1",
+      "remaining_md": 10,
+      "target_start": "2026-03-12",
+      "target_end": "2026-03-24",
+      "jira_key": "PROJ-103"
+    },
+    {
+      "id": "a8",
+      "feature_id": "f1",
+      "team_id": "t1",
+      "remaining_md": 10,
+      "target_start": "2026-03-26",
+      "target_end": "2026-04-07",
+      "jira_key": "PROJ-104"
+    },
+    {
+      "id": "a9",
+      "feature_id": "f1",
+      "team_id": "t1",
+      "remaining_md": 10,
+      "target_start": "2026-02-12",
+      "target_end": "2026-02-26",
+      "jira_key": "PROJ-105"
+    },
+    {
+      "id": "a2",
+      "feature_id": "f1",
+      "team_id": "t2",
+      "remaining_md": 5,
+      "target_start": "2026-02-26",
+      "target_end": "2026-03-08",
+      "jira_key": "PROJ-106"
+    },
+    {
+      "id": "a3",
+      "feature_id": "f2",
+      "team_id": "t1",
+      "remaining_md": 15,
+      "target_start": "2026-03-12",
+      "target_end": "2026-03-23",
+      "jira_key": "PROJ-107"
+    },
+    {
+      "id": "a4",
+      "feature_id": "f2",
+      "team_id": "t2",
+      "remaining_md": 15,
+      "target_start": "2026-03-26",
+      "target_end": "2026-04-06",
+      "jira_key": "PROJ-108"
+    },
+    {
+      "id": "a5",
+      "feature_id": "f3",
+      "team_id": "t3",
+      "remaining_md": 20,
+      "target_start": "2026-02-12",
+      "target_end": "2026-02-25",
+      "jira_key": "PROJ-109"
+    },
+    {
+      "id": "a10",
+      "feature_id": "f4",
+      "team_id": "t2",
+      "remaining_md": 20,
+      "target_start": "2026-03-26",
+      "target_end": "2026-04-10",
+      "jira_key": "PROJ-110"
+    },
+    {
+      "id": "a11",
+      "feature_id": "f5",
+      "team_id": "t3",
+      "remaining_md": 40,
+      "target_start": "2026-03-26",
+      "target_end": "2026-04-10",
+      "jira_key": "PROJ-111"
+    },
+    {
+      "id": "a12",
+      "feature_id": "f6",
+      "team_id": "t1",
+      "remaining_md": 25,
+      "target_start": "2026-03-26",
+      "target_end": "2026-04-10",
+      "jira_key": "PROJ-112"
+    },
+    {
+      "id": "a13",
+      "feature_id": "f7",
+      "team_id": "t2",
+      "remaining_md": 15,
+      "target_start": "2026-03-26",
+      "target_end": "2026-04-10",
+      "jira_key": "PROJ-113"
+    },
+    {
+      "id": "a14",
+      "feature_id": "f8",
+      "team_id": "t3",
+      "remaining_md": 10,
+      "target_start": "2026-03-26",
+      "target_end": "2026-04-10",
+      "jira_key": "PROJ-114"
+    },
+    {
+      "id": "a15",
+      "feature_id": "f9",
+      "team_id": "t1",
+      "remaining_md": 20,
+      "target_start": "2026-03-26",
+      "target_end": "2026-04-10",
+      "jira_key": "PROJ-115"
+    }
+  ],
+  "settings": {
+    "jira_base_url": "https://jira.mycompany.com"
+  }
+}
