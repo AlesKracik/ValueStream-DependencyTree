@@ -27,11 +27,26 @@ const nodeTypes = {
 };
 
 export const Dashboard: React.FC = () => {
-    const { data, loading, error, updateCustomer, updateFeature, updateTeam, updateEpic, updateSettings } = useDashboardData();
+    const { data, loading, error, updateCustomer, updateFeature, updateTeam, updateEpic, updateSettings, saveDashboardData } = useDashboardData();
     const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
     const [editingNode, setEditingNode] = React.useState<Node | null>(null);
     const [isSettingsModalOpen, setIsSettingsModalOpen] = React.useState(false);
     const [sprintOffset, setSprintOffset] = React.useState(0);
+    const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+    const handleSave = async () => {
+        if (!data) return;
+        setSaveStatus('saving');
+        try {
+            await saveDashboardData(data);
+            setSaveStatus('saved');
+            setTimeout(() => setSaveStatus('idle'), 2000);
+        } catch (err) {
+            console.error('Failed to save data:', err);
+            setSaveStatus('error');
+            setTimeout(() => setSaveStatus('idle'), 3000);
+        }
+    };
 
     // Column Filters
     const [customerFilter, setCustomerFilter] = React.useState('');
@@ -114,6 +129,22 @@ export const Dashboard: React.FC = () => {
                                 &gt;
                             </button>
                         </div>
+                        <button
+                            onClick={handleSave}
+                            disabled={saveStatus === 'saving'}
+                            style={{
+                                padding: '8px 16px',
+                                backgroundColor: saveStatus === 'saved' ? '#10b981' : saveStatus === 'error' ? '#ef4444' : '#3b82f6',
+                                border: '1px solid ' + (saveStatus === 'saved' ? '#059669' : saveStatus === 'error' ? '#b91c1c' : '#2563eb'),
+                                color: '#ffffff',
+                                borderRadius: '4px',
+                                cursor: saveStatus === 'saving' ? 'wait' : 'pointer',
+                                fontSize: '14px',
+                                fontWeight: 'bold'
+                            }}
+                        >
+                            {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? '✓ Saved' : saveStatus === 'error' ? 'Error!' : 'Save Changes'}
+                        </button>
                         <button
                             onClick={() => setIsSettingsModalOpen(true)}
                             style={{

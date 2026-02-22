@@ -75,6 +75,25 @@ export function useDashboardData() {
         });
     };
 
+    const saveDashboardData = async (newData: DashboardData) => {
+        try {
+            const response = await fetch('/api/saveData', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(newData)
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to save data');
+            }
+        } catch (err) {
+            console.error('Error saving dashboard data:', err);
+            throw err;
+        }
+    };
+
     return {
         data,
         loading,
@@ -83,6 +102,7 @@ export function useDashboardData() {
         updateFeature,
         updateTeam,
         updateEpic,
-        updateSettings
+        updateSettings,
+        saveDashboardData
     };
 }
