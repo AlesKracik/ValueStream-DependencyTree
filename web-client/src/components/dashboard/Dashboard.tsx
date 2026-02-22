@@ -53,7 +53,7 @@ export const Dashboard: React.FC = () => {
     const [featureFilter, setFeatureFilter] = React.useState('');
     const [teamFilter, setTeamFilter] = React.useState('');
     const [epicFilter, setEpicFilter] = React.useState('');
-    const [showDependencies, setShowDependencies] = React.useState(true);
+    const [showDependencies, setShowDependencies] = React.useState(false);
 
     const { nodes, edges } = useGraphLayout(data, hoveredNodeId, sprintOffset, customerFilter, featureFilter, teamFilter, epicFilter, showDependencies);
 
