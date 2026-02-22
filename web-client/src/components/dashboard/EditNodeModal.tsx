@@ -174,11 +174,11 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                         <input style={styles.input} type="text" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
                     </label>
                     <label style={styles.label}>
-                        Existing TCV ($/yr):
+                        Existing TCV ($):
                         <input style={styles.input} type="number" value={formData.existing_tcv || 0} onChange={e => setFormData({ ...formData, existing_tcv: e.target.value })} required />
                     </label>
                     <label style={styles.label}>
-                        Potential TCV ($/yr):
+                        Potential TCV ($):
                         <input style={styles.input} type="number" value={formData.potential_tcv || 0} onChange={e => setFormData({ ...formData, potential_tcv: e.target.value })} required />
                     </label>
                 </>
