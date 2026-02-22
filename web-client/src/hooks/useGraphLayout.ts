@@ -97,24 +97,58 @@ export function useGraphLayout(
         });
 
         // 2. Process Features (Column 2)
-        // Sort Lowest Total Effort to Highest
-        const featuresWithEpicMds = [...data.features]
+        // Implement RICE Feature Prioritization
+        const featuresWithScores = [...data.features]
             .filter(f => visibleFeatures.has(f.id))
             .map(f => {
                 const epicsForFeature = data.epics.filter(e => e.feature_id === f.id && visibleEpics.has(e.id));
                 const epicMdsSum = epicsForFeature.reduce((sum, e) => sum + e.remaining_md, 0);
+                const displayEffort = Math.max(f.total_effort_mds || 0, epicMdsSum) || 1; // Prevent div by 0
+
+                let impact = 0;
+
+                f.customer_targets.forEach(target => {
+                    const customer = data.customers.find(c => c.id === target.customer_id);
+                    if (!customer) return;
+
+                    const priority = target.priority || 'Must-have';
+                    const targetTcv = target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv;
+
+                    if (priority === 'Must-have') {
+                        impact += targetTcv;
+                    } else if (priority === 'Should-have') {
+                        // Find how many Should-haves this customer has across ALL features globally
+                        let shouldHaveCount = 0;
+                        data.features.forEach(globalF => {
+                            const hasShould = globalF.customer_targets.find(ct =>
+                                ct.customer_id === target.customer_id && ct.priority === 'Should-have'
+                            );
+                            if (hasShould) shouldHaveCount++;
+                        });
+                        if (shouldHaveCount > 0) {
+                            impact += (targetTcv / shouldHaveCount);
+                        }
+                    } else if (priority === 'Nice-to-have') {
+                        impact += 0;
+                    }
+                });
+
+                const score = impact / displayEffort;
+
                 return {
                     ...f,
                     epicMdsSum,
-                    displayEffort: Math.max(f.total_effort_mds || 0, epicMdsSum)
+                    displayEffort,
+                    impact,
+                    score
                 };
             });
 
-        const maxEffort = Math.max(...featuresWithEpicMds.map(f => f.displayEffort), 1);
-        const sortedFeatures = featuresWithEpicMds.sort((a, b) => a.displayEffort - b.displayEffort);
+        const maxScore = Math.max(...featuresWithScores.map(f => f.score), 1);
+        const sortedFeatures = featuresWithScores.sort((a, b) => b.score - a.score); // Descending by Score
 
         sortedFeatures.forEach((feature, index) => {
-            const sizeRatio = maxEffort > 0 ? feature.displayEffort / maxEffort : 0.5;
+            const sizeRatio = maxScore > 0 ? feature.score / maxScore : 0.5;
             const nodeSize = 100 * 0.6 + (100 * 0.8 * sizeRatio);
 
             nodes.push({
@@ -125,7 +159,8 @@ export function useGraphLayout(
                     label: feature.name,
                     effortMds: feature.total_effort_mds,
                     epicMds: feature.epicMdsSum,
-                    maxEffortId: maxEffort,
+                    score: feature.score,
+                    maxScore: maxScore,
                     baseSize: 100,
                 },
             });

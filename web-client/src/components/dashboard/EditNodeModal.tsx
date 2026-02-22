@@ -58,7 +58,8 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
             if (feature) {
                 setFormData({
                     name: feature.name,
-                    total_effort_mds: feature.total_effort_mds
+                    total_effort_mds: feature.total_effort_mds,
+                    customer_targets: feature.customer_targets ? JSON.parse(JSON.stringify(feature.customer_targets)) : []
                 });
             }
         } else if (node.type === 'teamNode') {
@@ -115,7 +116,8 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
         } else if (node.type === 'featureNode') {
             onUpdateFeature(domainId, {
                 name: formData.name,
-                total_effort_mds: Number(formData.total_effort_mds)
+                total_effort_mds: Number(formData.total_effort_mds),
+                customer_targets: formData.customer_targets
             });
         } else if (node.type === 'teamNode') {
             onUpdateTeam(domainId, {
@@ -197,6 +199,33 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                         Total Effort (MDs):
                         <input style={styles.input} type="number" value={formData.total_effort_mds || 0} onChange={e => setFormData({ ...formData, total_effort_mds: e.target.value })} required />
                     </label>
+
+                    <div style={{ marginTop: '16px' }}>
+                        <h3 style={{ fontSize: '14px', color: '#e2e8f0', marginBottom: '8px' }}>Customer Targets Prioritization</h3>
+                        {(formData.customer_targets || []).map((target: any, idx: number) => {
+                            const cst = data.customers.find(c => c.id === target.customer_id);
+                            return (
+                                <div key={`${target.customer_id}-${target.tcv_type}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '13px', color: '#cbd5e1' }}>
+                                    <span style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {cst?.name || target.customer_id} ({target.tcv_type})
+                                    </span>
+                                    <select
+                                        style={{ padding: '4px 8px', borderRadius: '4px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', cursor: 'pointer' }}
+                                        value={target.priority || 'Must-have'}
+                                        onChange={e => {
+                                            const newTargets = [...formData.customer_targets];
+                                            newTargets[idx].priority = e.target.value;
+                                            setFormData({ ...formData, customer_targets: newTargets });
+                                        }}
+                                    >
+                                        <option value="Must-have">Must-have</option>
+                                        <option value="Should-have">Should-have</option>
+                                        <option value="Nice-to-have">Nice-to-have</option>
+                                    </select>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </>
             );
         }

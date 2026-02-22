@@ -69,7 +69,8 @@
       "customer_targets": [
         {
           "customer_id": "c1",
-          "tcv_type": "potential"
+          "tcv_type": "potential",
+          "priority": "Should-have"
         },
         {
           "customer_id": "c2",
@@ -88,7 +89,8 @@
         },
         {
           "customer_id": "c3",
-          "tcv_type": "potential"
+          "tcv_type": "potential",
+          "priority": "Nice-to-have"
         }
       ]
     },

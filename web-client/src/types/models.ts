@@ -12,6 +12,7 @@ export interface Feature {
   customer_targets: {
     customer_id: string;
     tcv_type: 'existing' | 'potential';
+    priority?: 'Must-have' | 'Should-have' | 'Nice-to-have';
   }[];
 }
 

@@ -5,14 +5,14 @@ interface FeatureNodeData {
     label: string;
     effortMds: number;
     epicMds?: number;
-    maxEffortId: number;
+    score: number;
+    maxScore: number;
     baseSize: number;
 }
 
 export const FeatureNode = memo(({ data }: { data: FeatureNodeData }) => {
-    // Size ranges from 60px to 140px based on Effort proportion
-    const effectiveEffort = Math.max(data.effortMds || 0, data.epicMds || 0);
-    const sizeRatio = data.maxEffortId > 0 ? effectiveEffort / data.maxEffortId : 0.5;
+    // Size ranges from 60px to 140px based on RICE Score proportion
+    const sizeRatio = data.maxScore > 0 ? (data.score || 0) / data.maxScore : 0.5;
     const nodeSize = data.baseSize * 0.6 + (data.baseSize * 0.8 * sizeRatio);
 
     return (
@@ -44,6 +44,7 @@ export const FeatureNode = memo(({ data }: { data: FeatureNodeData }) => {
             <div style={{ marginTop: '4px', fontSize: `${Math.max(10, nodeSize * 0.1)}px`, opacity: 0.9 }}>
                 {data.epicMds !== undefined && data.epicMds > 0 && <div>Epics: {data.epicMds} MDs</div>}
                 {data.effortMds > 0 && <div>Est: {data.effortMds} MDs</div>}
+                <div style={{ marginTop: '2px', fontWeight: 'bold', color: '#fcd34d' }}>Score: {Math.round(data.score || 0).toLocaleString()}</div>
             </div>
 
             <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />

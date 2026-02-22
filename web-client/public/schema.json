@@ -91,6 +91,15 @@
                                         "existing",
                                         "potential"
                                     ]
+                                },
+                                "priority": {
+                                    "type": "string",
+                                    "enum": [
+                                        "Must-have",
+                                        "Should-have",
+                                        "Nice-to-have"
+                                    ],
+                                    "description": "Defaults to Must-have if omitted."
                                 }
                             }
                         }
