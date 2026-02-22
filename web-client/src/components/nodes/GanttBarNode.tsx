@@ -12,6 +12,7 @@ export interface GanttBarNodeData {
     epicId: string;
     targetStart: string;
     targetEnd: string;
+    segments?: { startOffsetPixels: number, widthPixels: number, intensity: number }[];
 }
 
 const PIXELS_PER_DAY = 20;
@@ -108,6 +109,33 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
             }}
             title={data.label}
         >
+            {/* Render Intensity Segments */}
+            {data.segments && data.segments.map((seg, idx) => {
+                // Calculate opacity: base 0.1 for very low intensity, up to 0.7 for intense periods
+                // Assuming an average "intensity" (MDs per day) might be around 0.2 to 1.0
+                const constrainedIntensity = Math.min(Math.max(seg.intensity, 0), 1.5);
+                // Map the 0-1.5 intensity into an opacity alpha range from 0.05 to 0.8
+                const opacity = 0.05 + (constrainedIntensity * 0.5);
+
+                return (
+                    <div
+                        key={idx}
+                        style={{
+                            position: 'absolute',
+                            left: `${seg.startOffsetPixels}px`,
+                            width: `${seg.widthPixels}px`,
+                            top: 0,
+                            bottom: 0,
+                            backgroundColor: 'rgba(255, 255, 255, 1)',
+                            opacity: opacity,
+                            pointerEvents: 'none',
+                            zIndex: 1,
+                            borderRight: idx < (data.segments?.length || 0) - 1 ? '1px solid rgba(255,255,255,0.1)' : 'none'
+                        }}
+                    ></div>
+                );
+            })}
+
             <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
 
             {/* Left Drag Handle */}
@@ -127,7 +155,7 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
                 }}
             />
 
-            <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', pointerEvents: 'none' }}>
+            <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', pointerEvents: 'none', zIndex: 5 }}>
                 {data.jiraKey && data.jiraBaseUrl ? (
                     <a
                         href={`${data.jiraBaseUrl}/browse/${data.jiraKey}`}

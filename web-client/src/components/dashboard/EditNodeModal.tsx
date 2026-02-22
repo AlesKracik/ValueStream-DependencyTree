@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { parseISO, differenceInDays, min, max } from 'date-fns';
 import type { Node } from '@xyflow/react';
 import type { DashboardData, Customer, Feature, Team, Epic } from '../../types/models';
 
@@ -72,11 +73,37 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
         } else if (node.type === 'ganttBarNode') {
             const epic = data.epics.find(e => e.id === domainId);
             if (epic) {
+                // Calculate which sprints this Epic overlaps to build out the override inputs dynamically
+                const sStart = parseISO(epic.target_start);
+                const sEnd = parseISO(epic.target_end);
+                const duration = differenceInDays(sEnd, sStart) + 1;
+
+                const overlappingSprints = (data.sprints || []).map(sprint => {
+                    const spStart = parseISO(sprint.start_date);
+                    const spEnd = parseISO(sprint.end_date);
+                    const overlapStart = max([sStart, spStart]);
+                    const overlapEnd = min([sEnd, spEnd]);
+                    if (overlapStart <= overlapEnd) {
+                        const overlapDays = differenceInDays(overlapEnd, overlapStart) + 1;
+                        const defaultProportion = overlapDays / duration;
+                        const defaultEffort = epic.remaining_md * defaultProportion;
+                        return {
+                            id: sprint.id,
+                            name: sprint.name,
+                            defaultEffort,
+                            overrideValue: epic.sprint_effort_overrides?.[sprint.id]
+                        };
+                    }
+                    return null;
+                }).filter(Boolean);
+
                 setFormData({
                     remaining_md: epic.remaining_md,
                     target_start: epic.target_start,
                     target_end: epic.target_end,
-                    jira_key: epic.jira_key
+                    jira_key: epic.jira_key,
+                    sprint_effort_overrides: { ...(epic.sprint_effort_overrides || {}) },
+                    overlappingSprints: overlappingSprints
                 });
             }
         } else if (node.type === 'sprintCapacityNode') {
@@ -121,11 +148,23 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                 jira_team_id: formData.jira_team_id
             });
         } else if (node.type === 'ganttBarNode') {
+
+            // Clean up overrides with empty strings
+            const cleanedOverrides = { ...formData.sprint_effort_overrides };
+            for (const key in cleanedOverrides) {
+                if (cleanedOverrides[key] === '' || cleanedOverrides[key] === null || cleanedOverrides[key] === undefined) {
+                    delete cleanedOverrides[key];
+                } else {
+                    cleanedOverrides[key] = Number(cleanedOverrides[key]);
+                }
+            }
+
             onUpdateEpic(domainId, {
                 remaining_md: Number(formData.remaining_md),
                 target_start: formData.target_start,
                 target_end: formData.target_end,
-                jira_key: formData.jira_key
+                jira_key: formData.jira_key,
+                sprint_effort_overrides: Object.keys(cleanedOverrides).length > 0 ? cleanedOverrides : undefined
             });
         } else if (node.type === 'sprintCapacityNode') {
             const team = data.teams.find(t => t.id === formData.teamId);
@@ -206,26 +245,58 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
         }
 
         if (node.type === 'ganttBarNode') {
+
+            const handleOverrideChange = (sprintId: string, val: string) => {
+                setFormData((prev: any) => ({
+                    ...prev,
+                    sprint_effort_overrides: {
+                        ...(prev.sprint_effort_overrides || {}),
+                        [sprintId]: val
+                    }
+                }));
+            };
+
             return (
-                <>
+                <div style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '8px' }}>
                     <h2 style={styles.title}>Edit Epic: {domainId}</h2>
-                    <label style={styles.label}>
-                        Jira Key:
-                        <input style={styles.input} type="text" value={formData.jira_key || ''} onChange={e => setFormData({ ...formData, jira_key: e.target.value })} required />
-                    </label>
-                    <label style={styles.label}>
-                        Remaining Estimate (MDs):
-                        <input style={styles.input} type="number" value={formData.remaining_md || 0} onChange={e => setFormData({ ...formData, remaining_md: e.target.value })} required />
-                    </label>
-                    <label style={styles.label}>
-                        Target Start:
-                        <input style={styles.input} type="date" value={formData.target_start || ''} onChange={e => setFormData({ ...formData, target_start: e.target.value })} required />
-                    </label>
-                    <label style={styles.label}>
-                        Target End:
-                        <input style={styles.input} type="date" value={formData.target_end || ''} onChange={e => setFormData({ ...formData, target_end: e.target.value })} required />
-                    </label>
-                </>
+                    <div style={styles.formContainer}>
+                        <label style={styles.label}>
+                            Jira Key:
+                            <input style={styles.input} type="text" value={formData.jira_key || ''} onChange={e => setFormData({ ...formData, jira_key: e.target.value })} required />
+                        </label>
+                        <label style={styles.label}>
+                            Remaining Estimate (MDs):
+                            <input style={styles.input} type="number" value={formData.remaining_md || 0} onChange={e => setFormData({ ...formData, remaining_md: e.target.value })} required />
+                        </label>
+                        <label style={styles.label}>
+                            Target Start:
+                            <input style={styles.input} type="date" value={formData.target_start || ''} onChange={e => setFormData({ ...formData, target_start: e.target.value })} required />
+                        </label>
+                        <label style={styles.label}>
+                            Target End:
+                            <input style={styles.input} type="date" value={formData.target_end || ''} onChange={e => setFormData({ ...formData, target_end: e.target.value })} required />
+                        </label>
+
+                        {formData.overlappingSprints && formData.overlappingSprints.length > 0 && (
+                            <div style={{ marginTop: '16px', borderTop: '1px solid #374151', paddingTop: '16px' }}>
+                                <h3 style={{ fontSize: '14px', color: '#9ca3af', marginBottom: '12px' }}>Effort Intensity Overrides (MDs via Sprint window):</h3>
+                                {formData.overlappingSprints.map((sprint: any) => (
+                                    <label key={sprint.id} style={{ ...styles.label, marginBottom: '8px' }}>
+                                        {sprint.name} (Default ~{sprint.defaultEffort.toFixed(1)}):
+                                        <input
+                                            style={styles.input}
+                                            type="number"
+                                            step="0.1"
+                                            placeholder={`Default: ${sprint.defaultEffort.toFixed(1)}`}
+                                            value={formData.sprint_effort_overrides?.[sprint.id] ?? ''}
+                                            onChange={e => handleOverrideChange(sprint.id, e.target.value)}
+                                        />
+                                    </label>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
             );
         }
 

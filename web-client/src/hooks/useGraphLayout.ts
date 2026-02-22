@@ -217,7 +217,17 @@ export function useGraphLayout(
                 if (overlapStart <= overlapEnd) {
                     const overlapDays = differenceInDays(overlapEnd, overlapStart) + 1;
                     const proportion = overlapDays / duration;
-                    teamSprintUsage[team.id][sprint.id] += (epic.remaining_md * proportion);
+
+                    // Check if an override is present for this specific Epic and Sprint
+                    const overrideVal = epic.sprint_effort_overrides?.[sprint.id];
+
+                    if (overrideVal !== undefined) {
+                        // User manually provided raw MD effort for this intersection
+                        teamSprintUsage[team.id][sprint.id] += overrideVal;
+                    } else {
+                        // Default proportional spread
+                        teamSprintUsage[team.id][sprint.id] += (epic.remaining_md * proportion);
+                    }
                 }
             });
         });
@@ -301,6 +311,46 @@ export function useGraphLayout(
 
                 const feature = data.features.find(f => f.id === epic.feature_id);
 
+                // Build the segments for heat/intensity mapping
+                const segments: { startOffsetPixels: number, widthPixels: number, intensity: number }[] = [];
+                sprints.forEach(sprint => {
+                    const sprintStart = parseISO(sprint.start_date);
+                    const sprintEnd = parseISO(sprint.end_date);
+                    const overlapStart = max([start, sprintStart]);
+                    const overlapEnd = min([end, sprintEnd]);
+
+                    if (overlapStart <= overlapEnd) {
+                        const overlapStartOffsetDays = differenceInDays(overlapStart, windowStartDate);
+                        const segmentOffsetPixels = Math.max(0, (overlapStartOffsetDays - daysOffset) * PIXELS_PER_DAY);
+
+                        const overlapDays = differenceInDays(overlapEnd, overlapStart) + 1;
+                        let segmentWidthPixels = overlapDays * PIXELS_PER_DAY;
+
+                        // Crop segments so they don't draw outside the main rendering bar boundary
+                        if (segmentOffsetPixels + segmentWidthPixels > duration * PIXELS_PER_DAY) {
+                            segmentWidthPixels = (duration * PIXELS_PER_DAY) - segmentOffsetPixels;
+                        }
+
+                        let segmentEffort = 0;
+                        const overrideVal = epic.sprint_effort_overrides?.[sprint.id];
+                        if (overrideVal !== undefined) {
+                            segmentEffort = overrideVal;
+                        } else {
+                            const proportion = overlapDays / duration;
+                            segmentEffort = epic.remaining_md * proportion;
+                        }
+
+                        // Intensity is "man days per day" (e.g. 5 MDs overlapping 14 days = ~0.35 intensity per dev)
+                        const intensity = segmentEffort / overlapDays;
+
+                        segments.push({
+                            startOffsetPixels: segmentOffsetPixels,
+                            widthPixels: segmentWidthPixels,
+                            intensity: intensity
+                        });
+                    }
+                });
+
                 nodes.push({
                     id: `gantt-${epic.id}`,
                     type: 'ganttBarNode',
@@ -316,7 +366,8 @@ export function useGraphLayout(
                         jiraBaseUrl: data?.settings?.jira_base_url,
                         epicId: epic.id,
                         targetStart: epic.target_start,
-                        targetEnd: epic.target_end
+                        targetEnd: epic.target_end,
+                        segments: segments
                     },
                 });
 

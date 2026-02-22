@@ -31,6 +31,7 @@ export interface Epic {
   remaining_md: number;
   target_start: string;
   target_end: string;
+  sprint_effort_overrides?: Record<string, number>;
 }
 
 export interface Sprint {
