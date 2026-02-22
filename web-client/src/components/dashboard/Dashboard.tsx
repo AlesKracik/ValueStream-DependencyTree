@@ -107,6 +107,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
         if (node.type === 'customerNode') {
             const domainId = node.id.split('-').slice(1).join('-');
             onNavigateToCustomer(domainId);
+        } else if (node.id === 'add-customer-btn') {
+            onNavigateToCustomer('new');
         }
     }, [onNavigateToCustomer]);
 

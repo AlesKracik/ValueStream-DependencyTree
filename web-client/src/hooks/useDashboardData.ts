@@ -25,6 +25,30 @@ export function useDashboardData() {
         fetchData();
     }, []);
 
+    const addCustomer = (customer: Customer) => {
+        setData(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                customers: [...prev.customers, customer]
+            };
+        });
+    };
+
+    const deleteCustomer = (id: string) => {
+        setData(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                customers: prev.customers.filter(c => c.id !== id),
+                features: prev.features.map(f => ({
+                    ...f,
+                    customer_targets: f.customer_targets.filter(ct => ct.customer_id !== id)
+                }))
+            };
+        });
+    };
+
     const updateCustomer = (id: string, updates: Partial<Customer>) => {
         setData(prev => {
             if (!prev) return prev;
@@ -98,6 +122,8 @@ export function useDashboardData() {
         data,
         loading,
         error,
+        addCustomer,
+        deleteCustomer,
         updateCustomer,
         updateFeature,
         updateTeam,

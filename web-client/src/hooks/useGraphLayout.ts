@@ -77,6 +77,21 @@ export function useGraphLayout(
             .filter(c => visibleCustomers.has(c.id))
             .sort((a, b) => b.potential_tcv - a.potential_tcv);
 
+        // Inject the "Add Customer" button node at the top of the column
+        if (!cf) { // Only show if not aggressively filtering
+            nodes.push({
+                id: 'add-customer-btn',
+                type: 'default',
+                position: { x: COL_CUSTOMER_X - 60, y: -20 },
+                data: { label: '+ Add Customer' },
+                style: {
+                    background: '#1f2937', color: '#10b981', border: '2px dashed #059669',
+                    borderRadius: '8px', width: 120, textAlign: 'center', cursor: 'pointer',
+                    padding: '12px', fontSize: '13px', fontWeight: 'bold'
+                }
+            });
+        }
+
         sortedCustomers.forEach((customer, index) => {
             const sizeRatio = maxTcv > 0 ? customer.potential_tcv / maxTcv : 0.5;
             const nodeSize = 100 * 0.6 + (100 * 0.8 * sizeRatio);
