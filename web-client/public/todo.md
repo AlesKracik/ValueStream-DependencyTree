@@ -1,4 +1,5 @@
-* epic dependencies
+* [x] epic dependencies
+    * [x] add to the filter line a toggle for hiding/showing dependencies
 * ala RICE for feature prioritization
     * must have feature adds full TCV of customer to Impact
     * should have feature adds "TCV/number of should have features" for that customer to Impact

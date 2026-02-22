@@ -53,8 +53,9 @@ export const Dashboard: React.FC = () => {
     const [featureFilter, setFeatureFilter] = React.useState('');
     const [teamFilter, setTeamFilter] = React.useState('');
     const [epicFilter, setEpicFilter] = React.useState('');
+    const [showDependencies, setShowDependencies] = React.useState(true);
 
-    const { nodes, edges } = useGraphLayout(data, hoveredNodeId, sprintOffset, customerFilter, featureFilter, teamFilter, epicFilter);
+    const { nodes, edges } = useGraphLayout(data, hoveredNodeId, sprintOffset, customerFilter, featureFilter, teamFilter, epicFilter, showDependencies);
 
     const hoverTimeoutRef = React.useRef<number | null>(null);
 
@@ -191,6 +192,15 @@ export const Dashboard: React.FC = () => {
                         onChange={e => setEpicFilter(e.target.value)}
                         style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', minWidth: '180px' }}
                     />
+                    <label style={{ display: 'flex', alignItems: 'center', color: '#cbd5e1', fontSize: '13px', marginLeft: '8px', cursor: 'pointer' }}>
+                        <input
+                            type="checkbox"
+                            checked={showDependencies}
+                            onChange={e => setShowDependencies(e.target.checked)}
+                            style={{ marginRight: '8px', cursor: 'pointer' }}
+                        />
+                        Show Dependencies
+                    </label>
                 </div>
             </div>
 

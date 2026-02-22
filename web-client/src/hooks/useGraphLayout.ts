@@ -10,7 +10,8 @@ export function useGraphLayout(
     customerFilter: string = '',
     featureFilter: string = '',
     teamFilter: string = '',
-    epicFilter: string = ''
+    epicFilter: string = '',
+    showDependencies: boolean = true
 ) {
     return useMemo(() => {
         if (!data) return { nodes: [], edges: [] };
@@ -435,7 +436,7 @@ export function useGraphLayout(
                 });
 
                 // Map Explicit Epic Dependencies
-                if (epic.dependencies) {
+                if (epic.dependencies && showDependencies) {
                     epic.dependencies.forEach(dep => {
                         // Only draw the dependency edge if the source epic is also currently visible
                         if (!visibleEpics.has(dep.epic_id)) return;
@@ -652,5 +653,5 @@ export function useGraphLayout(
         }
 
         return { nodes, edges };
-    }, [data, hoveredNodeId, sprintOffset, customerFilter, featureFilter, teamFilter, epicFilter]);
+    }, [data, hoveredNodeId, sprintOffset, customerFilter, featureFilter, teamFilter, epicFilter, showDependencies]);
 }
