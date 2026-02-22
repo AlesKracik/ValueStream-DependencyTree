@@ -160,7 +160,7 @@
       "total_capacity_mds": 40,
       "jira_team_id": "JIRA-T1",
       "sprint_capacity_overrides": {
-        "s2": 60
+        "s2": 5
       }
     },
     {
