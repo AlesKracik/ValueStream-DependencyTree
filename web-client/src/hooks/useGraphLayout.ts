@@ -9,7 +9,8 @@ export function useGraphLayout(
     sprintOffset: number = 0,
     customerFilter: string = '',
     featureFilter: string = '',
-    teamFilter: string = ''
+    teamFilter: string = '',
+    epicFilter: string = ''
 ) {
     return useMemo(() => {
         if (!data) return { nodes: [], edges: [] };
@@ -26,7 +27,8 @@ export function useGraphLayout(
         const cf = customerFilter.toLowerCase();
         const ff = featureFilter.toLowerCase();
         const tf = teamFilter.toLowerCase();
-        const isFilterActive = cf || ff || tf;
+        const ef = epicFilter.toLowerCase();
+        const isFilterActive = cf || ff || tf || ef;
 
         const visibleCustomers = new Set<string>();
         const visibleFeatures = new Set<string>();
@@ -49,11 +51,14 @@ export function useGraphLayout(
                 const validC = c_links.filter(c => !cf || c.name.toLowerCase().includes(cf));
                 const validEpics = epics.filter(e => {
                     const team = data.teams.find(t => t.id === e.team_id);
-                    return team && (!tf || team.name.toLowerCase().includes(tf));
+                    const teamMatches = team && (!tf || team.name.toLowerCase().includes(tf));
+                    const epicName = e.name || f.name || 'Task';
+                    const epicMatches = !ef || epicName.toLowerCase().includes(ef);
+                    return teamMatches && epicMatches;
                 });
 
                 if (cf && validC.length === 0) return;
-                if (tf && validEpics.length === 0) return;
+                if ((tf || ef) && validEpics.length === 0) return;
 
                 visibleFeatures.add(f.id);
                 validC.forEach(c => visibleCustomers.add(c.id));
@@ -622,5 +627,5 @@ export function useGraphLayout(
         }
 
         return { nodes, edges };
-    }, [data, hoveredNodeId, sprintOffset, customerFilter, featureFilter, teamFilter]);
+    }, [data, hoveredNodeId, sprintOffset, customerFilter, featureFilter, teamFilter, epicFilter]);
 }

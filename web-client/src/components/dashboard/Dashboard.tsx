@@ -52,8 +52,9 @@ export const Dashboard: React.FC = () => {
     const [customerFilter, setCustomerFilter] = React.useState('');
     const [featureFilter, setFeatureFilter] = React.useState('');
     const [teamFilter, setTeamFilter] = React.useState('');
+    const [epicFilter, setEpicFilter] = React.useState('');
 
-    const { nodes, edges } = useGraphLayout(data, hoveredNodeId, sprintOffset, customerFilter, featureFilter, teamFilter);
+    const { nodes, edges } = useGraphLayout(data, hoveredNodeId, sprintOffset, customerFilter, featureFilter, teamFilter, epicFilter);
 
     const hoverTimeoutRef = React.useRef<number | null>(null);
 
@@ -181,6 +182,13 @@ export const Dashboard: React.FC = () => {
                         placeholder="Filter Teams..."
                         value={teamFilter}
                         onChange={e => setTeamFilter(e.target.value)}
+                        style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', minWidth: '180px' }}
+                    />
+                    <input
+                        type="text"
+                        placeholder="Filter Epics..."
+                        value={epicFilter}
+                        onChange={e => setEpicFilter(e.target.value)}
                         style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', minWidth: '180px' }}
                     />
                 </div>

@@ -16,7 +16,7 @@
     {
       "id": "c3",
       "name": "Startup Inc",
-      "existing_tcv": 999000,
+      "existing_tcv": 20000,
       "potential_tcv": 50000
     }
   ],
@@ -326,7 +326,7 @@
       "team_id": "t3",
       "remaining_md": 20,
       "target_start": "2026-02-12",
-      "target_end": "2026-02-25",
+      "target_end": "2026-03-04",
       "jira_key": "PROJ-109"
     },
     {
