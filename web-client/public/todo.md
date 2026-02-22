@@ -13,5 +13,5 @@
 * [x] jira plugin / polling
     * [x] Sync Epic details from Jira via proxy
 * [x] write user documentation
-* retrospectively update PRD
+* [x] retrospectively update PRD
 * write tests

@@ -4,43 +4,54 @@
 
 ## 1. Objective
 
-To build an interactive, zero-mental-math visualization that connects **Customer Demand** ("Why"), **Feature Scope** ("What"), **Team Capacity** ("Who"), and **Delivery Schedule** ("When") in a single, horizontally flowing dashboard. It allows Product and Engineering leaders to instantly identify high-ROI initiatives, spot execution bottlenecks, and visualize parallel work streams.
+To build an interactive, zero-mental-math visualization that connects **Customer Demand** ("Why"), **Feature Scope** ("What"), **Team Supply** ("Who"), and **Delivery Schedule** ("When") in a single, horizontally flowing dashboard. It allows Product and Engineering leaders to instantly identify high-ROI initiatives, spot execution bottlenecks, and visualize parallel work streams.
 
-The solution should be client-server, with primary client web, then mobile.
-In first iterations the server should be a static json file.
-The used language and frameworks should be chosen with the goal of visualization via mindmap and gantt chart, with ability to easily allow editing data directly in the visualization.
-This project will evolve to complicated product, so we should start with good component based architecture.
+The solution is an entirely local, client-side web application built on Vite and React. It utilizes an injected node proxy dev-server to handle remote API connections securely and persists its internal state fully to local disk (`mockData.json`).
 
 ## 2. Layout & Architecture (4-Stage Flow)
 
 The dashboard consists of a fixed **3-column bipartite-style graph** on the left, pivoting into a horizontally scrolling **Gantt chart** on the right.
 
 - **Column 1 (Demand):** Customer nodes, sorted vertically from Highest ACV (Top) to Lowest ACV (Bottom).
-- **Column 2 (Scope):** Feature nodes, sorted vertically from Lowest Total Effort (Top) to Highest Total Effort (Bottom).
-- **Column 3 (Supply / The Pivot):** Team nodes, sorted vertically by Total Capacity (Top) to Lowest Capacity (Bottom).
-- **Section 4 (Execution Timeline):** A calendar grid (Weeks/Months) extending horizontally to the right of Column 3. Each Team node serves as the Y-axis header for its respective swimlane.
+- **Column 2 (Scope):** Feature nodes, sized visually using a RICE prioritization algorithm linked to target Customer TCV and Priority.
+- **Column 3 (Supply / The Pivot):** Team nodes, representing engineering groups and their structural velocity/bottlenecks.
+- **Section 4 (Execution Timeline Framework):** A calendar grid mapped chronologically via dynamic real-world Sprints (Weeks/Months) extending horizontally to the right of Column 3. Each Team node serves as the Y-axis header for its respective swimlane.
 
-## 3. Visual Encodings (Nodes & Edges)
+## 3. Data Model & Tracking Units
+
+- **Customers:** Root drivers of Value. Possess both an "Existing TCV" and "Potential TCV".
+- **Features:** Strategic initiatives bound to specific Customers.
+- **Teams:** Execution units with absolute Sprint Capacity metadata.
+- **Epics:** The core unit of work. Placed physically on the Timeline. An Epic connects a Feature to a concrete Team constraint, carrying Jira tracking keys, target dates, and Remaining Man-Days.
+- **Sprints:** Absolute calendar time fences (Start Date & End Date).
+
+## 4. Visual Encodings (Nodes & Edges)
 
 ### Nodes
-- **Customers:** Circle. Size proportional to `Potential_ACV`. Color: Primary (e.g., Light Blue).
-- **Features:** Circle. Size proportional to `Total_Effort_MDs`. Color: Dynamic (Each feature gets a unique color for timeline tracking).
-- **Teams:** Circle. Size proportional to `Total_Capacity_MDs`. Color: Tertiary (e.g., Dark Gray or Purple).
+- **Customers:** Circular node. Contains an inner ring (Existing TCV) and outer ring (Potential TCV) that visually scale against each other.
+- **Features:** Circular node. Size scales dynamically based on a native RICE impact calculation. Background colors map chronologically via the Gantt bars they spawn.
+- **Teams:** Circular node. Acts as a visual bottleneck and anchor for horizontal swimlane bounds.
+- **Sprint/Today Overlay:** Dynamic red vertical line visually grounding the timeline at "Today", passing behind all node structures.
 
-### Edges (Connections)
-- **Value Flow (Cust → Feat):** Neutral Gray lines. Thickness proportional to ROI (`Potential_ACV` ÷ `Total_Effort_MDs`).
-- **Execution Flow (Feat → Team):** Colored lines (matching the Feature's assigned color). Thickness proportional to the specific team effort required.
+### Edges (Dependencies)
+- **Tracing Flow:** Curved gray connections visually chaining Customers to Features to Teams to Epics. Edge highlighting occurs dynamically on user interaction.
+- **Epic Dependencies:** Support for 'Finish-to-Start' and 'Finish-to-Finish' blockers, enforcing execution sequencing.
 
 ### Gantt Bars (Timeline)
-- Horizontal bars within the Team swimlanes.
-- **Crucial Rule:** Gantt bars must inherit the exact background color of their parent **Feature node** so users can visually track the work without reading text.
+- Horizontal floating bars spanning mapped target dates within the vertical bound of the assigned Team.
+- **Crucial Rule:** Gantt bars inherit the exact background color of their parent **Feature node** to visually unify "Why" and "When".
+- **Collision Protection:** Multiple Epics assigned to the same team vertically stack inside the team's widened swimlane instead of horizontally overlapping.
 
-## 4. Interactive & UI/UX Requirements
+## 5. Interactive UI / UX Core
 
-- **End-to-End Highlighting (Hover):** Hovering over any node (Customer, Feature, or Team) must highlight the entire connected chain (edges, nodes, and Gantt bars) while dimming all unrelated elements to 15% opacity.
-- **Parallel Execution Handling:** If a single team is assigned multiple features with overlapping `start_date` and `end_date` parameters, the UI must stack the Gantt bars vertically within that team's swimlane. They must not overlap horizontally.
-- **Bottleneck Warning:** If the sum of scheduled MDs for a team exceeds their `Total_Capacity_MDs` for the visible timeframe, the Team node border must pulse **Red**.
+- **End-to-End Highlighting (Hover):** Hovering over any node dynamically highlights the structural chain traversing in both directions up to the Root Customer and down to the Leaf Epic, dimming irrelevant nodes instantly.
+- **Global Text Filtering:** Fast indexing bar allowing users to omit unmatched Customers, Features, Teams, or Epics.
+- **Dedicated Strategy Pages:**
+  - Left-clicking a **Customer** opens a dedicated page managing financial footprints and targeted Feature impact tracking.
+  - Left-clicking a **Feature** opens a dedicated page managing Customer ROI targeting and child Epic assignments.
 
-### Dynamic Tooltips
-- **Value Edge:** _"Cust A ($200k) requests SSO (15 MDs) = $13.3k/MD ROI."_
-- **Gantt Bar:** _"Frontend Team building SSO: Mar 1 - Mar 15 (10 MDs)."_
+## 6. Integrations (Jira Sync)
+
+- **Native Settings Store:** Users can provide absolute credentials (`Jira Base URL`, `API Version`, `Email`, and `Token`) directly in the UI. 
+- **Local Dev Proxy:** To avoid browser Cross-Origin (CORS) security locks against Atlassian domains, the system routes requests through an inline HTTP Vite proxy.
+- **Epic Details Hydration:** Advanced Roadmaps custom fields (`Target start`, `Target end`, `Team`) and native fields (`Summary`, `Remaining Estimate`) are parsed automatically from Atlassian via `/api/jira/issue` during the "Sync from Jira" action.
