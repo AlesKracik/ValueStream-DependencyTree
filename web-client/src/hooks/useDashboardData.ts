@@ -59,6 +59,27 @@ export function useDashboardData() {
         });
     };
 
+    const addFeature = (feature: Feature) => {
+        setData(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                features: [...prev.features, feature]
+            };
+        });
+    };
+
+    const deleteFeature = (id: string) => {
+        setData(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                features: prev.features.filter(f => f.id !== id),
+                epics: prev.epics.filter(e => e.feature_id !== id)
+            };
+        });
+    };
+
     const updateFeature = (id: string, updates: Partial<Feature>) => {
         setData(prev => {
             if (!prev) return prev;
@@ -125,6 +146,8 @@ export function useDashboardData() {
         addCustomer,
         deleteCustomer,
         updateCustomer,
+        addFeature,
+        deleteFeature,
         updateFeature,
         updateTeam,
         updateEpic,

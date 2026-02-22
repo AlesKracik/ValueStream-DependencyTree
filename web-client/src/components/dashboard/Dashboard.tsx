@@ -12,6 +12,7 @@ import { GanttBarNode } from '../nodes/GanttBarNode';
 import { SprintCapacityNode } from '../nodes/SprintCapacityNode';
 import { TodayLineNode } from '../nodes/TodayLineNode';
 import { AddCustomerNode } from '../nodes/AddCustomerNode';
+import { AddFeatureNode } from '../nodes/AddFeatureNode';
 import { EditNodeModal } from './EditNodeModal';
 import { SettingsModal } from './SettingsModal';
 import { DashboardProvider } from '../../contexts/DashboardContext';
@@ -26,6 +27,7 @@ const nodeTypes = {
     sprintCapacityNode: SprintCapacityNode,
     todayLineNode: TodayLineNode,
     addCustomerNode: AddCustomerNode,
+    addFeatureNode: AddFeatureNode,
 };
 
 export interface DashboardProps {
@@ -39,12 +41,13 @@ export interface DashboardProps {
     updateSettings: (updates: Partial<Settings>) => void;
     saveDashboardData: (data: DashboardData) => Promise<void>;
     onNavigateToCustomer: (id: string) => void;
+    onNavigateToFeature: (id: string) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
     data, loading, error,
     updateCustomer, updateFeature, updateTeam, updateEpic, updateSettings,
-    saveDashboardData, onNavigateToCustomer
+    saveDashboardData, onNavigateToCustomer, onNavigateToFeature
 }) => {
     const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
     const [editingNode, setEditingNode] = React.useState<Node | null>(null);
@@ -96,23 +99,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
         };
     }, []);
 
-    const onNodeContextMenu = React.useCallback((event: React.MouseEvent, node: Node) => {
-        event.preventDefault(); // Prevent default browser context menu
-
-        // Customer right-click modal is disabled in favor of dedicated page navigation
-        if (['featureNode', 'teamNode', 'ganttBarNode', 'sprintCapacityNode'].includes(node.type || '')) {
-            setEditingNode(node);
-        }
-    }, [data, updateTeam]);
-
-    const onNodeClick = React.useCallback((event: React.MouseEvent, node: Node) => {
+    const onNodeClick = React.useCallback((_: React.MouseEvent, node: Node) => {
         if (node.type === 'customerNode') {
-            const domainId = node.id.split('-').slice(1).join('-');
-            onNavigateToCustomer(domainId);
+            const customerId = node.id.replace('customer-', '');
+            onNavigateToCustomer(customerId);
         } else if (node.id === 'add-customer-btn') {
             onNavigateToCustomer('new');
+        } else if (node.type === 'featureNode') {
+            const featureId = node.id.replace('feature-', '');
+            onNavigateToFeature(featureId);
+        } else if (node.id === 'add-feature-btn') {
+            onNavigateToFeature('new');
         }
-    }, [onNavigateToCustomer]);
+    }, [onNavigateToCustomer, onNavigateToFeature]);
+
+    const onNodeContextMenu = React.useCallback(
+        (event: React.MouseEvent, node: Node) => {
+            event.preventDefault();
+            // Don't show modal for nodes with dedicated pages
+            if (node.type === 'customerNode' || node.type === 'featureNode') return;
+            // Don't show modal for static layout elements
+            if (['teamNode', 'ganttBarNode', 'sprintCapacityNode', 'addCustomerNode', 'addFeatureNode'].includes(node.type || '')) return;
+            setEditingNode(node);
+        },
+        []
+    );
 
     if (loading) return <div>Loading dashboard...</div>;
     if (error) return <div>Error loading data: {error.message}</div>;

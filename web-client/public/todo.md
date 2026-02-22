@@ -7,8 +7,8 @@
 * [x] left click on customer goes to customer page
     * [x] allow adding/removing features
     * eventually add past customer issues including link to jira and resolution
-* left click on feature goes to feature page
-    * allow adding/removing customers
+* [x] left click on feature goes to feature page
+    * [x] allow adding/removing customers
     * allow adding/removing epics
 * add new feature
 * add new customer

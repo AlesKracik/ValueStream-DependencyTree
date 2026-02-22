@@ -173,6 +173,30 @@ export function useGraphLayout(
         const maxScore = Math.max(...featuresWithScores.map(f => f.score), 1);
         const sortedFeatures = featuresWithScores.sort((a, b) => b.score - a.score); // Descending by Score
 
+        // Inject the "Add Feature" button node at the top of the column
+        if (!ff) { // Only show if not aggressively filtering
+            nodes.push({
+                id: 'add-feature-btn',
+                type: 'addFeatureNode',
+                position: { x: COL_FEATURE_X - 75, y: -20 },
+                data: {
+                    label: '+ Add Feature',
+                    style: {
+                        backgroundColor: '#3b82f6',
+                        color: 'white',
+                        border: '1px solid #2563eb',
+                        borderRadius: '6px',
+                        width: 150,
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        padding: '10px 20px',
+                        fontSize: '14px',
+                        fontWeight: '600'
+                    }
+                }
+            });
+        }
+
         sortedFeatures.forEach((feature, index) => {
             const sizeRatio = maxScore > 0 ? feature.score / maxScore : 0.5;
             const nodeSize = 100 * 0.6 + (100 * 0.8 * sizeRatio);
@@ -180,7 +204,7 @@ export function useGraphLayout(
             nodes.push({
                 id: `feature-${feature.id}`,
                 type: 'featureNode',
-                position: { x: COL_FEATURE_X - (nodeSize / 2), y: index * 180 + 100 - (nodeSize / 2) },
+                position: { x: COL_FEATURE_X - (nodeSize / 2), y: index * 180 + 160 - (nodeSize / 2) }, // Shifted down 60px to clear Add button
                 data: {
                     label: feature.name,
                     effortMds: feature.total_effort_mds,
