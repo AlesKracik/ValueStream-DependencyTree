@@ -22,19 +22,20 @@
 }
 
 .backBtn {
-    background: transparent;
+    background-color: #374151;
     border: 1px solid #4b5563;
-    color: #cbd5e1;
-    padding: 8px 16px;
+    color: white;
+    padding: 10px 20px;
     border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
+    font-weight: 600;
     transition: all 0.2s;
 }
 
 .backBtn:hover {
-    background: #374151;
-    color: #fff;
+    background-color: #4b5563;
+    border-color: #6b7280;
 }
 
 .saveBtn {

@@ -85,16 +85,16 @@ export function useGraphLayout(
                 position: { x: COL_CUSTOMER_X - 60, y: -20 },
                 data: { label: '+ Add Customer' },
                 style: {
-                    backgroundColor: '#374151',
-                    color: '#e5e7eb',
-                    border: '1px solid #4b5563',
-                    borderRadius: '4px',
-                    width: 120,
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: '1px solid #2563eb',
+                    borderRadius: '6px',
+                    width: 150,
                     textAlign: 'center',
                     cursor: 'pointer',
-                    padding: '8px 12px',
+                    padding: '10px 20px',
                     fontSize: '14px',
-                    fontWeight: 'bold'
+                    fontWeight: '600'
                 }
             });
         }
