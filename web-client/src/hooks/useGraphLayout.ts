@@ -378,13 +378,21 @@ export function useGraphLayout(
                             segmentEffort = remainingDefaultMd * proportion;
                         }
 
-                        // Intensity is "man days per day" (e.g. 5 MDs overlapping 14 days = ~0.35 intensity per dev)
-                        const intensity = segmentEffort / overlapDays;
+                        // Calculate mathematical strictly uniform proportion for the baseline:
+                        const baselineProportion = overlapDays / duration;
+                        const baselineEffort = epic.remaining_md * baselineProportion;
+
+                        let intensityRatio = 1;
+                        if (baselineEffort > 0) {
+                            intensityRatio = segmentEffort / baselineEffort;
+                        } else if (segmentEffort > 0) {
+                            intensityRatio = 2; // if baseline is 0 but we threw effort on it, glow white
+                        }
 
                         segments.push({
                             startOffsetPixels: segmentOffsetPixels,
                             widthPixels: segmentWidthPixels,
-                            intensity: intensity
+                            intensity: intensityRatio
                         });
                     }
                 });
