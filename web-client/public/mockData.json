@@ -421,6 +421,7 @@
     }
   ],
   "settings": {
-    "jira_base_url": "https://jira.mycompany.com"
+    "jira_base_url": "https://valuestream.atlassian.net",
+    "jira_api_version": "v3"
   }
 }

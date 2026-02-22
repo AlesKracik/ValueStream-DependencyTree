@@ -51,6 +51,7 @@ export interface Sprint {
 
 export interface Settings {
   jira_base_url: string;
+  jira_api_version: 'v2' | 'v3';
 }
 
 export interface DashboardData {

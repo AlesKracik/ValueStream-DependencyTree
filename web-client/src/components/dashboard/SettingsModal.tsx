@@ -13,7 +13,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, settings,
     useEffect(() => {
         if (settings) {
             setFormData({
-                jira_base_url: settings.jira_base_url
+                jira_base_url: settings.jira_base_url,
+                jira_api_version: settings.jira_api_version || 'v3'
             });
         }
     }, [settings]);
@@ -21,7 +22,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, settings,
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onUpdateSettings({
-            jira_base_url: formData.jira_base_url
+            jira_base_url: formData.jira_base_url,
+            jira_api_version: formData.jira_api_version as 'v2' | 'v3'
         });
         onClose();
     };
@@ -42,6 +44,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, settings,
                             onChange={e => setFormData({ ...formData, jira_base_url: e.target.value })}
                             required
                         />
+                    </label>
+
+                    <label style={styles.label}>
+                        Jira API Version:
+                        <select
+                            style={styles.input}
+                            value={formData.jira_api_version || 'v3'}
+                            onChange={e => setFormData({ ...formData, jira_api_version: e.target.value as 'v2' | 'v3' })}
+                        >
+                            <option value="v2">v2</option>
+                            <option value="v3">v3</option>
+                        </select>
                     </label>
 
                     <div style={styles.buttonGroup}>
