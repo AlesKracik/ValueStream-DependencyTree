@@ -81,20 +81,22 @@ export function useGraphLayout(
         if (!cf) { // Only show if not aggressively filtering
             nodes.push({
                 id: 'add-customer-btn',
-                type: 'default',
-                position: { x: COL_CUSTOMER_X - 60, y: -20 },
-                data: { label: '+ Add Customer' },
-                style: {
-                    backgroundColor: '#3b82f6',
-                    color: 'white',
-                    border: '1px solid #2563eb',
-                    borderRadius: '6px',
-                    width: 150,
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    padding: '10px 20px',
-                    fontSize: '14px',
-                    fontWeight: '600'
+                type: 'addCustomerNode',
+                position: { x: COL_CUSTOMER_X - 75, y: -20 },
+                data: {
+                    label: '+ Add Customer',
+                    style: {
+                        backgroundColor: '#3b82f6',
+                        color: 'white',
+                        border: '1px solid #2563eb',
+                        borderRadius: '6px',
+                        width: 150,
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        padding: '10px 20px',
+                        fontSize: '14px',
+                        fontWeight: '600'
+                    }
                 }
             });
         }

@@ -11,6 +11,7 @@ import { TeamNode } from '../nodes/TeamNode';
 import { GanttBarNode } from '../nodes/GanttBarNode';
 import { SprintCapacityNode } from '../nodes/SprintCapacityNode';
 import { TodayLineNode } from '../nodes/TodayLineNode';
+import { AddCustomerNode } from '../nodes/AddCustomerNode';
 import { EditNodeModal } from './EditNodeModal';
 import { SettingsModal } from './SettingsModal';
 import { DashboardProvider } from '../../contexts/DashboardContext';
@@ -24,6 +25,7 @@ const nodeTypes = {
     ganttBarNode: GanttBarNode,
     sprintCapacityNode: SprintCapacityNode,
     todayLineNode: TodayLineNode,
+    addCustomerNode: AddCustomerNode,
 };
 
 export interface DashboardProps {
