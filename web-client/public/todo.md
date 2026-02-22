@@ -9,7 +9,7 @@
     * eventually add past customer issues including link to jira and resolution
 * [x] left click on feature goes to feature page
     * [x] allow adding/removing customers
-    * allow adding/removing epics
+    * [x] allow adding/removing epics
 * add new feature
 * add new customer
 * read/write epic details from Jira

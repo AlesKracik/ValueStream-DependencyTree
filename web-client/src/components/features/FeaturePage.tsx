@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { DashboardData, Feature } from '../../types/models';
+import type { DashboardData, Feature, Epic } from '../../types/models';
 import styles from '../customers/CustomerPage.module.css';
 
 export interface FeaturePageProps {
@@ -11,6 +11,9 @@ export interface FeaturePageProps {
     addFeature: (f: Feature) => void;
     deleteFeature: (id: string) => void;
     updateFeature: (id: string, updates: Partial<Feature>) => void;
+    addEpic: (e: Epic) => void;
+    deleteEpic: (id: string) => void;
+    updateEpic: (id: string, updates: Partial<Epic>) => void;
     saveDashboardData: (data: DashboardData) => Promise<void>;
 }
 
@@ -23,6 +26,9 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
     addFeature,
     deleteFeature,
     updateFeature,
+    addEpic,
+    deleteEpic,
+    updateEpic,
     saveDashboardData
 }) => {
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -32,6 +38,7 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
     const [newFeatureDraft, setNewFeatureDraft] = useState<Partial<Feature>>({ name: 'New Feature', total_effort_mds: 0, customer_targets: [] });
     // Using the same mock state pattern as customers
     const [newFeatureCustomers, setNewFeatureCustomers] = useState<{ customerId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have' }[]>([]);
+    const [newFeatureEpics, setNewFeatureEpics] = useState<Epic[]>([]);
 
     if (loading) return <div className={styles.pageContainer}>Loading feature details...</div>;
     if (error) return <div className={styles.pageContainer}>Error: {error.message}</div>;
@@ -60,8 +67,20 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
                     }))
                 };
 
+                const epicsToAdd = newFeatureEpics.map(e => ({
+                    ...e,
+                    id: `e${Math.random().toString(36).substr(2, 9)}`,
+                    feature_id: newId
+                }));
+
                 addFeature(newFeat);
-                const newData = { ...data, features: [...data.features, newFeat] };
+                epicsToAdd.forEach(e => addEpic(e));
+
+                const newData = {
+                    ...data,
+                    features: [...data.features, newFeat],
+                    epics: [...data.epics, ...epicsToAdd]
+                };
                 await saveDashboardData(newData);
 
                 setSaveStatus('saved');
@@ -97,6 +116,43 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
                 console.error('Delete failed', err);
                 setSaveStatus('error');
             }
+        }
+    };
+
+    const epics = isNew ? newFeatureEpics : data.epics.filter(e => e.feature_id === featureId);
+
+    const handleAddEpic = () => {
+        const tempId = `e-temp-${Date.now()}`;
+        const draftEpic: Epic = {
+            id: tempId,
+            jira_key: 'TBD',
+            feature_id: isNew ? 'new' : featureId,
+            team_id: data.teams[0]?.id || '',
+            remaining_md: 0,
+            target_start: new Date().toISOString().split('T')[0],
+            target_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            name: 'New Epic'
+        };
+        if (isNew) {
+            setNewFeatureEpics(prev => [...prev, draftEpic]);
+        } else {
+            addEpic(draftEpic);
+        }
+    };
+
+    const handleUpdateEpic = (id: string, updates: Partial<Epic>) => {
+        if (isNew) {
+            setNewFeatureEpics(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+        } else {
+            updateEpic(id, updates);
+        }
+    };
+
+    const handleRemoveEpic = (id: string) => {
+        if (isNew) {
+            setNewFeatureEpics(prev => prev.filter(e => e.id !== id));
+        } else {
+            deleteEpic(id);
         }
     };
 
@@ -284,6 +340,63 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
                             </button>
                         </div>
                     </div>
+                </section>
+
+                <section className={styles.card}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <h2>Epics</h2>
+                        <button className={styles.primaryBtn} onClick={handleAddEpic}>+ Add Epic</button>
+                    </div>
+
+                    <table className={styles.table}>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Jira Key</th>
+                                <th>Team</th>
+                                <th>Remaining (MDs)</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {epics.map(epic => (
+                                <tr key={epic.id}>
+                                    <td>
+                                        <input type="text" value={epic.name || ''} onChange={e => handleUpdateEpic(epic.id, { name: e.target.value })} style={{ width: '100%', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
+                                    </td>
+                                    <td>
+                                        <input type="text" value={epic.jira_key} onChange={e => handleUpdateEpic(epic.id, { jira_key: e.target.value })} style={{ width: '100px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
+                                    </td>
+                                    <td>
+                                        <select value={epic.team_id} onChange={e => handleUpdateEpic(epic.id, { team_id: e.target.value })} style={{ width: '100%', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }}>
+                                            {data.teams.map(t => (
+                                                <option key={t.id} value={t.id}>{t.name}</option>
+                                            ))}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="number" min="0" value={epic.remaining_md} onChange={e => handleUpdateEpic(epic.id, { remaining_md: parseInt(e.target.value) || 0 })} style={{ width: '80px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
+                                    </td>
+                                    <td>
+                                        <input type="date" value={epic.target_start} onChange={e => handleUpdateEpic(epic.id, { target_start: e.target.value })} style={{ width: '130px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
+                                    </td>
+                                    <td>
+                                        <input type="date" value={epic.target_end} onChange={e => handleUpdateEpic(epic.id, { target_end: e.target.value })} style={{ width: '130px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
+                                    </td>
+                                    <td>
+                                        <button onClick={() => handleRemoveEpic(epic.id)} className={styles.dangerBtn}>Remove</button>
+                                    </td>
+                                </tr>
+                            ))}
+                            {epics.length === 0 && (
+                                <tr>
+                                    <td colSpan={7} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No epics currently mapped to this feature.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </section>
             </div>
         </div>

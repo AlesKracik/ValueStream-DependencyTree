@@ -100,6 +100,26 @@ export function useDashboardData() {
         });
     };
 
+    const addEpic = (epic: Epic) => {
+        setData(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                epics: [...prev.epics, epic]
+            };
+        });
+    };
+
+    const deleteEpic = (id: string) => {
+        setData(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                epics: prev.epics.filter(e => e.id !== id)
+            };
+        });
+    };
+
     const updateEpic = (id: string, updates: Partial<Epic>) => {
         setData(prev => {
             if (!prev) return prev;
@@ -149,6 +169,8 @@ export function useDashboardData() {
         addFeature,
         deleteFeature,
         updateFeature,
+        addEpic,
+        deleteEpic,
         updateTeam,
         updateEpic,
         updateSettings,

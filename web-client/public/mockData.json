@@ -153,6 +153,12 @@
           "tcv_type": "existing"
         }
       ]
+    },
+    {
+      "id": "f1771793397551",
+      "name": "New Feature",
+      "total_effort_mds": 0,
+      "customer_targets": []
     }
   ],
   "teams": [
@@ -402,6 +408,16 @@
       "target_start": "2026-03-26",
       "target_end": "2026-04-10",
       "jira_key": "PROJ-115"
+    },
+    {
+      "id": "ev52c750n2",
+      "jira_key": "TBD-20",
+      "feature_id": "f1771793397551",
+      "team_id": "t1",
+      "remaining_md": 20,
+      "target_start": "2026-02-22",
+      "target_end": "2026-03-08",
+      "name": "test"
     }
   ],
   "settings": {
