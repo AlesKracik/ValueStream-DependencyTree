@@ -518,30 +518,62 @@ export function useGraphLayout(
                 if (handleId) hHandles.get(nodeId)!.add(handleId);
             };
 
-            // Utility to traverse downstream
-            const traceDownstream = (currentNodeId: string) => {
+            const visitedTarget = new Set<string>();
+            const traceDownstream = (currentNodeId: string, sourceEpicId?: string) => {
+                const contextKey = `${currentNodeId}-${sourceEpicId || 'none'}`;
+                if (visitedTarget.has(contextKey)) return;
+                visitedTarget.add(contextKey);
+
                 hNodes.add(currentNodeId);
-                const outgoingEdges = edges.filter(e => e.source === currentNodeId);
+                let outgoingEdges = edges.filter(e => e.source === currentNodeId);
+
+                // If at a team node, only follow edges to the specific epic's Gantt bar
+                if (currentNodeId.startsWith('team-') && sourceEpicId) {
+                    outgoingEdges = outgoingEdges.filter(e => e.target === `gantt-${sourceEpicId}`);
+                }
+
                 outgoingEdges.forEach(e => {
                     hEdges.add(e.id);
                     markHandle(e.source, e.sourceHandle || '');
-                    if (!hNodes.has(e.target)) {
-                        traceDownstream(e.target);
+
+                    let nextEpicId = sourceEpicId;
+                    // Extract epic context when passing from Feature to Team
+                    if (currentNodeId.startsWith('feature-') && e.id.startsWith('edge-')) {
+                        const parts = e.id.split('-');
+                        if (parts.length >= 4) {
+                            nextEpicId = parts.slice(3).join('-');
+                        }
                     }
+
+                    traceDownstream(e.target, nextEpicId);
                 });
             };
 
-            // Utility to traverse upstream
-            const traceUpstream = (currentNodeId: string) => {
-                // Ensure the current node is added even if it has no incoming edges (base case handled by both traces)
+            const visitedSource = new Set<string>();
+            const traceUpstream = (currentNodeId: string, sourceEpicId?: string) => {
+                const contextKey = `${currentNodeId}-${sourceEpicId || 'none'}`;
+                if (visitedSource.has(contextKey)) return;
+                visitedSource.add(contextKey);
+
                 hNodes.add(currentNodeId);
-                const incomingEdges = edges.filter(e => e.target === currentNodeId);
+                let incomingEdges = edges.filter(e => e.target === currentNodeId);
+
+                // If at a team node, only follow incoming edges from the feature that owns this epic
+                if (currentNodeId.startsWith('team-') && sourceEpicId) {
+                    incomingEdges = incomingEdges.filter(e => e.id.endsWith(`-${sourceEpicId}`));
+                }
+
                 incomingEdges.forEach(e => {
                     hEdges.add(e.id);
                     markHandle(e.source, e.sourceHandle || '');
-                    if (!hNodes.has(e.source)) {
-                        traceUpstream(e.source);
+
+                    let nextEpicId = sourceEpicId;
+                    // Extract epic context when passing backwards from Gantt to Team
+                    if (currentNodeId.startsWith('gantt-')) {
+                        nextEpicId = currentNodeId.replace('gantt-', '');
                     }
+
+                    traceUpstream(e.source, nextEpicId);
                 });
             };
 
