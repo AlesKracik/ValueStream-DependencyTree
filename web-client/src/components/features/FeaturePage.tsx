@@ -197,8 +197,8 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
 
             const updates: Partial<Epic> = {};
             if (fields.summary) updates.name = fields.summary;
-            if (fields.timeoriginalestimate) {
-                updates.remaining_md = Math.round(fields.timeoriginalestimate / 28800);
+            if (fields.timeestimate !== undefined && fields.timeestimate !== null) {
+                updates.remaining_md = Math.round(fields.timeestimate / 28800);
             }
 
             if (targetStartKey && fields[targetStartKey]) updates.target_start = fields[targetStartKey];
