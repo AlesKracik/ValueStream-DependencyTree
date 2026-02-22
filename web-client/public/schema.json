@@ -15,12 +15,20 @@
         "settings": {
             "type": "object",
             "required": [
-                "jira_base_url"
+                "jira_base_url",
+                "jira_api_version"
             ],
             "properties": {
                 "jira_base_url": {
                     "type": "string",
                     "format": "uri"
+                },
+                "jira_api_version": {
+                    "type": "string",
+                    "enum": [
+                        "v2",
+                        "v3"
+                    ]
                 }
             }
         },
@@ -183,6 +191,13 @@
                         "type": "string",
                         "format": "date",
                         "description": "YYYY-MM-DD"
+                    },
+                    "sprint_effort_overrides": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "number",
+                            "minimum": 0
+                        }
                     },
                     "dependencies": {
                         "type": "array",
