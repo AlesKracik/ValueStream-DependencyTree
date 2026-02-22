@@ -29,6 +29,12 @@
                         "v2",
                         "v3"
                     ]
+                },
+                "jira_email": {
+                    "type": "string"
+                },
+                "jira_api_token": {
+                    "type": "string"
                 }
             }
         },
