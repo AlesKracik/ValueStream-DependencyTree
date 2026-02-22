@@ -85,9 +85,16 @@ export function useGraphLayout(
                 position: { x: COL_CUSTOMER_X - 60, y: -20 },
                 data: { label: '+ Add Customer' },
                 style: {
-                    background: '#1f2937', color: '#10b981', border: '2px dashed #059669',
-                    borderRadius: '8px', width: 120, textAlign: 'center', cursor: 'pointer',
-                    padding: '12px', fontSize: '13px', fontWeight: 'bold'
+                    backgroundColor: '#374151',
+                    color: '#e5e7eb',
+                    border: '1px solid #4b5563',
+                    borderRadius: '4px',
+                    width: 120,
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    padding: '8px 12px',
+                    fontSize: '14px',
+                    fontWeight: 'bold'
                 }
             });
         }
@@ -99,7 +106,7 @@ export function useGraphLayout(
             nodes.push({
                 id: `customer-${customer.id}`,
                 type: 'customerNode',
-                position: { x: COL_CUSTOMER_X - (nodeSize / 2), y: index * 180 + 100 - (nodeSize / 2) },
+                position: { x: COL_CUSTOMER_X - (nodeSize / 2), y: index * 180 + 160 - (nodeSize / 2) }, // Shifted down 60px to clear Add button
                 data: {
                     label: customer.name,
                     existingTcv: customer.existing_tcv,

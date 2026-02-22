@@ -30,6 +30,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const isNew = customerId === 'new';
     const [newCustomerDraft, setNewCustomerDraft] = useState<Partial<Customer>>({ name: 'New Customer', existing_tcv: 0, potential_tcv: 0 });
+    const [newCustomerFeatures, setNewCustomerFeatures] = useState<{ featureId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have' }[]>([]);
 
     if (loading) return <div>Loading customer details...</div>;
     if (error) return <div>Error: {error.message}</div>;
@@ -38,9 +39,9 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     const customer = isNew ? newCustomerDraft : data.customers.find(c => c.id === customerId);
     if (!customer) return <div>Customer not found.</div>;
 
-    const targetedFeatures = data.features.filter(f =>
-        f.customer_targets.some(ct => ct.customer_id === customerId)
-    );
+    const targetedFeatures = isNew
+        ? newCustomerFeatures.map(ncf => data.features.find(f => f.id === ncf.featureId)!).filter(Boolean)
+        : data.features.filter(f => f.customer_targets.some(ct => ct.customer_id === customerId));
 
     const handleSave = async () => {
         setSaveStatus('saving');
@@ -49,7 +50,24 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                 const newId = `c${Date.now()}`;
                 const newCust = { id: newId, ...newCustomerDraft } as Customer;
                 addCustomer(newCust);
-                const newData = { ...data, customers: [...data.customers, newCust] };
+
+                // Inject the drafted features
+                const updatedFeatures = data.features.map(f => {
+                    const draftTarget = newCustomerFeatures.find(ncf => ncf.featureId === f.id);
+                    if (draftTarget) {
+                        return {
+                            ...f,
+                            customer_targets: [...f.customer_targets, {
+                                customer_id: newId,
+                                tcv_type: draftTarget.tcv_type,
+                                priority: draftTarget.priority
+                            }]
+                        };
+                    }
+                    return f;
+                });
+
+                const newData = { ...data, customers: [...data.customers, newCust], features: updatedFeatures };
                 await saveDashboardData(newData);
                 setSaveStatus('saved');
                 setTimeout(() => {
@@ -161,107 +179,124 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                     </div>
                 </section>
 
-                {!isNew && (
-                    <section className={styles.card}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                            <h2>Targeted Features</h2>
-                        </div>
+                <section className={styles.card}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <h2>Targeted Features</h2>
+                    </div>
 
-                        <table className={styles.table}>
-                            <thead>
-                                <tr>
-                                    <th>Feature</th>
-                                    <th>TCV Target</th>
-                                    <th>Priority</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {targetedFeatures.map(feature => {
-                                    const targetDef = feature.customer_targets.find(ct => ct.customer_id === customerId)!;
+                    <table className={styles.table}>
+                        <thead>
+                            <tr>
+                                <th>Feature</th>
+                                <th>TCV Target</th>
+                                <th>Priority</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {targetedFeatures.map(feature => {
+                                const targetDef = isNew
+                                    ? newCustomerFeatures.find(ncf => ncf.featureId === feature.id)!
+                                    : feature.customer_targets.find(ct => ct.customer_id === customerId)!;
 
-                                    const updateTarget = (updates: Partial<typeof targetDef>) => {
+                                const updateTarget = (updates: Partial<typeof targetDef>) => {
+                                    if (isNew) {
+                                        setNewCustomerFeatures(prev => prev.map(ncf =>
+                                            ncf.featureId === feature.id ? { ...ncf, ...updates } : ncf
+                                        ));
+                                    } else {
                                         const newTargets = feature.customer_targets.map(ct =>
                                             ct.customer_id === customerId ? { ...ct, ...updates } : ct
                                         );
                                         updateFeature(feature.id, { customer_targets: newTargets });
-                                    };
+                                    }
+                                };
 
-                                    const removeTarget = () => {
+                                const removeTarget = () => {
+                                    if (isNew) {
+                                        setNewCustomerFeatures(prev => prev.filter(ncf => ncf.featureId !== feature.id));
+                                    } else {
                                         const newTargets = feature.customer_targets.filter(ct => ct.customer_id !== customerId);
                                         updateFeature(feature.id, { customer_targets: newTargets });
-                                    };
+                                    }
+                                };
 
-                                    return (
-                                        <tr key={feature.id}>
-                                            <td>{feature.name}</td>
-                                            <td>
-                                                <select
-                                                    value={targetDef.tcv_type}
-                                                    onChange={e => updateTarget({ tcv_type: e.target.value as 'existing' | 'potential' })}
-                                                >
-                                                    <option value="existing">Existing</option>
-                                                    <option value="potential">Potential</option>
-                                                </select>
-                                            </td>
-                                            <td>
-                                                <select
-                                                    value={targetDef.priority || 'Must-have'}
-                                                    onChange={e => updateTarget({ priority: e.target.value as 'Must-have' | 'Should-have' | 'Nice-to-have' })}
-                                                >
-                                                    <option value="Must-have">Must-have</option>
-                                                    <option value="Should-have">Should-have</option>
-                                                    <option value="Nice-to-have">Nice-to-have</option>
-                                                </select>
-                                            </td>
-                                            <td>
-                                                <button onClick={removeTarget} className={styles.dangerBtn}>Remove</button>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                                {targetedFeatures.length === 0 && (
-                                    <tr>
-                                        <td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No targeted features found.</td>
+                                return (
+                                    <tr key={feature.id}>
+                                        <td>{feature.name}</td>
+                                        <td>
+                                            <select
+                                                value={targetDef.tcv_type}
+                                                onChange={e => updateTarget({ tcv_type: e.target.value as 'existing' | 'potential' })}
+                                            >
+                                                <option value="existing">Existing</option>
+                                                <option value="potential">Potential</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <select
+                                                value={targetDef.priority || 'Must-have'}
+                                                onChange={e => updateTarget({ priority: e.target.value as 'Must-have' | 'Should-have' | 'Nice-to-have' })}
+                                            >
+                                                <option value="Must-have">Must-have</option>
+                                                <option value="Should-have">Should-have</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <button onClick={removeTarget} className={styles.dangerBtn}>Remove</button>
+                                        </td>
                                     </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                );
+                            })}
+                            {targetedFeatures.length === 0 && (
+                                <tr>
+                                    <td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No targeted features found.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
 
-                        <div className={styles.addFeatureBox}>
-                            <h3>Add Feature Target</h3>
-                            <div style={{ display: 'flex', gap: '12px' }}>
-                                <select id="newFeatureSelect" style={{ flex: 1, padding: '8px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }}>
-                                    <option value="">Select a feature to add...</option>
-                                    {data.features.filter(f => !targetedFeatures.find(tf => tf.id === f.id)).map(f => (
-                                        <option key={f.id} value={f.id}>{f.name}</option>
-                                    ))}
-                                </select>
-                                <button
-                                    className={styles.primaryBtn}
-                                    onClick={() => {
-                                        const selectEl = document.getElementById('newFeatureSelect') as HTMLSelectElement;
-                                        const featureId = selectEl?.value;
-                                        if (featureId) {
-                                            const feature = data.features.find(f => f.id === featureId);
-                                            if (feature) {
+                    <div className={styles.addFeatureBox}>
+                        <h3>Add Feature Target</h3>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <select id="newFeatureSelect" style={{ flex: 1, padding: '8px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }}>
+                                <option value="">Select a feature to add...</option>
+                                {data.features.filter(f => !targetedFeatures.find(tf => tf.id === f.id)).map(f => (
+                                    <option key={f.id} value={f.id}>{f.name}</option>
+                                ))}
+                            </select>
+                            <button
+                                className={styles.primaryBtn}
+                                onClick={() => {
+                                    const selectEl = document.getElementById('newFeatureSelect') as HTMLSelectElement;
+                                    const featureId = selectEl?.value;
+                                    if (featureId) {
+                                        const feature = data.features.find(f => f.id === featureId);
+                                        if (feature) {
+                                            if (isNew) {
+                                                setNewCustomerFeatures(prev => [...prev, {
+                                                    featureId,
+                                                    tcv_type: 'potential',
+                                                    priority: 'Should-have'
+                                                }]);
+                                            } else {
                                                 const newTargets = [...(feature.customer_targets || []), {
                                                     customer_id: customerId,
                                                     tcv_type: 'potential',
                                                     priority: 'Should-have'
                                                 }];
                                                 updateFeature(featureId, { customer_targets: newTargets as any });
-                                                selectEl.value = ''; // reset
                                             }
+                                            selectEl.value = ''; // reset
                                         }
-                                    }}
-                                >
-                                    Assign Feature
-                                </button>
-                            </div>
+                                    }
+                                }}
+                            >
+                                Assign Feature
+                            </button>
                         </div>
-                    </section>
-                )}
+                    </div>
+                </section>
             </div>
         </div>
     );
