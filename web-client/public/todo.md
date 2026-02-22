@@ -14,4 +14,4 @@
     * [x] Sync Epic details from Jira via proxy
 * [x] write user documentation
 * [x] retrospectively update PRD
-* write tests
+* [x] write tests

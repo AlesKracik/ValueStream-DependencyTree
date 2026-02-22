@@ -1,4 +1,5 @@
-import { defineConfig } from 'vite'
+/// <reference types="vitest" />
+import { defineConfig } from 'vitest/config'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import fs from 'fs'
@@ -90,5 +91,9 @@ export default defineConfig({
       // Prevent Vite server from full-page reloading every time mockData is written
       ignored: ['**/public/mockData.json']
     }
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
   }
 })

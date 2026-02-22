@@ -22,21 +22,6 @@
   ],
   "features": [
     {
-      "id": "f1",
-      "name": "SSO Integration",
-      "total_effort_mds": 15,
-      "customer_targets": [
-        {
-          "customer_id": "c1",
-          "tcv_type": "existing"
-        },
-        {
-          "customer_id": "c2",
-          "tcv_type": "existing"
-        }
-      ]
-    },
-    {
       "id": "f2",
       "name": "Advanced Analytics",
       "total_effort_mds": 30,
@@ -79,22 +64,6 @@
       ]
     },
     {
-      "id": "f5",
-      "name": "White Labeling",
-      "total_effort_mds": 40,
-      "customer_targets": [
-        {
-          "customer_id": "c2",
-          "tcv_type": "existing"
-        },
-        {
-          "customer_id": "c3",
-          "tcv_type": "potential",
-          "priority": "Nice-to-have"
-        }
-      ]
-    },
-    {
       "id": "f6",
       "name": "Role-based Access",
       "total_effort_mds": 25,
@@ -132,21 +101,6 @@
         {
           "customer_id": "c2",
           "tcv_type": "potential"
-        },
-        {
-          "customer_id": "c3",
-          "tcv_type": "existing"
-        }
-      ]
-    },
-    {
-      "id": "f9",
-      "name": "MFA Integration",
-      "total_effort_mds": 20,
-      "customer_targets": [
-        {
-          "customer_id": "c1",
-          "tcv_type": "existing"
         },
         {
           "customer_id": "c3",
@@ -248,78 +202,6 @@
   ],
   "epics": [
     {
-      "id": "a1",
-      "name": "SSO Architecture Spike",
-      "feature_id": "f1",
-      "team_id": "t1",
-      "remaining_md": 10,
-      "target_start": "2026-02-12",
-      "target_end": "2026-02-22",
-      "jira_key": "PROJ-101"
-    },
-    {
-      "id": "a6",
-      "name": "SSO Frontend Login Logic",
-      "feature_id": "f1",
-      "team_id": "t1",
-      "remaining_md": 10,
-      "target_start": "2026-02-26",
-      "target_end": "2026-03-09",
-      "jira_key": "PROJ-102",
-      "dependencies": [
-        {
-          "epic_id": "a1",
-          "dependency_type": "FS"
-        }
-      ]
-    },
-    {
-      "id": "a7",
-      "name": "SSO Profile Settings UI",
-      "feature_id": "f1",
-      "team_id": "t1",
-      "remaining_md": 10,
-      "target_start": "2026-03-12",
-      "target_end": "2026-03-24",
-      "jira_key": "PROJ-103"
-    },
-    {
-      "id": "a8",
-      "name": "SSO Admin Dashboard",
-      "feature_id": "f1",
-      "team_id": "t1",
-      "remaining_md": 10,
-      "target_start": "2026-03-26",
-      "target_end": "2026-04-07",
-      "jira_key": "PROJ-104"
-    },
-    {
-      "id": "a9",
-      "name": "SSO Redirect Handler",
-      "feature_id": "f1",
-      "team_id": "t1",
-      "remaining_md": 10,
-      "target_start": "2026-02-12",
-      "target_end": "2026-02-26",
-      "jira_key": "PROJ-105",
-      "dependencies": [
-        {
-          "epic_id": "a1",
-          "dependency_type": "FF"
-        }
-      ]
-    },
-    {
-      "id": "a2",
-      "name": "SSO Backend Identity Provider",
-      "feature_id": "f1",
-      "team_id": "t2",
-      "remaining_md": 5,
-      "target_start": "2026-02-26",
-      "target_end": "2026-03-08",
-      "jira_key": "PROJ-106"
-    },
-    {
       "id": "a3",
       "name": "Audit Logs Storage Engine",
       "feature_id": "f2",
@@ -360,16 +242,6 @@
       "jira_key": "PROJ-110"
     },
     {
-      "id": "a11",
-      "name": "Mobile White Labeling Config",
-      "feature_id": "f5",
-      "team_id": "t3",
-      "remaining_md": 40,
-      "target_start": "2026-03-26",
-      "target_end": "2026-04-10",
-      "jira_key": "PROJ-111"
-    },
-    {
       "id": "a12",
       "name": "RBAC Permissions GUI",
       "feature_id": "f6",
@@ -398,16 +270,6 @@
       "target_start": "2026-03-26",
       "target_end": "2026-04-10",
       "jira_key": "PROJ-114"
-    },
-    {
-      "id": "a15",
-      "name": "Web MFA Setup Wizard",
-      "feature_id": "f9",
-      "team_id": "t1",
-      "remaining_md": 20,
-      "target_start": "2026-03-26",
-      "target_end": "2026-04-10",
-      "jira_key": "PROJ-115"
     },
     {
       "id": "ev52c750n2",
