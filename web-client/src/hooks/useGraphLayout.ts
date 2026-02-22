@@ -121,7 +121,9 @@ export function useGraphLayout(
                         let shouldHaveCount = 0;
                         data.features.forEach(globalF => {
                             const hasShould = globalF.customer_targets.find(ct =>
-                                ct.customer_id === target.customer_id && ct.priority === 'Should-have'
+                                ct.customer_id === target.customer_id &&
+                                ct.priority === 'Should-have' &&
+                                ct.tcv_type === target.tcv_type
                             );
                             if (hasShould) shouldHaveCount++;
                         });
