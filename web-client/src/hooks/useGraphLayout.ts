@@ -207,6 +207,27 @@ export function useGraphLayout(
                 teamMaxLanes[team.id] = laneIdx + 1;
             }
 
+            let totalOverrideMd = 0;
+            let overrideDays = 0;
+
+            // Pre-calculate overrides to determine remaining MDs
+            sprints.forEach(sprint => {
+                const spStart = parseISO(sprint.start_date);
+                const spEnd = parseISO(sprint.end_date);
+                const overlapStart = max([start, spStart]);
+                const overlapEnd = min([end, spEnd]);
+                if (overlapStart <= overlapEnd) {
+                    const overrideVal = epic.sprint_effort_overrides?.[sprint.id];
+                    if (overrideVal !== undefined) {
+                        totalOverrideMd += overrideVal;
+                        overrideDays += (differenceInDays(overlapEnd, overlapStart) + 1);
+                    }
+                }
+            });
+
+            const remainingDefaultMd = Math.max(0, epic.remaining_md - totalOverrideMd);
+            const remainingDefaultDays = Math.max(0, duration - overrideDays);
+
             sprints.forEach((sprint) => {
                 const sprintStart = parseISO(sprint.start_date);
                 const sprintEnd = parseISO(sprint.end_date);
@@ -216,17 +237,15 @@ export function useGraphLayout(
 
                 if (overlapStart <= overlapEnd) {
                     const overlapDays = differenceInDays(overlapEnd, overlapStart) + 1;
-                    const proportion = overlapDays / duration;
-
-                    // Check if an override is present for this specific Epic and Sprint
                     const overrideVal = epic.sprint_effort_overrides?.[sprint.id];
 
                     if (overrideVal !== undefined) {
                         // User manually provided raw MD effort for this intersection
                         teamSprintUsage[team.id][sprint.id] += overrideVal;
                     } else {
-                        // Default proportional spread
-                        teamSprintUsage[team.id][sprint.id] += (epic.remaining_md * proportion);
+                        // Default proportional spread from REMAINING pool
+                        const proportion = remainingDefaultDays > 0 ? (overlapDays / remainingDefaultDays) : 0;
+                        teamSprintUsage[team.id][sprint.id] += (remainingDefaultMd * proportion);
                     }
                 }
             });
@@ -333,11 +352,30 @@ export function useGraphLayout(
 
                         let segmentEffort = 0;
                         const overrideVal = epic.sprint_effort_overrides?.[sprint.id];
+
+                        let totalOverrideMd = 0;
+                        let overrideDays = 0;
+                        sprints.forEach(sp => {
+                            const spStart = parseISO(sp.start_date);
+                            const spEnd = parseISO(sp.end_date);
+                            const oStart = max([start, spStart]);
+                            const oEnd = min([end, spEnd]);
+                            if (oStart <= oEnd) {
+                                const oVal = epic.sprint_effort_overrides?.[sp.id];
+                                if (oVal !== undefined) {
+                                    totalOverrideMd += oVal;
+                                    overrideDays += (differenceInDays(oEnd, oStart) + 1);
+                                }
+                            }
+                        });
+                        const remainingDefaultMd = Math.max(0, epic.remaining_md - totalOverrideMd);
+                        const remainingDefaultDays = Math.max(0, duration - overrideDays);
+
                         if (overrideVal !== undefined) {
                             segmentEffort = overrideVal;
                         } else {
-                            const proportion = overlapDays / duration;
-                            segmentEffort = epic.remaining_md * proportion;
+                            const proportion = remainingDefaultDays > 0 ? (overlapDays / remainingDefaultDays) : 0;
+                            segmentEffort = remainingDefaultMd * proportion;
                         }
 
                         // Intensity is "man days per day" (e.g. 5 MDs overlapping 14 days = ~0.35 intensity per dev)

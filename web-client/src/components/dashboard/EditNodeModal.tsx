@@ -73,37 +73,12 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
         } else if (node.type === 'ganttBarNode') {
             const epic = data.epics.find(e => e.id === domainId);
             if (epic) {
-                // Calculate which sprints this Epic overlaps to build out the override inputs dynamically
-                const sStart = parseISO(epic.target_start);
-                const sEnd = parseISO(epic.target_end);
-                const duration = differenceInDays(sEnd, sStart) + 1;
-
-                const overlappingSprints = (data.sprints || []).map(sprint => {
-                    const spStart = parseISO(sprint.start_date);
-                    const spEnd = parseISO(sprint.end_date);
-                    const overlapStart = max([sStart, spStart]);
-                    const overlapEnd = min([sEnd, spEnd]);
-                    if (overlapStart <= overlapEnd) {
-                        const overlapDays = differenceInDays(overlapEnd, overlapStart) + 1;
-                        const defaultProportion = overlapDays / duration;
-                        const defaultEffort = epic.remaining_md * defaultProportion;
-                        return {
-                            id: sprint.id,
-                            name: sprint.name,
-                            defaultEffort,
-                            overrideValue: epic.sprint_effort_overrides?.[sprint.id]
-                        };
-                    }
-                    return null;
-                }).filter(Boolean);
-
                 setFormData({
                     remaining_md: epic.remaining_md,
                     target_start: epic.target_start,
                     target_end: epic.target_end,
                     jira_key: epic.jira_key,
-                    sprint_effort_overrides: { ...(epic.sprint_effort_overrides || {}) },
-                    overlappingSprints: overlappingSprints
+                    sprint_effort_overrides: { ...(epic.sprint_effort_overrides || {}) }
                 });
             }
         } else if (node.type === 'sprintCapacityNode') {
@@ -256,6 +231,66 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                 }));
             };
 
+            const sStart = formData.target_start ? parseISO(formData.target_start) : null;
+            const sEnd = formData.target_end ? parseISO(formData.target_end) : null;
+            const totalMd = Number(formData.remaining_md) || 0;
+            const overrides = formData.sprint_effort_overrides || {};
+
+            let overlappingSprints: any[] = [];
+            if (sStart && sEnd) {
+                try {
+                    const overlaps = (data.sprints || []).map(sprint => {
+                        const spStart = parseISO(sprint.start_date);
+                        const spEnd = parseISO(sprint.end_date);
+                        const overlapStart = max([sStart, spStart]);
+                        const overlapEnd = min([sEnd, spEnd]);
+                        if (overlapStart <= overlapEnd) {
+                            return { sprint, overlapDays: differenceInDays(overlapEnd, overlapStart) + 1 };
+                        }
+                        return null;
+                    }).filter(Boolean) as { sprint: any, overlapDays: number }[];
+
+                    let totalOverrideMd = 0;
+                    let remainingDefaultDays = 0;
+
+                    overlaps.forEach(({ sprint, overlapDays }) => {
+                        const overrideStr = overrides[sprint.id];
+                        const hasOverride = overrideStr !== undefined && overrideStr !== '' && overrideStr !== null;
+                        if (hasOverride) {
+                            const parsed = Number(overrideStr);
+                            if (!isNaN(parsed) && parsed >= 0) {
+                                totalOverrideMd += parsed;
+                            }
+                        } else {
+                            remainingDefaultDays += overlapDays;
+                        }
+                    });
+
+                    const remainingMdForDefaults = Math.max(0, totalMd - totalOverrideMd);
+
+                    overlappingSprints = overlaps.map(({ sprint, overlapDays }) => {
+                        const overrideStr = overrides[sprint.id];
+                        const hasOverride = overrideStr !== undefined && overrideStr !== '' && overrideStr !== null;
+                        let defaultEffort = 0;
+                        if (!hasOverride && remainingDefaultDays > 0) {
+                            defaultEffort = remainingMdForDefaults * (overlapDays / remainingDefaultDays);
+                        } else if (hasOverride) {
+                            const parsed = Number(overrideStr);
+                            if (!isNaN(parsed) && parsed >= 0) defaultEffort = parsed;
+                        }
+
+                        return {
+                            id: sprint.id,
+                            name: sprint.name,
+                            defaultEffort,
+                            hasOverride
+                        };
+                    });
+                } catch (e) {
+                    // ignore invalid intermediate dates
+                }
+            }
+
             return (
                 <div style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '8px' }}>
                     <h2 style={styles.title}>Edit Epic: {domainId}</h2>
@@ -266,8 +301,28 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                         </label>
                         <label style={styles.label}>
                             Remaining Estimate (MDs):
-                            <input style={styles.input} type="number" value={formData.remaining_md || 0} onChange={e => setFormData({ ...formData, remaining_md: e.target.value })} required />
+                            <input style={styles.input} type="number" step="0.1" value={formData.remaining_md === undefined ? '' : formData.remaining_md} onChange={e => setFormData({ ...formData, remaining_md: e.target.value })} required />
                         </label>
+
+                        {overlappingSprints.length > 0 && (
+                            <div style={{ marginTop: '4px', marginBottom: '12px', paddingLeft: '12px', borderLeft: '2px solid #4b5563' }}>
+                                <h3 style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '8px', fontWeight: 500 }}>Effort Breakdown</h3>
+                                {overlappingSprints.map((sprint: any) => (
+                                    <label key={sprint.id} style={{ ...styles.label, marginBottom: '6px', fontSize: '12px', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <span style={{ color: sprint.hasOverride ? '#d1d5db' : '#9ca3af' }}>{sprint.name}</span>
+                                        <input
+                                            style={{ ...styles.input, width: '80px', padding: '4px 8px', fontSize: '13px', textAlign: 'right' }}
+                                            type="number"
+                                            step="0.1"
+                                            placeholder={sprint.defaultEffort.toFixed(1)}
+                                            value={formData.sprint_effort_overrides?.[sprint.id] ?? ''}
+                                            onChange={e => handleOverrideChange(sprint.id, e.target.value)}
+                                        />
+                                    </label>
+                                ))}
+                            </div>
+                        )}
+
                         <label style={styles.label}>
                             Target Start:
                             <input style={styles.input} type="date" value={formData.target_start || ''} onChange={e => setFormData({ ...formData, target_start: e.target.value })} required />
@@ -276,25 +331,6 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                             Target End:
                             <input style={styles.input} type="date" value={formData.target_end || ''} onChange={e => setFormData({ ...formData, target_end: e.target.value })} required />
                         </label>
-
-                        {formData.overlappingSprints && formData.overlappingSprints.length > 0 && (
-                            <div style={{ marginTop: '16px', borderTop: '1px solid #374151', paddingTop: '16px' }}>
-                                <h3 style={{ fontSize: '14px', color: '#9ca3af', marginBottom: '12px' }}>Effort Intensity Overrides (MDs via Sprint window):</h3>
-                                {formData.overlappingSprints.map((sprint: any) => (
-                                    <label key={sprint.id} style={{ ...styles.label, marginBottom: '8px' }}>
-                                        {sprint.name} (Default ~{sprint.defaultEffort.toFixed(1)}):
-                                        <input
-                                            style={styles.input}
-                                            type="number"
-                                            step="0.1"
-                                            placeholder={`Default: ${sprint.defaultEffort.toFixed(1)}`}
-                                            value={formData.sprint_effort_overrides?.[sprint.id] ?? ''}
-                                            onChange={e => handleOverrideChange(sprint.id, e.target.value)}
-                                        />
-                                    </label>
-                                ))}
-                            </div>
-                        )}
                     </div>
                 </div>
             );
