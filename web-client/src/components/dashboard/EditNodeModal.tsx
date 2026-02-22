@@ -309,15 +309,38 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                                 <h3 style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '8px', fontWeight: 500 }}>Effort Breakdown</h3>
                                 {overlappingSprints.map((sprint: any) => (
                                     <label key={sprint.id} style={{ ...styles.label, marginBottom: '6px', fontSize: '12px', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <span style={{ color: sprint.hasOverride ? '#d1d5db' : '#9ca3af' }}>{sprint.name}</span>
-                                        <input
-                                            style={{ ...styles.input, width: '80px', padding: '4px 8px', fontSize: '13px', textAlign: 'right' }}
-                                            type="number"
-                                            step="0.1"
-                                            placeholder={sprint.defaultEffort.toFixed(1)}
-                                            value={formData.sprint_effort_overrides?.[sprint.id] ?? ''}
-                                            onChange={e => handleOverrideChange(sprint.id, e.target.value)}
-                                        />
+                                        <span style={{ color: sprint.hasOverride ? '#d1d5db' : '#9ca3af', flex: 1 }}>{sprint.name}</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <input
+                                                style={{ ...styles.input, width: '80px', padding: '4px 8px', fontSize: '13px', textAlign: 'right' }}
+                                                type="number"
+                                                step="0.1"
+                                                placeholder={sprint.defaultEffort.toFixed(1)}
+                                                value={formData.sprint_effort_overrides?.[sprint.id] ?? ''}
+                                                onChange={e => handleOverrideChange(sprint.id, e.target.value)}
+                                            />
+                                            {sprint.hasOverride ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleOverrideChange(sprint.id, '')}
+                                                    style={{
+                                                        background: 'transparent',
+                                                        border: 'none',
+                                                        color: '#ef4444',
+                                                        cursor: 'pointer',
+                                                        padding: '2px 6px',
+                                                        fontSize: '14px',
+                                                        lineHeight: '1',
+                                                        borderRadius: '4px'
+                                                    }}
+                                                    title="Reset to default"
+                                                >
+                                                    ×
+                                                </button>
+                                            ) : (
+                                                <div style={{ width: '22px' }}></div> // Spacer to keep alignment
+                                            )}
+                                        </div>
                                     </label>
                                 ))}
                             </div>
