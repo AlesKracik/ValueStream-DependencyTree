@@ -3,8 +3,8 @@ import { ReactFlow, ReactFlowProvider, Background, BackgroundVariant } from '@xy
 import type { Node } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { useDashboardData } from '../../hooks/useDashboardData';
 import { useGraphLayout } from '../../hooks/useGraphLayout';
+import type { DashboardData, Customer, Feature, Team, Epic, Settings } from '../../types/models';
 import { CustomerNode } from '../nodes/CustomerNode';
 import { FeatureNode } from '../nodes/FeatureNode';
 import { TeamNode } from '../nodes/TeamNode';
@@ -26,8 +26,24 @@ const nodeTypes = {
     todayLineNode: TodayLineNode,
 };
 
-export const Dashboard: React.FC = () => {
-    const { data, loading, error, updateCustomer, updateFeature, updateTeam, updateEpic, updateSettings, saveDashboardData } = useDashboardData();
+export interface DashboardProps {
+    data: DashboardData | null;
+    loading: boolean;
+    error: Error | null;
+    updateCustomer: (id: string, updates: Partial<Customer>) => void;
+    updateFeature: (id: string, updates: Partial<Feature>) => void;
+    updateTeam: (id: string, updates: Partial<Team>) => void;
+    updateEpic: (id: string, updates: Partial<Epic>) => void;
+    updateSettings: (updates: Partial<Settings>) => void;
+    saveDashboardData: (data: DashboardData) => Promise<void>;
+    onNavigateToCustomer: (id: string) => void;
+}
+
+export const Dashboard: React.FC<DashboardProps> = ({
+    data, loading, error,
+    updateCustomer, updateFeature, updateTeam, updateEpic, updateSettings,
+    saveDashboardData, onNavigateToCustomer
+}) => {
     const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
     const [editingNode, setEditingNode] = React.useState<Node | null>(null);
     const [isSettingsModalOpen, setIsSettingsModalOpen] = React.useState(false);
@@ -81,10 +97,18 @@ export const Dashboard: React.FC = () => {
     const onNodeContextMenu = React.useCallback((event: React.MouseEvent, node: Node) => {
         event.preventDefault(); // Prevent default browser context menu
 
-        if (['customerNode', 'featureNode', 'teamNode', 'ganttBarNode', 'sprintCapacityNode'].includes(node.type || '')) {
+        // Customer right-click modal is disabled in favor of dedicated page navigation
+        if (['featureNode', 'teamNode', 'ganttBarNode', 'sprintCapacityNode'].includes(node.type || '')) {
             setEditingNode(node);
         }
     }, [data, updateTeam]);
+
+    const onNodeClick = React.useCallback((event: React.MouseEvent, node: Node) => {
+        if (node.type === 'customerNode') {
+            const domainId = node.id.split('-').slice(1).join('-');
+            onNavigateToCustomer(domainId);
+        }
+    }, [onNavigateToCustomer]);
 
     if (loading) return <div>Loading dashboard...</div>;
     if (error) return <div>Error loading data: {error.message}</div>;
@@ -214,6 +238,7 @@ export const Dashboard: React.FC = () => {
                             onNodeMouseEnter={onNodeMouseEnter}
                             onNodeMouseLeave={onNodeMouseLeave}
                             onNodeContextMenu={onNodeContextMenu}
+                            onNodeClick={onNodeClick}
                             fitView
                             fitViewOptions={{ padding: 0.2 }}
                             minZoom={0.2}

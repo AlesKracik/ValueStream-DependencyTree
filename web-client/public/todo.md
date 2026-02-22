@@ -4,8 +4,8 @@
     * [x] must have feature adds full TCV of customer to Impact
     * [x] should have feature adds "TCV/number of should have features" for that customer to Impact
     * [x] nice to have feature has no TCV Impact
-* left click on customer goes to customer page
-    * allow adding/removing features
+* [x] left click on customer goes to customer page
+    * [x] allow adding/removing features
     * eventually add past customer issues including link to jira and resolution
 * left click on feature goes to feature page
     * allow adding/removing customers
