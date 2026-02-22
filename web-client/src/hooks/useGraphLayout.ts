@@ -405,7 +405,7 @@ export function useGraphLayout(
                         y: yPos
                     },
                     data: {
-                        label: `${feature?.name || 'Task'} (${epic.remaining_md} MDs)`,
+                        label: `${epic.name || feature?.name || 'Task'} (${epic.remaining_md} MDs)`,
                         width: duration * PIXELS_PER_DAY,
                         color: '#8b5cf6',
                         jiraKey: epic.jira_key,

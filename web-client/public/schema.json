@@ -148,6 +148,10 @@
                     "id": {
                         "type": "string"
                     },
+                    "name": {
+                        "type": "string",
+                        "description": "Optional explicit Epic name. Falls back to Parent Feature name if omitted."
+                    },
                     "jira_key": {
                         "type": "string"
                     },

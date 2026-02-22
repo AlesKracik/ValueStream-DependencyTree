@@ -74,6 +74,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
             const epic = data.epics.find(e => e.id === domainId);
             if (epic) {
                 setFormData({
+                    name: epic.name || '',
                     remaining_md: epic.remaining_md,
                     target_start: epic.target_start,
                     target_end: epic.target_end,
@@ -135,6 +136,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
             }
 
             onUpdateEpic(domainId, {
+                name: formData.name ? formData.name.trim() : undefined,
                 remaining_md: Number(formData.remaining_md),
                 target_start: formData.target_start,
                 target_end: formData.target_end,
@@ -295,6 +297,16 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                 <div style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '8px' }}>
                     <h2 style={styles.title}>Edit Epic: {domainId}</h2>
                     <div style={styles.formContainer}>
+                        <label style={styles.label}>
+                            Custom Name (Optional):
+                            <input
+                                style={styles.input}
+                                type="text"
+                                value={formData.name || ''}
+                                placeholder="Uses Feature Name by default"
+                                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                            />
+                        </label>
                         <label style={styles.label}>
                             Jira Key:
                             <input style={styles.input} type="text" value={formData.jira_key || ''} onChange={e => setFormData({ ...formData, jira_key: e.target.value })} required />

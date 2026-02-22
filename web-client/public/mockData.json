@@ -241,6 +241,7 @@
   "epics": [
     {
       "id": "a1",
+      "name": "GlobalTech Beta Phase",
       "feature_id": "f1",
       "team_id": "t1",
       "remaining_md": 10,
