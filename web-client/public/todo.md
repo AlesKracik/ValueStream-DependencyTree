@@ -12,6 +12,8 @@
     * [x] allow adding/removing epics
 * add new feature
 * add new customer
+* [x] jira plugin / polling
+    * [x] Sync Epic details from Jira via proxy
 * read/write epic details from Jira
     * configure different jira versions (cloud, server)
 * write user documentation

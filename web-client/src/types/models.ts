@@ -52,6 +52,8 @@ export interface Sprint {
 export interface Settings {
   jira_base_url: string;
   jira_api_version: 'v2' | 'v3';
+  jira_email?: string;
+  jira_api_token?: string;
 }
 
 export interface DashboardData {

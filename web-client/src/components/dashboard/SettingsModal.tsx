@@ -14,7 +14,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, settings,
         if (settings) {
             setFormData({
                 jira_base_url: settings.jira_base_url,
-                jira_api_version: settings.jira_api_version || 'v3'
+                jira_api_version: settings.jira_api_version || 'v3',
+                jira_email: settings.jira_email || '',
+                jira_api_token: settings.jira_api_token || ''
             });
         }
     }, [settings]);
@@ -23,7 +25,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, settings,
         e.preventDefault();
         onUpdateSettings({
             jira_base_url: formData.jira_base_url,
-            jira_api_version: formData.jira_api_version as 'v2' | 'v3'
+            jira_api_version: formData.jira_api_version as 'v2' | 'v3',
+            jira_email: formData.jira_email,
+            jira_api_token: formData.jira_api_token
         });
         onClose();
     };
@@ -56,6 +60,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, settings,
                             <option value="v2">v2</option>
                             <option value="v3">v3</option>
                         </select>
+                    </label>
+
+                    <label style={styles.label}>
+                        Jira Email:
+                        <input
+                            style={styles.input}
+                            type="email"
+                            placeholder="you@yourdomain.com"
+                            value={formData.jira_email || ''}
+                            onChange={e => setFormData({ ...formData, jira_email: e.target.value })}
+                        />
+                    </label>
+
+                    <label style={styles.label}>
+                        Jira API Token:
+                        <input
+                            style={styles.input}
+                            type="password"
+                            placeholder="Your Jira API Token"
+                            value={formData.jira_api_token || ''}
+                            onChange={e => setFormData({ ...formData, jira_api_token: e.target.value })}
+                        />
                     </label>
 
                     <div style={styles.buttonGroup}>

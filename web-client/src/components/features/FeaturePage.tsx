@@ -39,6 +39,7 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
     // Using the same mock state pattern as customers
     const [newFeatureCustomers, setNewFeatureCustomers] = useState<{ customerId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have' }[]>([]);
     const [newFeatureEpics, setNewFeatureEpics] = useState<Epic[]>([]);
+    const [syncingId, setSyncingId] = useState<string | null>(null);
 
     if (loading) return <div className={styles.pageContainer}>Loading feature details...</div>;
     if (error) return <div className={styles.pageContainer}>Error: {error.message}</div>;
@@ -153,6 +154,68 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
             setNewFeatureEpics(prev => prev.filter(e => e.id !== id));
         } else {
             deleteEpic(id);
+        }
+    };
+
+    const handleSyncJira = async (epicId: string, jiraKey: string) => {
+        if (!data.settings.jira_base_url) {
+            alert('Please configure Jira Base URL in Settings first.');
+            return;
+        }
+        setSyncingId(epicId);
+        try {
+            const response = await fetch('/api/jira/issue', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    jira_key: jiraKey,
+                    jira_base_url: data.settings.jira_base_url,
+                    jira_api_version: data.settings.jira_api_version || 'v3',
+                    jira_email: data.settings.jira_email,
+                    jira_api_token: data.settings.jira_api_token
+                })
+            });
+
+            const resData = await response.json();
+            if (!response.ok || !resData.success) {
+                throw new Error(resData.error || 'Failed to fetch Jira data');
+            }
+
+            const issue = resData.data;
+            const fields = issue.fields;
+            const names = issue.names;
+
+            let targetStartKey = '';
+            let targetEndKey = '';
+            let teamKey = '';
+
+            Object.entries(names as Record<string, string>).forEach(([key, name]) => {
+                if (name === 'Target start') targetStartKey = key;
+                if (name === 'Target end') targetEndKey = key;
+                if (name === 'Team') teamKey = key;
+            });
+
+            const updates: Partial<Epic> = {};
+            if (fields.summary) updates.name = fields.summary;
+            if (fields.timeoriginalestimate) {
+                updates.remaining_md = Math.round(fields.timeoriginalestimate / 28800);
+            }
+
+            if (targetStartKey && fields[targetStartKey]) updates.target_start = fields[targetStartKey];
+            if (targetEndKey && fields[targetEndKey]) updates.target_end = fields[targetEndKey];
+
+            if (teamKey && fields[teamKey]) {
+                const jiraTeamId = fields[teamKey].id || fields[teamKey].value || fields[teamKey].toString();
+                const matchedTeam = data.teams.find(t => t.jira_team_id === jiraTeamId || t.name === jiraTeamId);
+                if (matchedTeam) updates.team_id = matchedTeam.id;
+            }
+
+            handleUpdateEpic(epicId, updates);
+        } catch (err: any) {
+            console.error('Jira sync error:', err);
+            alert(`Error syncing from Jira: ${err.message}`);
+        } finally {
+            setSyncingId(null);
         }
     };
 
@@ -386,7 +449,17 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
                                         <input type="date" value={epic.target_end} onChange={e => handleUpdateEpic(epic.id, { target_end: e.target.value })} style={{ width: '130px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
                                     </td>
                                     <td>
-                                        <button onClick={() => handleRemoveEpic(epic.id)} className={styles.dangerBtn}>Remove</button>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <button
+                                                onClick={() => handleSyncJira(epic.id, epic.jira_key)}
+                                                disabled={!epic.jira_key || epic.jira_key === 'TBD' || syncingId === epic.id}
+                                                className={styles.saveBtn}
+                                                style={{ backgroundColor: '#10b981', borderColor: '#059669', padding: '6px 12px' }}
+                                            >
+                                                {syncingId === epic.id ? 'Syncing...' : 'Sync'}
+                                            </button>
+                                            <button onClick={() => handleRemoveEpic(epic.id)} className={styles.dangerBtn} style={{ padding: '6px 12px' }}>Remove</button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
