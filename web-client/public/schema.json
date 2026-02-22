@@ -150,7 +150,7 @@
                     },
                     "name": {
                         "type": "string",
-                        "description": "Optional explicit Epic name. Falls back to Parent Feature name if omitted."
+                        "description": "Optional custom name for the epic. Falls back to parent Feature name."
                     },
                     "jira_key": {
                         "type": "string"
@@ -174,6 +174,28 @@
                         "type": "string",
                         "format": "date",
                         "description": "YYYY-MM-DD"
+                    },
+                    "dependencies": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "epic_id": {
+                                    "type": "string"
+                                },
+                                "dependency_type": {
+                                    "type": "string",
+                                    "enum": [
+                                        "FS",
+                                        "FF"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "epic_id",
+                                "dependency_type"
+                            ]
+                        }
                     }
                 }
             }

@@ -23,6 +23,11 @@ export interface Team {
   sprint_capacity_overrides?: Record<string, number>;
 }
 
+export interface EpicDependency {
+  epic_id: string;
+  dependency_type: 'FS' | 'FF';
+}
+
 export interface Epic {
   id: string;
   jira_key: string;
@@ -33,6 +38,7 @@ export interface Epic {
   target_end: string;
   name?: string;
   sprint_effort_overrides?: Record<string, number>;
+  dependencies?: EpicDependency[];
 }
 
 export interface Sprint {

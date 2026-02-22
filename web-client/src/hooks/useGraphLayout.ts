@@ -433,6 +433,31 @@ export function useGraphLayout(
                         opacity: 0.5,
                     },
                 });
+
+                // Map Explicit Epic Dependencies
+                if (epic.dependencies) {
+                    epic.dependencies.forEach(dep => {
+                        // Only draw the dependency edge if the source epic is also currently visible
+                        if (!visibleEpics.has(dep.epic_id)) return;
+
+                        const targetHandle = dep.dependency_type === 'FF' ? 'target-finish' : 'target-start';
+
+                        edges.push({
+                            id: `dep-${dep.epic_id}-to-${epic.id}-${dep.dependency_type}`,
+                            source: `gantt-${dep.epic_id}`,
+                            sourceHandle: 'source-finish',
+                            target: `gantt-${epic.id}`,
+                            targetHandle: targetHandle,
+                            type: 'default',
+                            animated: true,
+                            style: {
+                                strokeWidth: 2,
+                                stroke: '#f97316', // Orange to stand out against grey structural edges
+                                zIndex: 1000
+                            }
+                        });
+                    });
+                }
             });
 
             // Generate Sprint Capacity Nodes

@@ -148,7 +148,9 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
                 );
             })}
 
-            <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
+            {/* Entry Handles for Dependencies */}
+            <Handle type="target" position={Position.Left} id="target-start" style={{ opacity: 0 }} />
+            <Handle type="target" position={Position.Right} id="target-finish" style={{ top: '30%', opacity: 0 }} />
 
             {/* Left Drag Handle */}
             <div
@@ -199,6 +201,8 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
                 }}
             />
 
+            {/* Exit/Standard Handles */}
+            <Handle type="source" position={Position.Right} id="source-finish" style={{ top: '70%', opacity: 0 }} />
             <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
         </div>
     );

@@ -257,7 +257,13 @@
       "remaining_md": 10,
       "target_start": "2026-02-26",
       "target_end": "2026-03-09",
-      "jira_key": "PROJ-102"
+      "jira_key": "PROJ-102",
+      "dependencies": [
+        {
+          "epic_id": "a1",
+          "dependency_type": "FS"
+        }
+      ]
     },
     {
       "id": "a7",
@@ -287,7 +293,13 @@
       "remaining_md": 10,
       "target_start": "2026-02-12",
       "target_end": "2026-02-26",
-      "jira_key": "PROJ-105"
+      "jira_key": "PROJ-105",
+      "dependencies": [
+        {
+          "epic_id": "a1",
+          "dependency_type": "FF"
+        }
+      ]
     },
     {
       "id": "a2",
