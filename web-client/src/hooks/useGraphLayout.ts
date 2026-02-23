@@ -276,8 +276,8 @@ export function useGraphLayout(
                 if (customer) {
                     const targetTcv = target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv;
                     const roi = targetTcv / feature.total_effort_mds;
-                    // Scale width based on ROI, keeping min 2px and max 16px
-                    const normalizedStrokeWidth = Math.min(16, Math.max(2, (roi / maxRoi) * 16));
+                    // Scale width based on ROI, keeping min 2px and max 10px
+                    const normalizedStrokeWidth = Math.min(10, Math.max(2, (roi / maxRoi) * 10));
 
                     edges.push({
                         id: `edge-${target.customer_id}-${feature.id}-${target.tcv_type}`,
@@ -437,8 +437,8 @@ export function useGraphLayout(
         data.epics.forEach(epic => {
             if (!visibleFeatures.has(epic.feature_id) || !visibleTeams.has(epic.team_id) || !visibleEpics.has(epic.id)) return;
 
-            // Scale width based on remaining MDs, keeping min 2px and max 16px
-            const normalizedStrokeWidth = Math.min(16, Math.max(2, (epic.remaining_md / maxRemainingMd) * 16));
+            // Scale width based on remaining MDs, keeping min 2px and max 10px
+            const normalizedStrokeWidth = Math.min(10, Math.max(2, (epic.remaining_md / maxRemainingMd) * 10));
             edges.push({
                 id: `edge-${epic.feature_id}-${epic.team_id}-${epic.id}`,
                 source: `feature-${epic.feature_id}`,
