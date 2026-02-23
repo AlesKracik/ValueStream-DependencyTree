@@ -29,7 +29,8 @@ const MOCK_DATA: DashboardData = {
     epics: [
         // Two overlapping epics to test stack layout
         { id: 'e1', jira_key: 'J-1', feature_id: 'f1', team_id: 't1', remaining_md: 8, target_start: '2026-02-12', target_end: '2026-02-26' },
-        { id: 'e2', jira_key: 'J-2', feature_id: 'f2', team_id: 't1', remaining_md: 5, target_start: '2026-02-12', target_end: '2026-02-26' }
+        { id: 'e2', jira_key: 'J-2', feature_id: 'f2', team_id: 't1', remaining_md: 5, target_start: '2026-02-12', target_end: '2026-02-26' },
+        { id: 'e3', jira_key: 'J-3', feature_id: 'f1', team_id: 't1', remaining_md: 3 } // Unscheduled epic without dates
     ],
     sprints: [
         { id: 's1', name: 'Sprint 1', start_date: '2026-02-12', end_date: '2026-02-26' }
@@ -89,5 +90,17 @@ describe('useGraphLayout Math Engine', () => {
         // their Y coordinates must not overlap (they should be stacked vertically).
         // e1 is at y=..., e2 should be at y + some_swimlane_offset
         expect(e1Node?.position.y).not.toEqual(e2Node?.position.y);
+    });
+
+    it('ignores epics without target dates for timeline Gantt nodes but preserves edges', () => {
+        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', '', '', true));
+
+        // Epic e3 has no target_start or target_end. Thus it should NOT have a gantt bar node.
+        const e3GanttNode = result.current.nodes.find(n => n.id === 'gantt-e3');
+        expect(e3GanttNode).toBeUndefined();
+
+        // But it DOES have a feature_id (f1) and team_id (t1), so its connection edge should still exist.
+        const e3Edge = result.current.edges.find(e => e.id === 'edge-f1-t1-e3');
+        expect(e3Edge).toBeDefined();
     });
 });
