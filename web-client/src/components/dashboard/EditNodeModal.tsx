@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { parseISO, differenceInDays, min, max } from 'date-fns';
 import type { Node } from '@xyflow/react';
-import type { DashboardData, Customer, Feature, Team, Epic } from '../../types/models';
+import type { DashboardData, Customer, Feature, Team } from '../../types/models';
 
 interface EditNodeModalProps {
     node: Node;
@@ -10,7 +9,6 @@ interface EditNodeModalProps {
     onUpdateCustomer: (id: string, updates: Partial<Customer>) => void;
     onUpdateFeature: (id: string, updates: Partial<Feature>) => void;
     onUpdateTeam: (id: string, updates: Partial<Team>) => void;
-    onUpdateEpic: (id: string, updates: Partial<Epic>) => void;
 }
 
 export const EditNodeModal: React.FC<EditNodeModalProps> = ({
@@ -19,8 +17,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
     data,
     onUpdateCustomer,
     onUpdateFeature,
-    onUpdateTeam,
-    onUpdateEpic
+    onUpdateTeam
 }) => {
     // Extract domain ID from node ID (e.g., 'customer-c1' -> 'c1', 'gantt-a1' -> 'a1')
     const extractId = (nodeId: string) => {
@@ -62,27 +59,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                     customer_targets: feature.customer_targets ? JSON.parse(JSON.stringify(feature.customer_targets)) : []
                 });
             }
-        } else if (node.type === 'teamNode') {
-            const team = data.teams.find(t => t.id === domainId);
-            if (team) {
-                setFormData({
-                    name: team.name,
-                    total_capacity_mds: team.total_capacity_mds,
-                    jira_team_id: team.jira_team_id
-                });
-            }
-        } else if (node.type === 'ganttBarNode') {
-            const epic = data.epics.find(e => e.id === domainId);
-            if (epic) {
-                setFormData({
-                    name: epic.name || '',
-                    remaining_md: epic.remaining_md,
-                    target_start: epic.target_start,
-                    target_end: epic.target_end,
-                    jira_key: epic.jira_key,
-                    sprint_effort_overrides: { ...(epic.sprint_effort_overrides || {}) }
-                });
-            }
+
         } else if (node.type === 'sprintCapacityNode') {
             const match = String(domainId).match(/^sprint-cap-(t\d+)-(s\d+)$/);
             if (match && data) {
@@ -119,32 +96,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                 total_effort_mds: Number(formData.total_effort_mds),
                 customer_targets: formData.customer_targets
             });
-        } else if (node.type === 'teamNode') {
-            onUpdateTeam(domainId, {
-                name: formData.name,
-                total_capacity_mds: Number(formData.total_capacity_mds),
-                jira_team_id: formData.jira_team_id
-            });
-        } else if (node.type === 'ganttBarNode') {
 
-            // Clean up overrides with empty strings
-            const cleanedOverrides = { ...formData.sprint_effort_overrides };
-            for (const key in cleanedOverrides) {
-                if (cleanedOverrides[key] === '' || cleanedOverrides[key] === null || cleanedOverrides[key] === undefined) {
-                    delete cleanedOverrides[key];
-                } else {
-                    cleanedOverrides[key] = Number(cleanedOverrides[key]);
-                }
-            }
-
-            onUpdateEpic(domainId, {
-                name: formData.name ? formData.name.trim() : undefined,
-                remaining_md: Number(formData.remaining_md),
-                target_start: formData.target_start,
-                target_end: formData.target_end,
-                jira_key: formData.jira_key,
-                sprint_effort_overrides: Object.keys(cleanedOverrides).length > 0 ? cleanedOverrides : undefined
-            });
         } else if (node.type === 'sprintCapacityNode') {
             const team = data.teams.find(t => t.id === formData.teamId);
             if (team) {
@@ -230,175 +182,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
             );
         }
 
-        if (node.type === 'teamNode') {
-            return (
-                <>
-                    <h2 style={styles.title}>Edit Team: {domainId}</h2>
-                    <label style={styles.label}>
-                        Name:
-                        <input style={styles.input} type="text" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
-                    </label>
-                    <label style={styles.label}>
-                        Sprint Capacity (MDs):
-                        <input style={styles.input} type="number" value={formData.total_capacity_mds || 0} onChange={e => setFormData({ ...formData, total_capacity_mds: e.target.value })} required />
-                    </label>
-                    <label style={styles.label}>
-                        Jira Team ID:
-                        <input style={styles.input} type="text" value={formData.jira_team_id || ''} onChange={e => setFormData({ ...formData, jira_team_id: e.target.value })} />
-                    </label>
-                </>
-            );
-        }
 
-        if (node.type === 'ganttBarNode') {
-
-            const handleOverrideChange = (sprintId: string, val: string) => {
-                setFormData((prev: any) => ({
-                    ...prev,
-                    sprint_effort_overrides: {
-                        ...(prev.sprint_effort_overrides || {}),
-                        [sprintId]: val
-                    }
-                }));
-            };
-
-            const sStart = formData.target_start ? parseISO(formData.target_start) : null;
-            const sEnd = formData.target_end ? parseISO(formData.target_end) : null;
-            const totalMd = Number(formData.remaining_md) || 0;
-            const overrides = formData.sprint_effort_overrides || {};
-
-            let overlappingSprints: any[] = [];
-            if (sStart && sEnd) {
-                try {
-                    const overlaps = (data.sprints || []).map(sprint => {
-                        const spStart = parseISO(sprint.start_date);
-                        const spEnd = parseISO(sprint.end_date);
-                        const overlapStart = max([sStart, spStart]);
-                        const overlapEnd = min([sEnd, spEnd]);
-                        if (overlapStart <= overlapEnd) {
-                            return { sprint, overlapDays: differenceInDays(overlapEnd, overlapStart) + 1 };
-                        }
-                        return null;
-                    }).filter(Boolean) as { sprint: any, overlapDays: number }[];
-
-                    let totalOverrideMd = 0;
-                    let remainingDefaultDays = 0;
-
-                    overlaps.forEach(({ sprint, overlapDays }) => {
-                        const overrideStr = overrides[sprint.id];
-                        const hasOverride = overrideStr !== undefined && overrideStr !== '' && overrideStr !== null;
-                        if (hasOverride) {
-                            const parsed = Number(overrideStr);
-                            if (!isNaN(parsed) && parsed >= 0) {
-                                totalOverrideMd += parsed;
-                            }
-                        } else {
-                            remainingDefaultDays += overlapDays;
-                        }
-                    });
-
-                    const remainingMdForDefaults = Math.max(0, totalMd - totalOverrideMd);
-
-                    overlappingSprints = overlaps.map(({ sprint, overlapDays }) => {
-                        const overrideStr = overrides[sprint.id];
-                        const hasOverride = overrideStr !== undefined && overrideStr !== '' && overrideStr !== null;
-                        let defaultEffort = 0;
-                        if (!hasOverride && remainingDefaultDays > 0) {
-                            defaultEffort = remainingMdForDefaults * (overlapDays / remainingDefaultDays);
-                        } else if (hasOverride) {
-                            const parsed = Number(overrideStr);
-                            if (!isNaN(parsed) && parsed >= 0) defaultEffort = parsed;
-                        }
-
-                        return {
-                            id: sprint.id,
-                            name: sprint.name,
-                            defaultEffort,
-                            hasOverride
-                        };
-                    });
-                } catch (e) {
-                    // ignore invalid intermediate dates
-                }
-            }
-
-            return (
-                <div style={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '8px' }}>
-                    <h2 style={styles.title}>Edit Epic: {domainId}</h2>
-                    <div style={styles.formContainer}>
-                        <label style={styles.label}>
-                            Custom Name (Optional):
-                            <input
-                                style={styles.input}
-                                type="text"
-                                value={formData.name || ''}
-                                placeholder="Uses Feature Name by default"
-                                onChange={e => setFormData({ ...formData, name: e.target.value })}
-                            />
-                        </label>
-                        <label style={styles.label}>
-                            Jira Key:
-                            <input style={styles.input} type="text" value={formData.jira_key || ''} onChange={e => setFormData({ ...formData, jira_key: e.target.value })} required />
-                        </label>
-                        <label style={styles.label}>
-                            Remaining Estimate (MDs):
-                            <input style={styles.input} type="number" step="0.1" value={formData.remaining_md === undefined ? '' : formData.remaining_md} onChange={e => setFormData({ ...formData, remaining_md: e.target.value })} required />
-                        </label>
-
-                        {overlappingSprints.length > 0 && (
-                            <div style={{ marginTop: '4px', marginBottom: '12px', paddingLeft: '12px', borderLeft: '2px solid #4b5563' }}>
-                                <h3 style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '8px', fontWeight: 500 }}>Effort Breakdown</h3>
-                                {overlappingSprints.map((sprint: any) => (
-                                    <label key={sprint.id} style={{ ...styles.label, marginBottom: '6px', fontSize: '12px', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <span style={{ color: sprint.hasOverride ? '#d1d5db' : '#9ca3af', flex: 1 }}>{sprint.name}</span>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <input
-                                                style={{ ...styles.input, width: '80px', padding: '4px 8px', fontSize: '13px', textAlign: 'right' }}
-                                                type="number"
-                                                step="0.1"
-                                                placeholder={sprint.defaultEffort.toFixed(1)}
-                                                value={formData.sprint_effort_overrides?.[sprint.id] ?? ''}
-                                                onChange={e => handleOverrideChange(sprint.id, e.target.value)}
-                                            />
-                                            {sprint.hasOverride ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleOverrideChange(sprint.id, '')}
-                                                    style={{
-                                                        background: 'transparent',
-                                                        border: 'none',
-                                                        color: '#ef4444',
-                                                        cursor: 'pointer',
-                                                        padding: '2px 6px',
-                                                        fontSize: '14px',
-                                                        lineHeight: '1',
-                                                        borderRadius: '4px'
-                                                    }}
-                                                    title="Reset to default"
-                                                >
-                                                    ×
-                                                </button>
-                                            ) : (
-                                                <div style={{ width: '22px' }}></div> // Spacer to keep alignment
-                                            )}
-                                        </div>
-                                    </label>
-                                ))}
-                            </div>
-                        )}
-
-                        <label style={styles.label}>
-                            Target Start:
-                            <input style={styles.input} type="date" value={formData.target_start || ''} onChange={e => setFormData({ ...formData, target_start: e.target.value })} required />
-                        </label>
-                        <label style={styles.label}>
-                            Target End:
-                            <input style={styles.input} type="date" value={formData.target_end || ''} onChange={e => setFormData({ ...formData, target_end: e.target.value })} required />
-                        </label>
-                    </div>
-                </div>
-            );
-        }
 
         if (node.type === 'sprintCapacityNode') {
             return (

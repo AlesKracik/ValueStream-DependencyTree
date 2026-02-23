@@ -26,12 +26,9 @@
                 "jira_api_version": {
                     "type": "string",
                     "enum": [
-                        "v2",
-                        "v3"
+                        "2",
+                        "3"
                     ]
-                },
-                "jira_email": {
-                    "type": "string"
                 },
                 "jira_api_token": {
                     "type": "string"

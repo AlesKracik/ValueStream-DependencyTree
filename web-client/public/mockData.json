@@ -18,6 +18,12 @@
       "name": "Startup Inc",
       "existing_tcv": 20000,
       "potential_tcv": 50000
+    },
+    {
+      "id": "c1771852278810",
+      "name": "Test customer",
+      "existing_tcv": 0,
+      "potential_tcv": 0
     }
   ],
   "features": [
@@ -236,7 +242,7 @@
       "name": "GraphQL API Gateway",
       "feature_id": "f4",
       "team_id": "t2",
-      "remaining_md": 20,
+      "remaining_md": 30,
       "target_start": "2026-03-26",
       "target_end": "2026-04-10",
       "jira_key": "PROJ-110"
@@ -284,6 +290,6 @@
   ],
   "settings": {
     "jira_base_url": "https://valuestream.atlassian.net",
-    "jira_api_version": "v3"
+    "jira_api_version": "3"
   }
 }

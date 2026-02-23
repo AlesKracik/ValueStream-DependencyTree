@@ -9,24 +9,57 @@ interface SettingsModalProps {
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, settings, onUpdateSettings }) => {
     const [formData, setFormData] = useState<Partial<Settings>>({});
+    const [isTesting, setIsTesting] = useState(false);
+    const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
     useEffect(() => {
         if (settings) {
             setFormData({
                 jira_base_url: settings.jira_base_url,
-                jira_api_version: settings.jira_api_version || 'v3',
-                jira_email: settings.jira_email || '',
+                jira_api_version: settings.jira_api_version || '3',
                 jira_api_token: settings.jira_api_token || ''
             });
         }
     }, [settings]);
 
+    const handleTestConnection = async () => {
+        if (!formData.jira_base_url || !formData.jira_api_token) {
+            setTestResult({ success: false, message: 'Base URL and PAT are required to test.' });
+            return;
+        }
+
+        setIsTesting(true);
+        setTestResult(null);
+
+        try {
+            const response = await fetch('/api/jira/test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    jira_base_url: formData.jira_base_url,
+                    jira_api_token: formData.jira_api_token,
+                    jira_api_version: formData.jira_api_version || '3'
+                })
+            });
+
+            const data = await response.json();
+            if (response.ok && data.success) {
+                setTestResult({ success: true, message: data.message || 'Connection successful!' });
+            } else {
+                setTestResult({ success: false, message: data.error || 'Connection failed' });
+            }
+        } catch (e: any) {
+            setTestResult({ success: false, message: e.message || 'Network error occurred testing connection.' });
+        } finally {
+            setIsTesting(false);
+        }
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onUpdateSettings({
             jira_base_url: formData.jira_base_url,
-            jira_api_version: formData.jira_api_version as 'v2' | 'v3',
-            jira_email: formData.jira_email,
+            jira_api_version: formData.jira_api_version as '2' | '3',
             jira_api_token: formData.jira_api_token
         });
         onClose();
@@ -54,39 +87,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, settings,
                         Jira API Version:
                         <select
                             style={styles.input}
-                            value={formData.jira_api_version || 'v3'}
-                            onChange={e => setFormData({ ...formData, jira_api_version: e.target.value as 'v2' | 'v3' })}
+                            value={formData.jira_api_version || '3'}
+                            onChange={e => setFormData({ ...formData, jira_api_version: e.target.value as '2' | '3' })}
                         >
-                            <option value="v2">v2</option>
-                            <option value="v3">v3</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
                         </select>
                     </label>
 
                     <label style={styles.label}>
-                        Jira Email:
-                        <input
-                            style={styles.input}
-                            type="email"
-                            placeholder="you@yourdomain.com"
-                            value={formData.jira_email || ''}
-                            onChange={e => setFormData({ ...formData, jira_email: e.target.value })}
-                        />
-                    </label>
-
-                    <label style={styles.label}>
-                        Jira API Token:
+                        Jira Personal Access Token (PAT):
                         <input
                             style={styles.input}
                             type="password"
-                            placeholder="Your Jira API Token"
+                            placeholder="Your Jira PAT"
                             value={formData.jira_api_token || ''}
                             onChange={e => setFormData({ ...formData, jira_api_token: e.target.value })}
                         />
                     </label>
 
+                    {testResult && (
+                        <div style={{
+                            padding: '10px',
+                            borderRadius: '4px',
+                            fontSize: '14px',
+                            backgroundColor: testResult.success ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                            color: testResult.success ? '#34d399' : '#f87171',
+                            border: `1px solid ${testResult.success ? '#059669' : '#b91c1c'}`,
+                            marginTop: '8px'
+                        }}>
+                            {testResult.message}
+                        </div>
+                    )}
+
                     <div style={styles.buttonGroup}>
-                        <button type="button" onClick={onClose} style={styles.cancelBtn}>Cancel</button>
-                        <button type="submit" style={styles.saveBtn}>Save</button>
+                        <button
+                            type="button"
+                            onClick={handleTestConnection}
+                            style={styles.testBtn}
+                            disabled={isTesting || (!formData.jira_base_url && !formData.jira_api_token)}
+                        >
+                            {isTesting ? 'Testing...' : 'Test Connection'}
+                        </button>
+                        <div style={styles.mainActionsGroup}>
+                            <button type="button" onClick={onClose} style={styles.cancelBtn}>Cancel</button>
+                            <button type="submit" style={styles.saveBtn}>Save</button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -146,9 +192,27 @@ const styles: Record<string, React.CSSProperties> = {
     },
     buttonGroup: {
         display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        marginTop: '24px',
+        borderTop: '1px solid #374151',
+        paddingTop: '16px'
+    },
+    mainActionsGroup: {
+        display: 'flex',
         justifyContent: 'flex-end',
         gap: '12px',
-        marginTop: '24px'
+    },
+    testBtn: {
+        padding: '8px 16px',
+        backgroundColor: '#374151',
+        border: '1px solid #4b5563',
+        color: '#f9fafb',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        alignSelf: 'stretch',
+        fontWeight: 500,
+        transition: 'background-color 0.2s',
     },
     cancelBtn: {
         padding: '8px 16px',

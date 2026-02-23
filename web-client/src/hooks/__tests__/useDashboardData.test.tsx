@@ -4,7 +4,7 @@ import { useDashboardData } from '../useDashboardData';
 import type { DashboardData } from '../../types/models';
 
 const mockData: DashboardData = {
-    settings: { jira_base_url: "https://jira", jira_api_version: "v3" },
+    settings: { jira_base_url: "https://jira", jira_api_version: "3" },
     customers: [
         { id: 'c1', name: 'Cust 1', existing_tcv: 100, potential_tcv: 200 }
     ],

@@ -4,15 +4,13 @@ import type { Node } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import { useGraphLayout } from '../../hooks/useGraphLayout';
-import type { DashboardData, Customer, Feature, Team, Epic, Settings } from '../../types/models';
+import type { DashboardData, Customer, Feature, Team, Epic, Settings, DashboardViewState } from '../../types/models';
 import { CustomerNode } from '../nodes/CustomerNode';
 import { FeatureNode } from '../nodes/FeatureNode';
 import { TeamNode } from '../nodes/TeamNode';
 import { GanttBarNode } from '../nodes/GanttBarNode';
 import { SprintCapacityNode } from '../nodes/SprintCapacityNode';
 import { TodayLineNode } from '../nodes/TodayLineNode';
-import { AddCustomerNode } from '../nodes/AddCustomerNode';
-import { AddFeatureNode } from '../nodes/AddFeatureNode';
 import { EditNodeModal } from './EditNodeModal';
 import { SettingsModal } from './SettingsModal';
 import { DashboardProvider } from '../../contexts/DashboardContext';
@@ -26,8 +24,6 @@ const nodeTypes = {
     ganttBarNode: GanttBarNode,
     sprintCapacityNode: SprintCapacityNode,
     todayLineNode: TodayLineNode,
-    addCustomerNode: AddCustomerNode,
-    addFeatureNode: AddFeatureNode,
 };
 
 export interface DashboardProps {
@@ -40,19 +36,26 @@ export interface DashboardProps {
     updateEpic: (id: string, updates: Partial<Epic>) => void;
     updateSettings: (updates: Partial<Settings>) => void;
     saveDashboardData: (data: DashboardData) => Promise<void>;
+    viewState: DashboardViewState;
+    setViewState: React.Dispatch<React.SetStateAction<DashboardViewState>>;
     onNavigateToCustomer: (id: string) => void;
     onNavigateToFeature: (id: string) => void;
+    onNavigateToTeam: (id: string) => void;
+    onNavigateToEpic: (id: string) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
     data, loading, error,
     updateCustomer, updateFeature, updateTeam, updateEpic, updateSettings,
-    saveDashboardData, onNavigateToCustomer, onNavigateToFeature
+    saveDashboardData, viewState, setViewState,
+    onNavigateToCustomer,
+    onNavigateToFeature,
+    onNavigateToEpic,
+    onNavigateToTeam
 }) => {
     const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
     const [editingNode, setEditingNode] = React.useState<Node | null>(null);
     const [isSettingsModalOpen, setIsSettingsModalOpen] = React.useState(false);
-    const [sprintOffset, setSprintOffset] = React.useState(0);
     const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
     const handleSave = async () => {
@@ -69,14 +72,35 @@ export const Dashboard: React.FC<DashboardProps> = ({
         }
     };
 
-    // Column Filters
-    const [customerFilter, setCustomerFilter] = React.useState('');
-    const [featureFilter, setFeatureFilter] = React.useState('');
-    const [teamFilter, setTeamFilter] = React.useState('');
-    const [epicFilter, setEpicFilter] = React.useState('');
-    const [showDependencies, setShowDependencies] = React.useState(false);
+    const handleUpdateSettings = async (updates: Partial<Settings>) => {
+        updateSettings(updates); // update in-memory
+        if (data) {
+            const newData = { ...data, settings: { ...data.settings, ...updates } };
+            setSaveStatus('saving');
+            try {
+                await saveDashboardData(newData);
+                setSaveStatus('saved');
+                setTimeout(() => setSaveStatus('idle'), 2000);
+            } catch (err) {
+                console.error('Failed to save settings:', err);
+                setSaveStatus('error');
+                setTimeout(() => setSaveStatus('idle'), 3000);
+            }
+        }
+    };
 
-    const { nodes, edges } = useGraphLayout(data, hoveredNodeId, sprintOffset, customerFilter, featureFilter, teamFilter, epicFilter, showDependencies);
+    const { nodes, edges } = useGraphLayout(
+        data,
+        hoveredNodeId,
+        viewState.sprintOffset,
+        viewState.customerFilter,
+        viewState.featureFilter,
+        viewState.teamFilter,
+        viewState.epicFilter,
+        viewState.showDependencies,
+        viewState.minTcvFilter ? Number(viewState.minTcvFilter) : 0,
+        viewState.minScoreFilter ? Number(viewState.minScoreFilter) : 0
+    );
 
     const hoverTimeoutRef = React.useRef<number | null>(null);
 
@@ -103,23 +127,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
         if (node.type === 'customerNode') {
             const customerId = node.id.replace('customer-', '');
             onNavigateToCustomer(customerId);
-        } else if (node.id === 'add-customer-btn') {
-            onNavigateToCustomer('new');
         } else if (node.type === 'featureNode') {
             const featureId = node.id.replace('feature-', '');
             onNavigateToFeature(featureId);
-        } else if (node.id === 'add-feature-btn') {
-            onNavigateToFeature('new');
+        } else if (node.type === 'teamNode') {
+            const teamId = node.id.replace('team-', '');
+            onNavigateToTeam(teamId);
+        } else if (node.type === 'ganttBarNode') {
+            // epic id format is gantt-{id}
+            const epicId = node.id.replace('gantt-', '');
+            onNavigateToEpic(epicId);
         }
-    }, [onNavigateToCustomer, onNavigateToFeature]);
+    }, [onNavigateToCustomer, onNavigateToFeature, onNavigateToTeam, onNavigateToEpic]);
 
     const onNodeContextMenu = React.useCallback(
         (event: React.MouseEvent, node: Node) => {
             event.preventDefault();
             // Don't show modal for nodes with dedicated pages
-            if (node.type === 'customerNode' || node.type === 'featureNode') return;
+            if (node.type === 'customerNode' || node.type === 'featureNode' || node.type === 'teamNode' || node.type === 'ganttBarNode') return;
             // Don't show modal for static layout elements
-            if (['teamNode', 'ganttBarNode', 'sprintCapacityNode', 'addCustomerNode', 'addFeatureNode'].includes(node.type || '')) return;
+            if (['sprintCapacityNode'].includes(node.type || '')) return;
             setEditingNode(node);
         },
         []
@@ -133,19 +160,53 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className={styles.dashboardContainer}>
             <div className={styles.header}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h1>Value Stream Dashboard</h1>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+                        <h1>Value Stream Dashboard</h1>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <button
+                                onClick={() => onNavigateToCustomer('new')}
+                                style={{
+                                    padding: '8px 16px',
+                                    backgroundColor: '#3b82f6',
+                                    border: '1px solid #2563eb',
+                                    color: '#ffffff',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                + Add Customer
+                            </button>
+                            <button
+                                onClick={() => onNavigateToFeature('new')}
+                                style={{
+                                    padding: '8px 16px',
+                                    backgroundColor: '#3b82f6',
+                                    border: '1px solid #2563eb',
+                                    color: '#ffffff',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                + Add Feature
+                            </button>
+                        </div>
+                    </div>
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                         <div style={{ display: 'flex', gap: '4px' }}>
                             <button
-                                onClick={() => setSprintOffset(Math.max(0, sprintOffset - 1))}
-                                disabled={sprintOffset === 0}
+                                onClick={() => setViewState(s => ({ ...s, sprintOffset: Math.max(0, s.sprintOffset - 1) }))}
+                                disabled={viewState.sprintOffset === 0}
                                 style={{
                                     padding: '8px 12px',
-                                    backgroundColor: sprintOffset === 0 ? '#1f2937' : '#374151',
+                                    backgroundColor: viewState.sprintOffset === 0 ? '#1f2937' : '#374151',
                                     border: '1px solid #4b5563',
-                                    color: sprintOffset === 0 ? '#6b7280' : '#e5e7eb',
+                                    color: viewState.sprintOffset === 0 ? '#6b7280' : '#e5e7eb',
                                     borderRadius: '4px',
-                                    cursor: sprintOffset === 0 ? 'not-allowed' : 'pointer',
+                                    cursor: viewState.sprintOffset === 0 ? 'not-allowed' : 'pointer',
                                     fontSize: '14px'
                                 }}
                             >
@@ -155,15 +216,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 Sprints
                             </span>
                             <button
-                                onClick={() => setSprintOffset(sprintOffset + 1)}
-                                disabled={!data || sprintOffset + 6 >= data.sprints.length}
+                                onClick={() => setViewState(s => ({ ...s, sprintOffset: s.sprintOffset + 1 }))}
+                                disabled={!data || viewState.sprintOffset + 6 >= data.sprints.length}
                                 style={{
                                     padding: '8px 12px',
-                                    backgroundColor: (!data || sprintOffset + 6 >= data.sprints.length) ? '#1f2937' : '#374151',
+                                    backgroundColor: (!data || viewState.sprintOffset + 6 >= data.sprints.length) ? '#1f2937' : '#374151',
                                     border: '1px solid #4b5563',
-                                    color: (!data || sprintOffset + 6 >= data.sprints.length) ? '#6b7280' : '#e5e7eb',
+                                    color: (!data || viewState.sprintOffset + 6 >= data.sprints.length) ? '#6b7280' : '#e5e7eb',
                                     borderRadius: '4px',
-                                    cursor: (!data || sprintOffset + 6 >= data.sprints.length) ? 'not-allowed' : 'pointer',
+                                    cursor: (!data || viewState.sprintOffset + 6 >= data.sprints.length) ? 'not-allowed' : 'pointer',
                                     fontSize: '14px'
                                 }}
                             >
@@ -206,40 +267,65 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <input
                         type="text"
                         placeholder="Filter Customers..."
-                        value={customerFilter}
-                        onChange={e => setCustomerFilter(e.target.value)}
-                        style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', minWidth: '180px' }}
+                        value={viewState.customerFilter}
+                        onChange={e => setViewState((s: DashboardViewState) => ({ ...s, customerFilter: e.target.value }))}
+                        style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', width: '130px' }}
                     />
                     <input
                         type="text"
                         placeholder="Filter Features..."
-                        value={featureFilter}
-                        onChange={e => setFeatureFilter(e.target.value)}
-                        style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', minWidth: '180px' }}
+                        value={viewState.featureFilter}
+                        onChange={e => setViewState((s: DashboardViewState) => ({ ...s, featureFilter: e.target.value }))}
+                        style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', width: '130px' }}
                     />
                     <input
                         type="text"
                         placeholder="Filter Teams..."
-                        value={teamFilter}
-                        onChange={e => setTeamFilter(e.target.value)}
-                        style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', minWidth: '180px' }}
+                        value={viewState.teamFilter}
+                        onChange={e => setViewState((s: DashboardViewState) => ({ ...s, teamFilter: e.target.value }))}
+                        style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', width: '110px' }}
                     />
                     <input
                         type="text"
                         placeholder="Filter Epics..."
-                        value={epicFilter}
-                        onChange={e => setEpicFilter(e.target.value)}
-                        style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', minWidth: '180px' }}
+                        value={viewState.epicFilter}
+                        onChange={e => setViewState((s: DashboardViewState) => ({ ...s, epicFilter: e.target.value }))}
+                        style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', width: '110px' }}
                     />
                     <label style={{ display: 'flex', alignItems: 'center', color: '#cbd5e1', fontSize: '13px', marginLeft: '8px', cursor: 'pointer' }}>
                         <input
                             type="checkbox"
-                            checked={showDependencies}
-                            onChange={e => setShowDependencies(e.target.checked)}
+                            checked={viewState.showDependencies}
+                            onChange={e => setViewState((s: DashboardViewState) => ({ ...s, showDependencies: e.target.checked }))}
                             style={{ marginRight: '8px', cursor: 'pointer' }}
                         />
                         Show Dependencies
                     </label>
+                </div>
+                <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '130px' }}>
+                        <label style={{ color: '#9ca3af', fontSize: '13px' }}>Min TCV:</label>
+                        <input
+                            type="number"
+                            placeholder="0"
+                            value={viewState.minTcvFilter}
+                            onChange={e => setViewState(s => ({ ...s, minTcvFilter: e.target.value }))}
+                            style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+                            min="0"
+                        />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '130px' }}>
+                        <label style={{ color: '#9ca3af', fontSize: '13px' }}>Min Score:</label>
+                        <input
+                            type="number"
+                            placeholder="0"
+                            value={viewState.minScoreFilter}
+                            onChange={e => setViewState(s => ({ ...s, minScoreFilter: e.target.value }))}
+                            style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
+                            min="0"
+                            step="0.1"
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -254,7 +340,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             onNodeMouseLeave={onNodeMouseLeave}
                             onNodeContextMenu={onNodeContextMenu}
                             onNodeClick={onNodeClick}
-                            fitView
+                            onMoveEnd={(_, viewport) => {
+                                setViewState(s => ({ ...s, viewport }));
+                            }}
+                            defaultViewport={viewState.viewport}
+                            fitView={!viewState.viewport}
                             fitViewOptions={{ padding: 0.2 }}
                             minZoom={0.2}
                             maxZoom={1.5}
@@ -275,7 +365,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     onUpdateCustomer={updateCustomer}
                     onUpdateFeature={updateFeature}
                     onUpdateTeam={updateTeam}
-                    onUpdateEpic={updateEpic}
                 />
             )}
 
@@ -283,7 +372,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <SettingsModal
                     onClose={() => setIsSettingsModalOpen(false)}
                     settings={data.settings}
-                    onUpdateSettings={updateSettings}
+                    onUpdateSettings={handleUpdateSettings}
                 />
             )}
         </div>

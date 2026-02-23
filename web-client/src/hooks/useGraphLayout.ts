@@ -11,7 +11,9 @@ export function useGraphLayout(
     featureFilter: string = '',
     teamFilter: string = '',
     epicFilter: string = '',
-    showDependencies: boolean = true
+    showDependencies: boolean = true,
+    minTcv: number = 0,
+    minScore: number = 0
 ) {
     return useMemo(() => {
         if (!data) return { nodes: [], edges: [] };
@@ -36,70 +38,128 @@ export function useGraphLayout(
         const visibleTeams = new Set<string>();
         const visibleEpics = new Set<string>();
 
-        if (!isFilterActive) {
+        // Identify intrinsically valid items based on text + number filters
+        const validCustomers = new Set(
+            data.customers.filter(c => {
+                const textMatch = !cf || c.name.toLowerCase().includes(cf);
+                const numMatch = c.potential_tcv >= minTcv;
+                return textMatch && numMatch;
+            }).map(c => c.id)
+        );
+
+        // For features, we need their calculated score. We can do a quick pass to compute it just for intrinsic filtering.
+        const validFeatures = new Set(
+            data.features.filter(f => {
+                const textMatch = !ff || f.name.toLowerCase().includes(ff);
+                if (!textMatch) return false;
+
+                // Calculate baseline intrinsic score (similar to below, but over all valid epics/customers)
+                // Actually, if we require the exact score to pass `minScore` right here, we should calculate it.
+                // However, the true score depends on remaining epics/customers.
+                // To avoid circular dependency, let's calculate the "Max Possible Score" (all upstream/downstream intact)
+                // If the "Max Possible Score" fails minScore, it definitely fails.
+                const epicsForFeature = data.epics.filter(e => e.feature_id === f.id);
+                const epicMdsSum = epicsForFeature.reduce((sum, e) => sum + e.remaining_md, 0);
+                const displayEffort = Math.max(f.total_effort_mds || 0, epicMdsSum) || 1;
+
+                let maxImpact = 0;
+                f.customer_targets.forEach(target => {
+                    const customer = data.customers.find(c => c.id === target.customer_id);
+                    if (!customer) return;
+
+                    const priority = target.priority || 'Must-have';
+                    const targetTcv = target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv;
+
+                    if (priority === 'Must-have') {
+                        maxImpact += targetTcv;
+                    } else if (priority === 'Should-have') {
+                        let shouldHaveCount = 0;
+                        data.features.forEach(globalF => {
+                            const hasShould = globalF.customer_targets.find(ct =>
+                                ct.customer_id === target.customer_id &&
+                                ct.priority === 'Should-have' &&
+                                ct.tcv_type === target.tcv_type
+                            );
+                            if (hasShould) shouldHaveCount++;
+                        });
+                        if (shouldHaveCount > 0) {
+                            maxImpact += (targetTcv / shouldHaveCount);
+                        }
+                    }
+                });
+
+                const maxPossibleScore = maxImpact / displayEffort;
+                return maxPossibleScore >= minScore;
+            }).map(f => f.id)
+        );
+
+        const validEpics = new Set(
+            data.epics.filter(e => {
+                const team = data.teams.find(t => t.id === e.team_id);
+                const teamMatches = team && (!tf || team.name.toLowerCase().includes(tf));
+                const feature = data.features.find(f => f.id === e.feature_id);
+                const epicName = e.name || feature?.name || 'Task';
+                const epicMatches = !ef || epicName.toLowerCase().includes(ef);
+                return teamMatches && epicMatches;
+            }).map(e => e.id)
+        );
+
+        if (!isFilterActive && minTcv === 0 && minScore === 0) {
             data.customers.forEach(c => visibleCustomers.add(c.id));
             data.features.forEach(f => visibleFeatures.add(f.id));
             data.teams.forEach(t => visibleTeams.add(t.id));
             data.epics.forEach(e => visibleEpics.add(e.id));
         } else {
+            // Build intersection graph
             data.features.forEach(f => {
-                const fMatches = !ff || f.name.toLowerCase().includes(ff);
-                if (!fMatches) return;
+                if (!validFeatures.has(f.id)) return; // Feature intrinsically fails
 
-                const c_links = f.customer_targets.map(ct => data.customers.find(c => c.id === ct.customer_id)).filter(Boolean) as any[];
-                const epics = data.epics.filter(e => e.feature_id === f.id);
+                // Find connected valid Customers
+                const connectedValidCustomers = f.customer_targets
+                    .filter(ct => validCustomers.has(ct.customer_id))
+                    .map(ct => ct.customer_id);
 
-                const validC = c_links.filter(c => !cf || c.name.toLowerCase().includes(cf));
-                const validEpics = epics.filter(e => {
-                    const team = data.teams.find(t => t.id === e.team_id);
-                    const teamMatches = team && (!tf || team.name.toLowerCase().includes(tf));
-                    const epicName = e.name || f.name || 'Task';
-                    const epicMatches = !ef || epicName.toLowerCase().includes(ef);
-                    return teamMatches && epicMatches;
-                });
+                // Find connected valid Epics
+                const connectedValidEpics = data.epics
+                    .filter(e => e.feature_id === f.id && validEpics.has(e.id));
 
-                if (cf && validC.length === 0) return;
-                if ((tf || ef) && validEpics.length === 0) return;
+                // Strict intersection rules:
+                // If a customer filter is active (cf or minTcv), we MUST have a valid connected customer.
+                const hasCustomerFilter = cf !== '' || minTcv > 0;
+                if (hasCustomerFilter && connectedValidCustomers.length === 0) return;
 
+                // If a team/epic filter is active, we MUST have a valid connected epic.
+                const hasTeamEpicFilter = tf !== '' || ef !== '';
+                if (hasTeamEpicFilter && connectedValidEpics.length === 0) return;
+
+                // If it survives to here, this feature path is fully viable!
                 visibleFeatures.add(f.id);
-                validC.forEach(c => visibleCustomers.add(c.id));
-                validEpics.forEach(e => {
+                connectedValidCustomers.forEach(cId => visibleCustomers.add(cId));
+                connectedValidEpics.forEach(e => {
                     visibleEpics.add(e.id);
                     visibleTeams.add(e.team_id);
                 });
             });
+
+            // Special case: Featureless Customers
+            // If ONLY customer filters are applied, standalone valid customers should appear.
+            const hasTeamEpicFilter = tf !== '' || ef !== '';
+            const hasFeatureFilter = ff !== '' || minScore > 0;
+            if (!hasTeamEpicFilter && !hasFeatureFilter) {
+                validCustomers.forEach(cId => {
+                    visibleCustomers.add(cId);
+                });
+            }
         }
 
         // 1. Process Customers (Column 1)
-        // Sort Highest TCV to Lowest
+        // Sort Highest TCV to Lowest, apply Min TCV filter
         const maxTcv = Math.max(...data.customers.map(c => c.potential_tcv), 1);
         const sortedCustomers = [...data.customers]
-            .filter(c => visibleCustomers.has(c.id))
+            .filter(c => visibleCustomers.has(c.id) && c.potential_tcv >= minTcv)
             .sort((a, b) => b.potential_tcv - a.potential_tcv);
 
-        // Inject the "Add Customer" button node at the top of the column
-        if (!cf) { // Only show if not aggressively filtering
-            nodes.push({
-                id: 'add-customer-btn',
-                type: 'addCustomerNode',
-                position: { x: COL_CUSTOMER_X - 75, y: -20 },
-                data: {
-                    label: '+ Add Customer',
-                    style: {
-                        backgroundColor: '#3b82f6',
-                        color: 'white',
-                        border: '1px solid #2563eb',
-                        borderRadius: '6px',
-                        width: 150,
-                        textAlign: 'center',
-                        cursor: 'pointer',
-                        padding: '10px 20px',
-                        fontSize: '14px',
-                        fontWeight: '600'
-                    }
-                }
-            });
-        }
+        // Add Customer node removed from canvas
 
         sortedCustomers.forEach((customer, index) => {
             const sizeRatio = maxTcv > 0 ? customer.potential_tcv / maxTcv : 0.5;
@@ -108,7 +168,7 @@ export function useGraphLayout(
             nodes.push({
                 id: `customer-${customer.id}`,
                 type: 'customerNode',
-                position: { x: COL_CUSTOMER_X - (nodeSize / 2), y: index * 180 + 160 - (nodeSize / 2) }, // Shifted down 60px to clear Add button
+                position: { x: COL_CUSTOMER_X - (nodeSize / 2), y: index * 180 + 100 - (nodeSize / 2) }, // Adjusted starting Y
                 data: {
                     label: customer.name,
                     existingTcv: customer.existing_tcv,
@@ -170,32 +230,12 @@ export function useGraphLayout(
                 };
             });
 
-        const maxScore = Math.max(...featuresWithScores.map(f => f.score), 1);
-        const sortedFeatures = featuresWithScores.sort((a, b) => b.score - a.score); // Descending by Score
+        // Apply Min Score filter
+        const filteredFeaturesByScore = featuresWithScores.filter(f => f.score >= minScore);
+        const maxScore = Math.max(...filteredFeaturesByScore.map(f => f.score), 1);
+        const sortedFeatures = filteredFeaturesByScore.sort((a, b) => b.score - a.score); // Descending by Score
 
-        // Inject the "Add Feature" button node at the top of the column
-        if (!ff) { // Only show if not aggressively filtering
-            nodes.push({
-                id: 'add-feature-btn',
-                type: 'addFeatureNode',
-                position: { x: COL_FEATURE_X - 75, y: -20 },
-                data: {
-                    label: '+ Add Feature',
-                    style: {
-                        backgroundColor: '#3b82f6',
-                        color: 'white',
-                        border: '1px solid #2563eb',
-                        borderRadius: '6px',
-                        width: 150,
-                        textAlign: 'center',
-                        cursor: 'pointer',
-                        padding: '10px 20px',
-                        fontSize: '14px',
-                        fontWeight: '600'
-                    }
-                }
-            });
-        }
+        // Add Feature node removed from canvas
 
         sortedFeatures.forEach((feature, index) => {
             const sizeRatio = maxScore > 0 ? feature.score / maxScore : 0.5;
@@ -204,7 +244,7 @@ export function useGraphLayout(
             nodes.push({
                 id: `feature-${feature.id}`,
                 type: 'featureNode',
-                position: { x: COL_FEATURE_X - (nodeSize / 2), y: index * 180 + 160 - (nodeSize / 2) }, // Shifted down 60px to clear Add button
+                position: { x: COL_FEATURE_X - (nodeSize / 2), y: index * 180 + 100 - (nodeSize / 2) }, // Adjusted starting Y
                 data: {
                     label: feature.name,
                     effortMds: feature.total_effort_mds,
@@ -738,5 +778,5 @@ export function useGraphLayout(
         }
 
         return { nodes, edges };
-    }, [data, hoveredNodeId, sprintOffset, customerFilter, featureFilter, teamFilter, epicFilter, showDependencies]);
+    }, [data, hoveredNodeId, sprintOffset, customerFilter, featureFilter, teamFilter, epicFilter, showDependencies, minTcv, minScore]);
 }

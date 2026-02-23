@@ -4,7 +4,7 @@ import { useGraphLayout } from '../useGraphLayout';
 import type { DashboardData } from '../../types/models';
 
 const MOCK_DATA: DashboardData = {
-    settings: { jira_base_url: "https://jira", jira_api_version: "v3" },
+    settings: { jira_base_url: "https://jira", jira_api_version: "3" },
     customers: [
         { id: 'c1', name: 'Cust 1', existing_tcv: 100, potential_tcv: 0 },
         { id: 'c2', name: 'Cust 2', existing_tcv: 1000, potential_tcv: 500 }

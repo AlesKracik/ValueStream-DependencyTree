@@ -170,8 +170,7 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
                 body: JSON.stringify({
                     jira_key: jiraKey,
                     jira_base_url: data.settings.jira_base_url,
-                    jira_api_version: data.settings.jira_api_version || 'v3',
-                    jira_email: data.settings.jira_email,
+                    jira_api_version: data.settings.jira_api_version || '3',
                     jira_api_token: data.settings.jira_api_token
                 })
             });
@@ -205,8 +204,15 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
             if (targetEndKey && fields[targetEndKey]) updates.target_end = fields[targetEndKey];
 
             if (teamKey && fields[teamKey]) {
-                const jiraTeamId = fields[teamKey].id || fields[teamKey].value || fields[teamKey].toString();
-                const matchedTeam = data.teams.find(t => t.jira_team_id === jiraTeamId || t.name === jiraTeamId);
+                const teamField = fields[teamKey];
+                const jiraTeamId = (teamField.id || teamField.value || teamField.toString()).toString();
+                const jiraTeamName = teamField.name || '';
+
+                const matchedTeam = data.teams.find(t =>
+                    (t.jira_team_id && t.jira_team_id.toString() === jiraTeamId) ||
+                    (t.name === jiraTeamId) ||
+                    (jiraTeamName && t.name === jiraTeamName)
+                );
                 if (matchedTeam) updates.team_id = matchedTeam.id;
             }
 
@@ -347,6 +353,7 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
                                             >
                                                 <option value="Must-have">Must-have</option>
                                                 <option value="Should-have">Should-have</option>
+                                                <option value="Nice-to-have">Nice-to-have</option>
                                             </select>
                                         </td>
                                         <td>

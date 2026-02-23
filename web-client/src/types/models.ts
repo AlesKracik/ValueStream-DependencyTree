@@ -51,8 +51,7 @@ export interface Sprint {
 
 export interface Settings {
   jira_base_url: string;
-  jira_api_version: 'v2' | 'v3';
-  jira_email?: string;
+  jira_api_version: '2' | '3';
   jira_api_token?: string;
 }
 
@@ -63,4 +62,16 @@ export interface DashboardData {
   teams: Team[];
   epics: Epic[];
   sprints: Sprint[];
+}
+
+export interface DashboardViewState {
+  sprintOffset: number;
+  customerFilter: string;
+  featureFilter: string;
+  minTcvFilter: string;
+  minScoreFilter: string;
+  teamFilter: string;
+  epicFilter: string;
+  showDependencies: boolean;
+  viewport?: { x: number; y: number; zoom: number };
 }
