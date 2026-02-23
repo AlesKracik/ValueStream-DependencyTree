@@ -235,6 +235,19 @@ export function useGraphLayout(
         const maxScore = Math.max(...filteredFeaturesByScore.map(f => f.score), 1);
         const sortedFeatures = filteredFeaturesByScore.sort((a, b) => b.score - a.score); // Descending by Score
 
+        let maxRoi = 0.0001; // Avoid division by zero
+        sortedFeatures.forEach((feature) => {
+            feature.customer_targets.forEach((target) => {
+                if (!visibleCustomers.has(target.customer_id)) return;
+                const customer = data.customers.find(c => c.id === target.customer_id);
+                if (customer) {
+                    const targetTcv = target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv;
+                    const roi = targetTcv / feature.total_effort_mds;
+                    if (roi > maxRoi) maxRoi = roi;
+                }
+            });
+        });
+
         // Add Feature node removed from canvas
 
         sortedFeatures.forEach((feature, index) => {
@@ -264,7 +277,7 @@ export function useGraphLayout(
                     const targetTcv = target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv;
                     const roi = targetTcv / feature.total_effort_mds;
                     // Scale width based on ROI, keeping min 2px and max 16px
-                    const normalizedStrokeWidth = Math.min(16, Math.max(2, (roi / 20000) * 16));
+                    const normalizedStrokeWidth = Math.min(16, Math.max(2, (roi / maxRoi) * 16));
 
                     edges.push({
                         id: `edge-${target.customer_id}-${feature.id}-${target.tcv_type}`,
@@ -414,11 +427,17 @@ export function useGraphLayout(
         });
 
         // 5. Create Edges (Feature -> Team)
+        let maxRemainingMd = 0.0001;
+        data.epics.forEach(epic => {
+            if (!visibleFeatures.has(epic.feature_id) || !visibleTeams.has(epic.team_id) || !visibleEpics.has(epic.id)) return;
+            if (epic.remaining_md > maxRemainingMd) maxRemainingMd = epic.remaining_md;
+        });
+
         data.epics.forEach(epic => {
             if (!visibleFeatures.has(epic.feature_id) || !visibleTeams.has(epic.team_id) || !visibleEpics.has(epic.id)) return;
 
             // Scale width based on remaining MDs, keeping min 2px and max 16px
-            const normalizedStrokeWidth = Math.min(16, Math.max(2, (epic.remaining_md / 20) * 16));
+            const normalizedStrokeWidth = Math.min(16, Math.max(2, (epic.remaining_md / maxRemainingMd) * 16));
             edges.push({
                 id: `edge-${epic.feature_id}-${epic.team_id}-${epic.id}`,
                 source: `feature-${epic.feature_id}`,
