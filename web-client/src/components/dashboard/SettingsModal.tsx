@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import type { Settings } from '../../types/models';
+import type { Settings, DashboardData, Epic } from '../../types/models';
 
 interface SettingsModalProps {
     onClose: () => void;
     settings: Settings;
     onUpdateSettings: (updates: Partial<Settings>) => void;
+    data: DashboardData;
+    updateEpic: (id: string, updates: Partial<Epic>) => void;
 }
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, settings, onUpdateSettings }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, settings, onUpdateSettings, data, updateEpic }) => {
     const [formData, setFormData] = useState<Partial<Settings>>({});
     const [isTesting, setIsTesting] = useState(false);
     const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [syncProgress, setSyncProgress] = useState<string>('');
 
     useEffect(() => {
         if (settings) {
@@ -53,6 +58,96 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, settings,
         } finally {
             setIsTesting(false);
         }
+    };
+
+    const handleSyncAllFromJira = async () => {
+        const epicsWithKeys = data.epics.filter(e => e.jira_key && e.jira_key !== 'TBD');
+
+        if (epicsWithKeys.length === 0) {
+            setTestResult({ success: true, message: 'No epics with Jira keys found to sync.' });
+            return;
+        }
+        if (!formData.jira_base_url || !formData.jira_api_token) {
+            setTestResult({ success: false, message: 'Base URL and PAT are required to sync.' });
+            return;
+        }
+
+        setIsSyncing(true);
+        setTestResult(null);
+        let successCount = 0;
+        let failCount = 0;
+
+        for (let i = 0; i < epicsWithKeys.length; i++) {
+            const epic = epicsWithKeys[i];
+            setSyncProgress(`Syncing ${i + 1}/${epicsWithKeys.length}: ${epic.jira_key}`);
+
+            try {
+                const response = await fetch('/api/jira/issue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        jira_key: epic.jira_key,
+                        jira_base_url: formData.jira_base_url,
+                        jira_api_version: formData.jira_api_version || '3',
+                        jira_api_token: formData.jira_api_token
+                    })
+                });
+
+                const resData = await response.json();
+                if (!response.ok || !resData.success) {
+                    throw new Error(resData.error || 'Failed to fetch Jira data');
+                }
+
+                const issue = resData.data;
+                const fields = issue.fields;
+                const names = issue.names;
+
+                let targetStartKey = '';
+                let targetEndKey = '';
+                let teamKey = '';
+
+                Object.entries(names as Record<string, string>).forEach(([key, name]) => {
+                    if (name === 'Target start') targetStartKey = key;
+                    if (name === 'Target end') targetEndKey = key;
+                    if (name === 'Team') teamKey = key;
+                });
+
+                const updates: Partial<Epic> = {};
+                if (fields.summary) updates.name = fields.summary;
+                if (fields.timeestimate !== undefined && fields.timeestimate !== null) {
+                    updates.remaining_md = Math.round(fields.timeestimate / 28800);
+                }
+
+                if (targetStartKey && fields[targetStartKey]) updates.target_start = fields[targetStartKey];
+                if (targetEndKey && fields[targetEndKey]) updates.target_end = fields[targetEndKey];
+
+                if (teamKey && fields[teamKey]) {
+                    const teamField = fields[teamKey];
+                    const jiraTeamId = (teamField.id || teamField.value || teamField.toString()).toString();
+                    const jiraTeamName = teamField.name || '';
+
+                    const matchedTeam = data.teams.find(t =>
+                        (t.jira_team_id && t.jira_team_id.toString() === jiraTeamId) ||
+                        (t.name === jiraTeamId) ||
+                        (jiraTeamName && t.name === jiraTeamName)
+                    );
+                    if (matchedTeam) updates.team_id = matchedTeam.id;
+                }
+
+                updateEpic(epic.id, updates);
+                successCount++;
+            } catch (err: any) {
+                console.error(`Error syncing ${epic.jira_key}:`, err);
+                failCount++;
+            }
+        }
+
+        setIsSyncing(false);
+        setSyncProgress('');
+        setTestResult({
+            success: failCount === 0,
+            message: `Sync complete. ${successCount} succeeded, ${failCount} failed.`
+        });
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -121,14 +216,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, settings,
                     )}
 
                     <div style={styles.buttonGroup}>
-                        <button
-                            type="button"
-                            onClick={handleTestConnection}
-                            style={styles.testBtn}
-                            disabled={isTesting || (!formData.jira_base_url && !formData.jira_api_token)}
-                        >
-                            {isTesting ? 'Testing...' : 'Test Connection'}
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                                type="button"
+                                onClick={handleTestConnection}
+                                style={styles.testBtn}
+                                disabled={isTesting || isSyncing || (!formData.jira_base_url && !formData.jira_api_token)}
+                            >
+                                {isTesting ? 'Testing...' : 'Test Connection'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSyncAllFromJira}
+                                style={{
+                                    ...styles.testBtn,
+                                    backgroundColor: '#3b82f6',
+                                    color: '#fff',
+                                    borderColor: '#2563eb'
+                                }}
+                                disabled={isTesting || isSyncing || (!formData.jira_base_url && !formData.jira_api_token)}
+                            >
+                                {isSyncing ? syncProgress : 'Sync Epics from Jira'}
+                            </button>
+                        </div>
                         <div style={styles.mainActionsGroup}>
                             <button type="button" onClick={onClose} style={styles.cancelBtn}>Cancel</button>
                             <button type="submit" style={styles.saveBtn}>Save</button>

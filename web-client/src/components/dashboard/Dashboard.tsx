@@ -373,6 +373,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     onClose={() => setIsSettingsModalOpen(false)}
                     settings={data.settings}
                     onUpdateSettings={handleUpdateSettings}
+                    data={data}
+                    updateEpic={updateEpic}
                 />
             )}
         </div>
