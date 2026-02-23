@@ -23,7 +23,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({
     saveDashboardData
 }) => {
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-
+    const [syncing, setSyncing] = useState<boolean>(false);
     if (loading) return <div>Loading epic details...</div>;
     if (error) return <div>Error: {error.message}</div>;
     if (!data) return <div>No data available</div>;
@@ -41,6 +41,75 @@ export const EpicPage: React.FC<EpicPageProps> = ({
             console.error('Failed to save data:', err);
             setSaveStatus('error');
             setTimeout(() => setSaveStatus('idle'), 3000);
+        }
+    };
+
+    const handleSyncJira = async () => {
+        if (!epic.jira_key) return;
+        if (!data.settings.jira_base_url) {
+            alert('Please configure Jira Base URL in Settings first.');
+            return;
+        }
+        setSyncing(true);
+        try {
+            const response = await fetch('/api/jira/issue', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    jira_key: epic.jira_key,
+                    jira_base_url: data.settings.jira_base_url,
+                    jira_api_version: data.settings.jira_api_version || '3',
+                    jira_api_token: data.settings.jira_api_token
+                })
+            });
+
+            const resData = await response.json();
+            if (!response.ok || !resData.success) {
+                throw new Error(resData.error || 'Failed to fetch Jira data');
+            }
+
+            const issue = resData.data;
+            const fields = issue.fields;
+            const names = issue.names;
+
+            let targetStartKey = '';
+            let targetEndKey = '';
+            let teamKey = '';
+
+            Object.entries(names as Record<string, string>).forEach(([key, name]) => {
+                if (name === 'Target start') targetStartKey = key;
+                if (name === 'Target end') targetEndKey = key;
+                if (name === 'Team') teamKey = key;
+            });
+
+            const updates: Partial<Epic> = {};
+            if (fields.summary) updates.name = fields.summary;
+            if (fields.timeestimate !== undefined && fields.timeestimate !== null) {
+                updates.remaining_md = Math.round(fields.timeestimate / 28800);
+            }
+
+            if (targetStartKey && fields[targetStartKey]) updates.target_start = fields[targetStartKey];
+            if (targetEndKey && fields[targetEndKey]) updates.target_end = fields[targetEndKey];
+
+            if (teamKey && fields[teamKey]) {
+                const teamField = fields[teamKey];
+                const jiraTeamId = (teamField.id || teamField.value || teamField.toString()).toString();
+                const jiraTeamName = teamField.name || '';
+
+                const matchedTeam = data.teams.find(t =>
+                    (t.jira_team_id && t.jira_team_id.toString() === jiraTeamId) ||
+                    (t.name === jiraTeamId) ||
+                    (jiraTeamName && t.name === jiraTeamName)
+                );
+                if (matchedTeam) updates.team_id = matchedTeam.id;
+            }
+
+            updateEpic(epicId, updates);
+        } catch (err: any) {
+            console.error('Jira sync error:', err);
+            alert(`Error syncing from Jira: ${err.message}`);
+        } finally {
+            setSyncing(false);
         }
     };
 
@@ -126,6 +195,19 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                     <h1>Epic: {epicId}</h1>
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
+                    <button
+                        onClick={handleSyncJira}
+                        disabled={!epic?.jira_key || epic.jira_key === 'TBD' || syncing}
+                        className={styles.saveBtn}
+                        style={{
+                            backgroundColor: '#374151',
+                            borderColor: '#4b5563',
+                            color: '#fff',
+                            opacity: (!epic?.jira_key || epic.jira_key === 'TBD' || syncing) ? 0.5 : 1
+                        }}
+                    >
+                        {syncing ? 'Syncing...' : 'Sync from Jira'}
+                    </button>
                     <button
                         onClick={handleSave}
                         disabled={saveStatus === 'saving'}
