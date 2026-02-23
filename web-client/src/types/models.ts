@@ -35,8 +35,8 @@ export interface Epic {
   feature_id: string;
   team_id: string;
   remaining_md: number;
-  target_start: string;
-  target_end: string;
+  target_start?: string;
+  target_end?: string;
   name?: string;
   sprint_effort_overrides?: Record<string, number>;
   dependencies?: EpicDependency[];

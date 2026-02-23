@@ -328,15 +328,16 @@ export function useGraphLayout(
             sprints.forEach(s => teamSprintUsage[team.id][s.id] = 0);
         });
 
-        const sortedEpics = [...(data.epics || [])].sort((a, b) => parseISO(a.target_start).getTime() - parseISO(b.target_start).getTime());
+        const epicsWithDates = (data.epics || []).filter(e => e.target_start && e.target_end);
+        const sortedEpics = epicsWithDates.sort((a, b) => parseISO(a.target_start!).getTime() - parseISO(b.target_start!).getTime());
         const epicLanes: Record<string, number> = {};
 
         sortedEpics.forEach(epic => {
             const team = data.teams.find(t => t.id === epic.team_id);
             if (!team) return;
 
-            const start = parseISO(epic.target_start);
-            const end = parseISO(epic.target_end);
+            const start = parseISO(epic.target_start!);
+            const end = parseISO(epic.target_end!);
             const duration = differenceInDays(end, start) + 1;
 
             const lanes = teamLanes[team.id].endDates;
@@ -459,8 +460,8 @@ export function useGraphLayout(
                 if (!team) return;
 
                 const baseY = teamBaseY[team.id];
-                const start = parseISO(epic.target_start);
-                const end = parseISO(epic.target_end);
+                const start = parseISO(epic.target_start!);
+                const end = parseISO(epic.target_end!);
 
                 // Only render if it overlaps the visible window
                 if (end < windowStartDate || start > windowEndDate) return;
@@ -562,8 +563,8 @@ export function useGraphLayout(
                         jiraKey: epic.jira_key,
                         jiraBaseUrl: data?.settings?.jira_base_url,
                         epicId: epic.id,
-                        targetStart: epic.target_start,
-                        targetEnd: epic.target_end,
+                        targetStart: epic.target_start!,
+                        targetEnd: epic.target_end!,
                         segments: segments
                     },
                 });
