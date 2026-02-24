@@ -107,6 +107,57 @@ const MockDataPersistencePlugin = (): Plugin => ({
             res.end(JSON.stringify({ success: false, error: e.message }));
           }
         });
+      } else if (req.url === '/api/jira/search' && req.method === 'POST') {
+        let body = '';
+        req.on('data', (chunk: any) => { body += chunk.toString(); });
+        req.on('end', async () => {
+          try {
+            const { jql, jira_base_url, jira_api_version, jira_api_token } = JSON.parse(body);
+            if (!jira_base_url || !jql) {
+              throw new Error('Missing jira_base_url or jql');
+            }
+
+            const url = new URL(jira_base_url);
+            // Construct the REST API url for search
+            const apiUrl = `${url.origin}/rest/api/${jira_api_version || '3'}/search`;
+
+            const headers: Record<string, string> = {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            };
+
+            if (jira_api_token) {
+              headers['Authorization'] = `Bearer ${jira_api_token}`;
+            }
+
+            console.log(`[Jira Proxy] Searching from ${apiUrl} with JQL: ${jql}`);
+            const jiraRes = await fetch(apiUrl, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({
+                jql,
+                expand: ['names'],
+                maxResults: 100 // Can be tuned
+              })
+            });
+
+            if (!jiraRes.ok) {
+              const errorText = await jiraRes.text();
+              console.error(`Jira API Error ${jiraRes.status}:`, errorText);
+              throw new Error(`Jira API returned ${jiraRes.status} ${jiraRes.statusText}`);
+            }
+
+            const jiraData = await jiraRes.json();
+            res.setHeader('Content-Type', 'application/json');
+            res.statusCode = 200;
+            res.end(JSON.stringify({ success: true, data: jiraData }));
+          } catch (e: any) {
+            console.error('Error proxying Jira search request:', e);
+            res.setHeader('Content-Type', 'application/json');
+            res.statusCode = 500;
+            res.end(JSON.stringify({ success: false, error: e.message }));
+          }
+        });
       } else {
         next();
       }

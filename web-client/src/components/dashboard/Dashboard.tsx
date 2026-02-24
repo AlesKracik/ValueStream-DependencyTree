@@ -34,6 +34,7 @@ export interface DashboardProps {
     updateFeature: (id: string, updates: Partial<Feature>) => void;
     updateTeam: (id: string, updates: Partial<Team>) => void;
     updateEpic: (id: string, updates: Partial<Epic>) => void;
+    addEpic: (epic: Epic) => void;
     updateSettings: (updates: Partial<Settings>) => void;
     saveDashboardData: (data: DashboardData) => Promise<void>;
     viewState: DashboardViewState;
@@ -46,7 +47,7 @@ export interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({
     data, loading, error,
-    updateCustomer, updateFeature, updateTeam, updateEpic, updateSettings,
+    updateCustomer, updateFeature, updateTeam, updateEpic, addEpic, updateSettings,
     saveDashboardData, viewState, setViewState,
     onNavigateToCustomer,
     onNavigateToFeature,
@@ -375,6 +376,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     onUpdateSettings={handleUpdateSettings}
                     data={data}
                     updateEpic={updateEpic}
+                    addEpic={addEpic}
                 />
             )}
         </div>
