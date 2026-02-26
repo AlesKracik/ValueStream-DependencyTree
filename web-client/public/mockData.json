@@ -126,6 +126,7 @@
       "id": "t1",
       "name": "Frontend Team",
       "total_capacity_mds": 40,
+      "country": "US",
       "jira_team_id": "JIRA-T1",
       "sprint_capacity_overrides": {
         "s2": 5
@@ -135,12 +136,14 @@
       "id": "t2",
       "name": "Backend Team",
       "total_capacity_mds": 50,
+      "country": "CZ",
       "jira_team_id": "JIRA-T2"
     },
     {
       "id": "t3",
       "name": "Mobile Team",
       "total_capacity_mds": 25,
+      "country": "GB",
       "jira_team_id": "JIRA-T3"
     }
   ],
@@ -167,13 +170,13 @@
       "id": "s4",
       "name": "Sprint 4",
       "start_date": "2026-03-26",
-      "end_date": "2026-04-07"
+      "end_date": "2026-04-08"
     },
     {
       "id": "s5",
       "name": "Sprint 5",
-      "start_date": "2026-04-08",
-      "end_date": "2026-04-21"
+      "start_date": "2026-04-09",
+      "end_date": "2026-04-22"
     },
     {
       "id": "s6",

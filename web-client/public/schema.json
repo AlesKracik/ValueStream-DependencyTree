@@ -138,6 +138,10 @@
                         "type": "number",
                         "minimum": 0
                     },
+                    "country": {
+                        "type": "string",
+                        "description": "ISO Country Code (e.g. US, CZ, GB) for holiday calculations."
+                    },
                     "jira_team_id": {
                         "type": "string"
                     },

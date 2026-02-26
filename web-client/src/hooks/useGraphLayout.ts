@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
-import { differenceInDays, parseISO, min, max, format } from 'date-fns';
+import { differenceInDays, parseISO, min, max, format, isWithinInterval, addDays, isWeekend } from 'date-fns';
 import type { Node, Edge } from '@xyflow/react';
-import type { DashboardData } from '../types/models';
+import type { DashboardData, Epic, Team } from '../types/models';
+import Holidays from 'date-holidays';
 
 export function useGraphLayout(
     data: DashboardData | null,
@@ -729,13 +730,45 @@ export function useGraphLayout(
                 const maxLanes = Math.max(teamMaxLanes[team.id] || 1, 1);
                 const ganttStartY = baseY - ((maxLanes - 1) * 45) / 2;
 
-                let sprintXOffset = 0;
+                // Cache holiday checker for performance if country exists
+                let hd: any = null;
+                if (team.country) {
+                    try {
+                        hd = new Holidays(team.country as any);
+                    } catch (e) {
+                        console.error(`Invalid country code: ${team.country}`);
+                    }
+                }
 
                 visibleSprints.forEach((sprint) => {
                     const usage = Math.round(teamSprintUsage[team.id][sprint.id] * 10) / 10;
 
                     const sprintStartDate = parseISO(sprint.start_date);
                     const sprintEndDate = parseISO(sprint.end_date);
+                    
+                    // Calculate holidays in this sprint range
+                    let holidayCount = 0;
+                    if (hd) {
+                        const hList = hd.getHolidays(sprintStartDate.getFullYear());
+                        // Also check next year if sprint spans across New Year
+                        if (sprintEndDate.getFullYear() !== sprintStartDate.getFullYear()) {
+                            hList.push(...hd.getHolidays(sprintEndDate.getFullYear()));
+                        }
+
+                        hList.forEach((h: any) => {
+                            const hDate = new Date(h.date);
+                            // Check if holiday is within sprint AND is not a weekend
+                            if (hDate >= sprintStartDate && hDate <= sprintEndDate && !isWeekend(hDate)) {
+                                holidayCount++;
+                            }
+                        });
+                    }
+
+                    // Standard capacity assumes 10 working days. Each holiday removes 10% of base capacity.
+                    const holidayImpact = (team.total_capacity_mds / 10) * holidayCount;
+                    const baseCapacity = team.sprint_capacity_overrides?.[sprint.id] ?? (team.total_capacity_mds - holidayImpact);
+                    const isOverridden = team.sprint_capacity_overrides?.[sprint.id] !== undefined;
+
                     // Determine where this sprint actually starts visually from windowStartDate
                     const actualDaysOffset = differenceInDays(sprintStartDate, windowStartDate);
 
@@ -753,14 +786,13 @@ export function useGraphLayout(
                             startDate: format(sprintStartDate, 'MMM d'),
                             endDate: format(sprintEndDate, 'MMM d'),
                             usedMds: usage,
-                            totalCapacityMds: team.sprint_capacity_overrides?.[sprint.id] ?? team.total_capacity_mds, // Use override if present
-                            isOverridden: team.sprint_capacity_overrides?.[sprint.id] !== undefined,
+                            totalCapacityMds: Math.max(0, Math.round(baseCapacity * 10) / 10),
+                            isOverridden: isOverridden,
+                            holidayCount: holidayCount,
                             width: width - 10,
                         },
                         selectable: false,
                     });
-
-                    sprintXOffset += width;
                 });
             });
 

@@ -20,6 +20,7 @@ export interface Team {
   id: string;
   name: string;
   total_capacity_mds: number;
+  country?: string;
   jira_team_id?: string;
   sprint_capacity_overrides?: Record<string, number>;
 }

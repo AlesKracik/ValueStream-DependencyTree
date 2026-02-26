@@ -7,12 +7,14 @@ export interface SprintCapacityNodeData {
     usedMds: number;
     totalCapacityMds: number;
     isOverridden?: boolean;
+    holidayCount?: number;
     width: number;
 }
 
 export const SprintCapacityNode = memo(({ data }: { data: SprintCapacityNodeData }) => {
     const isOverallocated = data.usedMds > data.totalCapacityMds;
     const isAllocated = data.usedMds > 0;
+    const hasHolidays = (data.holidayCount || 0) > 0;
 
     let borderColor = '#374151';
     let textColor = '#9ca3af';
@@ -47,16 +49,16 @@ export const SprintCapacityNode = memo(({ data }: { data: SprintCapacityNodeData
                 backgroundColor: bgColor,
                 transition: 'all 0.2s ease'
             }}
-            title={`${data.sprintLabel}: ${data.usedMds} / ${data.totalCapacityMds} MDs`}
+            title={`${data.sprintLabel}: ${data.usedMds} / ${data.totalCapacityMds} MDs${data.holidayCount ? ` (${data.holidayCount} public holidays)` : ''}`}
         >
             <div style={{ marginBottom: '4px', display: 'flex', alignItems: 'baseline', gap: '6px' }}>
                 <span style={{ fontSize: '13px', fontWeight: 'bold' }}>
-                    {data.sprintLabel} {data.isOverridden && '*'}
+                    {data.sprintLabel} {data.isOverridden && '*'} {hasHolidays && '🏝️'}
                 </span>
                 <span style={{ fontSize: '13px', opacity: 0.8 }}>({data.startDate} - {data.endDate})</span>
             </div>
-            <div style={{ fontSize: '12px', fontWeight: data.isOverridden ? 'bold' : 'normal' }}>
-                {data.usedMds} / {data.totalCapacityMds} MDs {data.isOverridden && '(Override)'}
+            <div style={{ fontSize: '12px', fontWeight: (data.isOverridden || hasHolidays) ? 'bold' : 'normal' }}>
+                {data.usedMds} / {data.totalCapacityMds} MDs {data.isOverridden && '(Override)'} {hasHolidays && `(-${data.holidayCount}d)`}
             </div>
         </div>
     );
