@@ -414,28 +414,7 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
                 <section className={styles.card}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <h2>Epics</h2>
-                        <div style={{ display: 'flex', gap: '12px' }}>
-                            <select id="assignEpicSelect" style={{ padding: '8px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }}>
-                                <option value="">Assign existing epic...</option>
-                                {data.epics.filter(e => !e.feature_id).map(e => (
-                                    <option key={e.id} value={e.id}>{e.jira_key !== 'TBD' ? e.jira_key : ''} {e.name || 'Unnamed Epic'}</option>
-                                ))}
-                            </select>
-                            <button className={styles.primaryBtn} onClick={() => {
-                                const selectEl = document.getElementById('assignEpicSelect') as HTMLSelectElement;
-                                const epicId = selectEl?.value;
-                                if (epicId) {
-                                    if (isNew) {
-                                        const epicToAssign = data.epics.find(e => e.id === epicId);
-                                        if (epicToAssign) setNewFeatureEpics(prev => [...prev, epicToAssign]);
-                                    } else {
-                                        updateEpic(epicId, { feature_id: featureId });
-                                    }
-                                    selectEl.value = '';
-                                }
-                            }}>Assign Epic</button>
-                            <button className={styles.primaryBtn} onClick={handleAddEpic}>+ Create New Epic</button>
-                        </div>
+                        <button className={styles.primaryBtn} onClick={handleAddEpic}>+ Create New Epic</button>
                     </div>
 
                     <table className={styles.table}>
@@ -497,6 +476,31 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
                             )}
                         </tbody>
                     </table>
+
+                    <div className={styles.addFeatureBox}>
+                        <h3>Assign Existing Epic</h3>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <select id="assignEpicSelect" style={{ flex: 1, padding: '8px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }}>
+                                <option value="">Select an unassigned epic to link...</option>
+                                {data.epics.filter(e => !e.feature_id).map(e => (
+                                    <option key={e.id} value={e.id}>{e.jira_key !== 'TBD' ? e.jira_key : ''} {e.name || 'Unnamed Epic'}</option>
+                                ))}
+                            </select>
+                            <button className={styles.primaryBtn} onClick={() => {
+                                const selectEl = document.getElementById('assignEpicSelect') as HTMLSelectElement;
+                                const epicId = selectEl?.value;
+                                if (epicId) {
+                                    if (isNew) {
+                                        const epicToAssign = data.epics.find(e => e.id === epicId);
+                                        if (epicToAssign) setNewFeatureEpics(prev => [...prev, epicToAssign]);
+                                    } else {
+                                        updateEpic(epicId, { feature_id: featureId });
+                                    }
+                                    selectEl.value = '';
+                                }
+                            }}>Assign Epic</button>
+                        </div>
+                    </div>
                 </section>
             </div>
         </div>

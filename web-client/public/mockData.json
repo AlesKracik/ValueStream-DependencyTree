@@ -286,6 +286,24 @@
       "target_start": "2026-02-22",
       "target_end": "2026-03-08",
       "name": "test"
+    },
+    {
+      "id": "fe1",
+      "name": "Unassigned Security Patch",
+      "team_id": "t2",
+      "remaining_md": 5,
+      "target_start": "2026-02-15",
+      "target_end": "2026-02-22",
+      "jira_key": "SEC-42"
+    },
+    {
+      "id": "fe2",
+      "name": "General Tech Debt",
+      "team_id": "t1",
+      "remaining_md": 12,
+      "target_start": "2026-03-01",
+      "target_end": "2026-03-15",
+      "jira_key": "TD-101"
     }
   ],
   "settings": {
