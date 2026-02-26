@@ -154,6 +154,8 @@ export const TeamPage: React.FC<TeamPageProps> = ({
                                     hList.push(...hd.getHolidays(sprintEndDate.getFullYear()));
                                 }
                                 hList.forEach((h: any) => {
+                                    if (h.type !== 'public') return;
+                                    
                                     const hDate = new Date(h.date);
                                     if (hDate >= sprintStartDate && hDate <= sprintEndDate && !isWeekend(hDate)) {
                                         holidayCount++;

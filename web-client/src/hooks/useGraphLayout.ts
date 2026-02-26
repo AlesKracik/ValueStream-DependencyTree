@@ -756,6 +756,9 @@ export function useGraphLayout(
                         }
 
                         hList.forEach((h: any) => {
+                            // Only count 'public' holidays, ignore 'optional', 'observance', etc.
+                            if (h.type !== 'public') return;
+                            
                             const hDate = new Date(h.date);
                             // Check if holiday is within sprint AND is not a weekend
                             if (hDate >= sprintStartDate && hDate <= sprintEndDate && !isWeekend(hDate)) {
