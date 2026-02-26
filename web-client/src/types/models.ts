@@ -73,5 +73,6 @@ export interface DashboardViewState {
   teamFilter: string;
   epicFilter: string;
   showDependencies: boolean;
+  selectedNodeId?: string | null;
   viewport?: { x: number; y: number; zoom: number };
 }

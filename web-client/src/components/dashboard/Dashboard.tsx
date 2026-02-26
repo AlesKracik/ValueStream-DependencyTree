@@ -1,5 +1,5 @@
 import React from 'react';
-import { ReactFlow, ReactFlowProvider, Background, BackgroundVariant } from '@xyflow/react';
+import { ReactFlow, ReactFlowProvider, Background, BackgroundVariant, Panel, useReactFlow } from '@xyflow/react';
 import type { Node } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -24,6 +24,36 @@ const nodeTypes = {
     ganttBarNode: GanttBarNode,
     sprintCapacityNode: SprintCapacityNode,
     todayLineNode: TodayLineNode,
+};
+
+const DashboardControls = () => {
+    const { zoomIn, zoomOut, fitView } = useReactFlow();
+
+    return (
+        <Panel position="bottom-right" style={{ display: 'flex', gap: '8px', padding: '12px', zIndex: 5 }}>
+            <button 
+                onClick={() => zoomIn()}
+                style={{ width: '32px', height: '32px', borderRadius: '4px', backgroundColor: '#374151', color: '#e5e7eb', border: '1px solid #4b5563', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 'bold' }}
+                title="Zoom In"
+            >
+                +
+            </button>
+            <button 
+                onClick={() => zoomOut()}
+                style={{ width: '32px', height: '32px', borderRadius: '4px', backgroundColor: '#374151', color: '#e5e7eb', border: '1px solid #4b5563', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 'bold' }}
+                title="Zoom Out"
+            >
+                -
+            </button>
+            <button 
+                onClick={() => fitView({ padding: 0.2, duration: 800 })}
+                style={{ padding: '0 12px', height: '32px', borderRadius: '4px', backgroundColor: '#374151', color: '#e5e7eb', border: '1px solid #4b5563', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}
+                title="Fit to View"
+            >
+                Fit View
+            </button>
+        </Panel>
+    );
 };
 
 export interface DashboardProps {
@@ -100,7 +130,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
         viewState.epicFilter,
         viewState.showDependencies,
         viewState.minTcvFilter ? Number(viewState.minTcvFilter) : 0,
-        viewState.minScoreFilter ? Number(viewState.minScoreFilter) : 0
+        viewState.minScoreFilter ? Number(viewState.minScoreFilter) : 0,
+        viewState.selectedNodeId || null
     );
 
     const hoverTimeoutRef = React.useRef<number | null>(null);
@@ -144,13 +175,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const onNodeContextMenu = React.useCallback(
         (event: React.MouseEvent, node: Node) => {
             event.preventDefault();
-            // Don't show modal for nodes with dedicated pages
-            if (node.type === 'customerNode' || node.type === 'featureNode' || node.type === 'teamNode' || node.type === 'ganttBarNode') return;
             // Don't show modal for static layout elements
-            if (['sprintCapacityNode'].includes(node.type || '')) return;
-            setEditingNode(node);
+            if (['sprintCapacityNode', 'todayLineNode'].includes(node.type || '')) return;
+            
+            setViewState(s => {
+                // If it's already selected, clear the selection (unfilter)
+                if (s.selectedNodeId === node.id) {
+                    return { ...s, selectedNodeId: null };
+                }
+                // Otherwise set the new selection
+                return { ...s, selectedNodeId: node.id };
+            });
         },
-        []
+        [setViewState]
     );
 
     if (loading) return <div>Loading dashboard...</div>;
@@ -352,6 +389,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             proOptions={{ hideAttribution: true }}
                         >
                             <Background color="#1a1a1a" variant={BackgroundVariant.Lines} gap={100} />
+                            <DashboardControls />
                         </ReactFlow>
                     </ReactFlowProvider>
                 </DashboardProvider>

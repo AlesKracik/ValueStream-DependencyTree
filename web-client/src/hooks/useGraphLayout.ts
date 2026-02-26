@@ -13,7 +13,8 @@ export function useGraphLayout(
     epicFilter: string = '',
     showDependencies: boolean = true,
     minTcv: number = 0,
-    minScore: number = 0
+    minScore: number = 0,
+    selectedNodeId: string | null = null
 ) {
     return useMemo(() => {
         if (!data) return { nodes: [], edges: [] };
@@ -150,6 +151,109 @@ export function useGraphLayout(
                     visibleCustomers.add(cId);
                 });
             }
+        }
+
+        // Apply Selection-based filtering if selectedNodeId is present
+        if (selectedNodeId) {
+            const logicalEdges: { id: string, source: string, target: string }[] = [];
+            data.features.forEach((feature) => {
+                feature.customer_targets.forEach((target) => {
+                    logicalEdges.push({
+                        id: `edge-${target.customer_id}-${feature.id}-${target.tcv_type}`,
+                        source: `customer-${target.customer_id}`,
+                        target: `feature-${feature.id}`
+                    });
+                });
+            });
+
+            data.epics.forEach(epic => {
+                logicalEdges.push({
+                    id: `edge-${epic.feature_id}-${epic.team_id}-${epic.id}`,
+                    source: `feature-${epic.feature_id}`,
+                    target: `team-${epic.team_id}`
+                });
+                logicalEdges.push({
+                    id: `edge-team-gantt-${epic.id}`,
+                    source: `team-${epic.team_id}`,
+                    target: `gantt-${epic.id}`
+                });
+                if (epic.dependencies && showDependencies) {
+                    epic.dependencies.forEach(dep => {
+                        logicalEdges.push({
+                            id: `dep-${dep.epic_id}-to-${epic.id}-${dep.dependency_type}`,
+                            source: `gantt-${dep.epic_id}`,
+                            target: `gantt-${epic.id}`,
+                        });
+                    });
+                }
+            });
+
+            const hNodes = new Set<string>();
+            const visitedTarget = new Set<string>();
+            const traceDownstream = (currentNodeId: string, sourceEpicId?: string) => {
+                const contextKey = `${currentNodeId}-${sourceEpicId || 'none'}`;
+                if (visitedTarget.has(contextKey)) return;
+                visitedTarget.add(contextKey);
+
+                hNodes.add(currentNodeId);
+                let outgoingEdges = logicalEdges.filter(e => e.source === currentNodeId);
+
+                if (currentNodeId.startsWith('team-') && sourceEpicId) {
+                    outgoingEdges = outgoingEdges.filter(e => e.target === `gantt-${sourceEpicId}`);
+                }
+
+                outgoingEdges.forEach(e => {
+                    let nextEpicId = sourceEpicId;
+                    if (currentNodeId.startsWith('feature-') && e.id.startsWith('edge-')) {
+                        const parts = e.id.split('-');
+                        if (parts.length >= 4) {
+                            nextEpicId = parts.slice(3).join('-');
+                        }
+                    }
+                    traceDownstream(e.target, nextEpicId);
+                });
+            };
+
+            const visitedSource = new Set<string>();
+            const traceUpstream = (currentNodeId: string, sourceEpicId?: string) => {
+                const contextKey = `${currentNodeId}-${sourceEpicId || 'none'}`;
+                if (visitedSource.has(contextKey)) return;
+                visitedSource.add(contextKey);
+
+                hNodes.add(currentNodeId);
+                let incomingEdges = logicalEdges.filter(e => e.target === currentNodeId);
+
+                if (currentNodeId.startsWith('team-') && sourceEpicId) {
+                    incomingEdges = incomingEdges.filter(e => e.id.endsWith(`-${sourceEpicId}`));
+                }
+
+                incomingEdges.forEach(e => {
+                    let nextEpicId = sourceEpicId;
+                    if (currentNodeId.startsWith('gantt-')) {
+                        nextEpicId = currentNodeId.replace('gantt-', '');
+                    }
+                    traceUpstream(e.source, nextEpicId);
+                });
+            };
+
+            traceDownstream(selectedNodeId);
+            traceUpstream(selectedNodeId);
+
+            // Keep only elements that are both already visible and in the highlighted set
+            const newVisibleCustomers = new Set<string>();
+            const newVisibleFeatures = new Set<string>();
+            const newVisibleTeams = new Set<string>();
+            const newVisibleEpics = new Set<string>();
+
+            visibleCustomers.forEach(id => { if (hNodes.has(`customer-${id}`)) newVisibleCustomers.add(id); });
+            visibleFeatures.forEach(id => { if (hNodes.has(`feature-${id}`)) newVisibleFeatures.add(id); });
+            visibleTeams.forEach(id => { if (hNodes.has(`team-${id}`)) newVisibleTeams.add(id); });
+            visibleEpics.forEach(id => { if (hNodes.has(`gantt-${id}`)) newVisibleEpics.add(id); });
+
+            visibleCustomers.clear(); newVisibleCustomers.forEach(id => visibleCustomers.add(id));
+            visibleFeatures.clear(); newVisibleFeatures.forEach(id => visibleFeatures.add(id));
+            visibleTeams.clear(); newVisibleTeams.forEach(id => visibleTeams.add(id));
+            visibleEpics.clear(); newVisibleEpics.forEach(id => visibleEpics.add(id));
         }
 
         // 1. Process Customers (Column 1)
@@ -789,15 +893,16 @@ export function useGraphLayout(
                 }
             });
             edges.forEach(e => {
+                const isHighlighted = hEdges.has(e.id);
                 e.style = {
                     ...e.style,
-                    opacity: hEdges.has(e.id) ? 1 : 0.05,
-                    stroke: hEdges.has(e.id) ? '#3b82f6' : (e.style?.stroke || '#b0b0b0'), // make highlighted edges blue for visibility
+                    opacity: isHighlighted ? 1 : 0.05,
+                    stroke: isHighlighted ? '#3b82f6' : (e.style?.stroke || '#b0b0b0'), // make highlighted edges blue for visibility
                     transition: 'all 0.2s'
                 };
             });
         }
 
         return { nodes, edges };
-    }, [data, hoveredNodeId, sprintOffset, customerFilter, featureFilter, teamFilter, epicFilter, showDependencies, minTcv, minScore]);
+    }, [data, hoveredNodeId, sprintOffset, customerFilter, featureFilter, teamFilter, epicFilter, showDependencies, minTcv, minScore, selectedNodeId]);
 }
