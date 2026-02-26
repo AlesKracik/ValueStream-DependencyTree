@@ -10,6 +10,7 @@ export interface EpicPageProps {
     loading: boolean;
     error: Error | null;
     updateEpic: (id: string, updates: Partial<Epic>) => void;
+    deleteEpic: (id: string) => void;
     saveDashboardData: (data: DashboardData) => Promise<void>;
 }
 
@@ -20,6 +21,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({
     loading,
     error,
     updateEpic,
+    deleteEpic,
     saveDashboardData
 }) => {
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -41,6 +43,24 @@ export const EpicPage: React.FC<EpicPageProps> = ({
             console.error('Failed to save data:', err);
             setSaveStatus('error');
             setTimeout(() => setSaveStatus('idle'), 3000);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (window.confirm('Are you sure you want to completely delete this Epic?')) {
+            setSaveStatus('saving');
+            try {
+                deleteEpic(epicId);
+                const newData = {
+                    ...data,
+                    epics: data.epics.filter(e => e.id !== epicId)
+                };
+                await saveDashboardData(newData);
+                onBack();
+            } catch (err) {
+                console.error('Delete failed', err);
+                setSaveStatus('error');
+            }
         }
     };
 
@@ -195,6 +215,14 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                     <h1>Epic: {epicId}</h1>
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
+                    <button
+                        onClick={handleDelete}
+                        disabled={saveStatus === 'saving'}
+                        className={styles.dangerBtn}
+                        style={{ padding: '8px 16px' }}
+                    >
+                        Delete Epic
+                    </button>
                     <button
                         onClick={handleSyncJira}
                         disabled={!epic?.jira_key || epic.jira_key === 'TBD' || syncing}

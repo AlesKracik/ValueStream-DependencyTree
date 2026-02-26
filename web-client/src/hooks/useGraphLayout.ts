@@ -146,9 +146,21 @@ export function useGraphLayout(
             // If ONLY customer filters are applied, standalone valid customers should appear.
             const hasTeamEpicFilter = tf !== '' || ef !== '';
             const hasFeatureFilter = ff !== '' || minScore > 0;
+            const hasCustomerFilter = cf !== '' || minTcv > 0;
             if (!hasTeamEpicFilter && !hasFeatureFilter) {
                 validCustomers.forEach(cId => {
                     visibleCustomers.add(cId);
+                });
+            }
+
+            // Special case: Featureless Epics
+            // If NO customer/feature filters are applied, standalone valid epics should appear.
+            if (!hasCustomerFilter && !hasFeatureFilter) {
+                data.epics.forEach(e => {
+                    if (!e.feature_id && validEpics.has(e.id)) {
+                        visibleEpics.add(e.id);
+                        visibleTeams.add(e.team_id);
+                    }
                 });
             }
         }
@@ -534,12 +546,12 @@ export function useGraphLayout(
         // 5. Create Edges (Feature -> Team)
         let maxRemainingMd = 0.0001;
         data.epics.forEach(epic => {
-            if (!visibleFeatures.has(epic.feature_id) || !visibleTeams.has(epic.team_id) || !visibleEpics.has(epic.id)) return;
+            if (!epic.feature_id || !visibleFeatures.has(epic.feature_id) || !visibleTeams.has(epic.team_id) || !visibleEpics.has(epic.id)) return;
             if (epic.remaining_md > maxRemainingMd) maxRemainingMd = epic.remaining_md;
         });
 
         data.epics.forEach(epic => {
-            if (!visibleFeatures.has(epic.feature_id) || !visibleTeams.has(epic.team_id) || !visibleEpics.has(epic.id)) return;
+            if (!epic.feature_id || !visibleFeatures.has(epic.feature_id) || !visibleTeams.has(epic.team_id) || !visibleEpics.has(epic.id)) return;
 
             // Scale width based on remaining MDs, keeping min 2px and max 10px
             const normalizedStrokeWidth = Math.min(10, Math.max(2, (epic.remaining_md / maxRemainingMd) * 10));

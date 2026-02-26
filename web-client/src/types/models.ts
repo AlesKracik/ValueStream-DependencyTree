@@ -32,7 +32,7 @@ export interface EpicDependency {
 export interface Epic {
   id: string;
   jira_key: string;
-  feature_id: string;
+  feature_id?: string;
   team_id: string;
   remaining_md: number;
   target_start?: string;

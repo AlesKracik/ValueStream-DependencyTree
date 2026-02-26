@@ -75,7 +75,7 @@ export function useDashboardData() {
             return {
                 ...prev,
                 features: prev.features.filter(f => f.id !== id),
-                epics: prev.epics.filter(e => e.feature_id !== id)
+                epics: prev.epics.map(e => e.feature_id === id ? { ...e, feature_id: undefined } : e)
             };
         });
     };

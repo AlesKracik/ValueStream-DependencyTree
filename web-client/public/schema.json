@@ -158,11 +158,8 @@
                 "required": [
                     "id",
                     "jira_key",
-                    "feature_id",
                     "team_id",
-                    "remaining_md",
-                    "target_start",
-                    "target_end"
+                    "remaining_md"
                 ],
                 "properties": {
                     "id": {

@@ -312,10 +312,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             const newEpic: Epic = {
               id: newId,
               jira_key: jiraKey,
-              feature_id:
-                data.features.length > 0
-                  ? data.features[0].id
-                  : `f_${Date.now()}`,
               team_id:
                 updates.team_id ||
                 (data.teams.length > 0 ? data.teams[0].id : ""),
