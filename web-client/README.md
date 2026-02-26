@@ -62,19 +62,21 @@ Instead of using automated algorithm-based layout (like Dagre), the dashboard re
 ### 1. The Interactive Dashboard
 The main view provides a high-level map of value flow. 
 - **Dependencies & Tracing:** Hover over any node (Customer, Feature, Team, or Epic Gantt Bar) to dim the rest of the graph and brightly illuminate its direct upstream and downstream dependencies. 
-- **Customer Node Viz:** Customer nodes visually represent Total Contract Value (TCV). The inner circle represents Existing TCV, and the outer circle represents Potential TCV. Node sizes scale relative to each other based on value.
-- **Top Bar Filters:** Use the input boxes at the top left to instantly filter nodes by text (filtering Customers, Features, Teams, or Epics). Unrelated nodes will disappear, making complex graphs legible.
+- **Structural Filtering (Right-Click):** Right-click any node to **Filter and Reposition** the graph. This isolates just the dependency tree of that node and collapses the empty space, making it easy to focus on a specific workstream. Right-click again to clear the filter.
+- **Canvas Controls:** Use the fixed `+`, `-`, and `Fit View` buttons in the bottom-right corner to quickly navigate the graph.
+- **Browser Navigation:** The app uses real URLs (e.g., `/customer/c1`). You can use your browser's **Back** and **Forward** buttons to navigate between the dashboard and detail pages, and your filters/zoom will be preserved.
 
-### 2. Customer Strategy Management
-- **Add Customers:** Click the blue `+ Add Customer` button at the top of the Customer column to draft a new account.
-- **Dedicated Customer Pages:** Left-click any existing Customer node to open its dedicated full-screen details page.
-- **Manage Targeting:** From the Customer page, you can easily adjust their Existing/Potential TCV and manage which Features they care about using an inline table with `Priority` and `TCV Type` drop-downs.
+### 2. Customer & Team Management
+- **Add Customers/Teams:** Click the blue `+ Add` buttons at the top of the respective columns.
+- **Dedicated Pages:** Click any node to open its dedicated full-screen details page.
+- **Team Geolocation & Holidays:** Set a Team's **Country (ISO)** (e.g., US, CZ, GB) on their detail page. The system will automatically look up public holidays and adjust their sprint capacity accordingly.
+- **Holiday Indicators:** Sprints affected by holidays are marked with a `🏝️` icon and show the exact capacity reduction (e.g., `-1d`).
 
 ### 3. Feature & Epic Planning
 - **Add Features:** Click the `+ Add Feature` button at the top of the Feature column.
-- **Dedicated Feature Pages:** Left-click any existing Feature to open its full details interface.
+- **Featureless Epics:** Epics can now exist independently of Features (e.g., for Tech Debt or Security Patches). They will appear on the timeline without a connecting line to the Feature column.
+- **Epic Assignment:** On a Feature's detail page, you can either create new epics or **Assign Existing Epics** from the unassigned pool using the dropdown in the Epics section.
 - **Score Calculation:** Features use a lightweight RICE calculation taking into account targeted Customer TCV and priorities to visually scale their importance on the dashboard.
-- **Inline Epic Editor:** Inside the Feature details page, you can manage the child Epics required to deliver it. Easily update Names, assigned Teams, Remaining Effort (Man-Days), and Target Dates.
 
 ### 4. Native Jira Epic Synchronization
 - **Proxy Sync:** Inside the Feature page Epics table, click the green **Sync** button next to any Epic mapped to a `Jira Key`.
