@@ -31,8 +31,9 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
     const potentialOpacity = (hlMode === 'all' || hlMode === 'potential' || hlMode === 'none') ? 1 : 0.15;
     const existingOpacity = (hlMode === 'all' || hlMode === 'existing' || hlMode === 'none') ? 1 : 0.15;
 
-    // Use a consistent font size based on the node's total size for both metrics
-    const metricFontSize = `${Math.max(10, outerSize * 0.16)}px`;
+    // Use proportional font sizes for each metric
+    const outerFontSize = `${Math.max(10, outerSize * 0.16)}px`;
+    const innerFontSize = `${Math.max(10, innerSize * 0.22)}px`;
 
     return (
         <div style={{ position: 'relative', width: outerSize, height: outerSize + 40 }}>
@@ -58,7 +59,7 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
             >
                 {/* Total Text */}
                 <span style={{ 
-                    fontSize: metricFontSize, 
+                    fontSize: outerFontSize, 
                     color: '#60a5fa', 
                     fontWeight: 'bold',
                     textShadow: '0 1px 2px rgba(0,0,0,0.5)'
@@ -100,10 +101,10 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
                     overflow: 'hidden'
                 }}
             >
-                {innerSize > 20 && (
+                {innerSize > 25 && (
                     <div style={{ 
                         fontWeight: 'bold', 
-                        fontSize: metricFontSize, 
+                        fontSize: innerFontSize, 
                         opacity: 1,
                         textShadow: '0 1px 2px rgba(0,0,0,0.3)'
                     }}>
