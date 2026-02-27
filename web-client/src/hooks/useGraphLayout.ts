@@ -628,7 +628,8 @@ export function useGraphLayout(
 
                 const daysOffset = Math.max(0, differenceInDays(renderStart, windowStartDate));
                 // Ensure duration doesn't go negative or 0 if start == end
-                const duration = Math.max(1, differenceInDays(renderEnd, renderStart) + 1);
+                const visibleDuration = Math.max(1, differenceInDays(renderEnd, renderStart) + 1);
+                const totalEpicDuration = Math.max(1, differenceInDays(end, start) + 1);
 
                 const laneIdx = epicLanes[epic.id];
                 const maxLanes = Math.max(teamMaxLanes[team.id] || 1, 1);
@@ -655,8 +656,8 @@ export function useGraphLayout(
                         let segmentWidthPixels = overlapDays * PIXELS_PER_DAY;
 
                         // Crop segments so they don't draw outside the main rendering bar boundary
-                        if (segmentOffsetPixels + segmentWidthPixels > duration * PIXELS_PER_DAY) {
-                            segmentWidthPixels = (duration * PIXELS_PER_DAY) - segmentOffsetPixels;
+                        if (segmentOffsetPixels + segmentWidthPixels > visibleDuration * PIXELS_PER_DAY) {
+                            segmentWidthPixels = (visibleDuration * PIXELS_PER_DAY) - segmentOffsetPixels;
                         }
 
                         let segmentEffort = 0;
@@ -678,7 +679,7 @@ export function useGraphLayout(
                             }
                         });
                         const remainingDefaultMd = Math.max(0, epic.remaining_md - totalOverrideMd);
-                        const remainingDefaultDays = Math.max(0, duration - overrideDays);
+                        const remainingDefaultDays = Math.max(0, totalEpicDuration - overrideDays);
 
                         if (overrideVal !== undefined) {
                             segmentEffort = overrideVal;
@@ -688,7 +689,8 @@ export function useGraphLayout(
                         }
 
                         // Calculate mathematical strictly uniform proportion for the baseline:
-                        const baselineProportion = overlapDays / duration;
+                        // Use TOTAL duration for baseline, so intensity remains constant regardless of visible window
+                        const baselineProportion = overlapDays / totalEpicDuration;
                         const baselineEffort = epic.remaining_md * baselineProportion;
 
                         let intensityRatio = 1;
@@ -721,7 +723,7 @@ export function useGraphLayout(
                     },
                     data: {
                         label: `${epic.name || workItem?.name || 'Task'} (${epic.remaining_md} MDs)`,
-                        width: duration * PIXELS_PER_DAY,
+                        width: visibleDuration * PIXELS_PER_DAY,
                         color: '#8b5cf6',
                         jiraKey: epic.jira_key,
                         jiraBaseUrl: data?.settings?.jira_base_url,

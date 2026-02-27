@@ -467,7 +467,12 @@
       "remaining_md": 35,
       "target_start": "2026-02-26",
       "target_end": "2026-05-06",
-      "name": "VM Migration After Recovery"
+      "name": "VM Migration After Recovery",
+      "sprint_effort_overrides": {
+        "s4": 2,
+        "s3": 0,
+        "s5": 15
+      }
     },
     {
       "id": "e3",
@@ -477,7 +482,11 @@
       "remaining_md": 55,
       "target_start": "2026-01-09",
       "target_end": "2026-03-09",
-      "name": "Raw Device Protection"
+      "name": "Raw Device Protection",
+      "sprint_effort_overrides": {
+        "s0": 13.8,
+        "s1": 12.8
+      }
     },
     {
       "id": "e4",
@@ -487,7 +496,10 @@
       "remaining_md": 20,
       "target_start": "2026-02-18",
       "target_end": "2026-03-14",
-      "name": "Device Recreation from Metadata"
+      "name": "Device Recreation from Metadata",
+      "sprint_effort_overrides": {
+        "s1": 6.4
+      }
     },
     {
       "id": "e5",
@@ -497,7 +509,11 @@
       "remaining_md": 50,
       "target_start": "2026-02-11",
       "target_end": "2026-05-23",
-      "name": "Cluster Upgrades - Team Beta"
+      "name": "Cluster Upgrades - Team Beta",
+      "sprint_effort_overrides": {
+        "s0": 0.5,
+        "s1": 6.9
+      }
     },
     {
       "id": "e6",
@@ -507,7 +523,11 @@
       "remaining_md": 10,
       "target_start": "2026-02-07",
       "target_end": "2026-03-20",
-      "name": "Cluster Upgrades - Team Epsilon"
+      "name": "Cluster Upgrades - Team Epsilon",
+      "sprint_effort_overrides": {
+        "s0": 1.2,
+        "s1": 3.3
+      }
     },
     {
       "id": "e7",
@@ -547,7 +567,11 @@
       "remaining_md": 40,
       "target_start": "2026-02-01",
       "target_end": "2026-04-30",
-      "name": "Scale Support - Team Gamma"
+      "name": "Scale Support - Team Gamma",
+      "sprint_effort_overrides": {
+        "s0": 4.9,
+        "s1": 6.3
+      }
     },
     {
       "id": "e11",
@@ -597,7 +621,11 @@
       "remaining_md": 52,
       "target_start": "2025-11-01",
       "target_end": "2026-04-14",
-      "name": "Public API Development"
+      "name": "Public API Development",
+      "sprint_effort_overrides": {
+        "s0": 4.7,
+        "s1": 4.4
+      }
     },
     {
       "id": "e16",
@@ -687,7 +715,11 @@
       "remaining_md": 120,
       "name": "Team Beta Interrupts",
       "target_start": "2026-02-01",
-      "target_end": "2026-07-01"
+      "target_end": "2026-07-01",
+      "sprint_effort_overrides": {
+        "s0": 8.7,
+        "s1": 11.1
+      }
     },
     {
       "id": "e1771943219889_7",
@@ -707,7 +739,11 @@
       "remaining_md": 40,
       "name": "Team Alpha Test Interrupts",
       "target_start": "2026-02-01",
-      "target_end": "2026-04-30"
+      "target_end": "2026-04-30",
+      "sprint_effort_overrides": {
+        "s0": 4.9,
+        "s1": 6.3
+      }
     },
     {
       "id": "e1771943219889_9",
@@ -717,7 +753,11 @@
       "remaining_md": 40,
       "name": "Team Alpha Production Interrupts",
       "target_start": "2026-02-02",
-      "target_end": "2026-05-01"
+      "target_end": "2026-05-01",
+      "sprint_effort_overrides": {
+        "s0": 4.5,
+        "s1": 6.3
+      }
     },
     {
       "id": "e1771943219889_10",
@@ -727,7 +767,11 @@
       "remaining_md": 30,
       "name": "Team Alpha Internal Interrupts",
       "target_start": "2026-02-02",
-      "target_end": "2026-05-01"
+      "target_end": "2026-05-01",
+      "sprint_effort_overrides": {
+        "s0": 3.4,
+        "s1": 4.7
+      }
     },
     {
       "id": "e1771943219889_11",
@@ -737,7 +781,11 @@
       "remaining_md": 20,
       "name": "Security Hardening - Team Epsilon",
       "target_start": "2026-02-01",
-      "target_end": "2026-07-03"
+      "target_end": "2026-07-03",
+      "sprint_effort_overrides": {
+        "s0": 1.4,
+        "s1": 1.8
+      }
     },
     {
       "id": "e1771943219889_12",
@@ -747,7 +795,11 @@
       "remaining_md": 40,
       "name": "Security Hardening - Team Beta",
       "target_start": "2026-02-02",
-      "target_end": "2026-07-01"
+      "target_end": "2026-07-01",
+      "sprint_effort_overrides": {
+        "s0": 2.7,
+        "s1": 3.7
+      }
     },
     {
       "id": "e1771943219889_13",
@@ -757,7 +809,11 @@
       "remaining_md": 15,
       "name": "Security Hardening - Team Alpha",
       "target_start": "2026-02-02",
-      "target_end": "2026-04-30"
+      "target_end": "2026-04-30",
+      "sprint_effort_overrides": {
+        "s0": 1.7,
+        "s1": 2.4
+      }
     },
     {
       "id": "e1771943219889_14",
@@ -767,7 +823,10 @@
       "remaining_md": 20,
       "name": "Tech Debt Removal - Team Epsilon",
       "target_start": "2026-02-21",
-      "target_end": "2026-06-02"
+      "target_end": "2026-06-02",
+      "sprint_effort_overrides": {
+        "s1": 1
+      }
     },
     {
       "id": "e1771943219889_16",
@@ -787,7 +846,11 @@
       "remaining_md": 64,
       "name": "Team Epsilon Interrupts",
       "target_start": "2026-02-01",
-      "target_end": "2026-07-05"
+      "target_end": "2026-07-05",
+      "sprint_effort_overrides": {
+        "s0": 4.5,
+        "s1": 5.8
+      }
     },
     {
       "id": "e1771943219889_21",
@@ -797,7 +860,10 @@
       "remaining_md": 10,
       "name": "Test Reporting Migration",
       "target_start": "2026-02-24",
-      "target_end": "2026-03-17"
+      "target_end": "2026-03-17",
+      "sprint_effort_overrides": {
+        "s1": 0.9
+      }
     },
     {
       "id": "e1771943219889_22",
@@ -827,7 +893,11 @@
       "remaining_md": 13,
       "name": "Active DR Support - Team Alpha M4",
       "target_start": "2026-01-30",
-      "target_end": "2026-03-01"
+      "target_end": "2026-03-01",
+      "sprint_effort_overrides": {
+        "s0": 5.5,
+        "s1": 5.9
+      }
     },
     {
       "id": "e1771943219890_25",
@@ -847,7 +917,11 @@
       "remaining_md": 35,
       "name": "Site Management Technical Debt",
       "target_start": "2025-11-22",
-      "target_end": "2026-02-26"
+      "target_end": "2026-02-26",
+      "sprint_effort_overrides": {
+        "s0": 5.4,
+        "s1": 5.1
+      }
     },
     {
       "id": "e1771943219890_29",
@@ -955,7 +1029,11 @@
       "remaining_md": 52,
       "name": "Reporting System - Team Epsilon",
       "target_start": "2025-11-19",
-      "target_end": "2026-03-03"
+      "target_end": "2026-03-03",
+      "sprint_effort_overrides": {
+        "s0": 7.4,
+        "s1": 6.9
+      }
     },
     {
       "id": "e1771943219890_42",
@@ -1015,7 +1093,10 @@
       "remaining_md": 15,
       "target_start": "2026-02-25",
       "target_end": "2026-03-11",
-      "name": "NDU Worker Swap"
+      "name": "NDU Worker Swap",
+      "sprint_effort_overrides": {
+        "s1": 1
+      }
     },
     {
       "id": "eakz0i6d22",
@@ -1025,7 +1106,10 @@
       "remaining_md": 60,
       "target_start": "2026-02-25",
       "target_end": "2026-05-03",
-      "name": "Test Ownership - Team Beta"
+      "name": "Test Ownership - Team Beta",
+      "sprint_effort_overrides": {
+        "s1": 0.9
+      }
     },
     {
       "id": "eofhyqlbms",
@@ -1035,7 +1119,10 @@
       "remaining_md": 60,
       "target_start": "2026-02-25",
       "target_end": "2026-05-03",
-      "name": "Test Ownership - Team Delta"
+      "name": "Test Ownership - Team Delta",
+      "sprint_effort_overrides": {
+        "s1": 0.9
+      }
     },
     {
       "id": "el4flz40nj",
@@ -1045,7 +1132,10 @@
       "remaining_md": 5,
       "target_start": "2026-02-25",
       "target_end": "2026-05-03",
-      "name": "Test Ownership - Team Gamma"
+      "name": "Test Ownership - Team Gamma",
+      "sprint_effort_overrides": {
+        "s1": 0.1
+      }
     },
     {
       "id": "em2s9lozyv",
@@ -1055,7 +1145,10 @@
       "remaining_md": 5,
       "target_start": "2026-02-25",
       "target_end": "2026-05-03",
-      "name": "Test Ownership - Team Epsilon"
+      "name": "Test Ownership - Team Epsilon",
+      "sprint_effort_overrides": {
+        "s1": 0.1
+      }
     },
     {
       "id": "e-temp-1772025176808",
@@ -1065,7 +1158,10 @@
       "remaining_md": 35,
       "target_start": "2026-02-25",
       "target_end": "2026-05-03",
-      "name": "Active DR Hardening - Team Alpha"
+      "name": "Active DR Hardening - Team Alpha",
+      "sprint_effort_overrides": {
+        "s1": 0.5
+      }
     },
     {
       "id": "e-temp-1772025189289",
@@ -1075,7 +1171,10 @@
       "remaining_md": 20,
       "target_start": "2026-02-25",
       "target_end": "2026-05-03",
-      "name": "Active DR Hardening - Team Delta"
+      "name": "Active DR Hardening - Team Delta",
+      "sprint_effort_overrides": {
+        "s1": 0.3
+      }
     },
     {
       "id": "e-temp-1772025200838",
@@ -1085,7 +1184,10 @@
       "remaining_md": 10,
       "target_start": "2026-02-25",
       "target_end": "2026-05-03",
-      "name": "Active DR Hardening - Team Epsilon"
+      "name": "Active DR Hardening - Team Epsilon",
+      "sprint_effort_overrides": {
+        "s1": 0.1
+      }
     },
     {
       "id": "e-temp-1772025293981",
@@ -1095,7 +1197,10 @@
       "remaining_md": 0,
       "target_start": "2026-02-25",
       "target_end": "2026-05-03",
-      "name": "Independent Disks - Team Delta"
+      "name": "Independent Disks - Team Delta",
+      "sprint_effort_overrides": {
+        "s1": 0
+      }
     },
     {
       "id": "e-temp-1772028966832",
@@ -1161,7 +1266,11 @@
       "remaining_md": 0,
       "name": "Dashboard Metrics Stabilization",
       "target_start": "2026-02-03",
-      "target_end": "2026-12-31"
+      "target_end": "2026-12-31",
+      "sprint_effort_overrides": {
+        "s0": 0,
+        "s1": 0
+      }
     },
     {
       "id": "e1772035018158_19",
@@ -1187,7 +1296,10 @@
       "remaining_md": 30,
       "name": "Network Hardening - Critical",
       "target_start": "2026-02-15",
-      "target_end": "2026-03-21"
+      "target_end": "2026-03-21",
+      "sprint_effort_overrides": {
+        "s1": 9.4
+      }
     },
     {
       "id": "e1772035018159_33",
@@ -1197,7 +1309,11 @@
       "remaining_md": 0,
       "name": "Team Delta Interrupts Q1",
       "target_start": "2026-02-02",
-      "target_end": "2026-04-30"
+      "target_end": "2026-04-30",
+      "sprint_effort_overrides": {
+        "s0": 0,
+        "s1": 0
+      }
     },
     {
       "id": "e1772035018159_34",
@@ -1207,7 +1323,11 @@
       "remaining_md": 9,
       "name": "Test Stabilization",
       "target_start": "2026-02-03",
-      "target_end": "2026-02-21"
+      "target_end": "2026-02-21",
+      "sprint_effort_overrides": {
+        "s0": 4.3,
+        "s1": 4.7
+      }
     }
   ],
   "sprints": [
