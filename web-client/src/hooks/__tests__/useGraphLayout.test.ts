@@ -241,4 +241,32 @@ describe('useGraphLayout Math Engine', () => {
         // The intensity ratio must be identical in both views
         expect(intensityS2_view1).toBeCloseTo(intensityS2_view2, 5);
     });
+
+    it('skips visual customer edges for global work items', () => {
+        const dataWithGlobal: DashboardData = {
+            ...MOCK_DATA,
+            workItems: [
+                {
+                    id: 'f_global',
+                    name: 'Global Maint',
+                    total_effort_mds: 10,
+                    relates_to_all_existing_customers: true,
+                    customer_targets: []
+                }
+            ],
+            epics: [
+                { id: 'e_global', jira_key: 'G-1', work_item_id: 'f_global', team_id: 't1', remaining_md: 5, target_start: '2026-02-12', target_end: '2026-02-26' }
+            ]
+        };
+
+        const { result } = renderHook(() => useGraphLayout(dataWithGlobal));
+        
+        const globalWorkItemNode = result.current.nodes.find(n => n.id === 'workitem-f_global');
+        expect(globalWorkItemNode).toBeDefined();
+        expect(globalWorkItemNode?.data.isGlobal).toBe(true);
+
+        // Should NOT have any edges starting from a customer and ending at this work item
+        const edgesToGlobal = result.current.edges.filter(e => e.target === 'workitem-f_global' && e.source.startsWith('customer-'));
+        expect(edgesToGlobal).toHaveLength(0);
+    });
 });

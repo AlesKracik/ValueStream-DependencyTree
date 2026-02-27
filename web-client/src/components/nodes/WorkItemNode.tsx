@@ -8,13 +8,13 @@ interface WorkItemNodeData {
     score: number;
     maxScore: number;
     baseSize: number;
+    isGlobal?: boolean;
 }
 
 export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
     // Size ranges from 60px to 140px based on RICE Score proportion
     const sizeRatio = data.maxScore > 0 ? (data.score || 0) / data.maxScore : 0.5;
     const nodeSize = data.baseSize * 0.6 + (data.baseSize * 0.8 * sizeRatio);
-    const isSmall = nodeSize < 100;
 
     return (
         <div style={{ position: 'relative', width: nodeSize, height: nodeSize + 40 }}>
@@ -30,7 +30,7 @@ export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
                     justifyContent: 'center',
                     color: '#fff',
                     boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                    border: '3px solid rgba(255, 255, 255, 0.2)',
+                    border: data.isGlobal ? '3px solid #fcd34d' : '3px solid rgba(255, 255, 255, 0.2)',
                     transition: 'all 0.2s',
                     textAlign: 'center',
                     boxSizing: 'border-box',
@@ -38,6 +38,12 @@ export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
                 }}
             >
                 <Handle type="target" position={Position.Left} style={{ top: nodeSize / 2, opacity: 0 }} />
+
+                {data.isGlobal && (
+                    <div style={{ fontSize: `${Math.max(10, nodeSize * 0.15)}px`, marginBottom: '-2px' }} title="Relates to all existing customers">
+                        🌐
+                    </div>
+                )}
 
                 <div style={{ 
                     fontWeight: 'bold', 

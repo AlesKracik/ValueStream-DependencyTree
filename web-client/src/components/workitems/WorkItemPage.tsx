@@ -291,10 +291,26 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                 }}
                             />
                         </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', gridColumn: 'span 2', marginTop: '12px' }}>
+                            <input 
+                                type="checkbox" 
+                                checked={isNew ? !!newWorkItemDraft.relates_to_all_existing_customers : !!workItem.relates_to_all_existing_customers}
+                                onChange={e => {
+                                    const val = e.target.checked;
+                                    if (isNew) {
+                                        setNewWorkItemDraft(prev => ({ ...prev, relates_to_all_existing_customers: val }));
+                                    } else {
+                                        updateWorkItem(workItem.id, { relates_to_all_existing_customers: val });
+                                    }
+                                }}
+                            />
+                            <span style={{ color: '#e5e7eb', fontSize: '14px' }}>Relates to ALL existing customers (Maintenance / Tech Debt / Incident)</span>
+                        </label>
                     </div>
                 </section>
 
-                <section className={styles.card}>
+                {!(isNew ? newWorkItemDraft.relates_to_all_existing_customers : workItem.relates_to_all_existing_customers) && (
+                    <section className={styles.card}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <h2>Targeted Customers</h2>
                     </div>
@@ -401,6 +417,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                         </div>
                     </div>
                 </section>
+                )}
 
                 <section className={styles.card}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>

@@ -207,6 +207,13 @@
   ],
   "workItems": [
     {
+      "id": "f_global_maint",
+      "name": "Global Infrastructure Maintenance",
+      "total_effort_mds": 20,
+      "relates_to_all_existing_customers": true,
+      "customer_targets": []
+    },
+    {
       "id": "f1",
       "name": "Multi-Site Support Enhancement",
       "total_effort_mds": 0,
@@ -449,6 +456,16 @@
     }
   ],
   "epics": [
+    {
+      "id": "e_global_maint_1",
+      "jira_key": "MAINT-1",
+      "work_item_id": "f_global_maint",
+      "team_id": "t1",
+      "remaining_md": 15,
+      "name": "Infrastructure Scaling & Patching",
+      "target_start": "2026-03-01",
+      "target_end": "2026-04-15"
+    },
     {
       "id": "e1",
       "jira_key": "PROJ-1001",

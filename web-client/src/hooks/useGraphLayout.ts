@@ -145,9 +145,17 @@ export function useGraphLayout(
                 if (!validWorkItems.has(f.id)) return; // WorkItem intrinsically fails
 
                 // Find connected valid Customers
-                const connectedValidCustomers = f.customer_targets
-                    .filter(ct => validCustomers.has(ct.customer_id))
-                    .map(ct => ct.customer_id);
+                let connectedValidCustomers: string[] = [];
+                if (f.relates_to_all_existing_customers) {
+                    // All valid customers who have existing TCV
+                    connectedValidCustomers = data.customers
+                        .filter(c => validCustomers.has(c.id) && (c.existing_tcv || 0) > 0)
+                        .map(c => c.id);
+                } else {
+                    connectedValidCustomers = f.customer_targets
+                        .filter(ct => validCustomers.has(ct.customer_id))
+                        .map(ct => ct.customer_id);
+                }
 
                 // Find connected valid Epics
                 const connectedValidEpics = data.epics
@@ -198,13 +206,26 @@ export function useGraphLayout(
         if (selectedNodeId) {
             const logicalEdges: { id: string, source: string, target: string }[] = [];
             data.workItems.forEach((workItem) => {
-                workItem.customer_targets.forEach((target) => {
-                    logicalEdges.push({
-                        id: `edge-${target.customer_id}-${workItem.id}-${target.tcv_type}`,
-                        source: `customer-${target.customer_id}`,
-                        target: `workitem-${workItem.id}`
+                if (workItem.relates_to_all_existing_customers) {
+                    // Logic: Connect to all customers who have existing TCV
+                    data.customers.forEach(customer => {
+                        if ((customer.existing_tcv || 0) > 0) {
+                            logicalEdges.push({
+                                id: `edge-${customer.id}-${workItem.id}-all`,
+                                source: `customer-${customer.id}`,
+                                target: `workitem-${workItem.id}`
+                            });
+                        }
                     });
-                });
+                } else {
+                    workItem.customer_targets.forEach((target) => {
+                        logicalEdges.push({
+                            id: `edge-${target.customer_id}-${workItem.id}-${target.tcv_type}`,
+                            source: `customer-${target.customer_id}`,
+                            target: `workitem-${workItem.id}`
+                        });
+                    });
+                }
             });
 
             data.epics.forEach(epic => {
@@ -338,33 +359,38 @@ export function useGraphLayout(
 
                 let impact = 0;
 
-                f.customer_targets.forEach(target => {
-                    const customer = data.customers.find(c => c.id === target.customer_id);
-                    if (!customer) return;
+                if (f.relates_to_all_existing_customers) {
+                    // Impact is the sum of ALL existing TCVs in the system
+                    impact = data.customers.reduce((sum, c) => sum + (c.existing_tcv || 0), 0);
+                } else {
+                    f.customer_targets.forEach(target => {
+                        const customer = data.customers.find(c => c.id === target.customer_id);
+                        if (!customer) return;
 
-                    const priority = target.priority || 'Must-have';
-                    const targetTcv = target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv;
+                        const priority = target.priority || 'Must-have';
+                        const targetTcv = target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv;
 
-                    if (priority === 'Must-have') {
-                        impact += targetTcv;
-                    } else if (priority === 'Should-have') {
-                        // Find how many Should-haves this customer has across ALL workitems globally
-                        let shouldHaveCount = 0;
-                        data.workItems.forEach(globalF => {
-                            const hasShould = globalF.customer_targets.find(ct =>
-                                ct.customer_id === target.customer_id &&
-                                ct.priority === 'Should-have' &&
-                                ct.tcv_type === target.tcv_type
-                            );
-                            if (hasShould) shouldHaveCount++;
-                        });
-                        if (shouldHaveCount > 0) {
-                            impact += (targetTcv / shouldHaveCount);
+                        if (priority === 'Must-have') {
+                            impact += targetTcv;
+                        } else if (priority === 'Should-have') {
+                            // Find how many Should-haves this customer has across ALL workitems globally
+                            let shouldHaveCount = 0;
+                            data.workItems.forEach(globalF => {
+                                const hasShould = globalF.customer_targets.find(ct =>
+                                    ct.customer_id === target.customer_id &&
+                                    ct.priority === 'Should-have' &&
+                                    ct.tcv_type === target.tcv_type
+                                );
+                                if (hasShould) shouldHaveCount++;
+                            });
+                            if (shouldHaveCount > 0) {
+                                impact += (targetTcv / shouldHaveCount);
+                            }
+                        } else if (priority === 'Nice-to-have') {
+                            impact += 0;
                         }
-                    } else if (priority === 'Nice-to-have') {
-                        impact += 0;
-                    }
-                });
+                    });
+                }
 
                 const score = impact / displayEffort;
 
@@ -412,33 +438,37 @@ export function useGraphLayout(
                     score: workItem.score,
                     maxScore: maxScore,
                     baseSize: 100,
+                    isGlobal: !!workItem.relates_to_all_existing_customers,
                 },
             });
 
             // 3. Create Edges (Customer -> WorkItem)
-            // Thickness proportional to ROI: Potential_TCV / Total_Effort_MDs
-            workItem.customer_targets.forEach((target) => {
-                if (!visibleCustomers.has(target.customer_id)) return;
-                const customer = data.customers.find(c => c.id === target.customer_id);
-                if (customer) {
-                    const targetTcv = target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv;
-                    const roi = targetTcv / workItem.total_effort_mds;
-                    // Scale width based on ROI, keeping min 2px and max 10px
-                    const normalizedStrokeWidth = Math.min(10, Math.max(2, (roi / maxRoi) * 10));
+            // Skip visual edges for items that relate to all existing customers to avoid clutter
+            if (!workItem.relates_to_all_existing_customers) {
+                // Thickness proportional to ROI: Potential_TCV / Total_Effort_MDs
+                workItem.customer_targets.forEach((target) => {
+                    if (!visibleCustomers.has(target.customer_id)) return;
+                    const customer = data.customers.find(c => c.id === target.customer_id);
+                    if (customer) {
+                        const targetTcv = target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv;
+                        const roi = targetTcv / workItem.total_effort_mds;
+                        // Scale width based on ROI, keeping min 2px and max 10px
+                        const normalizedStrokeWidth = Math.min(10, Math.max(2, (roi / maxRoi) * 10));
 
-                    edges.push({
-                        id: `edge-${target.customer_id}-${workItem.id}-${target.tcv_type}`,
-                        source: `customer-${target.customer_id}`,
-                        sourceHandle: target.tcv_type, // 'existing' or 'potential'
-                        target: `workitem-${workItem.id}`,
-                        type: 'default',
-                        style: {
-                            strokeWidth: normalizedStrokeWidth,
-                            stroke: '#b0b0b0',
-                        },
-                    });
-                }
-            });
+                        edges.push({
+                            id: `edge-${target.customer_id}-${workItem.id}-${target.tcv_type}`,
+                            source: `customer-${target.customer_id}`,
+                            sourceHandle: target.tcv_type, // 'existing' or 'potential'
+                            target: `workitem-${workItem.id}`,
+                            type: 'default',
+                            style: {
+                                strokeWidth: normalizedStrokeWidth,
+                                stroke: '#b0b0b0',
+                            },
+                        });
+                    }
+                });
+            }
         });
 
         // 4. Pre-process Gantt Lanes and Sprints to calculate Team Y positions
