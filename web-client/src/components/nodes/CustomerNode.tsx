@@ -82,13 +82,30 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
                     transition: 'all 0.2s',
                     textAlign: 'center',
                     boxSizing: 'border-box',
-                    opacity: existingOpacity
+                    opacity: existingOpacity,
+                    padding: '6px',
+                    overflow: 'hidden'
                 }}
+                title={data.label}
             >
-                <div style={{ fontWeight: 'bold', fontSize: `${Math.max(12, innerSize * 0.14)}px` }}>
+                <div style={{ 
+                    fontWeight: 'bold', 
+                    fontSize: `${Math.max(10, innerSize * 0.13)}px`,
+                    lineHeight: '1.1',
+                    maxHeight: '2.2em',
+                    overflow: 'hidden',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    wordBreak: 'break-word'
+                }}>
                     {data.label}
                 </div>
-                <div style={{ fontSize: `${Math.max(10, innerSize * 0.12)}px`, opacity: 0.9 }}>
+                <div style={{ 
+                    fontSize: `${Math.max(9, innerSize * 0.11)}px`, 
+                    opacity: 0.9,
+                    marginTop: '2px'
+                }}>
                     ${(data.existingTcv / 1000).toFixed(0)}k
                 </div>
 
