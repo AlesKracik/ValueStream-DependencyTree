@@ -45,6 +45,17 @@ describe('SprintPage', () => {
         });
     });
 
+    it('renders the header title and back button', () => {
+        render(<SprintPage {...defaultProps} />);
+        
+        expect(screen.getByText('Sprint Management')).toBeDefined();
+        const backBtn = screen.getByRole('button', { name: /Back to Dashboard/i });
+        expect(backBtn).toBeDefined();
+        
+        fireEvent.click(backBtn);
+        expect(defaultProps.onBack).toHaveBeenCalled();
+    });
+
     it('renders current sprint as an editable row in the table', () => {
         render(<SprintPage {...defaultProps} />);
 
