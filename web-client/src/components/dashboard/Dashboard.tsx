@@ -450,86 +450,105 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         </button>
                     </div>
                 </div>
-                <div style={{ display: 'flex', gap: '16px', marginTop: '16px' }}>
-                    <input
-                        type="text"
-                        placeholder="Filter Customers..."
-                        value={viewState.customerFilter}
-                        onChange={e => setViewState((s: DashboardViewState) => ({ ...s, customerFilter: e.target.value }))}
-                        style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', width: '130px' }}
-                    />
-                    <input
-                        type="text"
-                        placeholder="Filter Work Items..."
-                        value={viewState.workItemFilter}
-                        onChange={e => setViewState((s: DashboardViewState) => ({ ...s, workItemFilter: e.target.value }))}
-                        style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', width: '130px' }}
-                    />
-                    <select
-                        value={viewState.releasedFilter}
-                        onChange={e => setViewState((s: DashboardViewState) => ({ ...s, releasedFilter: e.target.value as any }))}
-                        style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', width: '110px' }}
-                    >
-                        <option value="all">All Release</option>
-                        <option value="released">Released</option>
-                        <option value="unreleased">Unreleased</option>
-                    </select>
-                    <input
-                        type="text"
-                        placeholder="Filter Teams..."
-                        value={viewState.teamFilter}
-                        onChange={e => setViewState((s: DashboardViewState) => ({ ...s, teamFilter: e.target.value }))}
-                        style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', width: '110px' }}
-                    />
-                    <input
-                        type="text"
-                        placeholder="Filter Epics..."
-                        value={viewState.epicFilter}
-                        onChange={e => setViewState((s: DashboardViewState) => ({ ...s, epicFilter: e.target.value }))}
-                        style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', width: '110px' }}
-                    />
-                    <label style={{ display: 'flex', alignItems: 'center', color: '#cbd5e1', fontSize: '13px', marginLeft: '8px', cursor: 'pointer' }}>
-                        <input
-                            type="checkbox"
-                            checked={viewState.showDependencies}
-                            onChange={e => setViewState((s: DashboardViewState) => ({ ...s, showDependencies: e.target.checked }))}
-                            style={{ marginRight: '8px', cursor: 'pointer' }}
-                        />
-                        Show Dependencies
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', color: '#cbd5e1', fontSize: '13px', marginLeft: '16px', cursor: 'pointer' }}>
-                        <input
-                            type="checkbox"
-                            checked={viewState.disableHoverHighlight}
-                            onChange={e => setViewState((s: DashboardViewState) => ({ ...s, disableHoverHighlight: e.target.checked }))}
-                            style={{ marginRight: '8px', cursor: 'pointer' }}
-                        />
-                        Disable Hover Highlight
-                    </label>
-                </div>
-                <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '130px' }}>
-                        <label style={{ color: '#9ca3af', fontSize: '13px' }}>Min TCV:</label>
-                        <input
-                            type="number"
-                            placeholder="0"
-                            value={viewState.minTcvFilter}
-                            onChange={e => setViewState(s => ({ ...s, minTcvFilter: e.target.value }))}
-                            style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
-                            min="0"
-                        />
+                <div className={styles.filterBar}>
+                    {/* Text Search Group */}
+                    <div className={styles.filterGroup}>
+                        <label>Search</label>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <input
+                                type="text"
+                                placeholder="Customers..."
+                                value={viewState.customerFilter}
+                                onChange={e => setViewState((s: DashboardViewState) => ({ ...s, customerFilter: e.target.value }))}
+                                className={styles.filterInput}
+                                style={{ width: '140px' }}
+                            />
+                            <input
+                                type="text"
+                                placeholder="Work Items..."
+                                value={viewState.workItemFilter}
+                                onChange={e => setViewState((s: DashboardViewState) => ({ ...s, workItemFilter: e.target.value }))}
+                                className={styles.filterInput}
+                                style={{ width: '140px' }}
+                            />
+                            <input
+                                type="text"
+                                placeholder="Teams..."
+                                value={viewState.teamFilter}
+                                onChange={e => setViewState((s: DashboardViewState) => ({ ...s, teamFilter: e.target.value }))}
+                                className={styles.filterInput}
+                                style={{ width: '120px' }}
+                            />
+                            <input
+                                type="text"
+                                placeholder="Epics..."
+                                value={viewState.epicFilter}
+                                onChange={e => setViewState((s: DashboardViewState) => ({ ...s, epicFilter: e.target.value }))}
+                                className={styles.filterInput}
+                                style={{ width: '120px' }}
+                            />
+                        </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '130px' }}>
-                        <label style={{ color: '#9ca3af', fontSize: '13px' }}>Min Score:</label>
-                        <input
-                            type="number"
-                            placeholder="0"
-                            value={viewState.minScoreFilter}
-                            onChange={e => setViewState(s => ({ ...s, minScoreFilter: e.target.value }))}
-                            style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
-                            min="0"
-                            step="0.1"
-                        />
+
+                    {/* Status & Metrics Group */}
+                    <div className={styles.filterGroup}>
+                        <label>Status & Metrics</label>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <select
+                                value={viewState.releasedFilter}
+                                onChange={e => setViewState((s: DashboardViewState) => ({ ...s, releasedFilter: e.target.value as any }))}
+                                className={styles.filterSelect}
+                                style={{ width: '130px' }}
+                            >
+                                <option value="all">Release: All</option>
+                                <option value="released">Released Only</option>
+                                <option value="unreleased">Unreleased Only</option>
+                            </select>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#374151', padding: '0 12px', borderRadius: '6px', border: '1px solid #4b5563', height: '37px', boxSizing: 'border-box' }}>
+                                <span style={{ color: '#9ca3af', fontSize: '11px', fontWeight: 'bold' }}>MIN TCV</span>
+                                <input
+                                    type="number"
+                                    value={viewState.minTcvFilter}
+                                    onChange={e => setViewState(s => ({ ...s, minTcvFilter: e.target.value }))}
+                                    style={{ background: 'none', border: 'none', color: '#fff', fontSize: '13px', width: '60px', outline: 'none' }}
+                                    min="0"
+                                />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#374151', padding: '0 12px', borderRadius: '6px', border: '1px solid #4b5563', height: '37px', boxSizing: 'border-box' }}>
+                                <span style={{ color: '#9ca3af', fontSize: '11px', fontWeight: 'bold' }}>MIN SCORE</span>
+                                <input
+                                    type="number"
+                                    value={viewState.minScoreFilter}
+                                    onChange={e => setViewState(s => ({ ...s, minScoreFilter: e.target.value }))}
+                                    style={{ background: 'none', border: 'none', color: '#fff', fontSize: '13px', width: '45px', outline: 'none' }}
+                                    min="0"
+                                    step="0.1"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Visualization Toggles */}
+                    <div className={styles.filterGroup}>
+                        <label>Visualization</label>
+                        <div className={styles.toggleGroup}>
+                            <label className={styles.toggleItem}>
+                                <input
+                                    type="checkbox"
+                                    checked={viewState.showDependencies}
+                                    onChange={e => setViewState((s: DashboardViewState) => ({ ...s, showDependencies: e.target.checked }))}
+                                />
+                                Show Dependencies
+                            </label>
+                            <label className={styles.toggleItem}>
+                                <input
+                                    type="checkbox"
+                                    checked={viewState.disableHoverHighlight}
+                                    onChange={e => setViewState((s: DashboardViewState) => ({ ...s, disableHoverHighlight: e.target.checked }))}
+                                />
+                                Disable Hover Highlight
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>

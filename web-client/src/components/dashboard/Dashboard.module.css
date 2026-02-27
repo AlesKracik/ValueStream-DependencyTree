@@ -31,3 +31,66 @@
   height: 100%;
   position: relative;
 }
+
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  padding: 16px 2rem;
+  background-color: #1f2937;
+  border-bottom: 1px solid #374151;
+  align-items: flex-end;
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filterGroup label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.filterInput, .filterSelect {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #4b5563;
+  background-color: #374151;
+  color: #fff;
+  font-size: 13px;
+  min-width: 120px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.filterInput:focus, .filterSelect:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+.toggleGroup {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-bottom: 8px; /* align with inputs */
+}
+
+.toggleItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #cbd5e1;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggleItem input {
+  cursor: pointer;
+}
+
