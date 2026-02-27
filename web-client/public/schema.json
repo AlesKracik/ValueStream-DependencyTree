@@ -84,6 +84,29 @@
                         "type": "number",
                         "minimum": 0
                     },
+                    "all_customers_target": {
+                        "type": "object",
+                        "required": [
+                            "tcv_type"
+                        ],
+                        "properties": {
+                            "tcv_type": {
+                                "type": "string",
+                                "enum": [
+                                    "existing",
+                                    "potential"
+                                ]
+                            },
+                            "priority": {
+                                "type": "string",
+                                "enum": [
+                                    "Must-have",
+                                    "Should-have",
+                                    "Nice-to-have"
+                                ]
+                            }
+                        }
+                    },
                     "customer_targets": {
                         "type": "array",
                         "items": {
