@@ -13,6 +13,7 @@ import { SprintCapacityNode } from '../nodes/SprintCapacityNode';
 import { TodayLineNode } from '../nodes/TodayLineNode';
 import { EditNodeModal } from './EditNodeModal';
 import { SettingsModal } from './SettingsModal';
+import { DocumentationModal } from './DocumentationModal';
 import { DashboardProvider } from '../../contexts/DashboardContext';
 import styles from './Dashboard.module.css';
 
@@ -87,6 +88,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
     const [editingNode, setEditingNode] = React.useState<Node | null>(null);
     const [isSettingsModalOpen, setIsSettingsModalOpen] = React.useState(false);
+    const [isDocsModalOpen, setIsDocsModalOpen] = React.useState(false);
     const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
     const handleSave = async () => {
@@ -286,6 +288,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? '✓ Saved' : saveStatus === 'error' ? 'Error!' : 'Save Changes'}
                         </button>
                         <button
+                            onClick={() => setIsDocsModalOpen(true)}
+                            style={{
+                                padding: '8px 16px',
+                                backgroundColor: '#374151',
+                                border: '1px solid #4b5563',
+                                color: '#e5e7eb',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontSize: '14px'
+                            }}
+                        >
+                            📖 Documentation
+                        </button>
+                        <button
                             onClick={() => setIsSettingsModalOpen(true)}
                             style={{
                                 padding: '8px 16px',
@@ -416,6 +432,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     updateEpic={updateEpic}
                     addEpic={addEpic}
                 />
+            )}
+
+            {isDocsModalOpen && (
+                <DocumentationModal onClose={() => setIsDocsModalOpen(false)} />
             )}
         </div>
     );
