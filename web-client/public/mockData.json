@@ -214,7 +214,8 @@
         "tcv_type": "existing",
         "priority": "Must-have"
       },
-      "customer_targets": []
+      "customer_targets": [],
+      "released_in_sprint_id": "s4"
     },
     {
       "id": "f1",

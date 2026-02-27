@@ -160,6 +160,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         viewState.sprintOffset,
         viewState.customerFilter,
         viewState.workItemFilter,
+        viewState.releasedFilter,
         viewState.teamFilter,
         viewState.epicFilter,
         viewState.showDependencies,
@@ -464,6 +465,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         onChange={e => setViewState((s: DashboardViewState) => ({ ...s, workItemFilter: e.target.value }))}
                         style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', width: '130px' }}
                     />
+                    <select
+                        value={viewState.releasedFilter}
+                        onChange={e => setViewState((s: DashboardViewState) => ({ ...s, releasedFilter: e.target.value as any }))}
+                        style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', width: '110px' }}
+                    >
+                        <option value="all">All Release</option>
+                        <option value="released">Released</option>
+                        <option value="unreleased">Unreleased</option>
+                    </select>
                     <input
                         type="text"
                         placeholder="Filter Teams..."

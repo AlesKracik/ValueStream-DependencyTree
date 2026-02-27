@@ -40,7 +40,7 @@ const MOCK_DATA: DashboardData = {
 describe('useGraphLayout Math Engine', () => {
 
     it('generates centered HeaderNodes above the columns', () => {
-        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', '', '', true));
+        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', 'all', '', '', true));
         
         const customerHeader = result.current.nodes.find(n => n.id === 'header-customers');
         const workItemHeader = result.current.nodes.find(n => n.id === 'header-workitems');
@@ -62,7 +62,7 @@ describe('useGraphLayout Math Engine', () => {
     });
 
     it('positions data nodes with a vertical buffer to avoid header overlap', () => {
-        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', '', '', true));
+        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', 'all', '', '', true));
         
         const firstCustomer = result.current.nodes.find(n => n.id === 'customer-c1');
         const firstWorkItem = result.current.nodes.find(n => n.id === 'workitem-f1');
@@ -81,7 +81,7 @@ describe('useGraphLayout Math Engine', () => {
     });
 
     it('calculates proper RICE visualization scaling', () => {
-        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', '', '', true));
+        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', 'all', '', '', true));
 
         const f1Node = result.current.nodes.find(n => n.id === 'workitem-f1');
         const f2Node = result.current.nodes.find(n => n.id === 'workitem-f2');
@@ -99,7 +99,7 @@ describe('useGraphLayout Math Engine', () => {
     });
 
     it('flags capacity bottlenecks accurately on Sprint Capacity Nodes', () => {
-        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', '', '', true));
+        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', 'all', '', '', true));
 
         // epics e1 + e2 demand 13 MDs in total. 
         // Team Alpha has a total_capacity_mds of only 10.
@@ -113,7 +113,7 @@ describe('useGraphLayout Math Engine', () => {
     });
 
     it('stacks overlapping Gantt bars vertically within swimlanes', () => {
-        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', '', '', true));
+        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', 'all', '', '', true));
 
         const e1Node = result.current.nodes.find(n => n.id === 'gantt-e1');
         const e2Node = result.current.nodes.find(n => n.id === 'gantt-e2');
@@ -128,7 +128,7 @@ describe('useGraphLayout Math Engine', () => {
     });
 
     it('ignores epics without target dates for timeline Gantt nodes but preserves edges', () => {
-        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', '', '', true));
+        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', 'all', '', '', true));
 
         // Epic e3 has no target_start or target_end. Thus it should NOT have a gantt bar node.
         const e3GanttNode = result.current.nodes.find(n => n.id === 'gantt-e3');

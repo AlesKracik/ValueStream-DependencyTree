@@ -65,6 +65,7 @@ function App() {
     sprintOffset: 0,
     customerFilter: '',
     workItemFilter: '',
+    releasedFilter: 'all',
     minTcvFilter: '',
     minScoreFilter: '',
     teamFilter: '',

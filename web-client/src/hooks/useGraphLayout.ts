@@ -10,6 +10,7 @@ export function useGraphLayout(
     sprintOffset: number = 0,
     customerFilter: string = '',
     workItemFilter: string = '',
+    releasedFilter: 'all' | 'released' | 'unreleased' = 'all',
     teamFilter: string = '',
     epicFilter: string = '',
     showDependencies: boolean = true,
@@ -61,7 +62,7 @@ export function useGraphLayout(
         const ff = workItemFilter.toLowerCase();
         const tf = teamFilter.toLowerCase();
         const ef = epicFilter.toLowerCase();
-        const isFilterActive = cf || ff || tf || ef;
+        const isFilterActive = cf || ff || tf || ef || releasedFilter !== 'all';
 
         const visibleCustomers = new Set<string>();
         const visibleWorkItems = new Set<string>();
@@ -72,7 +73,7 @@ export function useGraphLayout(
         const validCustomers = new Set(
             data.customers.filter(c => {
                 const textMatch = !cf || c.name.toLowerCase().includes(cf);
-                const numMatch = c.potential_tcv >= minTcv;
+                const numMatch = (c.existing_tcv + c.potential_tcv) >= minTcv;
                 return textMatch && numMatch;
             }).map(c => c.id)
         );
@@ -82,6 +83,10 @@ export function useGraphLayout(
             data.workItems.filter(f => {
                 const textMatch = !ff || f.name.toLowerCase().includes(ff);
                 if (!textMatch) return false;
+
+                // Release Status Filter
+                if (releasedFilter === 'released' && !f.released_in_sprint_id) return false;
+                if (releasedFilter === 'unreleased' && f.released_in_sprint_id) return false;
 
                 // Calculate baseline intrinsic score (similar to below, but over all valid epics/customers)
                 // Actually, if we require the exact score to pass `minScore` right here, we should calculate it.
@@ -1064,5 +1069,5 @@ export function useGraphLayout(
         }
 
         return { nodes, edges };
-    }, [data, hoveredNodeId, sprintOffset, customerFilter, workItemFilter, teamFilter, epicFilter, showDependencies, minTcv, minScore, selectedNodeId]);
+    }, [data, hoveredNodeId, sprintOffset, customerFilter, workItemFilter, releasedFilter, teamFilter, epicFilter, showDependencies, minTcv, minScore, selectedNodeId]);
 }

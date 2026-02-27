@@ -39,7 +39,7 @@ const mockData: DashboardData = {
 describe('useGraphLayout - Numeric Filters', () => {
     it('should filter out customers with potential TCV strictly lower than minTcv', () => {
         // minTcv = 100, minScore = 0
-        const { result } = renderHook(() => useGraphLayout(mockData, null, 0, '', '', '', '', true, 100, 0));
+        const { result } = renderHook(() => useGraphLayout(mockData, null, 0, '', '', 'all', '', '', true, 100, 0));
 
         const nodes = result.current.nodes;
         const hasC1 = nodes.some(n => n.id === 'customer-c1'); // TCV 500
@@ -51,7 +51,7 @@ describe('useGraphLayout - Numeric Filters', () => {
 
     it('should filter out work items with calculated score strictly lower than minScore', () => {
         // minTcv = 0, minScore = 100
-        const { result } = renderHook(() => useGraphLayout(mockData, null, 0, '', '', '', '', true, 0, 100));
+        const { result } = renderHook(() => useGraphLayout(mockData, null, 0, '', '', 'all', '', '', true, 0, 100));
 
         const nodes = result.current.nodes;
         // f1 score = 500, f2 score = 2
@@ -85,18 +85,18 @@ describe('useGraphLayout - Numeric Filters', () => {
         };
 
         // If Min Score is 600, both should be filtered out (their score is 500)
-        const { result: filteredOut } = renderHook(() => useGraphLayout(shouldHaveData, null, 0, '', '', '', '', true, 0, 600));
+        const { result: filteredOut } = renderHook(() => useGraphLayout(shouldHaveData, null, 0, '', '', 'all', '', '', true, 0, 600));
         expect(filteredOut.current.nodes.some(n => n.id.startsWith('workitem-f-should'))).toBe(false);
 
         // If Min Score is 400, both should be visible (their score is 500)
-        const { result: passed } = renderHook(() => useGraphLayout(shouldHaveData, null, 0, '', '', '', '', true, 0, 400));
+        const { result: passed } = renderHook(() => useGraphLayout(shouldHaveData, null, 0, '', '', 'all', '', '', true, 0, 400));
         expect(passed.current.nodes.some(n => n.id === 'workitem-f-should-1')).toBe(true);
         expect(passed.current.nodes.some(n => n.id === 'workitem-f-should-2')).toBe(true);
     });
 
     it('should apply both minTcv and minScore simultaneously', () => {
         // minTcv = 500, minScore = 500
-        const { result } = renderHook(() => useGraphLayout(mockData, null, 0, '', '', '', '', true, 500, 500));
+        const { result } = renderHook(() => useGraphLayout(mockData, null, 0, '', '', 'all', '', '', true, 500, 500));
 
         const nodes = result.current.nodes;
         const hasC1 = nodes.some(n => n.id === 'customer-c1');

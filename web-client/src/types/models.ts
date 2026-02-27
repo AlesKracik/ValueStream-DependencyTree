@@ -74,6 +74,7 @@ export interface DashboardViewState {
   sprintOffset: number;
   customerFilter: string;
   workItemFilter: string;
+  releasedFilter: 'all' | 'released' | 'unreleased';
   minTcvFilter: string;
   minScoreFilter: string;
   teamFilter: string;
