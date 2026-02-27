@@ -31,6 +31,8 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
     const potentialOpacity = (hlMode === 'all' || hlMode === 'potential' || hlMode === 'none') ? 1 : 0.15;
     const existingOpacity = (hlMode === 'all' || hlMode === 'existing' || hlMode === 'none') ? 1 : 0.15;
 
+    const metricFontSize = `${Math.max(10, innerSize * 0.22 || outerSize * 0.18)}px`;
+
     return (
         <div style={{ position: 'relative', width: outerSize, height: outerSize + 40 }}>
             {/* Outer Circle (Total TCV: Existing + Potential) */}
@@ -47,14 +49,14 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
                     display: 'flex',
                     alignItems: 'flex-start',
                     justifyContent: 'center',
-                    paddingTop: '8px', // offset text slightly
+                    paddingTop: '4px', // Tighter padding to keep it inside the ring
                     transition: 'all 0.2s',
                     boxSizing: 'border-box',
                     opacity: potentialOpacity
                 }}
             >
-                {/* Total Text */}
-                <span style={{ fontSize: `${Math.max(9, outerSize * 0.08)}px`, color: '#60a5fa', fontWeight: 'bold' }}>
+                {/* Total Text - Same font size as inner */}
+                <span style={{ fontSize: metricFontSize, color: '#60a5fa', fontWeight: 'bold' }}>
                     ${(data.totalTcv / 1000).toFixed(0)}k
                 </span>
 
@@ -94,7 +96,7 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
             >
                 <div style={{ 
                     fontWeight: 'bold', 
-                    fontSize: `${Math.max(10, innerSize * 0.22)}px`, 
+                    fontSize: metricFontSize, 
                     opacity: 1
                 }}>
                     ${(data.existingTcv / 1000).toFixed(0)}k
