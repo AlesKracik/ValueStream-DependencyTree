@@ -1,31 +1,38 @@
-# 📖 User Guide & Work Items
+# 📖 User Guide & Value Stream Concepts
 
 ### 1. The Interactive Dashboard
-The main view provides a high-level map of value flow. 
-- **Dependencies & Tracing:** Hover over any node (Customer, Work Item, Team, or Epic Gantt Bar) to dim the rest of the graph and brightly illuminate its direct upstream and downstream dependencies. 
-- **Structural Filtering (Right-Click):** Right-click any node to **Filter and Reposition** the graph. This isolates just the dependency tree of that node and collapses the empty space, making it easy to focus on a specific workstream. Right-click again to clear the filter.
-- **Canvas Controls:** Use the fixed `+`, `-`, and `Reset View` buttons in the bottom-right corner to quickly navigate the graph.
-- **Browser Navigation:** The app uses real URLs (e.g., `/customer/c1`). You can use your browser's **Back** and **Forward** buttons to navigate between the dashboard and detail pages, and your filters/zoom will be preserved.
+The main view provides a high-level map of value flow from Customers to Teams.
+- **Column Structure:** The dashboard is organized into three primary columns: **Customers**, **Work Items**, and **Teams**, followed by the **Gantt Timeline**.
+- **Enhanced Highlighting:** By default, hover-based highlighting is disabled to reduce visual noise. You can toggle this on/off using the **"Disable Hover Highlight"** checkbox in the header.
+- **Dependency Tracing:** When highlighting is enabled (or via right-click), hovering over any node dims the rest of the graph and illuminates its direct upstream and downstream dependencies.
+- **Structural Filtering (Right-Click):** Right-click any node to **Filter and Reposition** the graph. This isolates just the dependency tree of that node and collapses empty space. Right-click again to clear the filter.
+- **Reset View:** Clicking **"Reset View"** in the bottom-right corner perfectly frames the dashboard, top-aligning the column headers and centering the Gantt chart on the **Active Sprint**.
 
-### 2. Customer & Team Management
-- **Add Customers/Teams:** Click the blue `+ Add` buttons at the top of the respective columns.
-- **Dedicated Pages:** Click any node to open its dedicated full-screen details page.
-- **Team Geolocation & Holidays:** Set a Team's **Country (ISO)** (e.g., US, CZ, GB) on their detail page. The system will automatically look up public holidays and adjust their sprint capacity accordingly.
-- **Holiday Indicators:** Sprints affected by holidays are marked with a `🏝️` icon and show the exact capacity reduction (e.g., `-1d`).
+### 2. Customer TCV Visualization
+Customers are represented by dual-layer additive circles:
+- **Inner Circle (Solid Blue):** Represents **Existing TCV** (realized value).
+- **Outer Ring (Dashed Blue):** Represents **Total TCV** (Existing + Potential). 
+- **The Gap:** The distance between the solid core and the dashed ring visually represents the "Potential Upside" still available for that customer.
+- **Proportional Scaling:** Circle diameters are strictly proportional to the global maximum TCV, making it easy to spot your most valuable accounts at a glance.
 
-### 3. Work Item & Epic Planning
-- **Add Work Items:** Click the `+ Add Work Item` button at the top of the Work Item column.
-- **Work Itemless Epics:** Epics can now exist independently of Work Items (e.g., for Tech Debt or Security Patches). They will appear on the timeline without a connecting line to the Work Item column.
-- **Epic Assignment:** On a Work Item's detail page, you can either create new epics or **Assign Existing Epics** from the unassigned pool using the dropdown in the Epics section.
-- **Score Calculation:** Work Items use a lightweight RICE calculation taking into account targeted Customer TCV and priorities to visually scale their importance on the dashboard.
+### 3. Work Item & Team Management
+- **Labels:** To maximize legibility, all node names are placed **below the circles** in a large, bold font. Circles are reserved for core numerical metrics (TCV, RICE Score, or Capacity).
+- **Searchable Assignments:** All dropdown menus for linking entities (e.g., adding a Customer Target to a Work Item) are **Searchable**. Simply type a few letters to filter the options.
+- **Score Calculation:** Work Items use a RICE-based score that scales visually. The number inside the purple circle is the calculated priority score.
+- **Team Capacity:** Team circles show their base capacity in Man-Days (MDs). If a team is over-allocated in a specific sprint, the capacity marker above their Gantt lane will turn red.
 
-### 4. Native Jira Epic Synchronization
-- **Proxy Sync:** Inside the Work Item page Epics table, click the green **Sync** button next to any Epic mapped to a `Jira Key`.
-- **Automated Data Mapping:** It securely reaches out to Atlassian via a local proxy (bypassing browser CORS) to download the latest Epic data, automatically updating the Epic's Name, Remaining Estimate, Target Start/End dates, and Team assignment.
-- **Settings & Auth:** Click the ⚙️ **Settings** button on the top right of the dashboard. Here you can configure your `Jira Base URL`, `Api Version (v2/v3)`, and input your `Jira Email` and `Jira API Token` for secure REST authentication.
+### 4. Progress-Aware Gantt Timeline
+The Gantt chart distinguishes between what has happened and what is planned:
+- **Historical Actuals (Steel Blue + Stripes):** Segments in sprints older than the active one are **frozen**. They represent effort already spent and are snapshotted into a permanent "Actuals" ledger.
+- **Future Plan (Vibrant Purple):** Segments in the active and future sprints are **dynamic**. Their intensity shifts in real-time as you move dates or change estimates.
+- **Effort Intensity:** In both colors, the brightness of a segment indicates the volume of work allocated to that specific sprint.
+- **Safety Prompts:** If you attempt to shift the **Start Date** of an Epic that has recorded historical work, the app will prompt you to confirm if you want to "unthaw" and overwrite those records.
 
-### 5. Capacity & Timelines
-- **Sprint Management:** Epics span across dynamically generated Sprint columns. 
-- **Over allocations:** Swim lanes will stack neatly if multiple Epics belong to the same team. If a team's total sprint capacity is exceeded, their capacity node label flags the bottleneck.
-- **Today Line:** A bright red vertical line dynamically anchors the Gantt chart to the current date (`Feb 12 2026` mock logic baseline), letting you easily see slipped or upcoming deliverables.
-- **Persistence:** Click the blue **Save Changes** button in the header at any time to permanently write your layout and node edits back to `mockData.json`.
+### 5. Native Jira Epic Synchronization
+- **Proxy Sync:** Inside an Epic's detail page, click the **"Sync from Jira"** button.
+- **Automated Mapping:** The system automatically pulls the latest Summary, Remaining Estimate, Dates, and Team assignments from Atlassian.
+- **Configuration:** Use the ⚙️ **Settings** modal to set your Jira Base URL and Personal Access Token (PAT).
+
+### 6. Persistence & Collaboration
+- **Auto-Snapshot:** When a sprint ends, the system automatically snapshots the calculated effort into permanent overrides, preserving your delivery history.
+- **Save Changes:** Click the blue **"Save Changes"** button in the header to write all layout adjustments and node edits back to the central data store.
