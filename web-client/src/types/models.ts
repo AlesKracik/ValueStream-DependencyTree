@@ -76,5 +76,6 @@ export interface DashboardViewState {
   showDependencies: boolean;
   disableHoverHighlight: boolean;
   selectedNodeId?: string | null;
+  isInitialOffsetSet: boolean;
   viewport?: { x: number; y: number; zoom: number };
 }

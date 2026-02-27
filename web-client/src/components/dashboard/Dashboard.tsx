@@ -151,7 +151,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const [isSettingsModalOpen, setIsSettingsModalOpen] = React.useState(false);
     const [isDocsModalOpen, setIsDocsModalOpen] = React.useState(false);
     const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-    const [isInitialOffsetSet, setIsInitialOffsetSet] = React.useState(false);
 
     const { nodes, edges } = useGraphLayout(
         data,
@@ -169,7 +168,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     // Initial sprint offset and viewport calculation
     React.useEffect(() => {
-        if (!data || !data.sprints || data.sprints.length === 0 || isInitialOffsetSet || nodes.length === 0) return;
+        if (!data || !data.sprints || data.sprints.length === 0 || viewState.isInitialOffsetSet || nodes.length === 0) return;
 
         const today = new Date();
         let currentSprintIdx = -1;
@@ -224,10 +223,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
                 // Set immediately without duration for initial load
                 setViewport({ x: targetX, y: targetY, zoom: targetZoom });
-                setIsInitialOffsetSet(true);
+                setViewState(s => ({ ...s, isInitialOffsetSet: true }));
             }
         }
-    }, [data, setViewState, isInitialOffsetSet, nodes, setViewport, viewState.sprintOffset]);
+    }, [data, setViewState, viewState.isInitialOffsetSet, nodes, setViewport, viewState.sprintOffset]);
 
     const handleSave = async () => {
         if (!data) return;

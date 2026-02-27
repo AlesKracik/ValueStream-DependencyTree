@@ -62,6 +62,7 @@ function App() {
     epicFilter: '',
     showDependencies: false,
     disableHoverHighlight: true,
+    isInitialOffsetSet: false,
   });
 
   return (
