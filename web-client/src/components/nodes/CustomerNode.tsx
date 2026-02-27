@@ -14,16 +14,16 @@ interface CustomerNodeData {
 export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
     // We assume data.maxTcv is the maximum TOTAL TCV across all customers
     const totalRatio = data.maxTcv > 0 ? data.totalTcv / data.maxTcv : 0.5;
-    const existingRatio = data.maxTcv > 0 ? data.existingTcv / data.maxTcv : 0;
-
+    
     // Calculate sizes
     // The outer circle represents the Total (Existing + Potential)
     const outerSize = data.baseSize * 0.6 + (data.baseSize * 0.8 * totalRatio);
     
     // The inner circle represents Existing TCV. 
-    // It should only have a visual minimum if there is actually existing TCV.
-    const innerSize = data.existingTcv > 0 
-        ? (data.baseSize * 0.6 + (data.baseSize * 0.8 * existingRatio)) 
+    // To make Potential "fully visible" and "additive", the inner circle 
+    // should be a direct proportion of the outer circle's diameter.
+    const innerSize = data.totalTcv > 0 
+        ? (data.existingTcv / data.totalTcv) * outerSize 
         : 0;
 
     const hlMode = data.highlightMode || 'all';
@@ -31,7 +31,8 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
     const potentialOpacity = (hlMode === 'all' || hlMode === 'potential' || hlMode === 'none') ? 1 : 0.15;
     const existingOpacity = (hlMode === 'all' || hlMode === 'existing' || hlMode === 'none') ? 1 : 0.15;
 
-    const metricFontSize = `${Math.max(10, innerSize * 0.22 || outerSize * 0.18)}px`;
+    // Use a consistent font size based on the node's total size for both metrics
+    const metricFontSize = `${Math.max(10, outerSize * 0.16)}px`;
 
     return (
         <div style={{ position: 'relative', width: outerSize, height: outerSize + 40 }}>
@@ -44,19 +45,24 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
                     width: `${outerSize}px`,
                     height: `${outerSize}px`,
                     borderRadius: '50%',
-                    backgroundColor: 'rgba(59, 130, 246, 0.2)', // Light Blue, transparent
+                    backgroundColor: 'rgba(59, 130, 246, 0.15)', // Slightly lighter
                     border: '2px dashed rgba(59, 130, 246, 0.6)',
                     display: 'flex',
                     alignItems: 'flex-start',
                     justifyContent: 'center',
-                    paddingTop: '4px', // Tighter padding to keep it inside the ring
+                    paddingTop: '6px', 
                     transition: 'all 0.2s',
                     boxSizing: 'border-box',
                     opacity: potentialOpacity
                 }}
             >
-                {/* Total Text - Same font size as inner */}
-                <span style={{ fontSize: metricFontSize, color: '#60a5fa', fontWeight: 'bold' }}>
+                {/* Total Text */}
+                <span style={{ 
+                    fontSize: metricFontSize, 
+                    color: '#60a5fa', 
+                    fontWeight: 'bold',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                }}>
                     ${(data.totalTcv / 1000).toFixed(0)}k
                 </span>
 
@@ -86,7 +92,7 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
                     justifyContent: 'center',
                     color: '#fff',
                     boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                    border: '3px solid rgba(255, 255, 255, 0.2)',
+                    border: innerSize > 0 ? '2px solid rgba(255, 255, 255, 0.3)' : 'none',
                     transition: 'all 0.2s',
                     textAlign: 'center',
                     boxSizing: 'border-box',
@@ -94,15 +100,25 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
                     overflow: 'hidden'
                 }}
             >
-                <div style={{ 
-                    fontWeight: 'bold', 
-                    fontSize: metricFontSize, 
-                    opacity: 1
-                }}>
-                    ${(data.existingTcv / 1000).toFixed(0)}k
-                </div>
+                {innerSize > 20 && (
+                    <div style={{ 
+                        fontWeight: 'bold', 
+                        fontSize: metricFontSize, 
+                        opacity: 1,
+                        textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                    }}>
+                        ${(data.existingTcv / 1000).toFixed(0)}k
+                    </div>
+                )}
 
                 {/* Target Handle for Existing Connections */}
+                <Handle
+                    type="source"
+                    position={Position.Right}
+                    id="existing"
+                    style={{ background: '#fff', width: '6px', height: '6px', right: '-3px', top: innerSize / 2, opacity: 0 }}
+                />
+            </div>
                 <Handle
                     type="source"
                     position={Position.Right}
