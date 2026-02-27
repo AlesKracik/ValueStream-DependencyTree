@@ -84,9 +84,10 @@ describe('useDashboardData API logic', () => {
         const { result } = renderHook(() => useDashboardData());
         await waitFor(() => expect(result.current.loading).toBe(false));
 
+        // Initial mock has s1 (2026-01-01)
         act(() => {
             result.current.addSprint({
-                id: 's_new',
+                id: 's_earlier',
                 name: 'Earlier Sprint',
                 start_date: '2025-12-01',
                 end_date: '2025-12-14'
@@ -95,7 +96,9 @@ describe('useDashboardData API logic', () => {
 
         const sprints = result.current.data?.sprints;
         expect(sprints).toHaveLength(2);
-        expect(sprints![0].id).toBe('s_new');
+        // The 2025 sprint should now be first
+        expect(sprints![0].id).toBe('s_earlier');
+        expect(sprints![1].id).toBe('s1');
     });
 
     it('updates a sprint correctly', async () => {

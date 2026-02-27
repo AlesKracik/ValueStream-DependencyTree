@@ -87,13 +87,20 @@ describe('SprintPage', () => {
         expect(screen.getByRole('button', { name: 'Delete' })).toBeDefined();
     });
 
-    it('initializes new sprint draft row at the bottom', () => {
+    it('initializes new sprint draft row at the bottom of the table', () => {
         render(<SprintPage {...defaultProps} sprintId="new" />);
 
-        // Should have 'NEW' status tag
-        expect(screen.getByText('NEW')).toBeDefined();
-        // Should suggest 'Sprint 2'
-        expect(screen.getByDisplayValue('Sprint 2')).toBeDefined();
+        // Get all rows in the tbody
+        const rows = screen.getAllByRole('row');
+        // rows[0] is header, rows[1] is Sprint 1, rows[2] should be NEW
+        expect(rows).toHaveLength(3);
+        
+        const lastRow = rows[2];
+        expect(lastRow.textContent).toContain('NEW');
+        
+        // Since it's an input, we need to check the display value within that row
+        const input = screen.getByDisplayValue('Sprint 2');
+        expect(lastRow.contains(input)).toBe(true);
     });
 
     it('calls addSprint and saveDashboardData when saving a new sprint', async () => {
