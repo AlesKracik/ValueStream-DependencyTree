@@ -17,9 +17,14 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
     const existingRatio = data.maxTcv > 0 ? data.existingTcv / data.maxTcv : 0;
 
     // Calculate sizes
+    // The outer circle represents the Total (Existing + Potential)
     const outerSize = data.baseSize * 0.6 + (data.baseSize * 0.8 * totalRatio);
-    // Inner size is strictly existing TCV
-    const innerSize = data.baseSize * 0.6 + (data.baseSize * 0.8 * existingRatio);
+    
+    // The inner circle represents Existing TCV. 
+    // It should only have a visual minimum if there is actually existing TCV.
+    const innerSize = data.existingTcv > 0 
+        ? (data.baseSize * 0.6 + (data.baseSize * 0.8 * existingRatio)) 
+        : 0;
 
     const hlMode = data.highlightMode || 'all';
     // If hlMode is 'none', the entire node is dimmed via its parent wrapper container, so we leave it 100% visible relative to the dim.
