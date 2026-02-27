@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { DashboardData, Customer, Feature, Team, Epic, Settings } from '../types/models';
+import type { DashboardData, Customer, WorkItem, Team, Epic, Settings } from '../types/models';
 
 export function useDashboardData() {
     const [data, setData] = useState<DashboardData | null>(null);
@@ -41,7 +41,7 @@ export function useDashboardData() {
             return {
                 ...prev,
                 customers: prev.customers.filter(c => c.id !== id),
-                features: prev.features.map(f => ({
+                workItems: prev.workItems.map(f => ({
                     ...f,
                     customer_targets: f.customer_targets.filter(ct => ct.customer_id !== id)
                 }))
@@ -59,33 +59,33 @@ export function useDashboardData() {
         });
     };
 
-    const addFeature = (feature: Feature) => {
+    const addWorkItem = (workItem: WorkItem) => {
         setData(prev => {
             if (!prev) return prev;
             return {
                 ...prev,
-                features: [...prev.features, feature]
+                workItems: [...prev.workItems, workItem]
             };
         });
     };
 
-    const deleteFeature = (id: string) => {
+    const deleteWorkItem = (id: string) => {
         setData(prev => {
             if (!prev) return prev;
             return {
                 ...prev,
-                features: prev.features.filter(f => f.id !== id),
-                epics: prev.epics.map(e => e.feature_id === id ? { ...e, feature_id: undefined } : e)
+                workItems: prev.workItems.filter(f => f.id !== id),
+                epics: prev.epics.map(e => e.work_item_id === id ? { ...e, work_item_id: undefined } : e)
             };
         });
     };
 
-    const updateFeature = (id: string, updates: Partial<Feature>) => {
+    const updateWorkItem = (id: string, updates: Partial<WorkItem>) => {
         setData(prev => {
             if (!prev) return prev;
             return {
                 ...prev,
-                features: prev.features.map(f => f.id === id ? { ...f, ...updates } : f)
+                workItems: prev.workItems.map(f => f.id === id ? { ...f, ...updates } : f)
             };
         });
     };
@@ -166,9 +166,9 @@ export function useDashboardData() {
         addCustomer,
         deleteCustomer,
         updateCustomer,
-        addFeature,
-        deleteFeature,
-        updateFeature,
+        addWorkItem,
+        deleteWorkItem,
+        updateWorkItem,
         addEpic,
         deleteEpic,
         updateTeam,

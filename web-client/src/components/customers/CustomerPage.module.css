@@ -164,7 +164,7 @@
     background-color: #1d4ed8;
 }
 
-.addFeatureBox {
+.addWorkItemBox {
     margin-top: 24px;
     padding: 16px;
     background-color: #111827;
@@ -172,7 +172,7 @@
     border-radius: 6px;
 }
 
-.addFeatureBox h3 {
+.addWorkItemBox h3 {
     margin-top: 0;
     margin-bottom: 12px;
     font-size: 14px;

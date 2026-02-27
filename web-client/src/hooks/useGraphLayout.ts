@@ -9,7 +9,7 @@ export function useGraphLayout(
     hoveredNodeId: string | null = null,
     sprintOffset: number = 0,
     customerFilter: string = '',
-    featureFilter: string = '',
+    workItemFilter: string = '',
     teamFilter: string = '',
     epicFilter: string = '',
     showDependencies: boolean = true,
@@ -25,7 +25,7 @@ export function useGraphLayout(
 
         // Column X coordinates
         const COL_CUSTOMER_X = 0;
-        const COL_FEATURE_X = 350;
+        const COL_WORKITEM_X = 350;
         const COL_TEAM_X = 700;
         const HEADER_Y = 0;
         const START_Y = 200; // Increased to ensure max size node doesn't overlap header
@@ -40,9 +40,9 @@ export function useGraphLayout(
             draggable: false,
         });
         nodes.push({
-            id: 'header-features',
+            id: 'header-workitems',
             type: 'headerNode',
-            position: { x: COL_FEATURE_X - 110, y: HEADER_Y },
+            position: { x: COL_WORKITEM_X - 110, y: HEADER_Y },
             data: { label: 'Work Items' },
             selectable: false,
             draggable: false,
@@ -58,13 +58,13 @@ export function useGraphLayout(
 
         // Calculate visible sets based on filters
         const cf = customerFilter.toLowerCase();
-        const ff = featureFilter.toLowerCase();
+        const ff = workItemFilter.toLowerCase();
         const tf = teamFilter.toLowerCase();
         const ef = epicFilter.toLowerCase();
         const isFilterActive = cf || ff || tf || ef;
 
         const visibleCustomers = new Set<string>();
-        const visibleFeatures = new Set<string>();
+        const visibleWorkItems = new Set<string>();
         const visibleTeams = new Set<string>();
         const visibleEpics = new Set<string>();
 
@@ -77,9 +77,9 @@ export function useGraphLayout(
             }).map(c => c.id)
         );
 
-        // For features, we need their calculated score. We can do a quick pass to compute it just for intrinsic filtering.
-        const validFeatures = new Set(
-            data.features.filter(f => {
+        // For workitems, we need their calculated score. We can do a quick pass to compute it just for intrinsic filtering.
+        const validWorkItems = new Set(
+            data.workItems.filter(f => {
                 const textMatch = !ff || f.name.toLowerCase().includes(ff);
                 if (!textMatch) return false;
 
@@ -88,8 +88,8 @@ export function useGraphLayout(
                 // However, the true score depends on remaining epics/customers.
                 // To avoid circular dependency, let's calculate the "Max Possible Score" (all upstream/downstream intact)
                 // If the "Max Possible Score" fails minScore, it definitely fails.
-                const epicsForFeature = data.epics.filter(e => e.feature_id === f.id);
-                const epicMdsSum = epicsForFeature.reduce((sum, e) => sum + e.remaining_md, 0);
+                const epicsForWorkItem = data.epics.filter(e => e.work_item_id === f.id);
+                const epicMdsSum = epicsForWorkItem.reduce((sum, e) => sum + e.remaining_md, 0);
                 const displayEffort = Math.max(f.total_effort_mds || 0, epicMdsSum) || 1;
 
                 let maxImpact = 0;
@@ -104,7 +104,7 @@ export function useGraphLayout(
                         maxImpact += targetTcv;
                     } else if (priority === 'Should-have') {
                         let shouldHaveCount = 0;
-                        data.features.forEach(globalF => {
+                        data.workItems.forEach(globalF => {
                             const hasShould = globalF.customer_targets.find(ct =>
                                 ct.customer_id === target.customer_id &&
                                 ct.priority === 'Should-have' &&
@@ -127,8 +127,8 @@ export function useGraphLayout(
             data.epics.filter(e => {
                 const team = data.teams.find(t => t.id === e.team_id);
                 const teamMatches = team && (!tf || team.name.toLowerCase().includes(tf));
-                const feature = data.features.find(f => f.id === e.feature_id);
-                const epicName = e.name || feature?.name || 'Task';
+                const workItem = data.workItems.find(f => f.id === e.work_item_id);
+                const epicName = e.name || workItem?.name || 'Task';
                 const epicMatches = !ef || epicName.toLowerCase().includes(ef);
                 return teamMatches && epicMatches;
             }).map(e => e.id)
@@ -136,13 +136,13 @@ export function useGraphLayout(
 
         if (!isFilterActive && minTcv === 0 && minScore === 0) {
             data.customers.forEach(c => visibleCustomers.add(c.id));
-            data.features.forEach(f => visibleFeatures.add(f.id));
+            data.workItems.forEach(f => visibleWorkItems.add(f.id));
             data.teams.forEach(t => visibleTeams.add(t.id));
             data.epics.forEach(e => visibleEpics.add(e.id));
         } else {
             // Build intersection graph
-            data.features.forEach(f => {
-                if (!validFeatures.has(f.id)) return; // Feature intrinsically fails
+            data.workItems.forEach(f => {
+                if (!validWorkItems.has(f.id)) return; // WorkItem intrinsically fails
 
                 // Find connected valid Customers
                 const connectedValidCustomers = f.customer_targets
@@ -151,7 +151,7 @@ export function useGraphLayout(
 
                 // Find connected valid Epics
                 const connectedValidEpics = data.epics
-                    .filter(e => e.feature_id === f.id && validEpics.has(e.id));
+                    .filter(e => e.work_item_id === f.id && validEpics.has(e.id));
 
                 // Strict intersection rules:
                 // If a customer filter is active (cf or minTcv), we MUST have a valid connected customer.
@@ -162,8 +162,8 @@ export function useGraphLayout(
                 const hasTeamEpicFilter = tf !== '' || ef !== '';
                 if (hasTeamEpicFilter && connectedValidEpics.length === 0) return;
 
-                // If it survives to here, this feature path is fully viable!
-                visibleFeatures.add(f.id);
+                // If it survives to here, this workitem path is fully viable!
+                visibleWorkItems.add(f.id);
                 connectedValidCustomers.forEach(cId => visibleCustomers.add(cId));
                 connectedValidEpics.forEach(e => {
                     visibleEpics.add(e.id);
@@ -171,22 +171,22 @@ export function useGraphLayout(
                 });
             });
 
-            // Special case: Featureless Customers
+            // Special case: WorkItemless Customers
             // If ONLY customer filters are applied, standalone valid customers should appear.
             const hasTeamEpicFilter = tf !== '' || ef !== '';
-            const hasFeatureFilter = ff !== '' || minScore > 0;
+            const hasWorkItemFilter = ff !== '' || minScore > 0;
             const hasCustomerFilter = cf !== '' || minTcv > 0;
-            if (!hasTeamEpicFilter && !hasFeatureFilter) {
+            if (!hasTeamEpicFilter && !hasWorkItemFilter) {
                 validCustomers.forEach(cId => {
                     visibleCustomers.add(cId);
                 });
             }
 
-            // Special case: Featureless Epics
-            // If NO customer/feature filters are applied, standalone valid epics should appear.
-            if (!hasCustomerFilter && !hasFeatureFilter) {
+            // Special case: WorkItemless Epics
+            // If NO customer/workitem filters are applied, standalone valid epics should appear.
+            if (!hasCustomerFilter && !hasWorkItemFilter) {
                 data.epics.forEach(e => {
-                    if (!e.feature_id && validEpics.has(e.id)) {
+                    if (!e.work_item_id && validEpics.has(e.id)) {
                         visibleEpics.add(e.id);
                         visibleTeams.add(e.team_id);
                     }
@@ -197,20 +197,20 @@ export function useGraphLayout(
         // Apply Selection-based filtering if selectedNodeId is present
         if (selectedNodeId) {
             const logicalEdges: { id: string, source: string, target: string }[] = [];
-            data.features.forEach((feature) => {
-                feature.customer_targets.forEach((target) => {
+            data.workItems.forEach((workItem) => {
+                workItem.customer_targets.forEach((target) => {
                     logicalEdges.push({
-                        id: `edge-${target.customer_id}-${feature.id}-${target.tcv_type}`,
+                        id: `edge-${target.customer_id}-${workItem.id}-${target.tcv_type}`,
                         source: `customer-${target.customer_id}`,
-                        target: `feature-${feature.id}`
+                        target: `workitem-${workItem.id}`
                     });
                 });
             });
 
             data.epics.forEach(epic => {
                 logicalEdges.push({
-                    id: `edge-${epic.feature_id}-${epic.team_id}-${epic.id}`,
-                    source: `feature-${epic.feature_id}`,
+                    id: `edge-${epic.work_item_id}-${epic.team_id}-${epic.id}`,
+                    source: `workitem-${epic.work_item_id}`,
                     target: `team-${epic.team_id}`
                 });
                 logicalEdges.push({
@@ -245,7 +245,7 @@ export function useGraphLayout(
 
                 outgoingEdges.forEach(e => {
                     let nextEpicId = sourceEpicId;
-                    if (currentNodeId.startsWith('feature-') && e.id.startsWith('edge-')) {
+                    if (currentNodeId.startsWith('workitem-') && e.id.startsWith('edge-')) {
                         const parts = e.id.split('-');
                         if (parts.length >= 4) {
                             nextEpicId = parts.slice(3).join('-');
@@ -282,17 +282,17 @@ export function useGraphLayout(
 
             // Keep only elements that are both already visible and in the highlighted set
             const newVisibleCustomers = new Set<string>();
-            const newVisibleFeatures = new Set<string>();
+            const newVisibleWorkItems = new Set<string>();
             const newVisibleTeams = new Set<string>();
             const newVisibleEpics = new Set<string>();
 
             visibleCustomers.forEach(id => { if (hNodes.has(`customer-${id}`)) newVisibleCustomers.add(id); });
-            visibleFeatures.forEach(id => { if (hNodes.has(`feature-${id}`)) newVisibleFeatures.add(id); });
+            visibleWorkItems.forEach(id => { if (hNodes.has(`workitem-${id}`)) newVisibleWorkItems.add(id); });
             visibleTeams.forEach(id => { if (hNodes.has(`team-${id}`)) newVisibleTeams.add(id); });
             visibleEpics.forEach(id => { if (hNodes.has(`gantt-${id}`)) newVisibleEpics.add(id); });
 
             visibleCustomers.clear(); newVisibleCustomers.forEach(id => visibleCustomers.add(id));
-            visibleFeatures.clear(); newVisibleFeatures.forEach(id => visibleFeatures.add(id));
+            visibleWorkItems.clear(); newVisibleWorkItems.forEach(id => visibleWorkItems.add(id));
             visibleTeams.clear(); newVisibleTeams.forEach(id => visibleTeams.add(id));
             visibleEpics.clear(); newVisibleEpics.forEach(id => visibleEpics.add(id));
         }
@@ -325,13 +325,13 @@ export function useGraphLayout(
             });
         });
 
-        // 2. Process Features (Column 2)
-        // Implement RICE Feature Prioritization
-        const featuresWithScores = [...data.features]
-            .filter(f => visibleFeatures.has(f.id))
+        // 2. Process WorkItems (Column 2)
+        // Implement RICE WorkItem Prioritization
+        const workItemsWithScores = [...data.workItems]
+            .filter(f => visibleWorkItems.has(f.id))
             .map(f => {
-                const epicsForFeature = data.epics.filter(e => e.feature_id === f.id && visibleEpics.has(e.id));
-                const epicMdsSum = epicsForFeature.reduce((sum, e) => sum + e.remaining_md, 0);
+                const epicsForWorkItem = data.epics.filter(e => e.work_item_id === f.id && visibleEpics.has(e.id));
+                const epicMdsSum = epicsForWorkItem.reduce((sum, e) => sum + e.remaining_md, 0);
                 const displayEffort = Math.max(f.total_effort_mds || 0, epicMdsSum) || 1; // Prevent div by 0
 
                 let impact = 0;
@@ -346,9 +346,9 @@ export function useGraphLayout(
                     if (priority === 'Must-have') {
                         impact += targetTcv;
                     } else if (priority === 'Should-have') {
-                        // Find how many Should-haves this customer has across ALL features globally
+                        // Find how many Should-haves this customer has across ALL workitems globally
                         let shouldHaveCount = 0;
-                        data.features.forEach(globalF => {
+                        data.workItems.forEach(globalF => {
                             const hasShould = globalF.customer_targets.find(ct =>
                                 ct.customer_id === target.customer_id &&
                                 ct.priority === 'Should-have' &&
@@ -376,59 +376,59 @@ export function useGraphLayout(
             });
 
         // Apply Min Score filter
-        const filteredFeaturesByScore = featuresWithScores.filter(f => f.score >= minScore);
-        const maxScore = Math.max(...filteredFeaturesByScore.map(f => f.score), 1);
-        const sortedFeatures = filteredFeaturesByScore.sort((a, b) => b.score - a.score); // Descending by Score
+        const filteredWorkItemsByScore = workItemsWithScores.filter(f => f.score >= minScore);
+        const maxScore = Math.max(...filteredWorkItemsByScore.map(f => f.score), 1);
+        const sortedWorkItems = filteredWorkItemsByScore.sort((a, b) => b.score - a.score); // Descending by Score
 
         let maxRoi = 0.0001; // Avoid division by zero
-        sortedFeatures.forEach((feature) => {
-            feature.customer_targets.forEach((target) => {
+        sortedWorkItems.forEach((workItem) => {
+            workItem.customer_targets.forEach((target) => {
                 if (!visibleCustomers.has(target.customer_id)) return;
                 const customer = data.customers.find(c => c.id === target.customer_id);
                 if (customer) {
                     const targetTcv = target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv;
-                    const roi = targetTcv / feature.total_effort_mds;
+                    const roi = targetTcv / workItem.total_effort_mds;
                     if (roi > maxRoi) maxRoi = roi;
                 }
             });
         });
 
-        // Add Feature node removed from canvas
+        // Add WorkItem node removed from canvas
 
-        sortedFeatures.forEach((feature, index) => {
-            const sizeRatio = maxScore > 0 ? feature.score / maxScore : 0.5;
+        sortedWorkItems.forEach((workItem, index) => {
+            const sizeRatio = maxScore > 0 ? workItem.score / maxScore : 0.5;
             const nodeSize = 100 * 0.6 + (100 * 0.8 * sizeRatio);
 
             nodes.push({
-                id: `feature-${feature.id}`,
-                type: 'featureNode',
-                position: { x: COL_FEATURE_X - (nodeSize / 2), y: index * 180 + START_Y - (nodeSize / 2) }, // Adjusted starting Y
+                id: `workitem-${workItem.id}`,
+                type: 'workItemNode',
+                position: { x: COL_WORKITEM_X - (nodeSize / 2), y: index * 180 + START_Y - (nodeSize / 2) }, // Adjusted starting Y
                 data: {
-                    label: feature.name,
-                    effortMds: feature.total_effort_mds,
-                    epicMds: feature.epicMdsSum,
-                    score: feature.score,
+                    label: workItem.name,
+                    effortMds: workItem.total_effort_mds,
+                    epicMds: workItem.epicMdsSum,
+                    score: workItem.score,
                     maxScore: maxScore,
                     baseSize: 100,
                 },
             });
 
-            // 3. Create Edges (Customer -> Feature)
+            // 3. Create Edges (Customer -> WorkItem)
             // Thickness proportional to ROI: Potential_TCV / Total_Effort_MDs
-            feature.customer_targets.forEach((target) => {
+            workItem.customer_targets.forEach((target) => {
                 if (!visibleCustomers.has(target.customer_id)) return;
                 const customer = data.customers.find(c => c.id === target.customer_id);
                 if (customer) {
                     const targetTcv = target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv;
-                    const roi = targetTcv / feature.total_effort_mds;
+                    const roi = targetTcv / workItem.total_effort_mds;
                     // Scale width based on ROI, keeping min 2px and max 10px
                     const normalizedStrokeWidth = Math.min(10, Math.max(2, (roi / maxRoi) * 10));
 
                     edges.push({
-                        id: `edge-${target.customer_id}-${feature.id}-${target.tcv_type}`,
+                        id: `edge-${target.customer_id}-${workItem.id}-${target.tcv_type}`,
                         source: `customer-${target.customer_id}`,
                         sourceHandle: target.tcv_type, // 'existing' or 'potential'
-                        target: `feature-${feature.id}`,
+                        target: `workitem-${workItem.id}`,
                         type: 'default',
                         style: {
                             strokeWidth: normalizedStrokeWidth,
@@ -574,21 +574,21 @@ export function useGraphLayout(
             });
         });
 
-        // 5. Create Edges (Feature -> Team)
+        // 5. Create Edges (WorkItem -> Team)
         let maxRemainingMd = 0.0001;
         data.epics.forEach(epic => {
-            if (!epic.feature_id || !visibleFeatures.has(epic.feature_id) || !visibleTeams.has(epic.team_id) || !visibleEpics.has(epic.id)) return;
+            if (!epic.work_item_id || !visibleWorkItems.has(epic.work_item_id) || !visibleTeams.has(epic.team_id) || !visibleEpics.has(epic.id)) return;
             if (epic.remaining_md > maxRemainingMd) maxRemainingMd = epic.remaining_md;
         });
 
         data.epics.forEach(epic => {
-            if (!epic.feature_id || !visibleFeatures.has(epic.feature_id) || !visibleTeams.has(epic.team_id) || !visibleEpics.has(epic.id)) return;
+            if (!epic.work_item_id || !visibleWorkItems.has(epic.work_item_id) || !visibleTeams.has(epic.team_id) || !visibleEpics.has(epic.id)) return;
 
             // Scale width based on remaining MDs, keeping min 2px and max 10px
             const normalizedStrokeWidth = Math.min(10, Math.max(2, (epic.remaining_md / maxRemainingMd) * 10));
             edges.push({
-                id: `edge-${epic.feature_id}-${epic.team_id}-${epic.id}`,
-                source: `feature-${epic.feature_id}`,
+                id: `edge-${epic.work_item_id}-${epic.team_id}-${epic.id}`,
+                source: `workitem-${epic.work_item_id}`,
                 target: `team-${epic.team_id}`,
                 type: 'default',
                 style: {
@@ -627,7 +627,7 @@ export function useGraphLayout(
                 const ganttStartY = baseY - ((maxLanes - 1) * 45) / 2;
                 const yPos = ganttStartY + (laneIdx * 45);
 
-                const feature = data.features.find(f => f.id === epic.feature_id);
+                const workItem = data.workItems.find(f => f.id === epic.work_item_id);
 
                 // Build the segments for heat/intensity mapping
                 const segments: { startOffsetPixels: number, widthPixels: number, intensity: number }[] = [];
@@ -704,7 +704,7 @@ export function useGraphLayout(
                         y: yPos
                     },
                     data: {
-                        label: `${epic.name || feature?.name || 'Task'} (${epic.remaining_md} MDs)`,
+                        label: `${epic.name || workItem?.name || 'Task'} (${epic.remaining_md} MDs)`,
                         width: duration * PIXELS_PER_DAY,
                         color: '#8b5cf6',
                         jiraKey: epic.jira_key,
@@ -866,7 +866,7 @@ export function useGraphLayout(
         }
 
         // Apply Highlights
-        const isAnyFilterActive = !!(customerFilter || featureFilter || teamFilter || epicFilter || minTcv > 0 || minScore > 0 || selectedNodeId);
+        const isAnyFilterActive = !!(customerFilter || workItemFilter || teamFilter || epicFilter || minTcv > 0 || minScore > 0 || selectedNodeId);
 
         if (hoveredNodeId || isAnyFilterActive) {
             const hNodes = new Set<string>();
@@ -898,8 +898,8 @@ export function useGraphLayout(
                         markHandle(e.source, e.sourceHandle || '');
 
                         let nextEpicId = sourceEpicId;
-                        // Extract epic context when passing from Feature to Team
-                        if (currentNodeId.startsWith('feature-') && e.id.startsWith('edge-')) {
+                        // Extract epic context when passing from WorkItem to Team
+                        if (currentNodeId.startsWith('workitem-') && e.id.startsWith('edge-')) {
                             const parts = e.id.split('-');
                             if (parts.length >= 4) {
                                 nextEpicId = parts.slice(3).join('-');
@@ -919,7 +919,7 @@ export function useGraphLayout(
                     hNodes.add(currentNodeId);
                     let incomingEdges = edges.filter(e => e.target === currentNodeId);
 
-                    // If at a team node, only follow incoming edges from the feature that owns this epic
+                    // If at a team node, only follow incoming edges from the workitem that owns this epic
                     if (currentNodeId.startsWith('team-') && sourceEpicId) {
                         incomingEdges = incomingEdges.filter(e => e.id.endsWith(`-${sourceEpicId}`));
                     }
@@ -994,5 +994,5 @@ export function useGraphLayout(
         }
 
         return { nodes, edges };
-    }, [data, hoveredNodeId, sprintOffset, customerFilter, featureFilter, teamFilter, epicFilter, showDependencies, minTcv, minScore, selectedNodeId]);
+    }, [data, hoveredNodeId, sprintOffset, customerFilter, workItemFilter, teamFilter, epicFilter, showDependencies, minTcv, minScore, selectedNodeId]);
 }

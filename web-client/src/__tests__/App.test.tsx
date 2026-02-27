@@ -13,7 +13,7 @@ vi.mock('react-router-dom', async (importOriginal) => {
 
 // Mock the components
 vi.mock('../components/dashboard/Dashboard', () => ({
-    Dashboard: ({ viewState, setViewState, onNavigateToCustomer, onNavigateToFeature, onNavigateToEpic, onNavigateToTeam }: any) => (
+    Dashboard: ({ viewState, setViewState, onNavigateToCustomer, onNavigateToWorkItem, onNavigateToEpic, onNavigateToTeam }: any) => (
         <div data-testid="dashboard">
             <span data-testid="sprint-offset">{viewState.sprintOffset}</span>
             <span data-testid="customer-filter">{viewState.customerFilter}</span>
@@ -24,7 +24,7 @@ vi.mock('../components/dashboard/Dashboard', () => ({
                 Change Filter
             </button>
             <button data-testid="nav-customer-btn" onClick={() => onNavigateToCustomer('cust-1')}>Nav Customer</button>
-            <button data-testid="nav-feature-btn" onClick={() => onNavigateToFeature('feat-1')}>Nav Feature</button>
+            <button data-testid="nav-workitem-btn" onClick={() => onNavigateToWorkItem('feat-1')}>Nav Work Item</button>
             <button data-testid="nav-epic-btn" onClick={() => onNavigateToEpic('epic-1')}>Nav Epic</button>
             <button data-testid="nav-team-btn" onClick={() => onNavigateToTeam('team-1')}>Nav Team</button>
         </div>
@@ -39,9 +39,9 @@ vi.mock('../components/customers/CustomerPage', () => ({
     )
 }));
 
-vi.mock('../components/features/FeaturePage', () => ({
-    FeaturePage: ({ onBack }: any) => (
-        <div data-testid="feature-page">
+vi.mock('../components/workitems/WorkItemPage', () => ({
+    WorkItemPage: ({ onBack }: any) => (
+        <div data-testid="workitem-page">
             <button data-testid="back-btn" onClick={onBack}>Back</button>
         </div>
     )
@@ -72,9 +72,9 @@ describe('App Component State Preservation', () => {
             addCustomer: vi.fn(),
             deleteCustomer: vi.fn(),
             updateCustomer: vi.fn(),
-            addFeature: vi.fn(),
-            deleteFeature: vi.fn(),
-            updateFeature: vi.fn(),
+            addWorkItem: vi.fn(),
+            deleteWorkItem: vi.fn(),
+            updateWorkItem: vi.fn(),
             updateTeam: vi.fn(),
             addEpic: vi.fn(),
             deleteEpic: vi.fn(),
@@ -115,7 +115,7 @@ describe('App Component State Preservation', () => {
         expect(screen.getByTestId('customer-filter').textContent).toBe('TestCustomer');
     });
 
-    it('preserves dashboard viewState when navigating to feature page and back', () => {
+    it('preserves dashboard viewState when navigating to work item page and back', () => {
         render(<App />);
 
         // Initial state
@@ -125,10 +125,10 @@ describe('App Component State Preservation', () => {
         fireEvent.click(screen.getByTestId('change-filter-btn'));
         expect(screen.getByTestId('sprint-offset').textContent).toBe('2');
 
-        // Navigate away to Feature Page
-        fireEvent.click(screen.getByTestId('nav-feature-btn'));
+        // Navigate away to Work Item Page
+        fireEvent.click(screen.getByTestId('nav-workitem-btn'));
         expect(screen.queryByTestId('dashboard')).toBeNull();
-        expect(screen.getByTestId('feature-page')).toBeDefined();
+        expect(screen.getByTestId('workitem-page')).toBeDefined();
 
         // Navigate back to Dashboard
         fireEvent.click(screen.getByTestId('back-btn'));

@@ -18,7 +18,7 @@ describe('SettingsModal', () => {
         teams: [],
         customerFilters: [],
         numberFilters: [],
-        features: [],
+        workItems: [],
         customers: [],
         sprints: [],
         settings: mockSettings

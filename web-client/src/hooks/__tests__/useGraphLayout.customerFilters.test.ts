@@ -10,13 +10,13 @@ const mockData: DashboardData = {
         jira_api_version: '3'
     },
     customers: [
-        { id: 'c1', name: 'Customer With Feature', existing_tcv: 100, potential_tcv: 200 },
-        { id: 'c2', name: 'Customer Without Feature', existing_tcv: 0, potential_tcv: 0 },
+        { id: 'c1', name: 'Customer With Work Item', existing_tcv: 100, potential_tcv: 200 },
+        { id: 'c2', name: 'Customer Without Work Item', existing_tcv: 0, potential_tcv: 0 },
     ],
-    features: [
+    workItems: [
         {
             id: 'f1',
-            name: 'Feature A',
+            name: 'Work Item A',
             total_effort_mds: 10,
             customer_targets: [
                 { customer_id: 'c1', tcv_type: 'potential', priority: 'Must-have' }
@@ -28,8 +28,8 @@ const mockData: DashboardData = {
     sprints: []
 };
 
-describe('useGraphLayout - Featureless Customer filters', () => {
-    it('should show all customers including those without features when no filter is active', () => {
+describe('useGraphLayout - WorkItemless Customer filters', () => {
+    it('should show all customers including those without work items when no filter is active', () => {
         const { result } = renderHook(() => useGraphLayout(mockData));
 
         const nodes = result.current.nodes;
@@ -41,7 +41,7 @@ describe('useGraphLayout - Featureless Customer filters', () => {
         expect(hasC2).toBe(true);
     });
 
-    it('should show featureless customers if they match the active customer filter', () => {
+    it('should show workitemless customers if they match the active customer filter', () => {
         const { result } = renderHook(() => useGraphLayout(mockData, null, 0, 'without'));
 
         const nodes = result.current.nodes;

@@ -5,7 +5,7 @@ export interface Customer {
   potential_tcv: number;
 }
 
-export interface Feature {
+export interface WorkItem {
   id: string;
   name: string;
   total_effort_mds: number;
@@ -33,7 +33,7 @@ export interface EpicDependency {
 export interface Epic {
   id: string;
   jira_key: string;
-  feature_id?: string;
+  work_item_id?: string;
   team_id: string;
   remaining_md: number;
   target_start?: string;
@@ -59,7 +59,7 @@ export interface Settings {
 export interface DashboardData {
   settings: Settings;
   customers: Customer[];
-  features: Feature[];
+  workItems: WorkItem[];
   teams: Team[];
   epics: Epic[];
   sprints: Sprint[];
@@ -68,7 +68,7 @@ export interface DashboardData {
 export interface DashboardViewState {
   sprintOffset: number;
   customerFilter: string;
-  featureFilter: string;
+  workItemFilter: string;
   minTcvFilter: string;
   minScoreFilter: string;
   teamFilter: string;

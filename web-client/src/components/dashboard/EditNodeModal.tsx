@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import type { Node } from '@xyflow/react';
-import type { DashboardData, Customer, Feature, Team } from '../../types/models';
+import type { DashboardData, Customer, WorkItem, Team } from '../../types/models';
 
 interface EditNodeModalProps {
     node: Node;
     onClose: () => void;
     data: DashboardData;
     onUpdateCustomer: (id: string, updates: Partial<Customer>) => void;
-    onUpdateFeature: (id: string, updates: Partial<Feature>) => void;
+    onUpdateWorkItem: (id: string, updates: Partial<WorkItem>) => void;
     onUpdateTeam: (id: string, updates: Partial<Team>) => void;
 }
 
@@ -16,14 +16,14 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
     onClose,
     data,
     onUpdateCustomer,
-    onUpdateFeature,
+    onUpdateWorkItem,
     onUpdateTeam
 }) => {
     // Extract domain ID from node ID (e.g., 'customer-c1' -> 'c1', 'gantt-a1' -> 'a1')
     const extractId = (nodeId: string) => {
         const parts = nodeId.split('-');
-        // Handle parts like customer-c1, feature-f1, team-t1
-        if (['customerNode', 'featureNode', 'teamNode'].includes(node.type || '')) {
+        // Handle parts like customer-c1, workitem-f1, team-t1
+        if (['customerNode', 'workItemNode', 'teamNode'].includes(node.type || '')) {
             return parts.slice(1).join('-'); // handles 'c1' or 'c-1-2'
         }
         // Handle gantt-a1
@@ -50,13 +50,13 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                     potential_tcv: customer.potential_tcv
                 });
             }
-        } else if (node.type === 'featureNode') {
-            const feature = data.features.find(f => f.id === domainId);
-            if (feature) {
+        } else if (node.type === 'workItemNode') {
+            const workItem = data.workItems.find(f => f.id === domainId);
+            if (workItem) {
                 setFormData({
-                    name: feature.name,
-                    total_effort_mds: feature.total_effort_mds,
-                    customer_targets: feature.customer_targets ? JSON.parse(JSON.stringify(feature.customer_targets)) : []
+                    name: workItem.name,
+                    total_effort_mds: workItem.total_effort_mds,
+                    customer_targets: workItem.customer_targets ? JSON.parse(JSON.stringify(workItem.customer_targets)) : []
                 });
             }
 
@@ -90,8 +90,8 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                 existing_tcv: Number(formData.existing_tcv),
                 potential_tcv: Number(formData.potential_tcv)
             });
-        } else if (node.type === 'featureNode') {
-            onUpdateFeature(domainId, {
+        } else if (node.type === 'workItemNode') {
+            onUpdateWorkItem(domainId, {
                 name: formData.name,
                 total_effort_mds: Number(formData.total_effort_mds),
                 customer_targets: formData.customer_targets
@@ -139,10 +139,10 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
             );
         }
 
-        if (node.type === 'featureNode') {
+        if (node.type === 'workItemNode') {
             return (
                 <>
-                    <h2 style={styles.title}>Edit Feature: {domainId}</h2>
+                    <h2 style={styles.title}>Edit Work Item: {domainId}</h2>
                     <label style={styles.label}>
                         Name:
                         <input style={styles.input} type="text" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} required />

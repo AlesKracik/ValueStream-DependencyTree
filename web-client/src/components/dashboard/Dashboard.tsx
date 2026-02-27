@@ -5,9 +5,9 @@ import { parseISO, differenceInDays } from 'date-fns';
 import '@xyflow/react/dist/style.css';
 
 import { useGraphLayout } from '../../hooks/useGraphLayout';
-import type { DashboardData, Customer, Feature, Team, Epic, Settings, DashboardViewState } from '../../types/models';
+import type { DashboardData, Customer, WorkItem, Team, Epic, Settings, DashboardViewState } from '../../types/models';
 import { CustomerNode } from '../nodes/CustomerNode';
-import { FeatureNode } from '../nodes/FeatureNode';
+import { WorkItemNode } from '../nodes/WorkItemNode';
 import { TeamNode } from '../nodes/TeamNode';
 import { GanttBarNode } from '../nodes/GanttBarNode';
 import { SprintCapacityNode } from '../nodes/SprintCapacityNode';
@@ -22,7 +22,7 @@ import styles from './Dashboard.module.css';
 // Register custom node types with React Flow
 const nodeTypes = {
     customerNode: CustomerNode,
-    featureNode: FeatureNode,
+    workItemNode: WorkItemNode,
     teamNode: TeamNode,
     ganttBarNode: GanttBarNode,
     sprintCapacityNode: SprintCapacityNode,
@@ -69,7 +69,7 @@ const DashboardControls: React.FC<DashboardControlsProps> = ({ data, nodes, setV
         
         // Manual Viewport Calculation to "Show the Top"
         const nodesToFit = nodes.filter(n => 
-            ['customerNode', 'featureNode', 'teamNode', 'headerNode', 'sprintCapacityNode'].includes(n.type || '')
+            ['customerNode', 'workItemNode', 'teamNode', 'headerNode', 'sprintCapacityNode'].includes(n.type || '')
         );
 
         if (nodesToFit.length > 0) {
@@ -122,7 +122,7 @@ export interface DashboardProps {
     loading: boolean;
     error: Error | null;
     updateCustomer: (id: string, updates: Partial<Customer>) => void;
-    updateFeature: (id: string, updates: Partial<Feature>) => void;
+    updateWorkItem: (id: string, updates: Partial<WorkItem>) => void;
     updateTeam: (id: string, updates: Partial<Team>) => void;
     updateEpic: (id: string, updates: Partial<Epic>) => void;
     addEpic: (epic: Epic) => void;
@@ -131,17 +131,17 @@ export interface DashboardProps {
     viewState: DashboardViewState;
     setViewState: React.Dispatch<React.SetStateAction<DashboardViewState>>;
     onNavigateToCustomer: (id: string) => void;
-    onNavigateToFeature: (id: string) => void;
+    onNavigateToWorkItem: (id: string) => void;
     onNavigateToTeam: (id: string) => void;
     onNavigateToEpic: (id: string) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
     data, loading, error,
-    updateCustomer, updateFeature, updateTeam, updateEpic, addEpic, updateSettings,
+    updateCustomer, updateWorkItem, updateTeam, updateEpic, addEpic, updateSettings,
     saveDashboardData, viewState, setViewState,
     onNavigateToCustomer,
-    onNavigateToFeature,
+    onNavigateToWorkItem,
     onNavigateToEpic,
     onNavigateToTeam
 }) => {
@@ -158,7 +158,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         hoveredNodeId,
         viewState.sprintOffset,
         viewState.customerFilter,
-        viewState.featureFilter,
+        viewState.workItemFilter,
         viewState.teamFilter,
         viewState.epicFilter,
         viewState.showDependencies,
@@ -206,7 +206,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             // Now offset is correct and nodes are stable.
             // Calculate and set viewport.
             const nodesToFit = nodes.filter(n => 
-                ['customerNode', 'featureNode', 'teamNode', 'headerNode', 'sprintCapacityNode'].includes(n.type || '')
+                ['customerNode', 'workItemNode', 'teamNode', 'headerNode', 'sprintCapacityNode'].includes(n.type || '')
             );
 
             if (nodesToFit.length > 0) {
@@ -286,9 +286,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
         if (node.type === 'customerNode') {
             const customerId = node.id.replace('customer-', '');
             onNavigateToCustomer(customerId);
-        } else if (node.type === 'featureNode') {
-            const featureId = node.id.replace('feature-', '');
-            onNavigateToFeature(featureId);
+        } else if (node.type === 'workItemNode') {
+            const workItemId = node.id.replace('workitem-', '');
+            onNavigateToWorkItem(workItemId);
         } else if (node.type === 'teamNode') {
             const teamId = node.id.replace('team-', '');
             onNavigateToTeam(teamId);
@@ -297,7 +297,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             const epicId = node.id.replace('gantt-', '');
             onNavigateToEpic(epicId);
         }
-    }, [onNavigateToCustomer, onNavigateToFeature, onNavigateToTeam, onNavigateToEpic]);
+    }, [onNavigateToCustomer, onNavigateToWorkItem, onNavigateToTeam, onNavigateToEpic]);
 
     const onNodeContextMenu = React.useCallback(
         (event: React.MouseEvent, node: Node) => {
@@ -344,7 +344,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 + Add Customer
                             </button>
                             <button
-                                onClick={() => onNavigateToFeature('new')}
+                                onClick={() => onNavigateToWorkItem('new')}
                                 style={{
                                     padding: '8px 16px',
                                     backgroundColor: '#3b82f6',
@@ -356,7 +356,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                     fontWeight: 'bold'
                                 }}
                             >
-                                + Add Feature
+                                + Add Work Item
                             </button>
                         </div>
                     </div>
@@ -452,9 +452,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     />
                     <input
                         type="text"
-                        placeholder="Filter Features..."
-                        value={viewState.featureFilter}
-                        onChange={e => setViewState((s: DashboardViewState) => ({ ...s, featureFilter: e.target.value }))}
+                        placeholder="Filter Work Items..."
+                        value={viewState.workItemFilter}
+                        onChange={e => setViewState((s: DashboardViewState) => ({ ...s, workItemFilter: e.target.value }))}
                         style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff', fontSize: '13px', width: '130px' }}
                     />
                     <input
@@ -540,7 +540,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     // Pass down update functions and the raw data to map IDs correctly
                     data={data}
                     onUpdateCustomer={updateCustomer}
-                    onUpdateFeature={updateFeature}
+                    onUpdateWorkItem={updateWorkItem}
                     onUpdateTeam={updateTeam}
                 />
             )}

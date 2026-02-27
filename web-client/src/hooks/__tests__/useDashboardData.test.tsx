@@ -8,14 +8,14 @@ const mockData: DashboardData = {
     customers: [
         { id: 'c1', name: 'Cust 1', existing_tcv: 100, potential_tcv: 200 }
     ],
-    features: [
+    workItems: [
         { id: 'f1', name: 'Feat 1', total_effort_mds: 10, customer_targets: [{ customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }] }
     ],
     teams: [
         { id: 't1', name: 'Team 1', total_capacity_mds: 100 }
     ],
     epics: [
-        { id: 'e1', jira_key: 'J-1', feature_id: 'f1', team_id: 't1', remaining_md: 5, target_start: '2026-02-12', target_end: '2026-02-26' }
+        { id: 'e1', jira_key: 'J-1', work_item_id: 'f1', team_id: 't1', remaining_md: 5, target_start: '2026-02-12', target_end: '2026-02-26' }
     ],
     sprints: []
 };
@@ -44,7 +44,7 @@ describe('useDashboardData API logic', () => {
 
         // Asserts data was serialized into state
         expect(result.current.data?.customers).toHaveLength(1);
-        expect(result.current.data?.features).toHaveLength(1);
+        expect(result.current.data?.workItems).toHaveLength(1);
     });
 
     it('adds and parses a new customer correctly', async () => {
@@ -64,7 +64,7 @@ describe('useDashboardData API logic', () => {
         expect(result.current.data?.customers[1].name).toBe('Cust 2');
     });
 
-    it('deletes a customer and scrubs feature references', async () => {
+    it('deletes a customer and scrubs work item references', async () => {
         const { result } = renderHook(() => useDashboardData());
         await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -74,7 +74,7 @@ describe('useDashboardData API logic', () => {
         });
 
         expect(result.current.data?.customers).toHaveLength(0);
-        // The customer should be cleanly removed from the features targets list
-        expect(result.current.data?.features[0].customer_targets).toHaveLength(0);
+        // The customer should be cleanly removed from the work items targets list
+        expect(result.current.data?.workItems[0].customer_targets).toHaveLength(0);
     });
 });

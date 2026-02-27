@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { FeaturePage } from './FeaturePage';
+import { WorkItemPage } from './WorkItemPage';
 import type { DashboardData } from '../../types/models';
 
 const mockData: DashboardData = {
@@ -12,10 +12,10 @@ const mockData: DashboardData = {
     customers: [
         { id: 'c1', name: 'Customer A' } // Removed non-existent handle_dots
     ] as any, // type assertion to bypass any missing properties
-    features: [
+    workItems: [
         {
             id: 'f1',
-            name: 'Feature A',
+            name: 'Work Item A',
             total_effort_mds: 10,
             customer_targets: [
                 {
@@ -31,15 +31,15 @@ const mockData: DashboardData = {
     sprints: []
 };
 
-describe('FeaturePage', () => {
+describe('WorkItemPage', () => {
     const defaultProps = {
         onBack: vi.fn(),
         data: mockData,
         loading: false,
         error: null,
-        addFeature: vi.fn(),
-        deleteFeature: vi.fn(),
-        updateFeature: vi.fn(),
+        addWorkItem: vi.fn(),
+        deleteWorkItem: vi.fn(),
+        updateWorkItem: vi.fn(),
         addEpic: vi.fn(),
         deleteEpic: vi.fn(),
         updateEpic: vi.fn(),
@@ -47,7 +47,7 @@ describe('FeaturePage', () => {
     };
 
     it('should have Nice-to-have option in the priority dropdown for existing targets', () => {
-        render(<FeaturePage {...defaultProps} featureId="f1" />);
+        render(<WorkItemPage {...defaultProps} workItemId="f1" />);
 
         const niceToHaveOptions = screen.getAllByRole('option', { name: 'Nice-to-have' }) as HTMLOptionElement[];
         expect(niceToHaveOptions.length).toBeGreaterThan(0);
@@ -55,7 +55,7 @@ describe('FeaturePage', () => {
     });
 
     it('should have Nice-to-have option in the priority dropdown when adding a new target', () => {
-        const { container } = render(<FeaturePage {...defaultProps} featureId="new" />);
+        const { container } = render(<WorkItemPage {...defaultProps} workItemId="new" />);
 
         const customerSelect = container.querySelector('#newCustomerSelect') as HTMLSelectElement;
         const targetBtn = screen.getByRole('button', { name: 'Target Customer' });

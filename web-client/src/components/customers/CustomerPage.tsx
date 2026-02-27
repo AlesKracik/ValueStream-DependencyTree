@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { DashboardData, Customer, Feature } from '../../types/models';
+import type { DashboardData, Customer, WorkItem } from '../../types/models';
 import styles from './CustomerPage.module.css';
 
 export interface CustomerPageProps {
@@ -9,9 +9,8 @@ export interface CustomerPageProps {
     loading: boolean;
     error: Error | null;
     updateCustomer: (id: string, updates: Partial<Customer>) => void;
-    updateFeature: (id: string, updates: Partial<Feature>) => void;
-    addCustomer: (c: Customer) => void;
     deleteCustomer: (id: string) => void;
+    updateWorkItem: (id: string, updates: Partial<WorkItem>) => void;
     saveDashboardData: (data: DashboardData) => Promise<void>;
 }
 
@@ -22,52 +21,60 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     loading,
     error,
     updateCustomer,
-    updateFeature,
-    addCustomer,
     deleteCustomer,
+    updateWorkItem,
     saveDashboardData
 }) => {
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const isNew = customerId === 'new';
-    const [newCustomerDraft, setNewCustomerDraft] = useState<Partial<Customer>>({ name: 'New Customer', existing_tcv: 0, potential_tcv: 0 });
-    const [newCustomerFeatures, setNewCustomerFeatures] = useState<{ featureId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have' }[]>([]);
 
-    if (loading) return <div>Loading customer details...</div>;
-    if (error) return <div>Error: {error.message}</div>;
-    if (!data) return <div>No data available</div>;
+    // Draft states for new customer creation
+    const [newCustDraft, setNewCustDraft] = useState<Partial<Customer>>({ name: 'New Customer', existing_tcv: 0, potential_tcv: 0 });
+    const [newCustomerWorkItems, setNewCustomerWorkItems] = useState<{ workItemId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have' }[]>([]);
 
-    const customer = isNew ? newCustomerDraft : data.customers.find(c => c.id === customerId);
-    if (!customer) return <div>Customer not found.</div>;
+    if (loading) return <div className={styles.pageContainer}>Loading customer details...</div>;
+    if (error) return <div className={styles.pageContainer}>Error: {error.message}</div>;
+    if (!data) return <div className={styles.pageContainer}>No data available.</div>;
 
-    const targetedFeatures = isNew
-        ? newCustomerFeatures.map(ncf => data.features.find(f => f.id === ncf.featureId)!).filter(Boolean)
-        : data.features.filter(f => f.customer_targets.some(ct => ct.customer_id === customerId));
+    const customer = isNew ? newCustDraft as Customer : data.customers.find(c => c.id === customerId);
+    if (!customer) return <div className={styles.pageContainer}>Customer not found.</div>;
+
+    const targetedWorkItems = isNew
+        ? newCustomerWorkItems.map(ncf => data.workItems.find(f => f.id === ncf.workItemId)!).filter(Boolean)
+        : data.workItems.filter(f => f.customer_targets.some(ct => ct.customer_id === customerId));
 
     const handleSave = async () => {
         setSaveStatus('saving');
         try {
             if (isNew) {
                 const newId = `c${Date.now()}`;
-                const newCust = { id: newId, ...newCustomerDraft } as Customer;
-                addCustomer(newCust);
+                const newCust: Customer = {
+                    id: newId,
+                    name: newCustDraft.name || 'New Customer',
+                    existing_tcv: newCustDraft.existing_tcv || 0,
+                    potential_tcv: newCustDraft.potential_tcv || 0
+                };
 
-                // Inject the drafted features
-                const updatedFeatures = data.features.map(f => {
-                    const draftTarget = newCustomerFeatures.find(ncf => ncf.featureId === f.id);
+                // Inject the drafted work items
+                const updatedWorkItems = data.workItems.map(f => {
+                    const draftTarget = newCustomerWorkItems.find(ncf => ncf.workItemId === f.id);
                     if (draftTarget) {
                         return {
                             ...f,
-                            customer_targets: [...f.customer_targets, {
-                                customer_id: newId,
-                                tcv_type: draftTarget.tcv_type,
-                                priority: draftTarget.priority
-                            }]
+                            customer_targets: [
+                                ...(f.customer_targets || []),
+                                {
+                                    customer_id: newId,
+                                    tcv_type: draftTarget.tcv_type,
+                                    priority: draftTarget.priority
+                                }
+                            ]
                         };
                     }
                     return f;
                 });
 
-                const newData = { ...data, customers: [...data.customers, newCust], features: updatedFeatures };
+                const newData = { ...data, customers: [...data.customers, newCust], workItems: updatedWorkItems };
                 await saveDashboardData(newData);
                 setSaveStatus('saved');
                 setTimeout(() => {
@@ -80,21 +87,22 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                 setTimeout(() => setSaveStatus('idle'), 2000);
             }
         } catch (err) {
-            console.error('Failed to save data:', err);
+            console.error('Save failed', err);
             setSaveStatus('error');
             setTimeout(() => setSaveStatus('idle'), 3000);
         }
     };
 
     const handleDelete = async () => {
-        if (!confirm(`Are you sure you want to delete ${customer.name}? This will remove all their feature impact.`)) return;
+        if (!confirm(`Are you sure you want to delete ${customer.name}? This will remove all their work item impact.`)) return;
         setSaveStatus('saving');
         try {
             deleteCustomer(customerId);
+            // Also need to scrub workItems
             const newData = {
                 ...data,
                 customers: data.customers.filter(c => c.id !== customerId),
-                features: data.features.map(f => ({
+                workItems: data.workItems.map(f => ({
                     ...f,
                     customer_targets: f.customer_targets.filter(ct => ct.customer_id !== customerId)
                 }))
@@ -102,39 +110,37 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
             await saveDashboardData(newData);
             onBack();
         } catch (err) {
-            console.error('Failed to delete customer:', err);
+            console.error('Delete failed', err);
             setSaveStatus('error');
-            setTimeout(() => setSaveStatus('idle'), 3000);
         }
     };
 
     return (
         <div className={styles.pageContainer}>
             <div className={styles.header}>
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                    <button onClick={onBack} className={styles.backBtn}>← Back to Dashboard</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <button className={styles.backBtn} onClick={onBack}>
+                        ← Back to Dashboard
+                    </button>
                     <h1>{isNew ? 'New Customer' : customer.name}</h1>
                 </div>
-                <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ display: 'flex', gap: '16px' }}>
                     {!isNew && (
-                        <button
+                        <button 
+                            className={styles.dangerBtn} 
+                            style={{ padding: '10px 20px', fontWeight: '600', fontSize: '14px', borderRadius: '6px' }}
                             onClick={handleDelete}
-                            disabled={saveStatus === 'saving'}
-                            className={styles.dangerBtn}
                         >
                             Delete Customer
                         </button>
                     )}
-                    <button
+                    <button 
+                        className={styles.saveBtn} 
+                        style={{ backgroundColor: '#2563eb', borderColor: '#1d4ed8' }}
                         onClick={handleSave}
                         disabled={saveStatus === 'saving'}
-                        className={styles.saveBtn}
-                        style={{
-                            backgroundColor: saveStatus === 'saved' ? '#10b981' : saveStatus === 'error' ? '#ef4444' : '#3b82f6',
-                            borderColor: saveStatus === 'saved' ? '#059669' : saveStatus === 'error' ? '#b91c1c' : '#2563eb'
-                        }}
                     >
-                        {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? '✓ Saved' : saveStatus === 'error' ? 'Error!' : 'Save Changes'}
+                        {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved!' : saveStatus === 'error' ? 'Error' : 'Save Changes'}
                     </button>
                 </div>
             </div>
@@ -145,34 +151,38 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                     <div className={styles.formGrid}>
                         <label>
                             Name:
-                            <input
-                                type="text"
-                                value={customer.name}
+                            <input 
+                                type="text" 
+                                value={isNew ? newCustDraft.name : customer.name} 
                                 onChange={e => {
-                                    if (isNew) setNewCustomerDraft({ ...newCustomerDraft, name: e.target.value });
-                                    else updateCustomer(customerId, { name: e.target.value });
+                                    if (isNew) setNewCustDraft(prev => ({ ...prev, name: e.target.value }));
+                                    else updateCustomer(customer.id, { name: e.target.value });
                                 }}
                             />
                         </label>
                         <label>
                             Existing TCV ($):
-                            <input
-                                type="number"
-                                value={customer.existing_tcv || 0}
+                            <input 
+                                type="number" 
+                                min="0" 
+                                value={isNew ? newCustDraft.existing_tcv : customer.existing_tcv} 
                                 onChange={e => {
-                                    if (isNew) setNewCustomerDraft({ ...newCustomerDraft, existing_tcv: Number(e.target.value) });
-                                    else updateCustomer(customerId, { existing_tcv: Number(e.target.value) });
+                                    const val = parseInt(e.target.value) || 0;
+                                    if (isNew) setNewCustDraft(prev => ({ ...prev, existing_tcv: val }));
+                                    else updateCustomer(customer.id, { existing_tcv: val });
                                 }}
                             />
                         </label>
                         <label>
                             Potential TCV ($):
-                            <input
-                                type="number"
-                                value={customer.potential_tcv || 0}
+                            <input 
+                                type="number" 
+                                min="0" 
+                                value={isNew ? newCustDraft.potential_tcv : customer.potential_tcv} 
                                 onChange={e => {
-                                    if (isNew) setNewCustomerDraft({ ...newCustomerDraft, potential_tcv: Number(e.target.value) });
-                                    else updateCustomer(customerId, { potential_tcv: Number(e.target.value) });
+                                    const val = parseInt(e.target.value) || 0;
+                                    if (isNew) setNewCustDraft(prev => ({ ...prev, potential_tcv: val }));
+                                    else updateCustomer(customer.id, { potential_tcv: val });
                                 }}
                             />
                         </label>
@@ -181,51 +191,51 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
 
                 <section className={styles.card}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                        <h2>Targeted Features</h2>
+                        <h2>Targeted Work Items</h2>
                     </div>
 
                     <table className={styles.table}>
                         <thead>
                             <tr>
-                                <th>Feature</th>
+                                <th>Work Item</th>
                                 <th>TCV Target</th>
                                 <th>Priority</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {targetedFeatures.map(feature => {
+                            {targetedWorkItems.map(workItem => {
                                 const targetDef = isNew
-                                    ? newCustomerFeatures.find(ncf => ncf.featureId === feature.id)!
-                                    : feature.customer_targets.find(ct => ct.customer_id === customerId)!;
+                                    ? newCustomerWorkItems.find(ncf => ncf.workItemId === workItem.id)!
+                                    : workItem.customer_targets.find(ct => ct.customer_id === customerId)!;
 
                                 const updateTarget = (updates: Partial<typeof targetDef>) => {
                                     if (isNew) {
-                                        setNewCustomerFeatures(prev => prev.map(ncf =>
-                                            ncf.featureId === feature.id ? { ...ncf, ...updates } : ncf
+                                        setNewCustomerWorkItems(prev => prev.map(ncf => 
+                                            ncf.workItemId === workItem.id ? { ...ncf, ...updates } : ncf
                                         ));
                                     } else {
-                                        const newTargets = feature.customer_targets.map(ct =>
+                                        const newTargets = workItem.customer_targets.map(ct => 
                                             ct.customer_id === customerId ? { ...ct, ...updates } : ct
                                         );
-                                        updateFeature(feature.id, { customer_targets: newTargets });
+                                        updateWorkItem(workItem.id, { customer_targets: newTargets as any });
                                     }
                                 };
 
                                 const removeTarget = () => {
                                     if (isNew) {
-                                        setNewCustomerFeatures(prev => prev.filter(ncf => ncf.featureId !== feature.id));
+                                        setNewCustomerWorkItems(prev => prev.filter(ncf => ncf.workItemId !== workItem.id));
                                     } else {
-                                        const newTargets = feature.customer_targets.filter(ct => ct.customer_id !== customerId);
-                                        updateFeature(feature.id, { customer_targets: newTargets });
+                                        const newTargets = workItem.customer_targets.filter(ct => ct.customer_id !== customerId);
+                                        updateWorkItem(workItem.id, { customer_targets: newTargets });
                                     }
                                 };
 
                                 return (
-                                    <tr key={feature.id}>
-                                        <td>{feature.name}</td>
+                                    <tr key={workItem.id}>
+                                        <td>{workItem.name}</td>
                                         <td>
-                                            <select
+                                            <select 
                                                 value={targetDef.tcv_type}
                                                 onChange={e => updateTarget({ tcv_type: e.target.value as 'existing' | 'potential' })}
                                             >
@@ -234,12 +244,13 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                             </select>
                                         </td>
                                         <td>
-                                            <select
+                                            <select 
                                                 value={targetDef.priority || 'Must-have'}
                                                 onChange={e => updateTarget({ priority: e.target.value as 'Must-have' | 'Should-have' | 'Nice-to-have' })}
                                             >
                                                 <option value="Must-have">Must-have</option>
                                                 <option value="Should-have">Should-have</option>
+                                                <option value="Nice-to-have">Nice-to-have</option>
                                             </select>
                                         </td>
                                         <td>
@@ -248,51 +259,51 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                     </tr>
                                 );
                             })}
-                            {targetedFeatures.length === 0 && (
+                            {targetedWorkItems.length === 0 && (
                                 <tr>
-                                    <td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No targeted features found.</td>
+                                    <td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No targeted work items found.</td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
 
-                    <div className={styles.addFeatureBox}>
-                        <h3>Add Feature Target</h3>
+                    <div className={styles.addWorkItemBox}>
+                        <h3>Add Work Item Target</h3>
                         <div style={{ display: 'flex', gap: '12px' }}>
-                            <select id="newFeatureSelect" style={{ flex: 1, padding: '8px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }}>
-                                <option value="">Select a feature to add...</option>
-                                {data.features.filter(f => !targetedFeatures.find(tf => tf.id === f.id)).map(f => (
+                            <select id="newWorkItemSelect" style={{ flex: 1, padding: '8px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }}>
+                                <option value="">Select a work item to add...</option>
+                                {data.workItems.filter(f => !targetedWorkItems.find(tf => tf.id === f.id)).map(f => (
                                     <option key={f.id} value={f.id}>{f.name}</option>
                                 ))}
                             </select>
-                            <button
+                            <button 
                                 className={styles.primaryBtn}
                                 onClick={() => {
-                                    const selectEl = document.getElementById('newFeatureSelect') as HTMLSelectElement;
-                                    const featureId = selectEl?.value;
-                                    if (featureId) {
-                                        const feature = data.features.find(f => f.id === featureId);
-                                        if (feature) {
+                                    const selectEl = document.getElementById('newWorkItemSelect') as HTMLSelectElement;
+                                    const workItemId = selectEl?.value;
+                                    if (workItemId) {
+                                        const workItem = data.workItems.find(f => f.id === workItemId);
+                                        if (workItem) {
                                             if (isNew) {
-                                                setNewCustomerFeatures(prev => [...prev, {
-                                                    featureId,
+                                                setNewCustomerWorkItems(prev => [...prev, {
+                                                    workItemId,
                                                     tcv_type: 'potential',
                                                     priority: 'Should-have'
                                                 }]);
                                             } else {
-                                                const newTargets = [...(feature.customer_targets || []), {
+                                                const newTargets = [...(workItem.customer_targets || []), {
                                                     customer_id: customerId,
                                                     tcv_type: 'potential',
                                                     priority: 'Should-have'
                                                 }];
-                                                updateFeature(featureId, { customer_targets: newTargets as any });
+                                                updateWorkItem(workItemId, { customer_targets: newTargets as any });
                                             }
                                             selectEl.value = ''; // reset
                                         }
                                     }
                                 }}
                             >
-                                Assign Feature
+                                Assign Work Item
                             </button>
                         </div>
                     </div>

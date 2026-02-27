@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 
-interface FeatureNodeData {
+interface WorkItemNodeData {
     label: string;
     effortMds: number;
     epicMds?: number;
@@ -10,7 +10,7 @@ interface FeatureNodeData {
     baseSize: number;
 }
 
-export const FeatureNode = memo(({ data }: { data: FeatureNodeData }) => {
+export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
     // Size ranges from 60px to 140px based on RICE Score proportion
     const sizeRatio = data.maxScore > 0 ? (data.score || 0) / data.maxScore : 0.5;
     const nodeSize = data.baseSize * 0.6 + (data.baseSize * 0.8 * sizeRatio);
@@ -52,4 +52,4 @@ export const FeatureNode = memo(({ data }: { data: FeatureNodeData }) => {
     );
 });
 
-export default FeatureNode;
+export default WorkItemNode;

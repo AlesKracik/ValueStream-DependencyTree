@@ -9,7 +9,7 @@ const MOCK_DATA: DashboardData = {
         { id: 'c1', name: 'Cust 1', existing_tcv: 100, potential_tcv: 0 },
         { id: 'c2', name: 'Cust 2', existing_tcv: 1000, potential_tcv: 500 }
     ],
-    features: [
+    workItems: [
         {
             id: 'f1',
             name: 'Low RICE Feat',
@@ -28,9 +28,9 @@ const MOCK_DATA: DashboardData = {
     ],
     epics: [
         // Two overlapping epics to test stack layout
-        { id: 'e1', jira_key: 'J-1', feature_id: 'f1', team_id: 't1', remaining_md: 8, target_start: '2026-02-12', target_end: '2026-02-26' },
-        { id: 'e2', jira_key: 'J-2', feature_id: 'f2', team_id: 't1', remaining_md: 5, target_start: '2026-02-12', target_end: '2026-02-26' },
-        { id: 'e3', jira_key: 'J-3', feature_id: 'f1', team_id: 't1', remaining_md: 3 } // Unscheduled epic without dates
+        { id: 'e1', jira_key: 'J-1', work_item_id: 'f1', team_id: 't1', remaining_md: 8, target_start: '2026-02-12', target_end: '2026-02-26' },
+        { id: 'e2', jira_key: 'J-2', work_item_id: 'f2', team_id: 't1', remaining_md: 5, target_start: '2026-02-12', target_end: '2026-02-26' },
+        { id: 'e3', jira_key: 'J-3', work_item_id: 'f1', team_id: 't1', remaining_md: 3 } // Unscheduled epic without dates
     ],
     sprints: [
         { id: 's1', name: 'Sprint 1', start_date: '2026-02-12', end_date: '2026-02-26' }
@@ -43,21 +43,21 @@ describe('useGraphLayout Math Engine', () => {
         const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', '', '', true));
         
         const customerHeader = result.current.nodes.find(n => n.id === 'header-customers');
-        const featureHeader = result.current.nodes.find(n => n.id === 'header-features');
+        const workItemHeader = result.current.nodes.find(n => n.id === 'header-workitems');
         const teamHeader = result.current.nodes.find(n => n.id === 'header-teams');
 
         expect(customerHeader).toBeDefined();
-        expect(featureHeader).toBeDefined();
+        expect(workItemHeader).toBeDefined();
         expect(teamHeader).toBeDefined();
 
         // Check if they are at Y=0
         expect(customerHeader?.position.y).toBe(0);
-        expect(featureHeader?.position.y).toBe(0);
+        expect(workItemHeader?.position.y).toBe(0);
         expect(teamHeader?.position.y).toBe(0);
 
         // Check if they are offset for centering (fixed width 220, so offset -110)
         expect(customerHeader?.position.x).toBe(0 - 110); // COL_CUSTOMER_X = 0
-        expect(featureHeader?.position.x).toBe(350 - 110); // COL_FEATURE_X = 350
+        expect(workItemHeader?.position.x).toBe(350 - 110); // COL_WORKITEM_X = 350
         expect(teamHeader?.position.x).toBe(700 - 110); // COL_TEAM_X = 700
     });
 
@@ -65,13 +65,13 @@ describe('useGraphLayout Math Engine', () => {
         const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', '', '', true));
         
         const firstCustomer = result.current.nodes.find(n => n.id === 'customer-c1');
-        const firstFeature = result.current.nodes.find(n => n.id === 'feature-f1');
+        const firstWorkItem = result.current.nodes.find(n => n.id === 'workitem-f1');
 
         // START_Y is 200, but nodes are positioned at START_Y - (nodeSize / 2)
         // With nodeSize around 100-140, Y should be around 130-150.
         // Crucially, it should be significantly below the header at Y=0.
         expect(firstCustomer?.position.y).toBeGreaterThan(100);
-        expect(firstFeature?.position.y).toBeGreaterThan(100);
+        expect(firstWorkItem?.position.y).toBeGreaterThan(100);
     });
 
     it('gracefully handles empty data', () => {
@@ -83,8 +83,8 @@ describe('useGraphLayout Math Engine', () => {
     it('calculates proper RICE visualization scaling', () => {
         const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', '', '', true));
 
-        const f1Node = result.current.nodes.find(n => n.id === 'feature-f1');
-        const f2Node = result.current.nodes.find(n => n.id === 'feature-f2');
+        const f1Node = result.current.nodes.find(n => n.id === 'workitem-f1');
+        const f2Node = result.current.nodes.find(n => n.id === 'workitem-f2');
 
         // High RICE Feat (f2) has massive TCV map and Must-Have compared to Low RICE Feat (f1)
         expect(f1Node).toBeDefined();
@@ -134,7 +134,7 @@ describe('useGraphLayout Math Engine', () => {
         const e3GanttNode = result.current.nodes.find(n => n.id === 'gantt-e3');
         expect(e3GanttNode).toBeUndefined();
 
-        // But it DOES have a feature_id (f1) and team_id (t1), so its connection edge should still exist.
+        // But it DOES have a work_item_id (f1) and team_id (t1), so its connection edge should still exist.
         const e3Edge = result.current.edges.find(e => e.id === 'edge-f1-t1-e3');
         expect(e3Edge).toBeDefined();
     });

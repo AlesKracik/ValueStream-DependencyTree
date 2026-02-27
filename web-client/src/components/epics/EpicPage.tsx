@@ -259,7 +259,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                             <input
                                 type="text"
                                 value={epic.name || ''}
-                                placeholder="Uses Feature Name by default"
+                                placeholder="Uses Work Item Name by default"
                                 onChange={e => updateEpic(epicId, { name: e.target.value.trim() || undefined })}
                             />
                         </label>

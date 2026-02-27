@@ -1,84 +1,84 @@
 import React, { useState } from 'react';
-import type { DashboardData, Feature, Epic } from '../../types/models';
+import type { DashboardData, WorkItem, Epic } from '../../types/models';
 import styles from '../customers/CustomerPage.module.css';
 
-export interface FeaturePageProps {
-    featureId: string;
+export interface WorkItemPageProps {
+    workItemId: string;
     onBack: () => void;
     data: DashboardData | null;
     loading: boolean;
     error: Error | null;
-    addFeature: (f: Feature) => void;
-    deleteFeature: (id: string) => void;
-    updateFeature: (id: string, updates: Partial<Feature>) => void;
+    addWorkItem: (f: WorkItem) => void;
+    deleteWorkItem: (id: string) => void;
+    updateWorkItem: (id: string, updates: Partial<WorkItem>) => void;
     addEpic: (e: Epic) => void;
     deleteEpic: (id: string) => void;
     updateEpic: (id: string, updates: Partial<Epic>) => void;
     saveDashboardData: (data: DashboardData) => Promise<void>;
 }
 
-export const FeaturePage: React.FC<FeaturePageProps> = ({
-    featureId,
+export const WorkItemPage: React.FC<WorkItemPageProps> = ({
+    workItemId,
     onBack,
     data,
     loading,
     error,
-    addFeature,
-    deleteFeature,
-    updateFeature,
+    addWorkItem,
+    deleteWorkItem,
+    updateWorkItem,
     addEpic,
     updateEpic,
     saveDashboardData
 }) => {
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-    const isNew = featureId === 'new';
+    const isNew = workItemId === 'new';
 
-    // Draft states for new feature creation
-    const [newFeatureDraft, setNewFeatureDraft] = useState<Partial<Feature>>({ name: 'New Feature', total_effort_mds: 0, customer_targets: [] });
+    // Draft states for new workItem creation
+    const [newWorkItemDraft, setNewWorkItemDraft] = useState<Partial<WorkItem>>({ name: 'New Work Item', total_effort_mds: 0, customer_targets: [] });
     // Using the same mock state pattern as customers
-    const [newFeatureCustomers, setNewFeatureCustomers] = useState<{ customerId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have' }[]>([]);
-    const [newFeatureEpics, setNewFeatureEpics] = useState<Epic[]>([]);
+    const [newWorkItemCustomers, setNewWorkItemCustomers] = useState<{ customerId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have' }[]>([]);
+    const [newWorkItemEpics, setNewWorkItemEpics] = useState<Epic[]>([]);
     const [syncingId, setSyncingId] = useState<string | null>(null);
 
-    if (loading) return <div className={styles.pageContainer}>Loading feature details...</div>;
+    if (loading) return <div className={styles.pageContainer}>Loading work item details...</div>;
     if (error) return <div className={styles.pageContainer}>Error: {error.message}</div>;
     if (!data) return <div className={styles.pageContainer}>No data available.</div>;
 
-    const feature = isNew ? newFeatureDraft as Feature : data.features.find(f => f.id === featureId);
-    if (!feature) return <div className={styles.pageContainer}>Feature not found.</div>;
+    const workItem = isNew ? newWorkItemDraft as WorkItem : data.workItems.find(f => f.id === workItemId);
+    if (!workItem) return <div className={styles.pageContainer}>Work Item not found.</div>;
 
     const targetedCustomers = isNew
-        ? newFeatureCustomers.map(nfc => data.customers.find(c => c.id === nfc.customerId)!).filter(Boolean)
-        : data.customers.filter(c => feature.customer_targets?.some(ct => ct.customer_id === c.id));
+        ? newWorkItemCustomers.map(nfc => data.customers.find(c => c.id === nfc.customerId)!).filter(Boolean)
+        : data.customers.filter(c => workItem.customer_targets?.some(ct => ct.customer_id === c.id));
 
     const handleSave = async () => {
         setSaveStatus('saving');
         try {
             if (isNew) {
                 const newId = `f${Date.now()}`;
-                const newFeat: Feature = {
+                const newFeat: WorkItem = {
                     id: newId,
-                    name: newFeatureDraft.name || 'New Feature',
-                    total_effort_mds: newFeatureDraft.total_effort_mds || 0,
-                    customer_targets: newFeatureCustomers.map(c => ({
+                    name: newWorkItemDraft.name || 'New Work Item',
+                    total_effort_mds: newWorkItemDraft.total_effort_mds || 0,
+                    customer_targets: newWorkItemCustomers.map(c => ({
                         customer_id: c.customerId,
                         tcv_type: c.tcv_type,
                         priority: c.priority
                     }))
                 };
 
-                const epicsToAdd = newFeatureEpics.map(e => ({
+                const epicsToAdd = newWorkItemEpics.map(e => ({
                     ...e,
                     id: `e${Math.random().toString(36).substr(2, 9)}`,
-                    feature_id: newId
+                    work_item_id: newId
                 }));
 
-                addFeature(newFeat);
+                addWorkItem(newFeat);
                 epicsToAdd.forEach(e => addEpic(e));
 
                 const newData = {
                     ...data,
-                    features: [...data.features, newFeat],
+                    workItems: [...data.workItems, newFeat],
                     epics: [...data.epics, ...epicsToAdd]
                 };
                 await saveDashboardData(newData);
@@ -101,14 +101,14 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
     };
 
     const handleDelete = async () => {
-        if (window.confirm('Are you sure you want to delete this feature? It will be removed from all associated epics.')) {
+        if (window.confirm('Are you sure you want to delete this work item? It will be removed from all associated epics.')) {
             setSaveStatus('saving');
             try {
-                deleteFeature(featureId);
+                deleteWorkItem(workItemId);
                 const newData = {
                     ...data,
-                    features: data.features.filter(f => f.id !== featureId),
-                    epics: data.epics.map(e => e.feature_id === featureId ? { ...e, feature_id: undefined } : e)
+                    workItems: data.workItems.filter(f => f.id !== workItemId),
+                    epics: data.epics.map(e => e.work_item_id === workItemId ? { ...e, work_item_id: undefined } : e)
                 };
                 await saveDashboardData(newData);
                 onBack();
@@ -119,14 +119,14 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
         }
     };
 
-    const epics = isNew ? newFeatureEpics : data.epics.filter(e => e.feature_id === featureId);
+    const epics = isNew ? newWorkItemEpics : data.epics.filter(e => e.work_item_id === workItemId);
 
     const handleAddEpic = () => {
         const tempId = `e-temp-${Date.now()}`;
         const draftEpic: Epic = {
             id: tempId,
             jira_key: 'TBD',
-            feature_id: isNew ? 'new' : featureId,
+            work_item_id: isNew ? 'new' : workItemId,
             team_id: data.teams[0]?.id || '',
             remaining_md: 0,
             target_start: new Date().toISOString().split('T')[0],
@@ -134,7 +134,7 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
             name: 'New Epic'
         };
         if (isNew) {
-            setNewFeatureEpics(prev => [...prev, draftEpic]);
+            setNewWorkItemEpics(prev => [...prev, draftEpic]);
         } else {
             addEpic(draftEpic);
         }
@@ -142,7 +142,7 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
 
     const handleUpdateEpic = (id: string, updates: Partial<Epic>) => {
         if (isNew) {
-            setNewFeatureEpics(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+            setNewWorkItemEpics(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
         } else {
             updateEpic(id, updates);
         }
@@ -150,9 +150,9 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
 
     const handleRemoveEpic = (id: string) => {
         if (isNew) {
-            setNewFeatureEpics(prev => prev.filter(e => e.id !== id));
+            setNewWorkItemEpics(prev => prev.filter(e => e.id !== id));
         } else {
-            updateEpic(id, { feature_id: undefined });
+            updateEpic(id, { work_item_id: undefined });
         }
     };
 
@@ -231,7 +231,7 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
                     <button className={styles.backBtn} onClick={onBack}>
                         ← Back to Dashboard
                     </button>
-                    <h1>{isNew ? 'New Feature' : feature.name}</h1>
+                    <h1>{isNew ? 'New Work Item' : workItem.name}</h1>
                 </div>
                 <div style={{ display: 'flex', gap: '16px' }}>
                     {!isNew && (
@@ -240,7 +240,7 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
                             style={{ padding: '10px 20px', fontWeight: '600', fontSize: '14px', borderRadius: '6px' }}
                             onClick={handleDelete}
                         >
-                            Delete Feature
+                            Delete Work Item
                         </button>
                     )}
                     <button
@@ -256,18 +256,18 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
 
             <div className={styles.content}>
                 <section className={styles.card}>
-                    <h2>Feature Details</h2>
+                    <h2>Work Item Details</h2>
                     <div className={styles.formGrid}>
                         <label>
                             Name:
                             <input
                                 type="text"
-                                value={isNew ? newFeatureDraft.name : feature.name}
+                                value={isNew ? newWorkItemDraft.name : workItem.name}
                                 onChange={e => {
                                     if (isNew) {
-                                        setNewFeatureDraft(prev => ({ ...prev, name: e.target.value }));
+                                        setNewWorkItemDraft(prev => ({ ...prev, name: e.target.value }));
                                     } else {
-                                        updateFeature(feature.id, { name: e.target.value });
+                                        updateWorkItem(workItem.id, { name: e.target.value });
                                     }
                                 }}
                             />
@@ -277,13 +277,13 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
                             <input
                                 type="number"
                                 min="0"
-                                value={isNew ? newFeatureDraft.total_effort_mds : feature.total_effort_mds}
+                                value={isNew ? newWorkItemDraft.total_effort_mds : workItem.total_effort_mds}
                                 onChange={e => {
                                     const val = parseInt(e.target.value) || 0;
                                     if (isNew) {
-                                        setNewFeatureDraft(prev => ({ ...prev, total_effort_mds: val }));
+                                        setNewWorkItemDraft(prev => ({ ...prev, total_effort_mds: val }));
                                     } else {
-                                        updateFeature(feature.id, { total_effort_mds: val });
+                                        updateWorkItem(workItem.id, { total_effort_mds: val });
                                     }
                                 }}
                             />
@@ -308,28 +308,28 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
                         <tbody>
                             {targetedCustomers.map(customer => {
                                 const targetDef = isNew
-                                    ? newFeatureCustomers.find(nfc => nfc.customerId === customer.id)!
-                                    : feature.customer_targets?.find(ct => ct.customer_id === customer.id)!;
+                                    ? newWorkItemCustomers.find(nfc => nfc.customerId === customer.id)!
+                                    : workItem.customer_targets?.find(ct => ct.customer_id === customer.id)!;
 
                                 const updateTarget = (updates: Partial<typeof targetDef>) => {
                                     if (isNew) {
-                                        setNewFeatureCustomers(prev => prev.map(nfc =>
+                                        setNewWorkItemCustomers(prev => prev.map(nfc =>
                                             nfc.customerId === customer.id ? { ...nfc, ...updates } : nfc
                                         ));
                                     } else {
-                                        const newTargets = feature.customer_targets!.map(ct =>
+                                        const newTargets = workItem.customer_targets!.map(ct =>
                                             ct.customer_id === customer.id ? { ...ct, ...updates } : ct
                                         );
-                                        updateFeature(feature.id, { customer_targets: newTargets as any });
+                                        updateWorkItem(workItem.id, { customer_targets: newTargets as any });
                                     }
                                 };
 
                                 const removeTarget = () => {
                                     if (isNew) {
-                                        setNewFeatureCustomers(prev => prev.filter(nfc => nfc.customerId !== customer.id));
+                                        setNewWorkItemCustomers(prev => prev.filter(nfc => nfc.customerId !== customer.id));
                                     } else {
-                                        const newTargets = feature.customer_targets!.filter(ct => ct.customer_id !== customer.id);
-                                        updateFeature(feature.id, { customer_targets: newTargets });
+                                        const newTargets = workItem.customer_targets!.filter(ct => ct.customer_id !== customer.id);
+                                        updateWorkItem(workItem.id, { customer_targets: newTargets });
                                     }
                                 };
 
@@ -369,7 +369,7 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
                         </tbody>
                     </table>
 
-                    <div className={styles.addFeatureBox}>
+                    <div className={styles.addWorkItemBox}>
                         <h3>Add Customer Target</h3>
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <select id="newCustomerSelect" style={{ flex: 1, padding: '8px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }}>
@@ -387,18 +387,18 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
                                         const customer = data.customers.find(c => c.id === customerSelectId);
                                         if (customer) {
                                             if (isNew) {
-                                                setNewFeatureCustomers(prev => [...prev, {
+                                                setNewWorkItemCustomers(prev => [...prev, {
                                                     customerId: customerSelectId,
                                                     tcv_type: 'potential',
                                                     priority: 'Should-have'
                                                 }]);
                                             } else {
-                                                const newTargets = [...(feature.customer_targets || []), {
+                                                const newTargets = [...(workItem.customer_targets || []), {
                                                     customer_id: customerSelectId,
                                                     tcv_type: 'potential',
                                                     priority: 'Should-have'
                                                 }];
-                                                updateFeature(featureId, { customer_targets: newTargets as any });
+                                                updateWorkItem(workItemId, { customer_targets: newTargets as any });
                                             }
                                             selectEl.value = ''; // reset
                                         }
@@ -471,18 +471,18 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
                             ))}
                             {epics.length === 0 && (
                                 <tr>
-                                    <td colSpan={7} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No epics currently mapped to this feature.</td>
+                                    <td colSpan={7} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No epics currently mapped to this work item.</td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
 
-                    <div className={styles.addFeatureBox}>
+                    <div className={styles.addWorkItemBox}>
                         <h3>Assign Existing Epic</h3>
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <select id="assignEpicSelect" style={{ flex: 1, padding: '8px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }}>
                                 <option value="">Select an unassigned epic to link...</option>
-                                {data.epics.filter(e => !e.feature_id).map(e => (
+                                {data.epics.filter(e => !e.work_item_id).map(e => (
                                     <option key={e.id} value={e.id}>{e.jira_key !== 'TBD' ? e.jira_key : ''} {e.name || 'Unnamed Epic'}</option>
                                 ))}
                             </select>
@@ -492,9 +492,9 @@ export const FeaturePage: React.FC<FeaturePageProps> = ({
                                 if (epicId) {
                                     if (isNew) {
                                         const epicToAssign = data.epics.find(e => e.id === epicId);
-                                        if (epicToAssign) setNewFeatureEpics(prev => [...prev, epicToAssign]);
+                                        if (epicToAssign) setNewWorkItemEpics(prev => [...prev, epicToAssign]);
                                     } else {
-                                        updateEpic(epicId, { feature_id: featureId });
+                                        updateEpic(epicId, { work_item_id: workItemId });
                                     }
                                     selectEl.value = '';
                                 }

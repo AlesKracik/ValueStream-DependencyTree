@@ -205,7 +205,7 @@
       "potential_tcv": 48000
     }
   ],
-  "features": [
+  "workItems": [
     {
       "id": "f1",
       "name": "Multi-Site Support Enhancement",
@@ -452,7 +452,7 @@
     {
       "id": "e1",
       "jira_key": "PROJ-1001",
-      "feature_id": "f2",
+      "work_item_id": "f2",
       "team_id": "t4",
       "remaining_md": 70,
       "target_start": "2026-02-26",
@@ -462,7 +462,7 @@
     {
       "id": "e2",
       "jira_key": "PROJ-1002",
-      "feature_id": "f3",
+      "work_item_id": "f3",
       "team_id": "t4",
       "remaining_md": 35,
       "target_start": "2026-02-26",
@@ -472,7 +472,7 @@
     {
       "id": "e3",
       "jira_key": "PROJ-1003",
-      "feature_id": "f4",
+      "work_item_id": "f4",
       "team_id": "t1",
       "remaining_md": 55,
       "target_start": "2026-01-09",
@@ -482,7 +482,7 @@
     {
       "id": "e4",
       "jira_key": "PROJ-1004",
-      "feature_id": "f4",
+      "work_item_id": "f4",
       "team_id": "t4",
       "remaining_md": 20,
       "target_start": "2026-02-15",
@@ -492,7 +492,7 @@
     {
       "id": "e5",
       "jira_key": "PROJ-1005",
-      "feature_id": "f6",
+      "work_item_id": "f6",
       "team_id": "t2",
       "remaining_md": 50,
       "target_start": "2026-02-11",
@@ -502,7 +502,7 @@
     {
       "id": "e6",
       "jira_key": "PROJ-1006",
-      "feature_id": "f6",
+      "work_item_id": "f6",
       "team_id": "t5",
       "remaining_md": 10,
       "target_start": "2026-02-07",
@@ -512,7 +512,7 @@
     {
       "id": "e7",
       "jira_key": "PROJ-1007",
-      "feature_id": "f8",
+      "work_item_id": "f8",
       "team_id": "t5",
       "remaining_md": 30,
       "target_start": "2026-02-26",
@@ -522,7 +522,7 @@
     {
       "id": "e8",
       "jira_key": "PROJ-1008",
-      "feature_id": "f10",
+      "work_item_id": "f10",
       "team_id": "t4",
       "remaining_md": 0,
       "target_start": "2026-02-26",
@@ -532,7 +532,7 @@
     {
       "id": "e9",
       "jira_key": "PROJ-1009",
-      "feature_id": "f10",
+      "work_item_id": "f10",
       "team_id": "t5",
       "remaining_md": 20,
       "target_start": "2026-02-26",
@@ -542,7 +542,7 @@
     {
       "id": "e10",
       "jira_key": "PROJ-1010",
-      "feature_id": "f10",
+      "work_item_id": "f10",
       "team_id": "t3",
       "remaining_md": 40,
       "target_start": "2026-02-01",
@@ -552,7 +552,7 @@
     {
       "id": "e11",
       "jira_key": "PROJ-1011",
-      "feature_id": "f10",
+      "work_item_id": "f10",
       "team_id": "t1",
       "remaining_md": 80,
       "target_start": "2026-03-01",
@@ -562,7 +562,7 @@
     {
       "id": "e12",
       "jira_key": "PROJ-1012",
-      "feature_id": "f10",
+      "work_item_id": "f10",
       "team_id": "t2",
       "remaining_md": 20,
       "target_start": "2026-02-28",
@@ -572,7 +572,7 @@
     {
       "id": "e13",
       "jira_key": "PROJ-1013",
-      "feature_id": "f13",
+      "work_item_id": "f13",
       "team_id": "t1",
       "remaining_md": 50,
       "target_start": "",
@@ -582,7 +582,7 @@
     {
       "id": "e14",
       "jira_key": "PROJ-1014",
-      "feature_id": "f15",
+      "work_item_id": "f15",
       "team_id": "t4",
       "remaining_md": 0,
       "target_start": "2026-02-26",
@@ -592,7 +592,7 @@
     {
       "id": "e15",
       "jira_key": "PROJ-1015",
-      "feature_id": "f17",
+      "work_item_id": "f17",
       "team_id": "t5",
       "remaining_md": 52,
       "target_start": "2025-11-01",
@@ -602,7 +602,7 @@
     {
       "id": "e16",
       "jira_key": "PROJ-1016",
-      "feature_id": "f19",
+      "work_item_id": "f19",
       "team_id": "t2",
       "remaining_md": 100,
       "target_start": "2026-03-28",
@@ -612,7 +612,7 @@
     {
       "id": "e17",
       "jira_key": "PROJ-1017",
-      "feature_id": "f20",
+      "work_item_id": "f20",
       "team_id": "t5",
       "remaining_md": 0,
       "target_start": "2026-06-02",
@@ -622,7 +622,7 @@
     {
       "id": "ewfe51l0el",
       "jira_key": "PROJ-1018",
-      "feature_id": "f1771836442372",
+      "work_item_id": "f1771836442372",
       "team_id": "t4",
       "remaining_md": 0,
       "target_start": "",
@@ -632,7 +632,7 @@
     {
       "id": "e-temp-1771836999707",
       "jira_key": "PROJ-1019",
-      "feature_id": "f7",
+      "work_item_id": "f7",
       "team_id": "t4",
       "remaining_md": 26,
       "target_start": "2025-12-07",
@@ -642,7 +642,7 @@
     {
       "id": "e-temp-1771925784486",
       "jira_key": "PROJ-1020",
-      "feature_id": "f1",
+      "work_item_id": "f1",
       "team_id": "t1",
       "remaining_md": 120,
       "target_start": "2026-03-01",
@@ -652,7 +652,7 @@
     {
       "id": "e-temp-1771925812449",
       "jira_key": "PROJ-1021",
-      "feature_id": "f1",
+      "work_item_id": "f1",
       "team_id": "t2",
       "remaining_md": 30,
       "target_start": "2026-03-01",
@@ -662,7 +662,7 @@
     {
       "id": "e-temp-1771925822179",
       "jira_key": "PROJ-1022",
-      "feature_id": "f1",
+      "work_item_id": "f1",
       "team_id": "t4",
       "remaining_md": 60,
       "target_start": "2026-03-01",
@@ -672,7 +672,7 @@
     {
       "id": "e-temp-1771925836224",
       "jira_key": "PROJ-1023",
-      "feature_id": "f1",
+      "work_item_id": "f1",
       "team_id": "t5",
       "remaining_md": 10,
       "target_start": "2026-03-01",
@@ -682,7 +682,7 @@
     {
       "id": "e1771943219889_6",
       "jira_key": "PROJ-1024",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t2",
       "remaining_md": 120,
       "name": "Team Beta Interrupts",
@@ -692,7 +692,7 @@
     {
       "id": "e1771943219889_7",
       "jira_key": "PROJ-1025",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t4",
       "remaining_md": 0,
       "name": "Active DR Support - Team Delta",
@@ -702,7 +702,7 @@
     {
       "id": "e1771943219889_8",
       "jira_key": "PROJ-1026",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t1",
       "remaining_md": 40,
       "name": "Team Alpha Test Interrupts",
@@ -712,7 +712,7 @@
     {
       "id": "e1771943219889_9",
       "jira_key": "PROJ-1027",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t1",
       "remaining_md": 40,
       "name": "Team Alpha Production Interrupts",
@@ -722,7 +722,7 @@
     {
       "id": "e1771943219889_10",
       "jira_key": "PROJ-1028",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t1",
       "remaining_md": 30,
       "name": "Team Alpha Internal Interrupts",
@@ -732,7 +732,7 @@
     {
       "id": "e1771943219889_11",
       "jira_key": "PROJ-1029",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t5",
       "remaining_md": 20,
       "name": "Security Hardening - Team Epsilon",
@@ -742,7 +742,7 @@
     {
       "id": "e1771943219889_12",
       "jira_key": "PROJ-1030",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t2",
       "remaining_md": 40,
       "name": "Security Hardening - Team Beta",
@@ -752,7 +752,7 @@
     {
       "id": "e1771943219889_13",
       "jira_key": "PROJ-1031",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t1",
       "remaining_md": 15,
       "name": "Security Hardening - Team Alpha",
@@ -762,7 +762,7 @@
     {
       "id": "e1771943219889_14",
       "jira_key": "PROJ-1032",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t5",
       "remaining_md": 20,
       "name": "Tech Debt Removal - Team Epsilon",
@@ -772,7 +772,7 @@
     {
       "id": "e1771943219889_16",
       "jira_key": "PROJ-1033",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t5",
       "remaining_md": 0,
       "name": "Recovery Zones Implementation",
@@ -782,7 +782,7 @@
     {
       "id": "e1771943219889_17",
       "jira_key": "PROJ-1034",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t5",
       "remaining_md": 64,
       "name": "Team Epsilon Interrupts",
@@ -792,7 +792,7 @@
     {
       "id": "e1771943219889_21",
       "jira_key": "PROJ-1035",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t1",
       "remaining_md": 10,
       "name": "Test Reporting Migration",
@@ -802,7 +802,7 @@
     {
       "id": "e1771943219889_22",
       "jira_key": "PROJ-1036",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t2",
       "remaining_md": 0,
       "name": "Cluster Upgrades - Team Beta",
@@ -812,7 +812,7 @@
     {
       "id": "e1771943219890_23",
       "jira_key": "PROJ-1037",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t4",
       "remaining_md": 24,
       "name": "Recovery with Overwrite",
@@ -822,7 +822,7 @@
     {
       "id": "e1771943219890_24",
       "jira_key": "PROJ-1038",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t1",
       "remaining_md": 13,
       "name": "Active DR Support - Team Alpha M4",
@@ -832,7 +832,7 @@
     {
       "id": "e1771943219890_25",
       "jira_key": "PROJ-1039",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t1",
       "remaining_md": 33,
       "name": "Active DR Support - Team Alpha M3",
@@ -842,7 +842,7 @@
     {
       "id": "e1771943219890_27",
       "jira_key": "PROJ-1040",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t2",
       "remaining_md": 35,
       "name": "Site Management Technical Debt",
@@ -852,7 +852,7 @@
     {
       "id": "e1771943219890_29",
       "jira_key": "PROJ-1041",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t1",
       "remaining_md": 30,
       "name": "Active DR Test Infrastructure",
@@ -862,7 +862,7 @@
     {
       "id": "e1771943219890_30",
       "jira_key": "PROJ-1042",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t1",
       "remaining_md": 54,
       "name": "Active DR Support - Team Alpha M2",
@@ -872,7 +872,7 @@
     {
       "id": "e1771943219890_31",
       "jira_key": "PROJ-1043",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t1",
       "remaining_md": 0,
       "name": "Security Pen Test Results"
@@ -880,7 +880,7 @@
     {
       "id": "e1771943219890_32",
       "jira_key": "PROJ-1044",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t1",
       "remaining_md": 35,
       "name": "Disk Matching After Reset",
@@ -890,7 +890,7 @@
     {
       "id": "e1771943219890_33",
       "jira_key": "PROJ-1045",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t4",
       "remaining_md": 20,
       "name": "Integration Followups - Team Delta",
@@ -900,7 +900,7 @@
     {
       "id": "e1771943219890_34",
       "jira_key": "PROJ-1046",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t1",
       "remaining_md": 25,
       "name": "QA Type Checks",
@@ -910,7 +910,7 @@
     {
       "id": "e1771943219890_36",
       "jira_key": "PROJ-1047",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t1",
       "remaining_md": 12,
       "name": "Cluster Configuration - Team Alpha",
@@ -920,7 +920,7 @@
     {
       "id": "e1771943219890_38",
       "jira_key": "PROJ-1048",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t4",
       "remaining_md": 175,
       "name": "Active DR Support - Team Delta",
@@ -930,7 +930,7 @@
     {
       "id": "e1771943219890_39",
       "jira_key": "PROJ-1049",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t1",
       "remaining_md": 45,
       "name": "ID Migration - Team Alpha",
@@ -940,7 +940,7 @@
     {
       "id": "e1771943219890_40",
       "jira_key": "PROJ-1050",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t2",
       "remaining_md": 20,
       "name": "Site Management - Team Beta GA",
@@ -950,7 +950,7 @@
     {
       "id": "e1771943219890_41",
       "jira_key": "PROJ-1051",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t5",
       "remaining_md": 52,
       "name": "Reporting System - Team Epsilon",
@@ -960,7 +960,7 @@
     {
       "id": "e1771943219890_42",
       "jira_key": "PROJ-1052",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t2",
       "remaining_md": 60,
       "name": "Cyber Resiliency POC",
@@ -970,7 +970,7 @@
     {
       "id": "e-temp-1771944482025",
       "jira_key": "PROJ-1053",
-      "feature_id": "f2",
+      "work_item_id": "f2",
       "team_id": "t1",
       "remaining_md": 40,
       "target_start": "2026-03-01",
@@ -980,7 +980,7 @@
     {
       "id": "e-temp-1771944875215",
       "jira_key": "PROJ-1054",
-      "feature_id": "f9",
+      "work_item_id": "f9",
       "team_id": "t1",
       "remaining_md": 20,
       "target_start": "2026-03-01",
@@ -990,7 +990,7 @@
     {
       "id": "e-temp-1772012911046",
       "jira_key": "PROJ-1055",
-      "feature_id": "f3",
+      "work_item_id": "f3",
       "team_id": "t1",
       "remaining_md": 7,
       "target_start": "2026-03-01",
@@ -1000,7 +1000,7 @@
     {
       "id": "e-temp-1772012968333",
       "jira_key": "PROJ-1056",
-      "feature_id": "f3",
+      "work_item_id": "f3",
       "team_id": "t5",
       "remaining_md": 7,
       "target_start": "2026-03-01",
@@ -1010,7 +1010,7 @@
     {
       "id": "e-temp-1772017148284",
       "jira_key": "PROJ-1057",
-      "feature_id": "f6",
+      "work_item_id": "f6",
       "team_id": "t3",
       "remaining_md": 15,
       "target_start": "2026-02-25",
@@ -1020,7 +1020,7 @@
     {
       "id": "eakz0i6d22",
       "jira_key": "TBD",
-      "feature_id": "f1772024262207",
+      "work_item_id": "f1772024262207",
       "team_id": "t2",
       "remaining_md": 60,
       "target_start": "2026-02-25",
@@ -1030,7 +1030,7 @@
     {
       "id": "eofhyqlbms",
       "jira_key": "TBD",
-      "feature_id": "f1772024262207",
+      "work_item_id": "f1772024262207",
       "team_id": "t4",
       "remaining_md": 60,
       "target_start": "2026-02-25",
@@ -1040,7 +1040,7 @@
     {
       "id": "el4flz40nj",
       "jira_key": "TBD",
-      "feature_id": "f1772024262207",
+      "work_item_id": "f1772024262207",
       "team_id": "t3",
       "remaining_md": 5,
       "target_start": "2026-02-25",
@@ -1050,7 +1050,7 @@
     {
       "id": "em2s9lozyv",
       "jira_key": "TBD",
-      "feature_id": "f1772024262207",
+      "work_item_id": "f1772024262207",
       "team_id": "t5",
       "remaining_md": 5,
       "target_start": "2026-02-25",
@@ -1060,7 +1060,7 @@
     {
       "id": "e-temp-1772025176808",
       "jira_key": "TBD",
-      "feature_id": "f12",
+      "work_item_id": "f12",
       "team_id": "t1",
       "remaining_md": 35,
       "target_start": "2026-02-25",
@@ -1070,7 +1070,7 @@
     {
       "id": "e-temp-1772025189289",
       "jira_key": "TBD",
-      "feature_id": "f12",
+      "work_item_id": "f12",
       "team_id": "t4",
       "remaining_md": 20,
       "target_start": "2026-02-25",
@@ -1080,7 +1080,7 @@
     {
       "id": "e-temp-1772025200838",
       "jira_key": "TBD",
-      "feature_id": "f12",
+      "work_item_id": "f12",
       "team_id": "t5",
       "remaining_md": 10,
       "target_start": "2026-02-25",
@@ -1090,7 +1090,7 @@
     {
       "id": "e-temp-1772025293981",
       "jira_key": "TBD",
-      "feature_id": "f13",
+      "work_item_id": "f13",
       "team_id": "t4",
       "remaining_md": 0,
       "target_start": "2026-02-25",
@@ -1100,7 +1100,7 @@
     {
       "id": "e-temp-1772028966832",
       "jira_key": "PROJ-1058",
-      "feature_id": "f5",
+      "work_item_id": "f5",
       "team_id": "t5",
       "remaining_md": 0,
       "target_start": "",
@@ -1110,7 +1110,7 @@
     {
       "id": "e-temp-1772028999863",
       "jira_key": "PROJ-1059",
-      "feature_id": "f5",
+      "work_item_id": "f5",
       "team_id": "t1",
       "remaining_md": 0,
       "target_start": "",
@@ -1120,7 +1120,7 @@
     {
       "id": "e-temp-1772029018183",
       "jira_key": "PROJ-1060",
-      "feature_id": "f5",
+      "work_item_id": "f5",
       "team_id": "t2",
       "remaining_md": 0,
       "target_start": "",
@@ -1130,7 +1130,7 @@
     {
       "id": "e1772035018157_0",
       "jira_key": "PROJ-1061",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t1",
       "remaining_md": 0,
       "name": "Active DR LA Hardening - Team Alpha",
@@ -1140,7 +1140,7 @@
     {
       "id": "e1772035018157_4",
       "jira_key": "PROJ-1062",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t3",
       "remaining_md": 0,
       "name": "Failover Alignment - Team Gamma"
@@ -1148,7 +1148,7 @@
     {
       "id": "e1772035018157_5",
       "jira_key": "PROJ-1063",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t4",
       "remaining_md": 0,
       "name": "Failover Alignment - Team Delta"
@@ -1156,7 +1156,7 @@
     {
       "id": "e1772035018157_6",
       "jira_key": "PROJ-1064",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t5",
       "remaining_md": 0,
       "name": "Dashboard Metrics Stabilization",
@@ -1166,7 +1166,7 @@
     {
       "id": "e1772035018158_19",
       "jira_key": "PROJ-1065",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t4",
       "remaining_md": 0,
       "name": "QA Scale Cluster Setup"
@@ -1174,7 +1174,7 @@
     {
       "id": "e1772035018158_20",
       "jira_key": "PROJ-1066",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t4",
       "remaining_md": 0,
       "name": "Independent Disk Recreation - Team Delta"
@@ -1182,7 +1182,7 @@
     {
       "id": "e1772035018159_28",
       "jira_key": "PROJ-1067",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t4",
       "remaining_md": 30,
       "name": "Network Hardening - Critical",
@@ -1192,7 +1192,7 @@
     {
       "id": "e1772035018159_33",
       "jira_key": "PROJ-1068",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t4",
       "remaining_md": 0,
       "name": "Team Delta Interrupts Q1",
@@ -1202,7 +1202,7 @@
     {
       "id": "e1772035018159_34",
       "jira_key": "PROJ-1069",
-      "feature_id": "UNASSIGNED",
+      "work_item_id": "UNASSIGNED",
       "team_id": "t1",
       "remaining_md": 9,
       "name": "Test Stabilization",
