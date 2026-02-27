@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import { differenceInDays, parseISO, min, max, format, isWithinInterval, addDays, isWeekend } from 'date-fns';
+import { differenceInDays, parseISO, min, max, format, isWeekend } from 'date-fns';
 import type { Node, Edge } from '@xyflow/react';
-import type { DashboardData, Epic, Team } from '../types/models';
+import type { DashboardData } from '../types/models';
 import Holidays from 'date-holidays';
 
 export function useGraphLayout(
