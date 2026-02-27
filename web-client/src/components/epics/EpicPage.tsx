@@ -46,6 +46,44 @@ export const EpicPage: React.FC<EpicPageProps> = ({
         }
     };
 
+    const getActiveSprintStart = () => {
+        const today = new Date();
+        const activeSprint = data.sprints.find(s => {
+            const start = parseISO(s.start_date);
+            const end = parseISO(s.end_date);
+            return today >= start && today <= end;
+        }) || data.sprints[0];
+        return activeSprint ? parseISO(activeSprint.start_date) : new Date();
+    };
+
+    const updateEpicWithOverlapCheck = (id: string, updates: Partial<Epic>) => {
+        // If updating dates, check for historical overlap
+        if (updates.target_start || updates.target_end) {
+            const activeSprintStart = getActiveSprintStart();
+            const pastSprints = data.sprints.filter(s => parseISO(s.end_date) < activeSprintStart);
+            
+            // Check if this epic has any effort/overrides in past sprints
+            const hasPastWork = pastSprints.some(s => 
+                epic.sprint_effort_overrides?.[s.id] !== undefined
+            );
+
+            if (hasPastWork) {
+                const confirmed = window.confirm(
+                    "This Epic has recorded effort in past sprints. Moving the dates will overwrite this historical data. Do you want to recalculate past work?"
+                );
+                
+                if (!confirmed) return;
+
+                // User said YES: Unthaw past work
+                const newOverrides = { ...(epic.sprint_effort_overrides || {}) };
+                pastSprints.forEach(s => delete newOverrides[s.id]);
+                updates.sprint_effort_overrides = Object.keys(newOverrides).length > 0 ? newOverrides : undefined;
+            }
+        }
+        
+        updateEpic(id, updates);
+    };
+
     const handleDelete = async () => {
         if (window.confirm('Are you sure you want to completely delete this Epic?')) {
             setSaveStatus('saving');
@@ -297,7 +335,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                             <input
                                 type="date"
                                 value={epic.target_start || ''}
-                                onChange={e => updateEpic(epicId, { target_start: e.target.value })}
+                                onChange={e => updateEpicWithOverlapCheck(epicId, { target_start: e.target.value })}
                             />
                         </label>
                         <label>
@@ -305,7 +343,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                             <input
                                 type="date"
                                 value={epic.target_end || ''}
-                                onChange={e => updateEpic(epicId, { target_end: e.target.value })}
+                                onChange={e => updateEpicWithOverlapCheck(epicId, { target_end: e.target.value })}
                             />
                         </label>
                     </div>

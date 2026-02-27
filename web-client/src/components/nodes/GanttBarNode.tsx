@@ -12,7 +12,13 @@ export interface GanttBarNodeData {
     epicId: string;
     targetStart: string;
     targetEnd: string;
-    segments?: { startOffsetPixels: number, widthPixels: number, intensity: number }[];
+    segments?: { 
+        startOffsetPixels: number, 
+        widthPixels: number, 
+        intensity: number, 
+        color: string, 
+        isFrozen: boolean 
+    }[];
 }
 
 const PIXELS_PER_DAY = 20;
@@ -112,20 +118,18 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
         >
             {/* Render Intensity Segments */}
             {data.segments && data.segments.map((seg, idx) => {
-                let bgColor = 'transparent';
-                let opacity = 0;
+                let intensityColor = 'transparent';
+                let intensityOpacity = 0;
 
                 // seg.intensity is now a Ratio relative to mathematical uniform baseline (1.0 = Default)
                 if (seg.intensity > 1) {
                     // Lighter (White glow)
-                    bgColor = 'rgba(255, 255, 255, 1)';
-                    // Scale from 0 to 0.6 glow based on over-allocation
-                    opacity = Math.min((seg.intensity - 1) * 0.4, 0.6);
+                    intensityColor = 'rgba(255, 255, 255, 1)';
+                    intensityOpacity = Math.min((seg.intensity - 1) * 0.4, 0.6);
                 } else if (seg.intensity < 1) {
                     // Darker (Black shade)
-                    bgColor = 'rgba(0, 0, 0, 1)';
-                    // Scale from 0 to 0.8 shade based on under-allocation (0 ratio = 0.8 max black)
-                    opacity = Math.min((1 - seg.intensity) * 0.8, 0.8);
+                    intensityColor = 'rgba(0, 0, 0, 1)';
+                    intensityOpacity = Math.min((1 - seg.intensity) * 0.8, 0.8);
                 }
 
                 return (
@@ -137,14 +141,25 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
                             width: `${seg.widthPixels}px`,
                             top: 0,
                             bottom: 0,
-                            backgroundColor: bgColor,
-                            opacity: opacity,
-                            pointerEvents: 'none',
+                            backgroundColor: seg.color || data.color,
+                            backgroundImage: seg.isFrozen 
+                                ? 'linear-gradient(45deg, rgba(255,255,255,0.1) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.1) 75%, transparent 75%, transparent)' 
+                                : 'none',
+                            backgroundSize: '10px 10px',
                             zIndex: 1,
                             boxSizing: 'border-box',
                             borderRight: idx < (data.segments?.length || 0) - 1 ? '1px dashed rgba(255,255,255,0.3)' : 'none'
                         }}
-                    ></div>
+                    >
+                        {/* Intensity Overlay */}
+                        <div style={{
+                            position: 'absolute',
+                            inset: 0,
+                            backgroundColor: intensityColor,
+                            opacity: intensityOpacity,
+                            pointerEvents: 'none'
+                        }} />
+                    </div>
                 );
             })}
 

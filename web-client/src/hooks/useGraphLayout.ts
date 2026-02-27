@@ -454,6 +454,16 @@ export function useGraphLayout(
         const PIXELS_PER_DAY = 20;
         const COL_GANTT_START_X = COL_TEAM_X + 250;
 
+        // Identify Active Sprint for freezing logic
+        const today = new Date();
+        const activeSprint = sprints.find(s => {
+            const start = parseISO(s.start_date);
+            const end = parseISO(s.end_date);
+            return today >= start && today <= end;
+        }) || sprints[0]; // Fallback to first if none match
+
+        const activeSprintStartDate = activeSprint ? parseISO(activeSprint.start_date) : new Date();
+
         sprints.forEach((sprint) => {
             const startStr = parseISO(sprint.start_date);
             const endStr = parseISO(sprint.end_date);
@@ -630,7 +640,7 @@ export function useGraphLayout(
                 const workItem = data.workItems.find(f => f.id === epic.work_item_id);
 
                 // Build the segments for heat/intensity mapping
-                const segments: { startOffsetPixels: number, widthPixels: number, intensity: number }[] = [];
+                const segments: { startOffsetPixels: number, widthPixels: number, intensity: number, color: string, isFrozen: boolean }[] = [];
                 sprints.forEach(sprint => {
                     const sprintStart = parseISO(sprint.start_date);
                     const sprintEnd = parseISO(sprint.end_date);
@@ -688,10 +698,16 @@ export function useGraphLayout(
                             intensityRatio = 2; // if baseline is 0 but we threw effort on it, glow white
                         }
 
+                        // Progress-Aware Color Logic: Sprints older than Active Sprint are frozen
+                        const isFrozen = sprintEnd < activeSprintStartDate;
+                        const baseColor = isFrozen ? '#475569' : '#8b5cf6'; // Slate Blue for past, Purple for future
+
                         segments.push({
                             startOffsetPixels: segmentOffsetPixels,
                             widthPixels: segmentWidthPixels,
-                            intensity: intensityRatio
+                            intensity: intensityRatio,
+                            color: baseColor,
+                            isFrozen: isFrozen
                         });
                     }
                 });
