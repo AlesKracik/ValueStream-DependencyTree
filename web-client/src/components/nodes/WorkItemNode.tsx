@@ -40,32 +40,19 @@ export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
             >
                 <Handle type="target" position={Position.Left} style={{ top: nodeSize / 2, opacity: 0 }} />
 
-                {data.isGlobal && (
-                    <div style={{ fontSize: `${Math.max(10, nodeSize * 0.15)}px`, marginBottom: '-2px' }} title="Relates to all existing customers">
-                        🌐
-                    </div>
-                )}
-
-                {data.releasedInSprintId && (
-                    <div 
-                        style={{ 
-                            position: 'absolute',
-                            top: '8%',
-                            right: '8%',
-                            fontSize: `${Math.max(8, nodeSize * 0.12)}px`,
-                            fontWeight: 'bold',
-                            backgroundColor: '#10b981',
-                            color: 'white',
-                            padding: '2px 4px',
-                            borderRadius: '4px',
-                            zIndex: 10,
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
-                        }} 
-                        title={`Released in Sprint ${data.releasedInSprintId}`}
-                    >
-                        📦
-                    </div>
-                )}
+                <div style={{ 
+                    display: 'flex', 
+                    gap: '4px', 
+                    marginBottom: '-2px',
+                    fontSize: `${Math.max(10, nodeSize * 0.15)}px`
+                }}>
+                    {data.isGlobal && (
+                        <div title="Relates to all existing customers">🌐</div>
+                    )}
+                    {data.releasedInSprintId && (
+                        <div title={`Released in Sprint ${data.releasedInSprintId}`}>📦</div>
+                    )}
+                </div>
 
                 <div style={{ 
                     fontWeight: 'bold', 
