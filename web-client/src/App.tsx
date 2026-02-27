@@ -61,7 +61,7 @@ function App() {
     teamFilter: '',
     epicFilter: '',
     showDependencies: false,
-    disableHoverHighlight: false,
+    disableHoverHighlight: true,
   });
 
   return (
