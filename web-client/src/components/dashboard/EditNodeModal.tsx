@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { Node } from '@xyflow/react';
 import type { DashboardData, Customer, WorkItem, Team } from '../../types/models';
+import { SearchableDropdown } from '../common/SearchableDropdown';
 
 interface EditNodeModalProps {
     node: Node;
@@ -56,7 +57,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                 setFormData({
                     name: workItem.name,
                     total_effort_mds: workItem.total_effort_mds,
-                    release_link: workItem.release_link || '',
+                    released_in_sprint_id: workItem.released_in_sprint_id || '',
                     all_customers_target: workItem.all_customers_target ? { ...workItem.all_customers_target } : undefined,
                     customer_targets: workItem.customer_targets ? JSON.parse(JSON.stringify(workItem.customer_targets)) : []
                 });
@@ -96,7 +97,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
             onUpdateWorkItem(domainId, {
                 name: formData.name,
                 total_effort_mds: Number(formData.total_effort_mds),
-                release_link: formData.release_link,
+                released_in_sprint_id: formData.released_in_sprint_id,
                 all_customers_target: formData.all_customers_target,
                 customer_targets: formData.customer_targets
             });
@@ -152,8 +153,14 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                         <input style={styles.input} type="text" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
                     </label>
                     <label style={styles.label}>
-                        Release Link (URL):
-                        <input style={styles.input} type="url" value={formData.release_link || ''} onChange={e => setFormData({ ...formData, release_link: e.target.value })} placeholder="https://..." />
+                        Released in Sprint:
+                        <SearchableDropdown
+                            options={data.sprints.map(s => ({ id: s.id, label: s.name }))}
+                            onSelect={(sprintId) => setFormData({ ...formData, released_in_sprint_id: sprintId })}
+                            placeholder="Select release sprint..."
+                            initialValue={data.sprints.find(s => s.id === formData.released_in_sprint_id)?.name || ''}
+                            clearOnSelect={false}
+                        />
                     </label>
                     <label style={styles.label}>
                         Total Effort (MDs):

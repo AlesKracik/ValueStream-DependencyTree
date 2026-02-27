@@ -458,7 +458,7 @@ export function useGraphLayout(
                     maxScore: maxScore,
                     baseSize: 100,
                     isGlobal: !!workItem.all_customers_target,
-                    releaseLink: workItem.release_link,
+                    releasedInSprintId: workItem.released_in_sprint_id,
                 },
             });
 

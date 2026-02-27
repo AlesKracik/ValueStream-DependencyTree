@@ -310,7 +310,7 @@ describe('useGraphLayout Math Engine', () => {
         expect(potenNode?.data.score).toBe(500);
     });
 
-    it('passes releaseLink to workItemNode data', () => {
+    it('passes releasedInSprintId to workItemNode data', () => {
         const data: DashboardData = {
             ...MOCK_DATA,
             workItems: [
@@ -318,7 +318,7 @@ describe('useGraphLayout Math Engine', () => {
                     id: 'f_release',
                     name: 'Released Feat',
                     total_effort_mds: 10,
-                    release_link: 'https://release.com',
+                    released_in_sprint_id: 's1',
                     customer_targets: []
                 }
             ]
@@ -326,6 +326,6 @@ describe('useGraphLayout Math Engine', () => {
 
         const { result } = renderHook(() => useGraphLayout(data));
         const node = result.current.nodes.find(n => n.id === 'workitem-f_release');
-        expect(node?.data.releaseLink).toBe('https://release.com');
+        expect(node?.data.releasedInSprintId).toBe('s1');
     });
 });

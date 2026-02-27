@@ -9,7 +9,7 @@ interface WorkItemNodeData {
     maxScore: number;
     baseSize: number;
     isGlobal?: boolean;
-    releaseLink?: string;
+    releasedInSprintId?: string;
 }
 
 export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
@@ -46,24 +46,25 @@ export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
                     </div>
                 )}
 
-                {data.releaseLink && (
-                    <a 
-                        href={data.releaseLink} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
+                {data.releasedInSprintId && (
+                    <div 
                         style={{ 
                             position: 'absolute',
-                            top: '10%',
-                            right: '10%',
-                            fontSize: `${Math.max(10, nodeSize * 0.15)}px`,
-                            textDecoration: 'none',
-                            zIndex: 10
+                            top: '8%',
+                            right: '8%',
+                            fontSize: `${Math.max(8, nodeSize * 0.12)}px`,
+                            fontWeight: 'bold',
+                            backgroundColor: '#10b981',
+                            color: 'white',
+                            padding: '2px 4px',
+                            borderRadius: '4px',
+                            zIndex: 10,
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
                         }} 
-                        title="View Release"
+                        title={`Released in Sprint ${data.releasedInSprintId}`}
                     >
-                        🚀
-                    </a>
+                        📦
+                    </div>
                 )}
 
                 <div style={{ 

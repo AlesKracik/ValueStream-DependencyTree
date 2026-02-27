@@ -30,19 +30,18 @@ describe('WorkItemNode', () => {
         expect(screen.getByTitle(/Relates to all existing customers/i)).toBeDefined();
     });
 
-    it('renders the release link rocket icon when releaseLink is provided', () => {
-        const releaseLink = 'https://github.com/releases/v1.0.0';
-        render(<WorkItemNode data={{ ...mockData, releaseLink }} />);
+    it('renders the release icon when releasedInSprintId is provided', () => {
+        const releasedInSprintId = 's1';
+        render(<WorkItemNode data={{ ...mockData, releasedInSprintId }} />);
         
-        const link = screen.getByTitle(/View Release/i);
-        expect(link).toBeDefined();
-        expect(link.getAttribute('href')).toBe(releaseLink);
-        expect(link.textContent).toContain('🚀');
+        const indicator = screen.getByTitle(/Released in Sprint s1/i);
+        expect(indicator).toBeDefined();
+        expect(indicator.textContent).toContain('📦');
     });
 
-    it('does not render the release link icon when releaseLink is absent', () => {
+    it('does not render the release icon when releasedInSprintId is absent', () => {
         render(<WorkItemNode data={mockData} />);
         
-        expect(screen.queryByTitle(/View Release/i)).toBeNull();
+        expect(screen.queryByTitle(/Released in Sprint/i)).toBeNull();
     });
 });

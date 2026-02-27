@@ -268,7 +268,8 @@
           "tcv_type": "potential",
           "priority": "Must-have"
         }
-      ]
+      ],
+      "released_in_sprint_id": "s14"
     },
     {
       "id": "f3",
@@ -699,7 +700,10 @@
       "remaining_md": 26,
       "target_start": "2025-12-07",
       "target_end": "2026-02-11",
-      "name": "Source VM Power Management"
+      "name": "Source VM Power Management",
+      "sprint_effort_overrides": {
+        "s0": 5.8
+      }
     },
     {
       "id": "e-temp-1771925784486",
@@ -907,7 +911,10 @@
       "remaining_md": 0,
       "name": "Cluster Upgrades - Team Beta",
       "target_start": "2025-10-15",
-      "target_end": "2026-02-06"
+      "target_end": "2026-02-06",
+      "sprint_effort_overrides": {
+        "s0": 0
+      }
     },
     {
       "id": "e1771943219890_23",
@@ -917,7 +924,10 @@
       "remaining_md": 24,
       "name": "Recovery with Overwrite",
       "target_start": "2026-01-07",
-      "target_end": "2026-02-11"
+      "target_end": "2026-02-11",
+      "sprint_effort_overrides": {
+        "s0": 10
+      }
     },
     {
       "id": "e1771943219890_24",
@@ -941,7 +951,10 @@
       "remaining_md": 33,
       "name": "Active DR Support - Team Alpha M3",
       "target_start": "2025-11-14",
-      "target_end": "2026-02-06"
+      "target_end": "2026-02-06",
+      "sprint_effort_overrides": {
+        "s0": 3.9
+      }
     },
     {
       "id": "e1771943219890_27",
@@ -993,7 +1006,10 @@
       "remaining_md": 35,
       "name": "Disk Matching After Reset",
       "target_start": "2025-12-07",
-      "target_end": "2026-02-10"
+      "target_end": "2026-02-10",
+      "sprint_effort_overrides": {
+        "s0": 7.4
+      }
     },
     {
       "id": "e1771943219890_33",
@@ -1003,7 +1019,10 @@
       "remaining_md": 20,
       "name": "Integration Followups - Team Delta",
       "target_start": "2025-11-06",
-      "target_end": "2026-01-31"
+      "target_end": "2026-01-31",
+      "sprint_effort_overrides": {
+        "s0": 0.9
+      }
     },
     {
       "id": "e1771943219890_34",

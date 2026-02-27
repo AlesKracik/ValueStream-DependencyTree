@@ -292,19 +292,19 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                             />
                         </label>
                         <label>
-                            Release Link:
-                            <input
-                                type="url"
-                                placeholder="https://..."
-                                value={isNew ? newWorkItemDraft.release_link || '' : workItem.release_link || ''}
-                                onChange={e => {
-                                    const val = e.target.value;
+                            Released in Sprint:
+                            <SearchableDropdown
+                                options={data.sprints.map(s => ({ id: s.id, label: s.name }))}
+                                onSelect={(sprintId) => {
                                     if (isNew) {
-                                        setNewWorkItemDraft(prev => ({ ...prev, release_link: val }));
+                                        setNewWorkItemDraft(prev => ({ ...prev, released_in_sprint_id: sprintId }));
                                     } else {
-                                        updateWorkItem(workItem.id, { release_link: val });
+                                        updateWorkItem(workItem.id, { released_in_sprint_id: sprintId });
                                     }
                                 }}
+                                placeholder="Select release sprint..."
+                                initialValue={data.sprints.find(s => s.id === (isNew ? newWorkItemDraft.released_in_sprint_id : workItem.released_in_sprint_id))?.name || ''}
+                                clearOnSelect={false}
                             />
                         </label>
                     </div>

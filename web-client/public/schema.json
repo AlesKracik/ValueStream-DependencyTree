@@ -84,9 +84,8 @@
                         "type": "number",
                         "minimum": 0
                     },
-                    "release_link": {
-                        "type": "string",
-                        "format": "uri"
+                    "released_in_sprint_id": {
+                        "type": "string"
                     },
                     "all_customers_target": {
                         "type": "object",
