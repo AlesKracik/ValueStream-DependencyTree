@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Simplified, bold chevrons for high visibility at small scales -->
+  <!-- Left Chevron (Blue) -->
+  <path d="M2 6 L14 16 L2 26 L9 26 L21 16 L9 6 Z" fill="#3b82f6" />
+  
+  <!-- Right Chevron (Purple) -->
+  <path d="M11 6 L23 16 L11 26 L18 26 L30 16 L18 6 Z" fill="#8b5cf6" />
+</svg>
