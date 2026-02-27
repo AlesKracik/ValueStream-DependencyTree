@@ -498,11 +498,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 value={viewState.releasedFilter}
                                 onChange={e => setViewState((s: DashboardViewState) => ({ ...s, releasedFilter: e.target.value as any }))}
                                 className={styles.filterSelect}
-                                style={{ width: '130px' }}
+                                style={{ width: '150px' }}
                             >
                                 <option value="all">Release: All</option>
-                                <option value="released">Released Only</option>
-                                <option value="unreleased">Unreleased Only</option>
+                                <option value="released">Release: Yes</option>
+                                <option value="unreleased">Release: No</option>
                             </select>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#374151', padding: '0 12px', borderRadius: '6px', border: '1px solid #4b5563', height: '37px', boxSizing: 'border-box' }}>
                                 <span style={{ color: '#9ca3af', fontSize: '11px', fontWeight: 'bold' }}>MIN TCV</span>
