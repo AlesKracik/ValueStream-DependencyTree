@@ -1,6 +1,6 @@
-import { memo, useState, useRef } from 'react';
+import { memo, useState, useRef, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { addDays, format, parseISO } from 'date-fns';
+import { addDays, format, parseISO, min, max, differenceInDays } from 'date-fns';
 import { useDashboardContext } from '../../contexts/DashboardContext';
 
 export interface GanttBarNodeData {
