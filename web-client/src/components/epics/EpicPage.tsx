@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { parseISO, differenceInDays, min, max } from 'date-fns';
 import type { DashboardData, Epic } from '../../types/models';
+import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
 
 export interface EpicPageProps {
@@ -24,6 +25,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({
     deleteEpic,
     saveDashboardData
 }) => {
+    const { showAlert, showConfirm } = useDashboardContext();
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [syncing, setSyncing] = useState<boolean>(false);
     if (loading) return <div>Loading epic details...</div>;
@@ -56,7 +58,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({
         return activeSprint ? parseISO(activeSprint.start_date) : new Date();
     };
 
-    const updateEpicWithOverlapCheck = (id: string, updates: Partial<Epic>) => {
+    const updateEpicWithOverlapCheck = async (id: string, updates: Partial<Epic>) => {
         // If updating dates, check for historical overlap
         if (updates.target_start || updates.target_end) {
             const activeSprintStart = getActiveSprintStart();
@@ -68,7 +70,8 @@ export const EpicPage: React.FC<EpicPageProps> = ({
             );
 
             if (hasPastWork) {
-                const confirmed = window.confirm(
+                const confirmed = await showConfirm(
+                    "Historical Work Warning",
                     "This Epic has recorded effort in past sprints. Moving the dates will overwrite this historical data. Do you want to recalculate past work?"
                 );
                 
@@ -85,27 +88,27 @@ export const EpicPage: React.FC<EpicPageProps> = ({
     };
 
     const handleDelete = async () => {
-        if (window.confirm('Are you sure you want to completely delete this Epic?')) {
-            setSaveStatus('saving');
-            try {
-                deleteEpic(epicId);
-                const newData = {
-                    ...data,
-                    epics: data.epics.filter(e => e.id !== epicId)
-                };
-                await saveDashboardData(newData);
-                onBack();
-            } catch (err) {
-                console.error('Delete failed', err);
-                setSaveStatus('error');
-            }
+        const confirmed = await showConfirm('Delete Epic', 'Are you sure you want to completely delete this Epic?');
+        if (!confirmed) return;
+        setSaveStatus('saving');
+        try {
+            deleteEpic(epicId);
+            const newData = {
+                ...data,
+                epics: data.epics.filter(e => e.id !== epicId)
+            };
+            await saveDashboardData(newData);
+            onBack();
+        } catch (err) {
+            console.error('Delete failed', err);
+            setSaveStatus('error');
         }
     };
 
     const handleSyncJira = async () => {
         if (!epic.jira_key) return;
         if (!data.settings.jira_base_url) {
-            alert('Please configure Jira Base URL in Settings first.');
+            await showAlert('Configuration Required', 'Please configure Jira Base URL in Settings first.');
             return;
         }
         setSyncing(true);
@@ -165,7 +168,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({
             updateEpic(epicId, updates);
         } catch (err: any) {
             console.error('Jira sync error:', err);
-            alert(`Error syncing from Jira: ${err.message}`);
+            await showAlert('Sync Error', `Error syncing from Jira: ${err.message}`);
         } finally {
             setSyncing(false);
         }

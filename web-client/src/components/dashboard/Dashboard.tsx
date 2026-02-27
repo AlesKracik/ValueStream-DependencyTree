@@ -509,28 +509,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             <div className={styles.flowWrapper}>
-                <DashboardProvider value={{ data, updateEpic }}>
-                    <ReactFlow
-                        nodes={nodes}
-                        edges={edges}
-                        nodeTypes={nodeTypes}
-                        onNodeMouseEnter={onNodeMouseEnter}
-                        onNodeMouseLeave={onNodeMouseLeave}
-                        onNodeContextMenu={onNodeContextMenu}
-                        onNodeClick={onNodeClick}
-                        onMoveEnd={(_, viewport) => {
-                            setViewState(s => ({ ...s, viewport }));
-                        }}
-                        defaultViewport={viewState.viewport}
-                        fitView={false}
-                        minZoom={0.2}
-                        maxZoom={1.5}
-                        proOptions={{ hideAttribution: true }}
-                    >
-                        <Background color="#1a1a1a" variant={BackgroundVariant.Lines} gap={100} />
-                        <DashboardControls data={data} nodes={nodes} setViewState={setViewState} />
-                    </ReactFlow>
-                </DashboardProvider>
+                <ReactFlow
+                    nodes={nodes}
+                    edges={edges}
+                    nodeTypes={nodeTypes}
+                    onNodeMouseEnter={onNodeMouseEnter}
+                    onNodeMouseLeave={onNodeMouseLeave}
+                    onNodeContextMenu={onNodeContextMenu}
+                    onNodeClick={onNodeClick}
+                    onMoveEnd={(_, viewport) => {
+                        setViewState(s => ({ ...s, viewport }));
+                    }}
+                    defaultViewport={viewState.viewport}
+                    fitView={false}
+                    minZoom={0.2}
+                    maxZoom={1.5}
+                    proOptions={{ hideAttribution: true }}
+                >
+                    <Background color="#1a1a1a" variant={BackgroundVariant.Lines} gap={100} />
+                    <DashboardControls data={data} nodes={nodes} setViewState={setViewState} />
+                </ReactFlow>
             </div>
 
             {editingNode && (

@@ -7,6 +7,7 @@ import { WorkItemPage } from './components/workitems/WorkItemPage';
 import { EpicPage } from './components/epics/EpicPage';
 import { TeamPage } from './components/teams/TeamPage';
 import { useDashboardData } from './hooks/useDashboardData';
+import { DashboardProvider } from './contexts/DashboardContext';
 import type { DashboardViewState } from './types/models';
 import './App.css';
 
@@ -64,19 +65,21 @@ function App() {
 
   return (
     <div className="app-container">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={
-            <ReactFlowProvider>
-              <DashboardRouteWrapper dashboardState={dashboardState} dashboardViewState={dashboardViewState} setDashboardViewState={setDashboardViewState} />
-            </ReactFlowProvider>
-          } />
-          <Route path="/customer/:id" element={<CustomerPageRouteWrapper dashboardState={dashboardState} />} />
-          <Route path="/workitem/:id" element={<WorkItemPageRouteWrapper dashboardState={dashboardState} />} />
-          <Route path="/epic/:id" element={<EpicPageRouteWrapper dashboardState={dashboardState} />} />
-          <Route path="/team/:id" element={<TeamPageRouteWrapper dashboardState={dashboardState} />} />
-        </Routes>
-      </BrowserRouter>
+      <DashboardProvider value={{ data: dashboardState.data, updateEpic: dashboardState.updateEpic }}>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={
+              <ReactFlowProvider>
+                <DashboardRouteWrapper dashboardState={dashboardState} dashboardViewState={dashboardViewState} setDashboardViewState={setDashboardViewState} />
+              </ReactFlowProvider>
+            } />
+            <Route path="/customer/:id" element={<CustomerPageRouteWrapper dashboardState={dashboardState} />} />
+            <Route path="/workitem/:id" element={<WorkItemPageRouteWrapper dashboardState={dashboardState} />} />
+            <Route path="/epic/:id" element={<EpicPageRouteWrapper dashboardState={dashboardState} />} />
+            <Route path="/team/:id" element={<TeamPageRouteWrapper dashboardState={dashboardState} />} />
+          </Routes>
+        </BrowserRouter>
+      </DashboardProvider>
     </div>
   );
 }

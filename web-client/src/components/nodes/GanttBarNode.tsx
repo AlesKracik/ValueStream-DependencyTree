@@ -24,7 +24,7 @@ export interface GanttBarNodeData {
 const PIXELS_PER_DAY = 20;
 
 export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
-    const { data: dashboardData, updateEpic } = useDashboardContext();
+    const { data: dashboardData, updateEpic, showConfirm } = useDashboardContext();
     const [dragState, setDragState] = useState<{ active: 'left' | 'right' | null, startX: number, currentDelta: number }>({
         active: null,
         startX: 0,
@@ -62,7 +62,7 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
         return activeSprint ? parseISO(activeSprint.start_date) : new Date();
     };
 
-    const onPointerUp = (e: React.PointerEvent) => {
+    const onPointerUp = async (e: React.PointerEvent) => {
         if (!dragState.active) return;
         e.currentTarget.releasePointerCapture(e.pointerId);
 
@@ -109,7 +109,8 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
                     };
 
                     if (hasPastWork) {
-                        const confirmed = window.confirm(
+                        const confirmed = await showConfirm(
+                            "Historical Work Warning",
                             "This Epic has recorded effort in past sprints. Moving the dates will overwrite this historical data. Do you want to recalculate past work?"
                         );
                         if (!confirmed) {

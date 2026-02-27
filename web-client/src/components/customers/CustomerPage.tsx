@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { DashboardData, Customer, WorkItem } from '../../types/models';
 import { SearchableDropdown } from '../common/SearchableDropdown';
+import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from './CustomerPage.module.css';
 
 export interface CustomerPageProps {
@@ -26,6 +27,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     updateWorkItem,
     saveDashboardData
 }) => {
+    const { showConfirm } = useDashboardContext();
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const isNew = customerId === 'new';
 
@@ -95,7 +97,8 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     };
 
     const handleDelete = async () => {
-        if (!confirm(`Are you sure you want to delete ${customer.name}? This will remove all their work item impact.`)) return;
+        const confirmed = await showConfirm('Delete Customer', `Are you sure you want to delete ${customer.name}? This will remove all their work item impact.`);
+        if (!confirmed) return;
         setSaveStatus('saving');
         try {
             deleteCustomer(customerId);

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { DashboardData, WorkItem, Epic } from '../../types/models';
 import { SearchableDropdown } from '../common/SearchableDropdown';
+import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
 
 export interface WorkItemPageProps {
@@ -31,6 +32,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     updateEpic,
     saveDashboardData
 }) => {
+    const { showAlert, showConfirm } = useDashboardContext();
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const isNew = workItemId === 'new';
 
@@ -102,21 +104,21 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     };
 
     const handleDelete = async () => {
-        if (window.confirm('Are you sure you want to delete this work item? It will be removed from all associated epics.')) {
-            setSaveStatus('saving');
-            try {
-                deleteWorkItem(workItemId);
-                const newData = {
-                    ...data,
-                    workItems: data.workItems.filter(f => f.id !== workItemId),
-                    epics: data.epics.map(e => e.work_item_id === workItemId ? { ...e, work_item_id: undefined } : e)
-                };
-                await saveDashboardData(newData);
-                onBack();
-            } catch (err) {
-                console.error('Delete failed', err);
-                setSaveStatus('error');
-            }
+        const confirmed = await showConfirm('Delete Work Item', 'Are you sure you want to delete this work item? It will be removed from all associated epics.');
+        if (!confirmed) return;
+        setSaveStatus('saving');
+        try {
+            deleteWorkItem(workItemId);
+            const newData = {
+                ...data,
+                workItems: data.workItems.filter(f => f.id !== workItemId),
+                epics: data.epics.map(e => e.work_item_id === workItemId ? { ...e, work_item_id: undefined } : e)
+            };
+            await saveDashboardData(newData);
+            onBack();
+        } catch (err) {
+            console.error('Delete failed', err);
+            setSaveStatus('error');
         }
     };
 
@@ -159,7 +161,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
 
     const handleSyncJira = async (epicId: string, jiraKey: string) => {
         if (!data.settings.jira_base_url) {
-            alert('Please configure Jira Base URL in Settings first.');
+            await showAlert('Configuration Required', 'Please configure Jira Base URL in Settings first.');
             return;
         }
         setSyncingId(epicId);
@@ -219,7 +221,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
             handleUpdateEpic(epicId, updates);
         } catch (err: any) {
             console.error('Jira sync error:', err);
-            alert(`Error syncing from Jira: ${err.message}`);
+            await showAlert('Sync Error', `Error syncing from Jira: ${err.message}`);
         } finally {
             setSyncingId(null);
         }

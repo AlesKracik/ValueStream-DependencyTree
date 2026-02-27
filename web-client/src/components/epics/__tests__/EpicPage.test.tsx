@@ -1,6 +1,7 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EpicPage } from '../EpicPage';
+import { DashboardProvider } from '../../../contexts/DashboardContext';
 import type { DashboardData } from '../../../types/models';
 
 const mockData: DashboardData = {
@@ -45,34 +46,48 @@ describe('EpicPage Date Shift Logic', () => {
         vi.setSystemTime(new Date('2026-02-20')); // Middle of s_curr
     });
 
-    it('prompts user and clears past work when shifting dates if they confirm', () => {
-        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    it('prompts user and clears past work when shifting dates if they confirm', async () => {
+        render(
+            <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                <EpicPage {...defaultProps} />
+            </DashboardProvider>
+        );
         
-        render(<EpicPage {...defaultProps} />);
-        
-        // Find "Target Start" input
         const startInput = screen.getByLabelText(/Target Start:/i);
-        
-        // Shift start date to future
         fireEvent.change(startInput, { target: { value: '2026-03-01' } });
         
-        expect(confirmSpy).toHaveBeenCalled();
-        // Check that updateEpic was called with cleared overrides
+        // Custom modal should be visible
+        expect(screen.getByText('Historical Work Warning')).toBeDefined();
+        
+        // Confirm
+        fireEvent.click(screen.getByText('Confirm'));
+        
+        // Wait for the async function to continue after the promise resolves
+        await act(async () => {
+            await Promise.resolve();
+        });
+
         expect(updateEpicSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
             target_start: '2026-03-01',
-            sprint_effort_overrides: undefined // s_past was cleared
+            sprint_effort_overrides: undefined
         }));
     });
 
-    it('aborts date shift if user cancels the confirmation', () => {
-        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-        
-        render(<EpicPage {...defaultProps} />);
+    it('aborts date shift if user cancels the confirmation', async () => {
+        render(
+            <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                <EpicPage {...defaultProps} />
+            </DashboardProvider>
+        );
         
         const startInput = screen.getByLabelText(/Target Start:/i);
         fireEvent.change(startInput, { target: { value: '2026-03-01' } });
         
-        expect(confirmSpy).toHaveBeenCalled();
+        expect(screen.getByText('Historical Work Warning')).toBeDefined();
+        
+        // Cancel
+        fireEvent.click(screen.getByText('Cancel'));
+        
         expect(updateEpicSpy).not.toHaveBeenCalled();
     });
 

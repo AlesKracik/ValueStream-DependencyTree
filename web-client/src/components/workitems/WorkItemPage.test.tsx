@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { WorkItemPage } from './WorkItemPage';
+import { DashboardProvider } from '../../contexts/DashboardContext';
 import type { DashboardData } from '../../types/models';
 
 const mockData: DashboardData = {
@@ -47,7 +48,11 @@ describe('WorkItemPage', () => {
     };
 
     it('should have Nice-to-have option in the priority dropdown for existing targets', () => {
-        render(<WorkItemPage {...defaultProps} workItemId="f1" />);
+        render(
+            <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <WorkItemPage {...defaultProps} workItemId="f1" />
+            </DashboardProvider>
+        );
 
         const niceToHaveOptions = screen.getAllByRole('option', { name: 'Nice-to-have' }) as HTMLOptionElement[];
         expect(niceToHaveOptions.length).toBeGreaterThan(0);
@@ -55,7 +60,11 @@ describe('WorkItemPage', () => {
     });
 
     it('should have Nice-to-have option in the priority dropdown when adding a new target', () => {
-        render(<WorkItemPage {...defaultProps} workItemId="new" />);
+        render(
+            <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <WorkItemPage {...defaultProps} workItemId="new" />
+            </DashboardProvider>
+        );
 
         const customerInput = screen.getByPlaceholderText('Search for a customer to target...');
         
@@ -79,7 +88,11 @@ describe('WorkItemPage', () => {
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
         };
 
-        render(<WorkItemPage {...defaultProps} data={dataWithUnassigned} workItemId="f1" />);
+        render(
+            <DashboardProvider value={{ data: dataWithUnassigned, updateEpic: vi.fn() }}>
+                <WorkItemPage {...defaultProps} data={dataWithUnassigned} workItemId="f1" />
+            </DashboardProvider>
+        );
 
         const epicInput = screen.getByPlaceholderText('Search for an unassigned epic to link...');
         fireEvent.focus(epicInput);
