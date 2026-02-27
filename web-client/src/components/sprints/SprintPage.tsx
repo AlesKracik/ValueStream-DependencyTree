@@ -111,69 +111,24 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                     <button className={styles.backBtn} onClick={onBack}>
                         ← Back to Dashboard
                     </button>
-                    <h1>{isNew ? 'New Sprint' : sprint.name}</h1>
-                </div>
-                <div style={{ display: 'flex', gap: '16px' }}>
-                    {!isNew && (
-                        <button 
-                            className={styles.dangerBtn} 
-                            style={{ padding: '10px 20px', fontWeight: '600', fontSize: '14px', borderRadius: '6px' }}
-                            onClick={handleDelete}
-                        >
-                            Delete Sprint
-                        </button>
-                    )}
-                    <button 
-                        className={styles.saveBtn} 
-                        style={{ backgroundColor: '#2563eb', borderColor: '#1d4ed8' }}
-                        onClick={handleSave}
-                        disabled={saveStatus === 'saving'}
-                    >
-                        {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved!' : saveStatus === 'error' ? 'Error' : 'Save Changes'}
-                    </button>
+                    <h1>Sprint Management</h1>
                 </div>
             </div>
 
             <div className={styles.content}>
                 <section className={styles.card}>
-                    <h2>Sprint Details</h2>
-                    <div className={styles.formGrid}>
-                        <label>
-                            Name:
-                            <input 
-                                type="text" 
-                                value={isNew ? newSprintDraft.name : sprint.name} 
-                                onChange={e => {
-                                    if (isNew) setNewSprintDraft(prev => ({ ...prev, name: e.target.value }));
-                                    else updateSprint(sprint.id, { name: e.target.value });
-                                }}
-                            />
-                        </label>
-                        <label>
-                            Start Date:
-                            <input 
-                                type="date" 
-                                value={isNew ? newSprintDraft.start_date : sprint.start_date} 
-                                disabled={true}
-                                style={{ backgroundColor: '#1f2937', color: '#9ca3af', cursor: 'not-allowed' }}
-                            />
-                        </label>
-                        <label>
-                            End Date:
-                            <input 
-                                type="date" 
-                                value={isNew ? newSprintDraft.end_date : sprint.end_date} 
-                                disabled={true}
-                                style={{ backgroundColor: '#1f2937', color: '#9ca3af', cursor: 'not-allowed' }}
-                            />
-                        </label>
-                    </div>
-                    {!isNew && <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '12px' }}>Note: Dates are managed automatically to maintain a continuous schedule.</p>}
-                </section>
-
-                <section className={styles.card}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <h2>Sprint Schedule</h2>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <button 
+                                className={styles.saveBtn} 
+                                style={{ backgroundColor: '#2563eb', borderColor: '#1d4ed8', padding: '8px 16px' }}
+                                onClick={handleSave}
+                                disabled={saveStatus === 'saving'}
+                            >
+                                {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? '✓ Saved' : saveStatus === 'error' ? 'Error!' : 'Save Changes'}
+                            </button>
+                        </div>
                     </div>
                     <table className={styles.table}>
                         <thead>
@@ -182,16 +137,39 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                                 <th>Start Date</th>
                                 <th>End Date</th>
                                 <th>Status</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
+                            {/* Draft Row for New Sprint */}
+                            {isNew && (
+                                <tr style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', borderLeft: '4px solid #10b981' }}>
+                                    <td>
+                                        <input 
+                                            type="text" 
+                                            value={newSprintDraft.name} 
+                                            onChange={e => setNewSprintDraft(prev => ({ ...prev, name: e.target.value }))}
+                                            style={{ width: '100%', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }}
+                                            autoFocus
+                                        />
+                                    </td>
+                                    <td style={{ color: '#9ca3af' }}>{newSprintDraft.start_date}</td>
+                                    <td style={{ color: '#9ca3af' }}>{newSprintDraft.end_date}</td>
+                                    <td style={{ color: '#10b981', fontWeight: 'bold' }}>NEW</td>
+                                    <td>
+                                        <button onClick={onBack} className={styles.dangerBtn} style={{ padding: '4px 8px' }}>Cancel</button>
+                                    </td>
+                                </tr>
+                            )}
+
                             {data.sprints.map(s => {
                                 const today = new Date();
                                 const start = parseISO(s.start_date);
                                 const end = parseISO(s.end_date);
+                                const isSelected = s.id === sprintId;
+                                
                                 let status = 'Future';
                                 let statusColor = '#9ca3af';
-                                
                                 if (today >= start && today <= end) {
                                     status = 'Active';
                                     statusColor = '#10b981';
@@ -201,11 +179,28 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                                 }
 
                                 return (
-                                    <tr key={s.id} style={s.id === sprintId ? { backgroundColor: 'rgba(59, 130, 246, 0.1)' } : {}}>
-                                        <td>{s.name}</td>
-                                        <td>{s.start_date}</td>
-                                        <td>{s.end_date}</td>
+                                    <tr key={s.id} style={isSelected ? { backgroundColor: 'rgba(59, 130, 246, 0.1)', borderLeft: '4px solid #3b82f6' } : {}}>
+                                        <td>
+                                            {isSelected ? (
+                                                <input 
+                                                    type="text" 
+                                                    value={s.name} 
+                                                    onChange={e => updateSprint(s.id, { name: e.target.value })}
+                                                    style={{ width: '100%', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }}
+                                                    autoFocus
+                                                />
+                                            ) : (
+                                                s.name
+                                            )}
+                                        </td>
+                                        <td style={{ color: '#9ca3af' }}>{s.start_date}</td>
+                                        <td style={{ color: '#9ca3af' }}>{s.end_date}</td>
                                         <td style={{ color: statusColor, fontWeight: 'bold' }}>{status}</td>
+                                        <td>
+                                            {isSelected && (
+                                                <button onClick={handleDelete} className={styles.dangerBtn} style={{ padding: '4px 8px' }}>Delete</button>
+                                            )}
+                                        </td>
                                     </tr>
                                 );
                             })}

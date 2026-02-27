@@ -45,38 +45,31 @@ describe('SprintPage', () => {
         });
     });
 
-    it('renders current sprint details with read-only dates', () => {
+    it('renders current sprint as an editable row in the table', () => {
         render(<SprintPage {...defaultProps} />);
 
-        expect(screen.getByDisplayValue('Sprint 1')).toBeDefined();
+        // The selected sprint name should be an input field
+        const nameInput = screen.getByDisplayValue('Sprint 1') as HTMLInputElement;
+        expect(nameInput.tagName).toBe('INPUT');
         
-        const startInput = screen.getByDisplayValue('2026-01-01') as HTMLInputElement;
-        const endInput = screen.getByDisplayValue('2026-01-14') as HTMLInputElement;
-        
-        expect(startInput.disabled).toBe(true);
-        expect(endInput.disabled).toBe(true);
+        // Dates should be visible as text
+        expect(screen.getByText('2026-01-01')).toBeDefined();
+        expect(screen.getByText('2026-01-14')).toBeDefined();
     });
 
-    it('shows "Create Next Sprint" button only when not on creation page', () => {
-        const { rerender } = render(<SprintPage {...defaultProps} />);
-        expect(screen.getByText('+ Create Next Sprint')).toBeDefined();
-
-        rerender(<SprintPage {...defaultProps} sprintId="new" />);
-        expect(screen.queryByText('+ Create Next Sprint')).toBeNull();
-    });
-
-    it('initializes new sprint with suggested name and dates', () => {
+    it('initializes new sprint draft row at the top', () => {
         render(<SprintPage {...defaultProps} sprintId="new" />);
 
-        // Should suggest 'Sprint 2' starting day after 'Sprint 1' ends
+        // Should have 'NEW' status tag
+        expect(screen.getByText('NEW')).toBeDefined();
+        // Should suggest 'Sprint 2'
         expect(screen.getByDisplayValue('Sprint 2')).toBeDefined();
-        expect(screen.getByDisplayValue('2026-01-15')).toBeDefined();
-        expect(screen.getByDisplayValue('2026-01-28')).toBeDefined();
     });
 
     it('calls addSprint and saveDashboardData when saving a new sprint', async () => {
         render(<SprintPage {...defaultProps} sprintId="new" />);
 
+        // Get the single Save button now remaining in the UI
         const saveBtn = screen.getByRole('button', { name: /Save Changes/i });
         
         await act(async () => {
@@ -92,7 +85,8 @@ describe('SprintPage', () => {
         
         render(<SprintPage {...defaultProps} />);
 
-        const deleteBtn = screen.getByRole('button', { name: /Delete Sprint/i });
+        // The 'Delete' button is now in the table row Actions column
+        const deleteBtn = screen.getByRole('button', { name: 'Delete' });
         
         await act(async () => {
             fireEvent.click(deleteBtn);
@@ -100,5 +94,13 @@ describe('SprintPage', () => {
 
         expect(showConfirmSpy).toHaveBeenCalledWith('Delete Sprint', expect.stringContaining('Sprint 1'));
         expect(deleteSprintSpy).toHaveBeenCalledWith('s1');
+    });
+
+    it('shows "Create Next Sprint" button only when not on creation page', () => {
+        const { rerender } = render(<SprintPage {...defaultProps} />);
+        expect(screen.getByText('+ Create Next Sprint')).toBeDefined();
+
+        rerender(<SprintPage {...defaultProps} sprintId="new" />);
+        expect(screen.queryByText('+ Create Next Sprint')).toBeNull();
     });
 });
