@@ -272,4 +272,41 @@ describe('useGraphLayout Math Engine', () => {
         const edgesToGlobal = result.current.edges.filter(e => e.target === 'workitem-f_global' && e.source.startsWith('customer-'));
         expect(edgesToGlobal).toHaveLength(0);
     });
+
+    it('calculates global work item scores based on total system TCV and selected type', () => {
+        const data: DashboardData = {
+            ...MOCK_DATA,
+            customers: [
+                { id: 'c1', name: 'C1', existing_tcv: 1000, potential_tcv: 5000 },
+                { id: 'c2', name: 'C2', existing_tcv: 2000, potential_tcv: 0 }
+            ],
+            workItems: [
+                {
+                    id: 'f_existing',
+                    name: 'Global Exist',
+                    total_effort_mds: 10,
+                    all_customers_target: { tcv_type: 'existing', priority: 'Must-have' },
+                    customer_targets: []
+                },
+                {
+                    id: 'f_potential',
+                    name: 'Global Poten',
+                    total_effort_mds: 10,
+                    all_customers_target: { tcv_type: 'potential', priority: 'Must-have' },
+                    customer_targets: []
+                }
+            ]
+        };
+
+        const { result } = renderHook(() => useGraphLayout(data));
+        
+        const existNode = result.current.nodes.find(n => n.id === 'workitem-f_existing');
+        const potenNode = result.current.nodes.find(n => n.id === 'workitem-f_potential');
+
+        // Score Existing: (1000 + 2000) / 10 = 300
+        expect(existNode?.data.score).toBe(300);
+        
+        // Score Potential: (5000 + 0) / 10 = 500
+        expect(potenNode?.data.score).toBe(500);
+    });
 });

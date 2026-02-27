@@ -101,4 +101,27 @@ describe('WorkItemPage', () => {
         const option = screen.getByText('PROJ-123 Unassigned Epic');
         expect(option).toBeDefined();
     });
+
+    it('toggles global target row and hides individual customer search', () => {
+        render(
+            <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <WorkItemPage {...defaultProps} workItemId="f1" />
+            </DashboardProvider>
+        );
+
+        const globalCheckbox = screen.getByLabelText(/ALL CUSTOMERS \(Global\)/i);
+        expect(globalCheckbox).toBeDefined();
+
+        // Initially individual search is visible (f1 doesn't have all_customers_target in mockData)
+        expect(screen.queryByPlaceholderText(/Search for a customer to target.../i)).not.toBeNull();
+
+        // Toggle ON
+        fireEvent.click(globalCheckbox);
+
+        // Verify updateWorkItem was called (or state changed if local)
+        // Note: WorkItemPage uses updateWorkItem prop
+        expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', expect.objectContaining({
+            all_customers_target: expect.objectContaining({ tcv_type: 'existing' })
+        }));
+    });
 });
