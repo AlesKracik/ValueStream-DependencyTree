@@ -15,52 +15,57 @@ export const TeamNode = memo(({ data }: { data: TeamNodeData }) => {
     const isSmall = nodeSize < 100;
 
     return (
-        <div
-            style={{
-                width: `${nodeSize}px`,
-                height: `${nodeSize}px`,
-                borderRadius: '50%',
-                backgroundColor: '#4b5563', // Dark Gray (Tertiary)
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                border: '3px solid rgba(255, 255, 255, 0.2)',
-                transition: 'all 0.2s',
-                padding: isSmall ? '8px' : '12px',
-                textAlign: 'center',
-                position: 'relative',
-                boxSizing: 'border-box',
-                overflow: 'hidden'
-            }}
-            title={data.label}
-        >
-            <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
+        <div style={{ position: 'relative', width: nodeSize, height: nodeSize + 40 }}>
+            <div
+                style={{
+                    width: `${nodeSize}px`,
+                    height: `${nodeSize}px`,
+                    borderRadius: '50%',
+                    backgroundColor: '#4b5563', // Dark Gray (Tertiary)
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                    border: '3px solid rgba(255, 255, 255, 0.2)',
+                    transition: 'all 0.2s',
+                    textAlign: 'center',
+                    boxSizing: 'border-box',
+                    overflow: 'hidden'
+                }}
+            >
+                <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
 
-            <div style={{ 
-                fontWeight: 'bold', 
-                fontSize: `${Math.max(10, nodeSize * 0.12)}px`,
-                lineHeight: '1.1',
-                maxHeight: '3.3em',
-                overflow: 'hidden',
-                display: '-webkit-box',
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: 'vertical',
-                wordBreak: 'break-word'
+                <div style={{ 
+                    fontWeight: 'bold', 
+                    fontSize: `${Math.max(10, nodeSize * 0.18)}px`,
+                    opacity: 1
+                }}>
+                    {data.capacityMds}
+                </div>
+                <div style={{ fontSize: `${Math.max(8, nodeSize * 0.1)}px`, opacity: 0.8 }}>MDs</div>
+
+                <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
+            </div>
+
+            {/* External Label */}
+            <div style={{
+                position: 'absolute',
+                top: `${nodeSize + 4}px`,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '160px',
+                textAlign: 'center',
+                color: '#e5e7eb',
+                fontSize: '12px',
+                fontWeight: '500',
+                lineHeight: '1.2',
+                textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+                pointerEvents: 'none'
             }}>
                 {data.label}
             </div>
-            <div style={{ 
-                fontSize: `${Math.max(9, nodeSize * 0.1)}px`, 
-                opacity: 0.9,
-                marginTop: isSmall ? '2px' : '4px'
-            }}>
-                {isSmall ? `${data.capacityMds} MDs` : `Capacity: ${data.capacityMds} MDs`}
-            </div>
-
-            <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
         </div>
     );
 });

@@ -26,7 +26,7 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
     const existingOpacity = (hlMode === 'all' || hlMode === 'existing' || hlMode === 'none') ? 1 : 0.15;
 
     return (
-        <div style={{ position: 'relative', width: outerSize, height: outerSize }}>
+        <div style={{ position: 'relative', width: outerSize, height: outerSize + 40 }}>
             {/* Outer Circle (Potential TCV) */}
             <div
                 style={{
@@ -65,8 +65,8 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
             <div
                 style={{
                     position: 'absolute',
-                    top: '50%',
-                    left: '50%',
+                    top: outerSize / 2,
+                    left: outerSize / 2,
                     transform: 'translate(-50%, -50%)',
                     width: `${innerSize}px`,
                     height: `${innerSize}px`,
@@ -83,28 +83,13 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
                     textAlign: 'center',
                     boxSizing: 'border-box',
                     opacity: existingOpacity,
-                    padding: '6px',
                     overflow: 'hidden'
                 }}
-                title={data.label}
             >
                 <div style={{ 
                     fontWeight: 'bold', 
-                    fontSize: `${Math.max(10, innerSize * 0.13)}px`,
-                    lineHeight: '1.1',
-                    maxHeight: '2.2em',
-                    overflow: 'hidden',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    wordBreak: 'break-word'
-                }}>
-                    {data.label}
-                </div>
-                <div style={{ 
-                    fontSize: `${Math.max(9, innerSize * 0.11)}px`, 
-                    opacity: 0.9,
-                    marginTop: '2px'
+                    fontSize: `${Math.max(10, innerSize * 0.2)}px`, 
+                    opacity: 1
                 }}>
                     ${(data.existingTcv / 1000).toFixed(0)}k
                 </div>
@@ -116,6 +101,24 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
                     id="existing"
                     style={{ background: '#fff', width: '6px', height: '6px', right: '-3px', opacity: 0 }}
                 />
+            </div>
+
+            {/* External Label */}
+            <div style={{
+                position: 'absolute',
+                top: `${outerSize + 4}px`,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '160px',
+                textAlign: 'center',
+                color: '#e5e7eb',
+                fontSize: '12px',
+                fontWeight: '500',
+                lineHeight: '1.2',
+                textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+                pointerEvents: 'none'
+            }}>
+                {data.label}
             </div>
 
             {/* Input handle (just in case) */}
