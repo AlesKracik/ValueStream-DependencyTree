@@ -154,10 +154,8 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                             <input 
                                 type="date" 
                                 value={isNew ? newSprintDraft.start_date : sprint.start_date} 
-                                onChange={e => {
-                                    if (isNew) setNewSprintDraft(prev => ({ ...prev, start_date: e.target.value }));
-                                    else updateSprint(sprint.id, { start_date: e.target.value });
-                                }}
+                                disabled={true}
+                                style={{ backgroundColor: '#1f2937', color: '#9ca3af', cursor: 'not-allowed' }}
                             />
                         </label>
                         <label>
@@ -165,29 +163,17 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                             <input 
                                 type="date" 
                                 value={isNew ? newSprintDraft.end_date : sprint.end_date} 
-                                onChange={e => {
-                                    if (isNew) setNewSprintDraft(prev => ({ ...prev, end_date: e.target.value }));
-                                    else updateSprint(sprint.id, { end_date: e.target.value });
-                                }}
+                                disabled={true}
+                                style={{ backgroundColor: '#1f2937', color: '#9ca3af', cursor: 'not-allowed' }}
                             />
                         </label>
                     </div>
+                    {!isNew && <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '12px' }}>Note: Dates are managed automatically to maintain a continuous schedule.</p>}
                 </section>
 
                 <section className={styles.card}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <h2>Sprint Schedule</h2>
-                        <button 
-                            className={styles.primaryBtn} 
-                            style={{ backgroundColor: '#10b981', borderColor: '#059669' }}
-                            onClick={() => {
-                                if (!isNew) {
-                                    onNavigateToSprint('new');
-                                }
-                            }}
-                        >
-                            + Create New Sprint
-                        </button>
                     </div>
                     <table className={styles.table}>
                         <thead>
@@ -225,6 +211,18 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                             })}
                         </tbody>
                     </table>
+                    
+                    {!isNew && (
+                        <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'center' }}>
+                            <button 
+                                className={styles.primaryBtn} 
+                                style={{ backgroundColor: '#10b981', borderColor: '#059669', padding: '12px 24px', fontSize: '16px' }}
+                                onClick={() => onNavigateToSprint('new')}
+                            >
+                                + Create Next Sprint
+                            </button>
+                        </div>
+                    )}
                 </section>
             </div>
         </div>

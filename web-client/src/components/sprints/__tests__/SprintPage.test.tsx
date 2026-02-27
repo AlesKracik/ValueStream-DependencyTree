@@ -45,12 +45,24 @@ describe('SprintPage', () => {
         });
     });
 
-    it('renders current sprint details', () => {
+    it('renders current sprint details with read-only dates', () => {
         render(<SprintPage {...defaultProps} />);
 
         expect(screen.getByDisplayValue('Sprint 1')).toBeDefined();
-        expect(screen.getByDisplayValue('2026-01-01')).toBeDefined();
-        expect(screen.getByDisplayValue('2026-01-14')).toBeDefined();
+        
+        const startInput = screen.getByDisplayValue('2026-01-01') as HTMLInputElement;
+        const endInput = screen.getByDisplayValue('2026-01-14') as HTMLInputElement;
+        
+        expect(startInput.disabled).toBe(true);
+        expect(endInput.disabled).toBe(true);
+    });
+
+    it('shows "Create Next Sprint" button only when not on creation page', () => {
+        const { rerender } = render(<SprintPage {...defaultProps} />);
+        expect(screen.getByText('+ Create Next Sprint')).toBeDefined();
+
+        rerender(<SprintPage {...defaultProps} sprintId="new" />);
+        expect(screen.queryByText('+ Create Next Sprint')).toBeNull();
     });
 
     it('initializes new sprint with suggested name and dates', () => {
