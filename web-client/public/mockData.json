@@ -9,13 +9,13 @@
     {
       "id": "c1",
       "name": "Customer Alpha",
-      "existing_tcv": 0,
+      "existing_tcv": 15000,
       "potential_tcv": 42000
     },
     {
       "id": "c2",
       "name": "Customer Beta",
-      "existing_tcv": 0,
+      "existing_tcv": 300000,
       "potential_tcv": 850000
     },
     {
@@ -27,7 +27,7 @@
     {
       "id": "c4",
       "name": "Customer Delta",
-      "existing_tcv": 0,
+      "existing_tcv": 50000,
       "potential_tcv": 175000
     },
     {
@@ -45,13 +45,13 @@
     {
       "id": "c7",
       "name": "Customer Eta",
-      "existing_tcv": 0,
+      "existing_tcv": 120000,
       "potential_tcv": 155000
     },
     {
       "id": "c8",
       "name": "Customer Theta",
-      "existing_tcv": 0,
+      "existing_tcv": 450000,
       "potential_tcv": 920000
     },
     {
@@ -81,7 +81,7 @@
     {
       "id": "c13",
       "name": "Customer Nu",
-      "existing_tcv": 0,
+      "existing_tcv": 2000000,
       "potential_tcv": 5100000
     },
     {
