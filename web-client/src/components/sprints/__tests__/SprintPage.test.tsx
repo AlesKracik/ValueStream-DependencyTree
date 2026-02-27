@@ -57,7 +57,26 @@ describe('SprintPage', () => {
         expect(screen.getByText('2026-01-14')).toBeDefined();
     });
 
-    it('initializes new sprint draft row at the top', () => {
+    it('shows "Delete" button only for the last sprint', () => {
+        const dataWithTwo: DashboardData = {
+            ...mockData,
+            sprints: [
+                { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' },
+                { id: 's2', name: 'Sprint 2', start_date: '2026-01-15', end_date: '2026-01-28' }
+            ]
+        };
+
+        // Select s1 (not last)
+        const { rerender } = render(<SprintPage {...defaultProps} data={dataWithTwo} sprintId="s1" />);
+        expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
+        expect(screen.getByText('Locked (not last)')).toBeDefined();
+
+        // Select s2 (last)
+        rerender(<SprintPage {...defaultProps} data={dataWithTwo} sprintId="s2" />);
+        expect(screen.getByRole('button', { name: 'Delete' })).toBeDefined();
+    });
+
+    it('initializes new sprint draft row at the bottom', () => {
         render(<SprintPage {...defaultProps} sprintId="new" />);
 
         // Should have 'NEW' status tag

@@ -141,32 +141,12 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                             </tr>
                         </thead>
                         <tbody>
-                            {/* Draft Row for New Sprint */}
-                            {isNew && (
-                                <tr style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', borderLeft: '4px solid #10b981' }}>
-                                    <td>
-                                        <input 
-                                            type="text" 
-                                            value={newSprintDraft.name} 
-                                            onChange={e => setNewSprintDraft(prev => ({ ...prev, name: e.target.value }))}
-                                            style={{ width: '100%', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }}
-                                            autoFocus
-                                        />
-                                    </td>
-                                    <td style={{ color: '#9ca3af' }}>{newSprintDraft.start_date}</td>
-                                    <td style={{ color: '#9ca3af' }}>{newSprintDraft.end_date}</td>
-                                    <td style={{ color: '#10b981', fontWeight: 'bold' }}>NEW</td>
-                                    <td>
-                                        <button onClick={onBack} className={styles.dangerBtn} style={{ padding: '4px 8px' }}>Cancel</button>
-                                    </td>
-                                </tr>
-                            )}
-
-                            {data.sprints.map(s => {
+                            {data.sprints.map((s, index) => {
                                 const today = new Date();
                                 const start = parseISO(s.start_date);
                                 const end = parseISO(s.end_date);
                                 const isSelected = s.id === sprintId;
+                                const isLast = index === data.sprints.length - 1;
                                 
                                 let status = 'Future';
                                 let statusColor = '#9ca3af';
@@ -197,13 +177,37 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                                         <td style={{ color: '#9ca3af' }}>{s.end_date}</td>
                                         <td style={{ color: statusColor, fontWeight: 'bold' }}>{status}</td>
                                         <td>
-                                            {isSelected && (
+                                            {isSelected && isLast && (
                                                 <button onClick={handleDelete} className={styles.dangerBtn} style={{ padding: '4px 8px' }}>Delete</button>
+                                            )}
+                                            {isSelected && !isLast && (
+                                                <span style={{ fontSize: '11px', color: '#6b7280', fontStyle: 'italic' }}>Locked (not last)</span>
                                             )}
                                         </td>
                                     </tr>
                                 );
                             })}
+
+                            {/* Draft Row for New Sprint at the bottom */}
+                            {isNew && (
+                                <tr style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', borderLeft: '4px solid #10b981' }}>
+                                    <td>
+                                        <input 
+                                            type="text" 
+                                            value={newSprintDraft.name} 
+                                            onChange={e => setNewSprintDraft(prev => ({ ...prev, name: e.target.value }))}
+                                            style={{ width: '100%', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }}
+                                            autoFocus
+                                        />
+                                    </td>
+                                    <td style={{ color: '#9ca3af' }}>{newSprintDraft.start_date}</td>
+                                    <td style={{ color: '#9ca3af' }}>{newSprintDraft.end_date}</td>
+                                    <td style={{ color: '#10b981', fontWeight: 'bold' }}>NEW</td>
+                                    <td>
+                                        <button onClick={onBack} className={styles.dangerBtn} style={{ padding: '4px 8px' }}>Cancel</button>
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                     
