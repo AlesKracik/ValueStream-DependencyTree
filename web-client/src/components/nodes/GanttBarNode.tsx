@@ -24,7 +24,7 @@ export interface GanttBarNodeData {
 const PIXELS_PER_DAY = 20;
 
 export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
-    const { updateEpic } = useDashboardContext();
+    const { data: dashboardData, updateEpic } = useDashboardContext();
     const [dragState, setDragState] = useState<{ active: 'left' | 'right' | null, startX: number, currentDelta: number }>({
         active: null,
         startX: 0,
@@ -51,6 +51,17 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
         }));
     };
 
+    const getActiveSprintStart = () => {
+        if (!dashboardData) return new Date();
+        const today = new Date();
+        const activeSprint = dashboardData.sprints.find(s => {
+            const start = parseISO(s.start_date);
+            const end = parseISO(s.end_date);
+            return today >= start && today <= end;
+        }) || dashboardData.sprints[0];
+        return activeSprint ? parseISO(activeSprint.start_date) : new Date();
+    };
+
     const onPointerUp = (e: React.PointerEvent) => {
         if (!dragState.active) return;
         e.currentTarget.releasePointerCapture(e.pointerId);
@@ -63,21 +74,102 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
             const sDate = parseISO(startStr);
             const eDate = parseISO(endStr);
 
+            let newStartStr = startStr;
+            let newEndStr = endStr;
+
             if (dragState.active === 'left') {
                 const newStart = addDays(sDate, deltaDays);
                 if (newStart <= eDate) {
-                    updateEpic(data.epicId, { target_start: format(newStart, 'yyyy-MM-dd') });
+                    newStartStr = format(newStart, 'yyyy-MM-dd');
+                } else {
+                    setDragState({ active: null, startX: 0, currentDelta: 0 });
+                    return;
                 }
             } else if (dragState.active === 'right') {
                 const newEnd = addDays(eDate, deltaDays);
                 if (newEnd >= sDate) {
-                    updateEpic(data.epicId, { target_end: format(newEnd, 'yyyy-MM-dd') });
+                    newEndStr = format(newEnd, 'yyyy-MM-dd');
+                } else {
+                    setDragState({ active: null, startX: 0, currentDelta: 0 });
+                    return;
+                }
+            }
+
+            // Safety check for past work
+            if (dashboardData) {
+                const epic = dashboardData.epics.find(ep => ep.id === data.epicId);
+                if (epic) {
+                    const activeSprintStart = getActiveSprintStart();
+                    const pastSprints = dashboardData.sprints.filter(s => parseISO(s.end_date) < activeSprintStart);
+                    const hasPastWork = pastSprints.some(s => epic.sprint_effort_overrides?.[s.id] !== undefined);
+
+                    const updates: any = { 
+                        target_start: newStartStr,
+                        target_end: newEndStr
+                    };
+
+                    if (hasPastWork) {
+                        const confirmed = window.confirm(
+                            "This Epic has recorded effort in past sprints. Moving the dates will overwrite this historical data. Do you want to recalculate past work?"
+                        );
+                        if (!confirmed) {
+                            setDragState({ active: null, startX: 0, currentDelta: 0 });
+                            return;
+                        }
+                        const newOverrides = { ...(epic.sprint_effort_overrides || {}) };
+                        pastSprints.forEach(s => delete newOverrides[s.id]);
+                        updates.sprint_effort_overrides = Object.keys(newOverrides).length > 0 ? newOverrides : undefined;
+                    }
+                    updateEpic(data.epicId, updates);
                 }
             }
         }
 
         setDragState({ active: null, startX: 0, currentDelta: 0 });
     };
+
+    // Auto-freeze logic: If a sprint has passed and we don't have an override, 
+    // snapshot the current calculated intensity as a permanent override.
+    useEffect(() => {
+        if (!dashboardData || !data.segments) return;
+
+        const epic = dashboardData.epics.find(ep => ep.id === data.epicId);
+        if (!epic) return;
+
+        const activeSprintStart = getActiveSprintStart();
+        const pastSprints = dashboardData.sprints.filter(s => parseISO(s.end_date) < activeSprintStart);
+        
+        let needsUpdate = false;
+        const newOverrides = { ...(epic.sprint_effort_overrides || {}) };
+
+        pastSprints.forEach(s => {
+            if (newOverrides[s.id] === undefined) {
+                // Find the calculated effort for this sprint from our segments
+                // Note: segments are visual, we need to find the one corresponding to this sprint
+                const sStart = parseISO(s.start_date);
+                const sEnd = parseISO(s.end_date);
+                const eStart = parseISO(data.targetStart);
+                const eEnd = parseISO(data.targetEnd);
+
+                const overlapStart = max([sStart, eStart]);
+                const overlapEnd = min([sEnd, eEnd]);
+
+                if (overlapStart <= overlapEnd) {
+                    const overlapDays = differenceInDays(overlapEnd, overlapStart) + 1;
+                    const duration = differenceInDays(eEnd, eStart) + 1;
+                    
+                    // Simple proportional spread for the snapshot if no complex override exists
+                    const calculatedEffort = (epic.remaining_md * (overlapDays / duration));
+                    newOverrides[s.id] = Math.round(calculatedEffort * 10) / 10;
+                    needsUpdate = true;
+                }
+            }
+        });
+
+        if (needsUpdate) {
+            updateEpic(data.epicId, { sprint_effort_overrides: newOverrides });
+        }
+    }, [dashboardData, data.epicId, data.segments, data.targetStart, data.targetEnd]);
 
     // Calculate visual dimensions based on drag state
     let visualWidth = data.width;

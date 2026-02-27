@@ -509,7 +509,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             <div className={styles.flowWrapper}>
-                <DashboardProvider value={{ updateEpic }}>
+                <DashboardProvider value={{ data, updateEpic }}>
                     <ReactFlow
                         nodes={nodes}
                         edges={edges}

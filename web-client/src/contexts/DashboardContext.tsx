@@ -1,7 +1,8 @@
 import React, { createContext, useContext } from 'react';
-import type { Epic } from '../types/models';
+import type { DashboardData, Epic } from '../types/models';
 
 interface DashboardContextType {
+    data: DashboardData | null;
     updateEpic: (id: string, updates: Partial<Epic>) => void;
 }
 
