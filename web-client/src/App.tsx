@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom';
+import { ReactFlowProvider } from '@xyflow/react';
 import { Dashboard } from './components/dashboard/Dashboard';
 import { CustomerPage } from './components/customers/CustomerPage';
 import { FeaturePage } from './components/features/FeaturePage';
@@ -65,7 +66,11 @@ function App() {
     <div className="app-container">
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<DashboardRouteWrapper dashboardState={dashboardState} dashboardViewState={dashboardViewState} setDashboardViewState={setDashboardViewState} />} />
+          <Route path="/" element={
+            <ReactFlowProvider>
+              <DashboardRouteWrapper dashboardState={dashboardState} dashboardViewState={dashboardViewState} setDashboardViewState={setDashboardViewState} />
+            </ReactFlowProvider>
+          } />
           <Route path="/customer/:id" element={<CustomerPageRouteWrapper dashboardState={dashboardState} />} />
           <Route path="/feature/:id" element={<FeaturePageRouteWrapper dashboardState={dashboardState} />} />
           <Route path="/epic/:id" element={<EpicPageRouteWrapper dashboardState={dashboardState} />} />

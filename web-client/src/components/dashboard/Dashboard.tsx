@@ -1,5 +1,5 @@
 import React from 'react';
-import { ReactFlow, ReactFlowProvider, Background, BackgroundVariant, Panel, useReactFlow } from '@xyflow/react';
+import { ReactFlow, Background, BackgroundVariant, Panel, useReactFlow } from '@xyflow/react';
 import type { Node } from '@xyflow/react';
 import { parseISO, differenceInDays } from 'date-fns';
 import '@xyflow/react/dist/style.css';
@@ -32,14 +32,15 @@ const nodeTypes = {
 
 interface DashboardControlsProps {
     data: DashboardData | null;
+    nodes: Node[];
     setViewState: React.Dispatch<React.SetStateAction<DashboardViewState>>;
 }
 
-const DashboardControls: React.FC<DashboardControlsProps> = ({ data, setViewState }) => {
-    const { zoomIn, zoomOut, fitView } = useReactFlow();
+const DashboardControls: React.FC<DashboardControlsProps> = ({ data, nodes, setViewState }) => {
+    const { zoomIn, zoomOut, setViewport } = useReactFlow();
 
-    const handleFitView = () => {
-        // Shift sprint view logic copied from useEffect
+    const handleFitView = React.useCallback(() => {
+        // Shift sprint view logic
         if (data && data.sprints && data.sprints.length > 0) {
             const today = new Date();
             let currentSprintIdx = -1;
@@ -66,8 +67,28 @@ const DashboardControls: React.FC<DashboardControlsProps> = ({ data, setViewStat
             }
         }
         
-        fitView({ padding: 0.2, duration: 800 });
-    };
+        // Manual Viewport Calculation to "Show the Top"
+        const nodesToFit = nodes.filter(n => 
+            ['customerNode', 'featureNode', 'teamNode', 'headerNode', 'sprintCapacityNode'].includes(n.type || '')
+        );
+
+        if (nodesToFit.length > 0) {
+            // Calculate horizontal bounds
+            const minX = Math.min(...nodesToFit.map(n => n.position.x));
+            const maxX = Math.max(...nodesToFit.map(n => n.position.x + (n.measured?.width || 220)));
+            const contentWidth = maxX - minX;
+
+            const containerWidth = window.innerWidth;
+            let targetZoom = (containerWidth * 0.9) / contentWidth;
+            targetZoom = Math.min(Math.max(targetZoom, 0.5), 0.8);
+
+            const contentCenterX = minX + (contentWidth / 2);
+            const targetX = (containerWidth / 2) - (contentCenterX * targetZoom);
+            const targetY = 60;
+
+            setViewport({ x: targetX, y: targetY, zoom: targetZoom }, { duration: 800 });
+        }
+    }, [data, nodes, setViewState, setViewport]);
 
     return (
         <Panel position="bottom-right" style={{ display: 'flex', gap: '8px', padding: '12px', zIndex: 5 }}>
@@ -88,9 +109,9 @@ const DashboardControls: React.FC<DashboardControlsProps> = ({ data, setViewStat
             <button 
                 onClick={handleFitView}
                 style={{ padding: '0 12px', height: '32px', borderRadius: '4px', backgroundColor: '#374151', color: '#e5e7eb', border: '1px solid #4b5563', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}
-                title="Fit to View"
+                title="Reset View to Top & Active Sprint"
             >
-                Fit View
+                Reset View
             </button>
         </Panel>
     );
@@ -124,6 +145,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     onNavigateToEpic,
     onNavigateToTeam
 }) => {
+    const { setViewport } = useReactFlow();
     const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
     const [editingNode, setEditingNode] = React.useState<Node | null>(null);
     const [isSettingsModalOpen, setIsSettingsModalOpen] = React.useState(false);
@@ -131,39 +153,81 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [isInitialOffsetSet, setIsInitialOffsetSet] = React.useState(false);
 
-    // Initial sprint offset calculation
+    const { nodes, edges } = useGraphLayout(
+        data,
+        hoveredNodeId,
+        viewState.sprintOffset,
+        viewState.customerFilter,
+        viewState.featureFilter,
+        viewState.teamFilter,
+        viewState.epicFilter,
+        viewState.showDependencies,
+        viewState.minTcvFilter ? Number(viewState.minTcvFilter) : 0,
+        viewState.minScoreFilter ? Number(viewState.minScoreFilter) : 0,
+        viewState.selectedNodeId || null
+    );
+
+    // Initial sprint offset and viewport calculation
     React.useEffect(() => {
-        if (data && data.sprints && data.sprints.length > 0 && !isInitialOffsetSet) {
-            const today = new Date();
-            let currentSprintIdx = -1;
+        if (!data || !data.sprints || data.sprints.length === 0 || isInitialOffsetSet || nodes.length === 0) return;
 
-            // Find current sprint
-            for (let i = 0; i < data.sprints.length; i++) {
-                const start = parseISO(data.sprints[i].start_date);
-                const end = parseISO(data.sprints[i].end_date);
-                if (today >= start && today <= end) {
-                    currentSprintIdx = i;
-                    break;
-                }
+        const today = new Date();
+        let currentSprintIdx = -1;
+
+        // Find current sprint
+        for (let i = 0; i < data.sprints.length; i++) {
+            const start = parseISO(data.sprints[i].start_date);
+            const end = parseISO(data.sprints[i].end_date);
+            if (today >= start && today <= end) {
+                currentSprintIdx = i;
+                break;
             }
-
-            // If no current sprint found, but today is before first sprint, idx=0
-            if (currentSprintIdx === -1 && today < parseISO(data.sprints[0].start_date)) {
-                currentSprintIdx = 0;
-            }
-
-            if (currentSprintIdx !== -1) {
-                const currentSprintStart = parseISO(data.sprints[currentSprintIdx].start_date);
-                const daysSinceStart = differenceInDays(today, currentSprintStart);
-
-                // If starting sprint (up to two days after start), show previous sprint
-                const targetOffset = daysSinceStart <= 2 ? Math.max(0, currentSprintIdx - 1) : currentSprintIdx;
-                
-                setViewState(s => ({ ...s, sprintOffset: targetOffset }));
-            }
-            setIsInitialOffsetSet(true);
         }
-    }, [data, setViewState, isInitialOffsetSet]);
+
+        // If no current sprint found, but today is before first sprint, idx=0
+        if (currentSprintIdx === -1 && today < parseISO(data.sprints[0].start_date)) {
+            currentSprintIdx = 0;
+        }
+
+        if (currentSprintIdx !== -1) {
+            const currentSprintStart = parseISO(data.sprints[currentSprintIdx].start_date);
+            const daysSinceStart = differenceInDays(today, currentSprintStart);
+
+            // If starting sprint (up to two days after start), show previous sprint
+            const targetOffset = daysSinceStart <= 2 ? Math.max(0, currentSprintIdx - 1) : currentSprintIdx;
+            
+            // If the offset in viewState is not yet the targetOffset, update it first.
+            // This will cause a re-render and nodes will be updated with the correct layout.
+            if (viewState.sprintOffset !== targetOffset) {
+                setViewState(s => ({ ...s, sprintOffset: targetOffset }));
+                return; 
+            }
+
+            // Now offset is correct and nodes are stable.
+            // Calculate and set viewport.
+            const nodesToFit = nodes.filter(n => 
+                ['customerNode', 'featureNode', 'teamNode', 'headerNode', 'sprintCapacityNode'].includes(n.type || '')
+            );
+
+            if (nodesToFit.length > 0) {
+                const minX = Math.min(...nodesToFit.map(n => n.position.x));
+                const maxX = Math.max(...nodesToFit.map(n => n.position.x + (n.measured?.width || 220)));
+                const contentWidth = maxX - minX;
+
+                const containerWidth = window.innerWidth;
+                let targetZoom = (containerWidth * 0.9) / contentWidth;
+                targetZoom = Math.min(Math.max(targetZoom, 0.5), 0.8);
+
+                const contentCenterX = minX + (contentWidth / 2);
+                const targetX = (containerWidth / 2) - (contentCenterX * targetZoom);
+                const targetY = 60;
+
+                // Set immediately without duration for initial load
+                setViewport({ x: targetX, y: targetY, zoom: targetZoom });
+                setIsInitialOffsetSet(true);
+            }
+        }
+    }, [data, setViewState, isInitialOffsetSet, nodes, setViewport, viewState.sprintOffset]);
 
     const handleSave = async () => {
         if (!data) return;
@@ -195,20 +259,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             }
         }
     };
-
-    const { nodes, edges } = useGraphLayout(
-        data,
-        hoveredNodeId,
-        viewState.sprintOffset,
-        viewState.customerFilter,
-        viewState.featureFilter,
-        viewState.teamFilter,
-        viewState.epicFilter,
-        viewState.showDependencies,
-        viewState.minTcvFilter ? Number(viewState.minTcvFilter) : 0,
-        viewState.minScoreFilter ? Number(viewState.minScoreFilter) : 0,
-        viewState.selectedNodeId || null
-    );
 
     const hoverTimeoutRef = React.useRef<number | null>(null);
 
@@ -460,29 +510,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
             <div className={styles.flowWrapper}>
                 <DashboardProvider value={{ updateEpic }}>
-                    <ReactFlowProvider>
-                        <ReactFlow
-                            nodes={nodes}
-                            edges={edges}
-                            nodeTypes={nodeTypes}
-                            onNodeMouseEnter={onNodeMouseEnter}
-                            onNodeMouseLeave={onNodeMouseLeave}
-                            onNodeContextMenu={onNodeContextMenu}
-                            onNodeClick={onNodeClick}
-                            onMoveEnd={(_, viewport) => {
-                                setViewState(s => ({ ...s, viewport }));
-                            }}
-                            defaultViewport={viewState.viewport}
-                            fitView={!viewState.viewport}
-                            fitViewOptions={{ padding: 0.2 }}
-                            minZoom={0.2}
-                            maxZoom={1.5}
-                            proOptions={{ hideAttribution: true }}
-                        >
-                            <Background color="#1a1a1a" variant={BackgroundVariant.Lines} gap={100} />
-                            <DashboardControls data={data} setViewState={setViewState} />
-                        </ReactFlow>
-                    </ReactFlowProvider>
+                    <ReactFlow
+                        nodes={nodes}
+                        edges={edges}
+                        nodeTypes={nodeTypes}
+                        onNodeMouseEnter={onNodeMouseEnter}
+                        onNodeMouseLeave={onNodeMouseLeave}
+                        onNodeContextMenu={onNodeContextMenu}
+                        onNodeClick={onNodeClick}
+                        onMoveEnd={(_, viewport) => {
+                            setViewState(s => ({ ...s, viewport }));
+                        }}
+                        defaultViewport={viewState.viewport}
+                        fitView={false}
+                        minZoom={0.2}
+                        maxZoom={1.5}
+                        proOptions={{ hideAttribution: true }}
+                    >
+                        <Background color="#1a1a1a" variant={BackgroundVariant.Lines} gap={100} />
+                        <DashboardControls data={data} nodes={nodes} setViewState={setViewState} />
+                    </ReactFlow>
                 </DashboardProvider>
             </div>
 

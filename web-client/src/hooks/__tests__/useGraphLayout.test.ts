@@ -39,6 +39,41 @@ const MOCK_DATA: DashboardData = {
 
 describe('useGraphLayout Math Engine', () => {
 
+    it('generates centered HeaderNodes above the columns', () => {
+        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', '', '', true));
+        
+        const customerHeader = result.current.nodes.find(n => n.id === 'header-customers');
+        const featureHeader = result.current.nodes.find(n => n.id === 'header-features');
+        const teamHeader = result.current.nodes.find(n => n.id === 'header-teams');
+
+        expect(customerHeader).toBeDefined();
+        expect(featureHeader).toBeDefined();
+        expect(teamHeader).toBeDefined();
+
+        // Check if they are at Y=0
+        expect(customerHeader?.position.y).toBe(0);
+        expect(featureHeader?.position.y).toBe(0);
+        expect(teamHeader?.position.y).toBe(0);
+
+        // Check if they are offset for centering (fixed width 220, so offset -110)
+        expect(customerHeader?.position.x).toBe(0 - 110); // COL_CUSTOMER_X = 0
+        expect(featureHeader?.position.x).toBe(350 - 110); // COL_FEATURE_X = 350
+        expect(teamHeader?.position.x).toBe(700 - 110); // COL_TEAM_X = 700
+    });
+
+    it('positions data nodes with a vertical buffer to avoid header overlap', () => {
+        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', '', '', true));
+        
+        const firstCustomer = result.current.nodes.find(n => n.id === 'customer-c1');
+        const firstFeature = result.current.nodes.find(n => n.id === 'feature-f1');
+
+        // START_Y is 200, but nodes are positioned at START_Y - (nodeSize / 2)
+        // With nodeSize around 100-140, Y should be around 130-150.
+        // Crucially, it should be significantly below the header at Y=0.
+        expect(firstCustomer?.position.y).toBeGreaterThan(100);
+        expect(firstFeature?.position.y).toBeGreaterThan(100);
+    });
+
     it('gracefully handles empty data', () => {
         const { result } = renderHook(() => useGraphLayout(null, null, 0, '', '', '', '', true));
         expect(result.current.nodes).toEqual([]);
