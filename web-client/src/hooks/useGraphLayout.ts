@@ -146,10 +146,11 @@ export function useGraphLayout(
 
                 // Find connected valid Customers
                 let connectedValidCustomers: string[] = [];
-                if (f.relates_to_all_existing_customers) {
-                    // All valid customers who have existing TCV
+                if (f.all_customers_target) {
+                    const type = f.all_customers_target.tcv_type;
+                    // All valid customers who have relevant TCV
                     connectedValidCustomers = data.customers
-                        .filter(c => validCustomers.has(c.id) && (c.existing_tcv || 0) > 0)
+                        .filter(c => validCustomers.has(c.id) && (type === 'existing' ? (c.existing_tcv || 0) : (c.potential_tcv || 0)) > 0)
                         .map(c => c.id);
                 } else {
                     connectedValidCustomers = f.customer_targets
@@ -206,10 +207,12 @@ export function useGraphLayout(
         if (selectedNodeId) {
             const logicalEdges: { id: string, source: string, target: string }[] = [];
             data.workItems.forEach((workItem) => {
-                if (workItem.relates_to_all_existing_customers) {
-                    // Logic: Connect to all customers who have existing TCV
+                if (workItem.all_customers_target) {
+                    const type = workItem.all_customers_target.tcv_type;
+                    // Logic: Connect to all customers who have relevant TCV
                     data.customers.forEach(customer => {
-                        if ((customer.existing_tcv || 0) > 0) {
+                        const val = type === 'existing' ? (customer.existing_tcv || 0) : (customer.potential_tcv || 0);
+                        if (val > 0) {
                             logicalEdges.push({
                                 id: `edge-${customer.id}-${workItem.id}-all`,
                                 source: `customer-${customer.id}`,
@@ -359,9 +362,25 @@ export function useGraphLayout(
 
                 let impact = 0;
 
-                if (f.relates_to_all_existing_customers) {
-                    // Impact is the sum of ALL existing TCVs in the system
-                    impact = data.customers.reduce((sum, c) => sum + (c.existing_tcv || 0), 0);
+                if (f.all_customers_target) {
+                    const type = f.all_customers_target.tcv_type;
+                    const priority = f.all_customers_target.priority || 'Must-have';
+                    
+                    // Sum up relevant TCV for ALL customers
+                    let totalRelevantTcv = data.customers.reduce((sum, c) => {
+                        const val = type === 'existing' ? (c.existing_tcv || 0) : (c.potential_tcv || 0);
+                        return sum + val;
+                    }, 0);
+
+                    if (priority === 'Must-have') {
+                        impact = totalRelevantTcv;
+                    } else if (priority === 'Should-have') {
+                        // For global "Should-haves", we also divide by global count of Should-haves if we want consistency,
+                        // but usually global maintenance is a single item. For now, let's treat it as total/1 for simplicity
+                        // or find all global items with should-have.
+                        let globalShouldCount = data.workItems.filter(wf => wf.all_customers_target?.priority === 'Should-have' && wf.all_customers_target?.tcv_type === type).length;
+                        impact = totalRelevantTcv / (globalShouldCount || 1);
+                    }
                 } else {
                     f.customer_targets.forEach(target => {
                         const customer = data.customers.find(c => c.id === target.customer_id);
@@ -438,13 +457,13 @@ export function useGraphLayout(
                     score: workItem.score,
                     maxScore: maxScore,
                     baseSize: 100,
-                    isGlobal: !!workItem.relates_to_all_existing_customers,
+                    isGlobal: !!workItem.all_customers_target,
                 },
             });
 
             // 3. Create Edges (Customer -> WorkItem)
             // Skip visual edges for items that relate to all existing customers to avoid clutter
-            if (!workItem.relates_to_all_existing_customers) {
+            if (!workItem.all_customers_target) {
                 // Thickness proportional to ROI: Potential_TCV / Total_Effort_MDs
                 workItem.customer_targets.forEach((target) => {
                     if (!visibleCustomers.has(target.customer_id)) return;

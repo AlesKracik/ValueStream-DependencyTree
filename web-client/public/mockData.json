@@ -210,7 +210,10 @@
       "id": "f_global_maint",
       "name": "Global Infrastructure Maintenance",
       "total_effort_mds": 20,
-      "relates_to_all_existing_customers": true,
+      "all_customers_target": {
+        "tcv_type": "existing",
+        "priority": "Must-have"
+      },
       "customer_targets": []
     },
     {

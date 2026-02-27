@@ -56,7 +56,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                 setFormData({
                     name: workItem.name,
                     total_effort_mds: workItem.total_effort_mds,
-                    relates_to_all_existing_customers: !!workItem.relates_to_all_existing_customers,
+                    all_customers_target: workItem.all_customers_target ? { ...workItem.all_customers_target } : undefined,
                     customer_targets: workItem.customer_targets ? JSON.parse(JSON.stringify(workItem.customer_targets)) : []
                 });
             }
@@ -95,7 +95,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
             onUpdateWorkItem(domainId, {
                 name: formData.name,
                 total_effort_mds: Number(formData.total_effort_mds),
-                relates_to_all_existing_customers: !!formData.relates_to_all_existing_customers,
+                all_customers_target: formData.all_customers_target,
                 customer_targets: formData.customer_targets
             });
 
@@ -153,16 +153,53 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                         Total Effort (MDs):
                         <input style={styles.input} type="number" value={formData.total_effort_mds || 0} onChange={e => setFormData({ ...formData, total_effort_mds: e.target.value })} required />
                     </label>
-                    <label style={{ ...styles.label, flexDirection: 'row', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                        <input 
-                            type="checkbox" 
-                            checked={!!formData.relates_to_all_existing_customers} 
-                            onChange={e => setFormData({ ...formData, relates_to_all_existing_customers: e.target.checked })} 
-                        />
-                        <span style={{ fontSize: '13px', color: '#cbd5e1' }}>Relates to ALL existing customers</span>
-                    </label>
+                    
+                    <div style={{ padding: '12px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '6px', marginBottom: '16px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginBottom: formData.all_customers_target ? '12px' : '0' }}>
+                            <input 
+                                type="checkbox" 
+                                checked={!!formData.all_customers_target} 
+                                onChange={e => {
+                                    const checked = e.target.checked;
+                                    setFormData({ 
+                                        ...formData, 
+                                        all_customers_target: checked ? { tcv_type: 'existing', priority: 'Must-have' } : undefined 
+                                    });
+                                }} 
+                            />
+                            <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>Relates to ALL Customers (Global)</span>
+                        </label>
 
-                    {!formData.relates_to_all_existing_customers && (
+                        {formData.all_customers_target && (
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <select
+                                    style={{ flex: 1, padding: '6px', borderRadius: '4px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563' }}
+                                    value={formData.all_customers_target.tcv_type}
+                                    onChange={e => setFormData({ 
+                                        ...formData, 
+                                        all_customers_target: { ...formData.all_customers_target, tcv_type: e.target.value } 
+                                    })}
+                                >
+                                    <option value="existing">Existing TCV</option>
+                                    <option value="potential">Potential TCV</option>
+                                </select>
+                                <select
+                                    style={{ flex: 1, padding: '6px', borderRadius: '4px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563' }}
+                                    value={formData.all_customers_target.priority || 'Must-have'}
+                                    onChange={e => setFormData({ 
+                                        ...formData, 
+                                        all_customers_target: { ...formData.all_customers_target, priority: e.target.value } 
+                                    })}
+                                >
+                                    <option value="Must-have">Must-have</option>
+                                    <option value="Should-have">Should-have</option>
+                                    <option value="Nice-to-have">Nice-to-have</option>
+                                </select>
+                            </div>
+                        )}
+                    </div>
+
+                    {!formData.all_customers_target && (
                         <div style={{ marginTop: '16px' }}>
                             <h3 style={{ fontSize: '14px', color: '#e2e8f0', marginBottom: '8px' }}>Customer Targets Prioritization</h3>
                             {(formData.customer_targets || []).map((target: any, idx: number) => {

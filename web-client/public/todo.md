@@ -3,6 +3,4 @@ in-progress (anything else that is not closed or canceled, actively worked on). 
 status of the customer from this point of view. 
 propose visual solution. also propose if you can somehow integrate with LLM model to       
 provide some nice summary
-• maintenance, performace or techdebt linked to existing TCV? to "keep it"
-• autoadd customer existing TCV to interrupts?
 • dont do anything, just think: now the TCV is either exisitng or potential. but as time goes on, the potential will gradually get to existing. so we need to introduce timeseries to the existing. propose a solution how to do that

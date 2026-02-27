@@ -291,26 +291,10 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                 }}
                             />
                         </label>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', gridColumn: 'span 2', marginTop: '12px' }}>
-                            <input 
-                                type="checkbox" 
-                                checked={isNew ? !!newWorkItemDraft.relates_to_all_existing_customers : !!workItem.relates_to_all_existing_customers}
-                                onChange={e => {
-                                    const val = e.target.checked;
-                                    if (isNew) {
-                                        setNewWorkItemDraft(prev => ({ ...prev, relates_to_all_existing_customers: val }));
-                                    } else {
-                                        updateWorkItem(workItem.id, { relates_to_all_existing_customers: val });
-                                    }
-                                }}
-                            />
-                            <span style={{ color: '#e5e7eb', fontSize: '14px' }}>Relates to ALL existing customers (Maintenance / Tech Debt / Incident)</span>
-                        </label>
                     </div>
                 </section>
 
-                {!(isNew ? newWorkItemDraft.relates_to_all_existing_customers : workItem.relates_to_all_existing_customers) && (
-                    <section className={styles.card}>
+                <section className={styles.card}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <h2>Targeted Customers</h2>
                     </div>
@@ -325,7 +309,69 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                             </tr>
                         </thead>
                         <tbody>
-                            {targetedCustomers.map(customer => {
+                            {/* Special Global Target Row */}
+                            <tr style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderLeft: '4px solid #3b82f6' }}>
+                                <td style={{ fontWeight: 'bold' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target}
+                                            onChange={e => {
+                                                const checked = e.target.checked;
+                                                const defaultTarget = { tcv_type: 'existing' as const, priority: 'Must-have' as const };
+                                                if (isNew) {
+                                                    setNewWorkItemDraft(prev => ({ ...prev, all_customers_target: checked ? defaultTarget : undefined }));
+                                                } else {
+                                                    updateWorkItem(workItem.id, { all_customers_target: checked ? defaultTarget : undefined });
+                                                }
+                                            }}
+                                        />
+                                        ALL CUSTOMERS (Global)
+                                    </label>
+                                </td>
+                                <td>
+                                    {(isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target) && (
+                                        <select
+                                            value={isNew ? newWorkItemDraft.all_customers_target?.tcv_type : workItem.all_customers_target?.tcv_type}
+                                            onChange={e => {
+                                                const type = e.target.value as 'existing' | 'potential';
+                                                if (isNew) {
+                                                    setNewWorkItemDraft(prev => ({ ...prev, all_customers_target: { ...prev.all_customers_target!, tcv_type: type } }));
+                                                } else {
+                                                    updateWorkItem(workItem.id, { all_customers_target: { ...workItem.all_customers_target!, tcv_type: type } });
+                                                }
+                                            }}
+                                        >
+                                            <option value="existing">Existing TCV</option>
+                                            <option value="potential">Potential TCV</option>
+                                        </select>
+                                    )}
+                                </td>
+                                <td>
+                                    {(isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target) && (
+                                        <select
+                                            value={isNew ? newWorkItemDraft.all_customers_target?.priority : workItem.all_customers_target?.priority}
+                                            onChange={e => {
+                                                const prio = e.target.value as 'Must-have' | 'Should-have' | 'Nice-to-have';
+                                                if (isNew) {
+                                                    setNewWorkItemDraft(prev => ({ ...prev, all_customers_target: { ...prev.all_customers_target!, priority: prio } }));
+                                                } else {
+                                                    updateWorkItem(workItem.id, { all_customers_target: { ...workItem.all_customers_target!, priority: prio } });
+                                                }
+                                            }}
+                                        >
+                                            <option value="Must-have">Must-have</option>
+                                            <option value="Should-have">Should-have</option>
+                                            <option value="Nice-to-have">Nice-to-have</option>
+                                        </select>
+                                    )}
+                                </td>
+                                <td>
+                                    {/* No specific action for global row */}
+                                </td>
+                            </tr>
+
+                            {!(isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target) && targetedCustomers.map(customer => {
                                 const targetDef = isNew
                                     ? newWorkItemCustomers.find(nfc => nfc.customerId === customer.id)!
                                     : workItem.customer_targets?.find(ct => ct.customer_id === customer.id)!;
@@ -417,7 +463,6 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                         </div>
                     </div>
                 </section>
-                )}
 
                 <section className={styles.card}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>

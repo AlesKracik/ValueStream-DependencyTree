@@ -9,7 +9,10 @@ export interface WorkItem {
   id: string;
   name: string;
   total_effort_mds: number;
-  relates_to_all_existing_customers?: boolean;
+  all_customers_target?: {
+    tcv_type: 'existing' | 'potential';
+    priority?: 'Must-have' | 'Should-have' | 'Nice-to-have';
+  };
   customer_targets: {
     customer_id: string;
     tcv_type: 'existing' | 'potential';

@@ -250,7 +250,10 @@ describe('useGraphLayout Math Engine', () => {
                     id: 'f_global',
                     name: 'Global Maint',
                     total_effort_mds: 10,
-                    relates_to_all_existing_customers: true,
+                    all_customers_target: {
+                        tcv_type: 'existing',
+                        priority: 'Must-have'
+                    },
                     customer_targets: []
                 }
             ],
