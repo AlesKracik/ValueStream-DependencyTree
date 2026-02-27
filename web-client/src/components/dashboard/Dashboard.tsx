@@ -134,6 +134,7 @@ export interface DashboardProps {
     onNavigateToWorkItem: (id: string) => void;
     onNavigateToTeam: (id: string) => void;
     onNavigateToEpic: (id: string) => void;
+    onNavigateToSprint: (id: string) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -143,7 +144,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     onNavigateToCustomer,
     onNavigateToWorkItem,
     onNavigateToEpic,
-    onNavigateToTeam
+    onNavigateToTeam,
+    onNavigateToSprint
 }) => {
     const { setViewport } = useReactFlow();
     const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
@@ -296,8 +298,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
             // epic id format is gantt-{id}
             const epicId = node.id.replace('gantt-', '');
             onNavigateToEpic(epicId);
+        } else if (node.type === 'sprintCapacityNode') {
+            // sprint-cap-{teamId}-{sprintId}
+            const parts = node.id.split('-');
+            const sprintId = parts[parts.length - 1];
+            onNavigateToSprint(sprintId);
         }
-    }, [onNavigateToCustomer, onNavigateToWorkItem, onNavigateToTeam, onNavigateToEpic]);
+    }, [onNavigateToCustomer, onNavigateToWorkItem, onNavigateToTeam, onNavigateToEpic, onNavigateToSprint]);
 
     const onNodeContextMenu = React.useCallback(
         (event: React.MouseEvent, node: Node) => {
@@ -357,6 +364,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 }}
                             >
                                 + Add Work Item
+                            </button>
+                            <button
+                                onClick={() => onNavigateToSprint('new')}
+                                style={{
+                                    padding: '8px 16px',
+                                    backgroundColor: '#10b981',
+                                    border: '1px solid #059669',
+                                    color: '#ffffff',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                + New Sprint
                             </button>
                         </div>
                     </div>

@@ -6,6 +6,7 @@ import { CustomerPage } from './components/customers/CustomerPage';
 import { WorkItemPage } from './components/workitems/WorkItemPage';
 import { EpicPage } from './components/epics/EpicPage';
 import { TeamPage } from './components/teams/TeamPage';
+import { SprintPage } from './components/sprints/SprintPage';
 import { useDashboardData } from './hooks/useDashboardData';
 import { DashboardProvider } from './contexts/DashboardContext';
 import type { DashboardViewState } from './types/models';
@@ -22,6 +23,7 @@ function DashboardRouteWrapper({ dashboardState, dashboardViewState, setDashboar
       onNavigateToWorkItem={(id) => navigate(`/workitem/${id}`)}
       onNavigateToEpic={(id) => navigate(`/epic/${id}`)}
       onNavigateToTeam={(id) => navigate(`/team/${id}`)}
+      onNavigateToSprint={(id) => navigate(`/sprint/${id}`)}
     />
   );
 }
@@ -50,6 +52,13 @@ function TeamPageRouteWrapper({ dashboardState }: any) {
   return <TeamPage teamId={id!} onBack={() => navigate(-1)} {...dashboardState} />;
 }
 
+function SprintPageRouteWrapper({ dashboardState }: any) {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  // We'll need to create SprintPage.tsx
+  return <SprintPage sprintId={id!} onBack={() => navigate(-1)} {...dashboardState} />;
+}
+
 function App() {
   const dashboardState = useDashboardData();
   const [dashboardViewState, setDashboardViewState] = useState<DashboardViewState>({
@@ -76,11 +85,11 @@ function App() {
               </ReactFlowProvider>
             } />
             <Route path="/customer/:id" element={<CustomerPageRouteWrapper dashboardState={dashboardState} />} />
-            <Route path="/workitem/:id" element={<WorkItemPageRouteWrapper dashboardState={dashboardState} />} />
-            <Route path="/epic/:id" element={<EpicPageRouteWrapper dashboardState={dashboardState} />} />
-            <Route path="/team/:id" element={<TeamPageRouteWrapper dashboardState={dashboardState} />} />
-          </Routes>
-        </BrowserRouter>
+                      <Route path="/workitem/:id" element={<WorkItemPageRouteWrapper dashboardState={dashboardState} />} />
+                      <Route path="/epic/:id" element={<EpicPageRouteWrapper dashboardState={dashboardState} />} />
+                      <Route path="/team/:id" element={<TeamPageRouteWrapper dashboardState={dashboardState} />} />
+                      <Route path="/sprint/:id" element={<SprintPageRouteWrapper dashboardState={dashboardState} />} />
+                    </Routes>        </BrowserRouter>
       </DashboardProvider>
     </div>
   );

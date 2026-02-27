@@ -1,0 +1,217 @@
+import React, { useState } from 'react';
+import { parseISO, addDays, format } from 'date-fns';
+import type { DashboardData, Sprint } from '../../types/models';
+import { useDashboardContext } from '../../contexts/DashboardContext';
+import styles from '../customers/CustomerPage.module.css';
+
+export interface SprintPageProps {
+    sprintId: string;
+    onBack: () => void;
+    data: DashboardData | null;
+    loading: boolean;
+    error: Error | null;
+    addSprint: (s: Sprint) => void;
+    updateSprint: (id: string, updates: Partial<Sprint>) => void;
+    deleteSprint: (id: string) => void;
+    saveDashboardData: (data: DashboardData) => Promise<void>;
+}
+
+export const SprintPage: React.FC<SprintPageProps> = ({
+    sprintId,
+    onBack,
+    data,
+    loading,
+    error,
+    addSprint,
+    updateSprint,
+    deleteSprint,
+    saveDashboardData
+}) => {
+    const { showConfirm } = useDashboardContext();
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const isNew = sprintId === 'new';
+
+    // Draft states for new sprint creation
+    const [newSprintDraft, setNewSprintDraft] = useState<Partial<Sprint>>(() => {
+        if (!data || data.sprints.length === 0) return { name: 'Sprint 1', start_date: format(new Date(), 'yyyy-MM-dd'), end_date: format(addDays(new Date(), 13), 'yyyy-MM-dd') };
+        const lastSprint = data.sprints[data.sprints.length - 1];
+        const nextStart = addDays(parseISO(lastSprint.end_date), 1);
+        const nextEnd = addDays(nextStart, 13);
+        const nextNumber = parseInt(lastSprint.name.replace('Sprint ', '')) + 1 || data.sprints.length + 1;
+        return {
+            name: `Sprint ${nextNumber}`,
+            start_date: format(nextStart, 'yyyy-MM-dd'),
+            end_date: format(nextEnd, 'yyyy-MM-dd')
+        };
+    });
+
+    if (loading) return <div className={styles.pageContainer}>Loading sprint details...</div>;
+    if (error) return <div className={styles.pageContainer}>Error: {error.message}</div>;
+    if (!data) return <div className={styles.pageContainer}>No data available.</div>;
+
+    const sprint = isNew ? newSprintDraft as Sprint : data.sprints.find(s => s.id === sprintId);
+    if (!sprint) return <div className={styles.pageContainer}>Sprint not found.</div>;
+
+    const handleSave = async () => {
+        setSaveStatus('saving');
+        try {
+            if (isNew) {
+                const newId = `s${Date.now()}`;
+                const newSprint: Sprint = {
+                    id: newId,
+                    name: newSprintDraft.name || 'New Sprint',
+                    start_date: newSprintDraft.start_date!,
+                    end_date: newSprintDraft.end_date!
+                };
+
+                addSprint(newSprint);
+                const newData = { ...data, sprints: [...data.sprints, newSprint].sort((a, b) => a.start_date.localeCompare(b.start_date)) };
+                await saveDashboardData(newData);
+                setSaveStatus('saved');
+                setTimeout(() => {
+                    setSaveStatus('idle');
+                    onBack();
+                }, 1000);
+            } else {
+                await saveDashboardData(data);
+                setSaveStatus('saved');
+                setTimeout(() => setSaveStatus('idle'), 2000);
+            }
+        } catch (err) {
+            console.error('Save failed', err);
+            setSaveStatus('error');
+            setTimeout(() => setSaveStatus('idle'), 3000);
+        }
+    };
+
+    const handleDelete = async () => {
+        const confirmed = await showConfirm('Delete Sprint', `Are you sure you want to delete ${sprint.name}? This may affect Gantt bar alignments.`);
+        if (!confirmed) return;
+        setSaveStatus('saving');
+        try {
+            deleteSprint(sprintId);
+            const newData = {
+                ...data,
+                sprints: data.sprints.filter(s => s.id !== sprintId)
+            };
+            await saveDashboardData(newData);
+            onBack();
+        } catch (err) {
+            console.error('Delete failed', err);
+            setSaveStatus('error');
+        }
+    };
+
+    return (
+        <div className={styles.pageContainer}>
+            <div className={styles.header}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <button className={styles.backBtn} onClick={onBack}>
+                        ← Back to Dashboard
+                    </button>
+                    <h1>{isNew ? 'New Sprint' : sprint.name}</h1>
+                </div>
+                <div style={{ display: 'flex', gap: '16px' }}>
+                    {!isNew && (
+                        <button 
+                            className={styles.dangerBtn} 
+                            style={{ padding: '10px 20px', fontWeight: '600', fontSize: '14px', borderRadius: '6px' }}
+                            onClick={handleDelete}
+                        >
+                            Delete Sprint
+                        </button>
+                    )}
+                    <button 
+                        className={styles.saveBtn} 
+                        style={{ backgroundColor: '#2563eb', borderColor: '#1d4ed8' }}
+                        onClick={handleSave}
+                        disabled={saveStatus === 'saving'}
+                    >
+                        {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved!' : saveStatus === 'error' ? 'Error' : 'Save Changes'}
+                    </button>
+                </div>
+            </div>
+
+            <div className={styles.content}>
+                <section className={styles.card}>
+                    <h2>Sprint Details</h2>
+                    <div className={styles.formGrid}>
+                        <label>
+                            Name:
+                            <input 
+                                type="text" 
+                                value={isNew ? newSprintDraft.name : sprint.name} 
+                                onChange={e => {
+                                    if (isNew) setNewSprintDraft(prev => ({ ...prev, name: e.target.value }));
+                                    else updateSprint(sprint.id, { name: e.target.value });
+                                }}
+                            />
+                        </label>
+                        <label>
+                            Start Date:
+                            <input 
+                                type="date" 
+                                value={isNew ? newSprintDraft.start_date : sprint.start_date} 
+                                onChange={e => {
+                                    if (isNew) setNewSprintDraft(prev => ({ ...prev, start_date: e.target.value }));
+                                    else updateSprint(sprint.id, { start_date: e.target.value });
+                                }}
+                            />
+                        </label>
+                        <label>
+                            End Date:
+                            <input 
+                                type="date" 
+                                value={isNew ? newSprintDraft.end_date : sprint.end_date} 
+                                onChange={e => {
+                                    if (isNew) setNewSprintDraft(prev => ({ ...prev, end_date: e.target.value }));
+                                    else updateSprint(sprint.id, { end_date: e.target.value });
+                                }}
+                            />
+                        </label>
+                    </div>
+                </section>
+
+                <section className={styles.card}>
+                    <h2>Sprint Schedule</h2>
+                    <table className={styles.table}>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {data.sprints.map(s => {
+                                const today = new Date();
+                                const start = parseISO(s.start_date);
+                                const end = parseISO(s.end_date);
+                                let status = 'Future';
+                                let statusColor = '#9ca3af';
+                                
+                                if (today >= start && today <= end) {
+                                    status = 'Active';
+                                    statusColor = '#10b981';
+                                } else if (today > end) {
+                                    status = 'Past';
+                                    statusColor = '#6b7280';
+                                }
+
+                                return (
+                                    <tr key={s.id} style={s.id === sprintId ? { backgroundColor: 'rgba(59, 130, 246, 0.1)' } : {}}>
+                                        <td>{s.name}</td>
+                                        <td>{s.start_date}</td>
+                                        <td>{s.end_date}</td>
+                                        <td style={{ color: statusColor, fontWeight: 'bold' }}>{status}</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+        </div>
+    );
+};

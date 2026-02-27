@@ -140,6 +140,36 @@ export function useDashboardData() {
         });
     };
 
+    const addSprint = (sprint: Sprint) => {
+        setData(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                sprints: [...prev.sprints, sprint].sort((a, b) => a.start_date.localeCompare(b.start_date))
+            };
+        });
+    };
+
+    const updateSprint = (id: string, updates: Partial<Sprint>) => {
+        setData(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                sprints: prev.sprints.map(s => s.id === id ? { ...s, ...updates } : s).sort((a, b) => a.start_date.localeCompare(b.start_date))
+            };
+        });
+    };
+
+    const deleteSprint = (id: string) => {
+        setData(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                sprints: prev.sprints.filter(s => s.id !== id)
+            };
+        });
+    };
+
     const saveDashboardData = async (newData: DashboardData) => {
         try {
             const response = await fetch('/api/saveData', {
@@ -173,6 +203,9 @@ export function useDashboardData() {
         deleteEpic,
         updateTeam,
         updateEpic,
+        addSprint,
+        updateSprint,
+        deleteSprint,
         updateSettings,
         saveDashboardData
     };
