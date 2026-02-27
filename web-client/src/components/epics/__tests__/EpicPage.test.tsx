@@ -91,6 +91,25 @@ describe('EpicPage Date Shift Logic', () => {
         expect(updateEpicSpy).not.toHaveBeenCalled();
     });
 
+    it('does NOT prompt when shifting end date into the future', async () => {
+        render(
+            <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                <EpicPage {...defaultProps} />
+            </DashboardProvider>
+        );
+        
+        const endInput = screen.getByLabelText(/Target End:/i);
+        // Current end is 2026-02-25. Shift to 2026-03-15 (future).
+        fireEvent.change(endInput, { target: { value: '2026-03-15' } });
+        
+        // Custom modal should NOT be visible
+        expect(screen.queryByText('Historical Work Warning')).toBeNull();
+        
+        expect(updateEpicSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
+            target_end: '2026-03-15'
+        }));
+    });
+
     afterEach(() => {
         vi.useRealTimers();
     });
