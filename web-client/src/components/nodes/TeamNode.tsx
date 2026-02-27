@@ -52,16 +52,16 @@ export const TeamNode = memo(({ data }: { data: TeamNodeData }) => {
             {/* External Label */}
             <div style={{
                 position: 'absolute',
-                top: `${nodeSize + 6}px`,
+                top: `${nodeSize + 8}px`,
                 left: '50%',
                 transform: 'translateX(-50%)',
-                width: '180px',
+                width: '220px',
                 textAlign: 'center',
-                color: '#f3f4f6',
-                fontSize: '14px',
-                fontWeight: '600',
+                color: '#f9fafb',
+                fontSize: '18px',
+                fontWeight: 'bold',
                 lineHeight: '1.2',
-                textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+                textShadow: '0 2px 4px rgba(0,0,0,0.9)',
                 pointerEvents: 'none'
             }}>
                 {data.label}
