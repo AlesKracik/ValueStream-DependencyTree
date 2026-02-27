@@ -203,4 +203,42 @@ describe('useGraphLayout Math Engine', () => {
 
         vi.useRealTimers();
     });
+
+    it('maintains stable intensity ratios regardless of visible sprint window', () => {
+        const dataForIntensity: DashboardData = {
+            ...MOCK_DATA,
+            sprints: [
+                { id: 's1', name: 'S1', start_date: '2026-01-01', end_date: '2026-01-14' },
+                { id: 's2', name: 'S2', start_date: '2026-01-15', end_date: '2026-01-28' },
+                { id: 's3', name: 'S3', start_date: '2026-01-29', end_date: '2026-02-11' },
+                { id: 's4', name: 'S4', start_date: '2026-02-12', end_date: '2026-02-25' }
+            ],
+            epics: [
+                { 
+                    id: 'e_long', 
+                    jira_key: 'J-1', 
+                    team_id: 't1', 
+                    remaining_md: 10, 
+                    target_start: '2026-01-05', 
+                    target_end: '2026-02-20' 
+                }
+            ]
+        };
+
+        // Render with offset 0 (S1-S6)
+        const { result: res1 } = renderHook(() => useGraphLayout(dataForIntensity, null, 0));
+        const node1 = res1.current.nodes.find(n => n.id === 'gantt-e_long');
+        const intensityS2_view1 = node1?.data.segments.find((s: any) => s.startOffsetPixels > 0)?.intensity;
+
+        // Render with offset 1 (S2-S7)
+        const { result: res2 } = renderHook(() => useGraphLayout(dataForIntensity, null, 1));
+        const node2 = res2.current.nodes.find(n => n.id === 'gantt-e_long');
+        // In this view, S2 is the first visible sprint, so offset is 0
+        const intensityS2_view2 = node2?.data.segments[0].intensity;
+
+        expect(intensityS2_view1).toBeDefined();
+        expect(intensityS2_view2).toBeDefined();
+        // The intensity ratio must be identical in both views
+        expect(intensityS2_view1).toBeCloseTo(intensityS2_view2, 5);
+    });
 });
