@@ -18,7 +18,11 @@ Customers are represented by dual-layer additive circles:
 ### 3. Work Item & Team Management
 - **Labels:** To maximize legibility, all node names are placed **below the circles** in a large, bold font. Circles are reserved for core numerical metrics (TCV, RICE Score, or Capacity).
 - **Searchable Assignments:** All dropdown menus for linking entities (e.g., adding a Customer Target to a Work Item) are **Searchable**. Simply type a few letters to filter the options.
-- **Score Calculation:** Work Items use a RICE-based score that scales visually. The number inside the purple circle is the calculated priority score.
+- **Global Work Items (Maintenance/Tech Debt):** Work Items can be designated to impact **ALL Customers** simultaneously. 
+    - **Configuration:** In the Work Item detail page, check the **"ALL CUSTOMERS (Global)"** row at the top of the target table.
+    - **TCV Basis:** You can choose whether the item's impact is calculated based on total **Existing TCV** or **Potential TCV** across the entire system.
+    - **Visualization:** Global items are marked with a **🌐 icon** and a **gold border**. To keep the dashboard clean, individual connection lines to every customer are hidden for these items.
+- **Score Calculation:** Work Items use a RICE-based score that scales visually. The number inside the purple circle is the calculated priority score. For global items, the impact is the sum of relevant TCV across all existing customers.
 - **Team Capacity:** Team circles show their base capacity in Man-Days (MDs). If a team is over-allocated in a specific sprint, the capacity marker above their Gantt lane will turn red.
 
 ### 4. Progress-Aware Gantt Timeline
