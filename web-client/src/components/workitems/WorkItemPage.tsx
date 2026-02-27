@@ -291,6 +291,22 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                 }}
                             />
                         </label>
+                        <label>
+                            Release Link:
+                            <input
+                                type="url"
+                                placeholder="https://..."
+                                value={isNew ? newWorkItemDraft.release_link || '' : workItem.release_link || ''}
+                                onChange={e => {
+                                    const val = e.target.value;
+                                    if (isNew) {
+                                        setNewWorkItemDraft(prev => ({ ...prev, release_link: val }));
+                                    } else {
+                                        updateWorkItem(workItem.id, { release_link: val });
+                                    }
+                                }}
+                            />
+                        </label>
                     </div>
                 </section>
 

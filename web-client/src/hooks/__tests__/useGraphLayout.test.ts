@@ -309,4 +309,23 @@ describe('useGraphLayout Math Engine', () => {
         // Score Potential: (5000 + 0) / 10 = 500
         expect(potenNode?.data.score).toBe(500);
     });
+
+    it('passes releaseLink to workItemNode data', () => {
+        const data: DashboardData = {
+            ...MOCK_DATA,
+            workItems: [
+                {
+                    id: 'f_release',
+                    name: 'Released Feat',
+                    total_effort_mds: 10,
+                    release_link: 'https://release.com',
+                    customer_targets: []
+                }
+            ]
+        };
+
+        const { result } = renderHook(() => useGraphLayout(data));
+        const node = result.current.nodes.find(n => n.id === 'workitem-f_release');
+        expect(node?.data.releaseLink).toBe('https://release.com');
+    });
 });

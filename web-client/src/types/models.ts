@@ -9,6 +9,7 @@ export interface WorkItem {
   id: string;
   name: string;
   total_effort_mds: number;
+  release_link?: string;
   all_customers_target?: {
     tcv_type: 'existing' | 'potential';
     priority?: 'Must-have' | 'Should-have' | 'Nice-to-have';

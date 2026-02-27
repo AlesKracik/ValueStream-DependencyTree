@@ -18,6 +18,9 @@ Customers are represented by dual-layer additive circles:
 ### 3. Work Item & Team Management
 - **Labels:** To maximize legibility, all node names are placed **below the circles** in a large, bold font. Circles are reserved for core numerical metrics (TCV, RICE Score, or Capacity).
 - **Searchable Assignments:** All dropdown menus for linking entities (e.g., adding a Customer Target to a Work Item) are **Searchable**. Simply type a few letters to filter the options.
+- **Release Tracking:** Work Items can now include a **Release Link** (URL).
+    - **Configuration:** Add or edit the link in the Work Item detail page or the Edit Node Modal.
+    - **Visualization:** Items with an active release link will display a **🚀 icon** in the top-right of their circle. Clicking this icon opens the release page in a new tab.
 - **Global Work Items (Maintenance/Tech Debt):** Work Items can be designated to impact **ALL Customers** simultaneously. 
     - **Configuration:** In the Work Item detail page, check the **"ALL CUSTOMERS (Global)"** row at the top of the target table.
     - **TCV Basis:** You can choose whether the item's impact is calculated based on total **Existing TCV** or **Potential TCV** across the entire system.

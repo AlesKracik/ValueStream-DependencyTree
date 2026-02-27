@@ -220,6 +220,7 @@
       "id": "f1",
       "name": "Multi-Site Support Enhancement",
       "total_effort_mds": 0,
+      "release_link": "https://github.com/releases/v1.1.0",
       "customer_targets": [
         {
           "customer_id": "c27",
@@ -244,6 +245,7 @@
       "id": "f2",
       "name": "Automated Recovery Process",
       "total_effort_mds": 0,
+      "release_link": "https://github.com/releases/v1.2.0",
       "customer_targets": [
         {
           "customer_id": "c29",

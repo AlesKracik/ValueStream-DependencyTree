@@ -9,6 +9,7 @@ interface WorkItemNodeData {
     maxScore: number;
     baseSize: number;
     isGlobal?: boolean;
+    releaseLink?: string;
 }
 
 export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
@@ -43,6 +44,26 @@ export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
                     <div style={{ fontSize: `${Math.max(10, nodeSize * 0.15)}px`, marginBottom: '-2px' }} title="Relates to all existing customers">
                         🌐
                     </div>
+                )}
+
+                {data.releaseLink && (
+                    <a 
+                        href={data.releaseLink} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ 
+                            position: 'absolute',
+                            top: '10%',
+                            right: '10%',
+                            fontSize: `${Math.max(10, nodeSize * 0.15)}px`,
+                            textDecoration: 'none',
+                            zIndex: 10
+                        }} 
+                        title="View Release"
+                    >
+                        🚀
+                    </a>
                 )}
 
                 <div style={{ 
