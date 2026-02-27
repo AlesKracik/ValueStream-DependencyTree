@@ -162,4 +162,45 @@ describe('useGraphLayout Math Engine', () => {
         expect(ganttNode).toBeDefined();
         expect(ganttNode?.data.label).toContain('Standalone Epic');
     });
+
+    it('marks segments older than today as frozen and uses slate color', () => {
+        // Mock today to be middle of Feb 2026
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-02-20'));
+
+        const dataWithPast: DashboardData = {
+            ...MOCK_DATA,
+            sprints: [
+                { id: 's_past', name: 'Past Sprint', start_date: '2026-01-01', end_date: '2026-01-14' },
+                { id: 's_curr', name: 'Current Sprint', start_date: '2026-02-15', end_date: '2026-02-28' }
+            ],
+            epics: [
+                { 
+                    id: 'e_split', 
+                    jira_key: 'J-1', 
+                    work_item_id: 'f1', 
+                    team_id: 't1', 
+                    remaining_md: 10, 
+                    target_start: '2026-01-05', 
+                    target_end: '2026-02-25',
+                    sprint_effort_overrides: { 's_past': 5 }
+                }
+            ]
+        };
+
+        const { result: splitResult } = renderHook(() => useGraphLayout(dataWithPast));
+        const splitNode = splitResult.current.nodes.find(n => n.id === 'gantt-e_split');
+        const splitSegments = splitNode?.data.segments;
+
+        // Find segment for s_past
+        const pastSeg = splitSegments?.find((s: any) => s.isFrozen === true);
+        const currSeg = splitSegments?.find((s: any) => s.isFrozen === false);
+
+        expect(pastSeg).toBeDefined();
+        expect(pastSeg.color).toBe('#475569'); // Slate Blue
+        expect(currSeg).toBeDefined();
+        expect(currSeg.color).toBe('#8b5cf6'); // Purple
+
+        vi.useRealTimers();
+    });
 });
