@@ -1,6 +1,7 @@
 import React from 'react';
 import { ReactFlow, ReactFlowProvider, Background, BackgroundVariant, Panel, useReactFlow } from '@xyflow/react';
 import type { Node } from '@xyflow/react';
+import { parseISO, differenceInDays } from 'date-fns';
 import '@xyflow/react/dist/style.css';
 
 import { useGraphLayout } from '../../hooks/useGraphLayout';
@@ -11,6 +12,7 @@ import { TeamNode } from '../nodes/TeamNode';
 import { GanttBarNode } from '../nodes/GanttBarNode';
 import { SprintCapacityNode } from '../nodes/SprintCapacityNode';
 import { TodayLineNode } from '../nodes/TodayLineNode';
+import { HeaderNode } from '../nodes/HeaderNode';
 import { EditNodeModal } from './EditNodeModal';
 import { SettingsModal } from './SettingsModal';
 import { DocumentationModal } from './DocumentationModal';
@@ -25,10 +27,47 @@ const nodeTypes = {
     ganttBarNode: GanttBarNode,
     sprintCapacityNode: SprintCapacityNode,
     todayLineNode: TodayLineNode,
+    headerNode: HeaderNode,
 };
 
-const DashboardControls = () => {
+interface DashboardControlsProps {
+    data: DashboardData | null;
+    setViewState: React.Dispatch<React.SetStateAction<DashboardViewState>>;
+}
+
+const DashboardControls: React.FC<DashboardControlsProps> = ({ data, setViewState }) => {
     const { zoomIn, zoomOut, fitView } = useReactFlow();
+
+    const handleFitView = () => {
+        // Shift sprint view logic copied from useEffect
+        if (data && data.sprints && data.sprints.length > 0) {
+            const today = new Date();
+            let currentSprintIdx = -1;
+
+            for (let i = 0; i < data.sprints.length; i++) {
+                const start = parseISO(data.sprints[i].start_date);
+                const end = parseISO(data.sprints[i].end_date);
+                if (today >= start && today <= end) {
+                    currentSprintIdx = i;
+                    break;
+                }
+            }
+
+            if (currentSprintIdx === -1 && today < parseISO(data.sprints[0].start_date)) {
+                currentSprintIdx = 0;
+            }
+
+            if (currentSprintIdx !== -1) {
+                const currentSprintStart = parseISO(data.sprints[currentSprintIdx].start_date);
+                const daysSinceStart = differenceInDays(today, currentSprintStart);
+                const targetOffset = daysSinceStart <= 2 ? Math.max(0, currentSprintIdx - 1) : currentSprintIdx;
+                
+                setViewState(s => ({ ...s, sprintOffset: targetOffset }));
+            }
+        }
+        
+        fitView({ padding: 0.2, duration: 800 });
+    };
 
     return (
         <Panel position="bottom-right" style={{ display: 'flex', gap: '8px', padding: '12px', zIndex: 5 }}>
@@ -47,7 +86,7 @@ const DashboardControls = () => {
                 -
             </button>
             <button 
-                onClick={() => fitView({ padding: 0.2, duration: 800 })}
+                onClick={handleFitView}
                 style={{ padding: '0 12px', height: '32px', borderRadius: '4px', backgroundColor: '#374151', color: '#e5e7eb', border: '1px solid #4b5563', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}
                 title="Fit to View"
             >
@@ -90,6 +129,41 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const [isSettingsModalOpen, setIsSettingsModalOpen] = React.useState(false);
     const [isDocsModalOpen, setIsDocsModalOpen] = React.useState(false);
     const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const [isInitialOffsetSet, setIsInitialOffsetSet] = React.useState(false);
+
+    // Initial sprint offset calculation
+    React.useEffect(() => {
+        if (data && data.sprints && data.sprints.length > 0 && !isInitialOffsetSet) {
+            const today = new Date();
+            let currentSprintIdx = -1;
+
+            // Find current sprint
+            for (let i = 0; i < data.sprints.length; i++) {
+                const start = parseISO(data.sprints[i].start_date);
+                const end = parseISO(data.sprints[i].end_date);
+                if (today >= start && today <= end) {
+                    currentSprintIdx = i;
+                    break;
+                }
+            }
+
+            // If no current sprint found, but today is before first sprint, idx=0
+            if (currentSprintIdx === -1 && today < parseISO(data.sprints[0].start_date)) {
+                currentSprintIdx = 0;
+            }
+
+            if (currentSprintIdx !== -1) {
+                const currentSprintStart = parseISO(data.sprints[currentSprintIdx].start_date);
+                const daysSinceStart = differenceInDays(today, currentSprintStart);
+
+                // If starting sprint (up to two days after start), show previous sprint
+                const targetOffset = daysSinceStart <= 2 ? Math.max(0, currentSprintIdx - 1) : currentSprintIdx;
+                
+                setViewState(s => ({ ...s, sprintOffset: targetOffset }));
+            }
+            setIsInitialOffsetSet(true);
+        }
+    }, [data, setViewState, isInitialOffsetSet]);
 
     const handleSave = async () => {
         if (!data) return;
@@ -139,6 +213,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const hoverTimeoutRef = React.useRef<number | null>(null);
 
     const onNodeMouseEnter = React.useCallback((_: React.MouseEvent, node: Node) => {
+        if (['headerNode', 'sprintCapacityNode', 'todayLineNode'].includes(node.type || '')) return;
         if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
         setHoveredNodeId(node.id);
     }, []);
@@ -405,7 +480,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             proOptions={{ hideAttribution: true }}
                         >
                             <Background color="#1a1a1a" variant={BackgroundVariant.Lines} gap={100} />
-                            <DashboardControls />
+                            <DashboardControls data={data} setViewState={setViewState} />
                         </ReactFlow>
                     </ReactFlowProvider>
                 </DashboardProvider>

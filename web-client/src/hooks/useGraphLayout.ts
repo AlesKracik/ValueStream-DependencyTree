@@ -27,6 +27,34 @@ export function useGraphLayout(
         const COL_CUSTOMER_X = 0;
         const COL_FEATURE_X = 350;
         const COL_TEAM_X = 700;
+        const HEADER_Y = 0;
+        const START_Y = 200; // Increased to ensure max size node doesn't overlap header
+
+        // Add Header Nodes
+        nodes.push({
+            id: 'header-customers',
+            type: 'headerNode',
+            position: { x: COL_CUSTOMER_X - 110, y: HEADER_Y }, // centered roughly
+            data: { label: 'Customers' },
+            selectable: false,
+            draggable: false,
+        });
+        nodes.push({
+            id: 'header-features',
+            type: 'headerNode',
+            position: { x: COL_FEATURE_X - 110, y: HEADER_Y },
+            data: { label: 'Work Items' },
+            selectable: false,
+            draggable: false,
+        });
+        nodes.push({
+            id: 'header-teams',
+            type: 'headerNode',
+            position: { x: COL_TEAM_X - 110, y: HEADER_Y },
+            data: { label: 'Teams' },
+            selectable: false,
+            draggable: false,
+        });
 
         // Calculate visible sets based on filters
         const cf = customerFilter.toLowerCase();
@@ -285,7 +313,7 @@ export function useGraphLayout(
             nodes.push({
                 id: `customer-${customer.id}`,
                 type: 'customerNode',
-                position: { x: COL_CUSTOMER_X - (nodeSize / 2), y: index * 180 + 100 - (nodeSize / 2) }, // Adjusted starting Y
+                position: { x: COL_CUSTOMER_X - (nodeSize / 2), y: index * 180 + START_Y - (nodeSize / 2) }, // Adjusted starting Y
                 data: {
                     label: customer.name,
                     existingTcv: customer.existing_tcv,
@@ -374,7 +402,7 @@ export function useGraphLayout(
             nodes.push({
                 id: `feature-${feature.id}`,
                 type: 'featureNode',
-                position: { x: COL_FEATURE_X - (nodeSize / 2), y: index * 180 + 100 - (nodeSize / 2) }, // Adjusted starting Y
+                position: { x: COL_FEATURE_X - (nodeSize / 2), y: index * 180 + START_Y - (nodeSize / 2) }, // Adjusted starting Y
                 data: {
                     label: feature.name,
                     effortMds: feature.total_effort_mds,
@@ -516,7 +544,7 @@ export function useGraphLayout(
         });
 
         const teamBaseY: Record<string, number> = {};
-        let currentLaneTop = 10; // start a bit down
+        let currentLaneTop = START_Y - 90; // start aligned with START_Y based on min team height 180
 
         const sortedTeams = [...data.teams]
             .filter(t => visibleTeams.has(t.id))
@@ -838,86 +866,96 @@ export function useGraphLayout(
         }
 
         // Apply Highlights
-        if (hoveredNodeId) {
+        const isAnyFilterActive = !!(customerFilter || featureFilter || teamFilter || epicFilter || minTcv > 0 || minScore > 0 || selectedNodeId);
+
+        if (hoveredNodeId || isAnyFilterActive) {
             const hNodes = new Set<string>();
             const hEdges = new Set<string>();
             const hHandles = new Map<string, Set<string>>();
 
-            const markHandle = (nodeId: string, handleId: string) => {
-                if (!hHandles.has(nodeId)) hHandles.set(nodeId, new Set());
-                if (handleId) hHandles.get(nodeId)!.add(handleId);
-            };
+            if (hoveredNodeId) {
+                const markHandle = (nodeId: string, handleId: string) => {
+                    if (!hHandles.has(nodeId)) hHandles.set(nodeId, new Set());
+                    if (handleId) hHandles.get(nodeId)!.add(handleId);
+                };
 
-            const visitedTarget = new Set<string>();
-            const traceDownstream = (currentNodeId: string, sourceEpicId?: string) => {
-                const contextKey = `${currentNodeId}-${sourceEpicId || 'none'}`;
-                if (visitedTarget.has(contextKey)) return;
-                visitedTarget.add(contextKey);
+                const visitedTarget = new Set<string>();
+                const traceDownstream = (currentNodeId: string, sourceEpicId?: string) => {
+                    const contextKey = `${currentNodeId}-${sourceEpicId || 'none'}`;
+                    if (visitedTarget.has(contextKey)) return;
+                    visitedTarget.add(contextKey);
 
-                hNodes.add(currentNodeId);
-                let outgoingEdges = edges.filter(e => e.source === currentNodeId);
+                    hNodes.add(currentNodeId);
+                    let outgoingEdges = edges.filter(e => e.source === currentNodeId);
 
-                // If at a team node, only follow edges to the specific epic's Gantt bar
-                if (currentNodeId.startsWith('team-') && sourceEpicId) {
-                    outgoingEdges = outgoingEdges.filter(e => e.target === `gantt-${sourceEpicId}`);
-                }
+                    // If at a team node, only follow edges to the specific epic's Gantt bar
+                    if (currentNodeId.startsWith('team-') && sourceEpicId) {
+                        outgoingEdges = outgoingEdges.filter(e => e.target === `gantt-${sourceEpicId}`);
+                    }
 
-                outgoingEdges.forEach(e => {
-                    hEdges.add(e.id);
-                    markHandle(e.source, e.sourceHandle || '');
+                    outgoingEdges.forEach(e => {
+                        hEdges.add(e.id);
+                        markHandle(e.source, e.sourceHandle || '');
 
-                    let nextEpicId = sourceEpicId;
-                    // Extract epic context when passing from Feature to Team
-                    if (currentNodeId.startsWith('feature-') && e.id.startsWith('edge-')) {
-                        const parts = e.id.split('-');
-                        if (parts.length >= 4) {
-                            nextEpicId = parts.slice(3).join('-');
+                        let nextEpicId = sourceEpicId;
+                        // Extract epic context when passing from Feature to Team
+                        if (currentNodeId.startsWith('feature-') && e.id.startsWith('edge-')) {
+                            const parts = e.id.split('-');
+                            if (parts.length >= 4) {
+                                nextEpicId = parts.slice(3).join('-');
+                            }
                         }
+
+                        traceDownstream(e.target, nextEpicId);
+                    });
+                };
+
+                const visitedSource = new Set<string>();
+                const traceUpstream = (currentNodeId: string, sourceEpicId?: string) => {
+                    const contextKey = `${currentNodeId}-${sourceEpicId || 'none'}`;
+                    if (visitedSource.has(contextKey)) return;
+                    visitedSource.add(contextKey);
+
+                    hNodes.add(currentNodeId);
+                    let incomingEdges = edges.filter(e => e.target === currentNodeId);
+
+                    // If at a team node, only follow incoming edges from the feature that owns this epic
+                    if (currentNodeId.startsWith('team-') && sourceEpicId) {
+                        incomingEdges = incomingEdges.filter(e => e.id.endsWith(`-${sourceEpicId}`));
                     }
 
-                    traceDownstream(e.target, nextEpicId);
-                });
-            };
+                    incomingEdges.forEach(e => {
+                        hEdges.add(e.id);
+                        markHandle(e.source, e.sourceHandle || '');
 
-            const visitedSource = new Set<string>();
-            const traceUpstream = (currentNodeId: string, sourceEpicId?: string) => {
-                const contextKey = `${currentNodeId}-${sourceEpicId || 'none'}`;
-                if (visitedSource.has(contextKey)) return;
-                visitedSource.add(contextKey);
+                        let nextEpicId = sourceEpicId;
+                        // Extract epic context when passing backwards from Gantt to Team
+                        if (currentNodeId.startsWith('gantt-')) {
+                            nextEpicId = currentNodeId.replace('gantt-', '');
+                        }
 
-                hNodes.add(currentNodeId);
-                let incomingEdges = edges.filter(e => e.target === currentNodeId);
+                        traceUpstream(e.source, nextEpicId);
+                    });
+                };
 
-                // If at a team node, only follow incoming edges from the feature that owns this epic
-                if (currentNodeId.startsWith('team-') && sourceEpicId) {
-                    incomingEdges = incomingEdges.filter(e => e.id.endsWith(`-${sourceEpicId}`));
-                }
-
-                incomingEdges.forEach(e => {
-                    hEdges.add(e.id);
-                    markHandle(e.source, e.sourceHandle || '');
-
-                    let nextEpicId = sourceEpicId;
-                    // Extract epic context when passing backwards from Gantt to Team
-                    if (currentNodeId.startsWith('gantt-')) {
-                        nextEpicId = currentNodeId.replace('gantt-', '');
-                    }
-
-                    traceUpstream(e.source, nextEpicId);
-                });
-            };
-
-            // Start traversal from hovered node in both directions
-            traceDownstream(hoveredNodeId);
-            traceUpstream(hoveredNodeId);
+                // Start traversal from hovered node in both directions
+                traceDownstream(hoveredNodeId);
+                traceUpstream(hoveredNodeId);
+            }
 
             // Apply styles to all nodes and edges based on sets
             const dimStyle = { opacity: 0.15, transition: 'opacity 0.2s' };
             const highlightStyle = { opacity: 1, transition: 'opacity 0.2s' };
 
             nodes.forEach(n => {
-                // Sprint headers are ignored from dimming for nicer UX
-                if (n.type !== 'sprintCapacityNode') {
+                // Headers, sprint capacities, and today-line are always fully bright
+                if (n.type === 'headerNode' || n.type === 'sprintCapacityNode' || n.type === 'todayLineNode') {
+                    n.style = { ...n.style, ...highlightStyle };
+                    return;
+                }
+
+                // Only apply dimming/highlighting if a node is actually hovered
+                if (hoveredNodeId) {
                     const isHighlighted = hNodes.has(n.id);
                     n.style = { ...n.style, ...(isHighlighted ? highlightStyle : dimStyle) };
 
@@ -941,15 +979,18 @@ export function useGraphLayout(
                     }
                 }
             });
-            edges.forEach(e => {
-                const isHighlighted = hEdges.has(e.id);
-                e.style = {
-                    ...e.style,
-                    opacity: isHighlighted ? 1 : 0.05,
-                    stroke: isHighlighted ? '#3b82f6' : (e.style?.stroke || '#b0b0b0'), // make highlighted edges blue for visibility
-                    transition: 'all 0.2s'
-                };
-            });
+
+            if (hoveredNodeId) {
+                edges.forEach(e => {
+                    const isHighlighted = hEdges.has(e.id);
+                    e.style = {
+                        ...e.style,
+                        opacity: isHighlighted ? 1 : 0.05,
+                        stroke: isHighlighted ? '#3b82f6' : (e.style?.stroke || '#b0b0b0'), // make highlighted edges blue for visibility
+                        transition: 'all 0.2s'
+                    };
+                });
+            }
         }
 
         return { nodes, edges };
