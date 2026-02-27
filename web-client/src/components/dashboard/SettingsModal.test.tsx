@@ -95,7 +95,7 @@ describe('SettingsModal', () => {
         const tokenInput = screen.getByLabelText(/Jira Personal Access Token/i);
         fireEvent.change(tokenInput, { target: { value: 'new-token' } });
 
-        const saveBtn = screen.getByRole('button', { name: 'Save' });
+        const saveBtn = screen.getByRole('button', { name: 'Save Settings' });
         fireEvent.click(saveBtn);
 
         expect(onUpdateSpy).toHaveBeenCalledWith({

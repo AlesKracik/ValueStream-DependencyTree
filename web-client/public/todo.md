@@ -2,4 +2,4 @@
 • maintenance, performace or techdebt linked to existing TCV? to "keep it"
 • autoadd customer existing TCV to interrupts?
 • introduce time series to TCV
-
+* remove package-lock.json from git

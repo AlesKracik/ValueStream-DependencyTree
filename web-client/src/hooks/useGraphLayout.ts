@@ -457,16 +457,18 @@ export function useGraphLayout(
             const end = parseISO(epic.target_end!);
             const duration = differenceInDays(end, start) + 1;
 
-            const lanes = teamLanes[team.id].endDates;
-            let laneIdx = 0;
-            while (laneIdx < lanes.length && start <= lanes[laneIdx]) {
-                laneIdx++;
-            }
-            lanes[laneIdx] = end;
+            if (visibleEpics.has(epic.id)) {
+                const lanes = teamLanes[team.id].endDates;
+                let laneIdx = 0;
+                while (laneIdx < lanes.length && start <= lanes[laneIdx]) {
+                    laneIdx++;
+                }
+                lanes[laneIdx] = end;
 
-            epicLanes[epic.id] = laneIdx;
-            if (laneIdx + 1 > teamMaxLanes[team.id]) {
-                teamMaxLanes[team.id] = laneIdx + 1;
+                epicLanes[epic.id] = laneIdx;
+                if (laneIdx + 1 > teamMaxLanes[team.id]) {
+                    teamMaxLanes[team.id] = laneIdx + 1;
+                }
             }
 
             let totalOverrideMd = 0;

@@ -3,6 +3,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import App from '../App';
 import * as useDashboardDataHook from '../hooks/useDashboardData';
 
+vi.mock('react-router-dom', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('react-router-dom')>();
+    return {
+        ...actual,
+        BrowserRouter: actual.MemoryRouter,
+    };
+});
+
 // Mock the components
 vi.mock('../components/dashboard/Dashboard', () => ({
     Dashboard: ({ viewState, setViewState, onNavigateToCustomer, onNavigateToFeature, onNavigateToEpic, onNavigateToTeam }: any) => (
