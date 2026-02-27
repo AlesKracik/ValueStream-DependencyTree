@@ -17,7 +17,9 @@ const mockData: DashboardData = {
     epics: [
         { id: 'e1', jira_key: 'J-1', work_item_id: 'f1', team_id: 't1', remaining_md: 5, target_start: '2026-02-12', target_end: '2026-02-26' }
     ],
-    sprints: []
+    sprints: [
+        { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' }
+    ]
 };
 
 // Mock the global fetch
@@ -76,5 +78,45 @@ describe('useDashboardData API logic', () => {
         expect(result.current.data?.customers).toHaveLength(0);
         // The customer should be cleanly removed from the work items targets list
         expect(result.current.data?.workItems[0].customer_targets).toHaveLength(0);
+    });
+
+    it('adds a sprint and keeps them sorted by start_date', async () => {
+        const { result } = renderHook(() => useDashboardData());
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        act(() => {
+            result.current.addSprint({
+                id: 's_new',
+                name: 'Earlier Sprint',
+                start_date: '2025-12-01',
+                end_date: '2025-12-14'
+            });
+        });
+
+        const sprints = result.current.data?.sprints;
+        expect(sprints).toHaveLength(2);
+        expect(sprints![0].id).toBe('s_new');
+    });
+
+    it('updates a sprint correctly', async () => {
+        const { result } = renderHook(() => useDashboardData());
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        act(() => {
+            result.current.updateSprint('s1', { name: 'Updated Sprint Name' });
+        });
+
+        expect(result.current.data?.sprints[0].name).toBe('Updated Sprint Name');
+    });
+
+    it('deletes a sprint correctly', async () => {
+        const { result } = renderHook(() => useDashboardData());
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        act(() => {
+            result.current.deleteSprint('s1');
+        });
+
+        expect(result.current.data?.sprints).toHaveLength(0);
     });
 });
