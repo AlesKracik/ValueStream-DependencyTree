@@ -472,7 +472,13 @@
         "s4": 2,
         "s3": 0,
         "s5": 15
-      }
+      },
+      "dependencies": [
+        {
+          "epic_id": "e1",
+          "dependency_type": "FS"
+        }
+      ]
     },
     {
       "id": "e3",
@@ -499,7 +505,13 @@
       "name": "Device Recreation from Metadata",
       "sprint_effort_overrides": {
         "s1": 6.4
-      }
+      },
+      "dependencies": [
+        {
+          "epic_id": "e3",
+          "dependency_type": "FF"
+        }
+      ]
     },
     {
       "id": "e5",
