@@ -482,7 +482,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <select id="assignEpicSelect" style={{ flex: 1, padding: '8px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }}>
                                 <option value="">Select an unassigned epic to link...</option>
-                                {data.epics.filter(e => !e.work_item_id).map(e => (
+                                {data.epics.filter(e => !e.work_item_id || e.work_item_id === 'UNASSIGNED').map(e => (
                                     <option key={e.id} value={e.id}>{e.jira_key !== 'TBD' ? e.jira_key : ''} {e.name || 'Unnamed Epic'}</option>
                                 ))}
                             </select>

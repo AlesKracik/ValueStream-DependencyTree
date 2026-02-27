@@ -186,7 +186,7 @@ export function useGraphLayout(
             // If NO customer/workitem filters are applied, standalone valid epics should appear.
             if (!hasCustomerFilter && !hasWorkItemFilter) {
                 data.epics.forEach(e => {
-                    if (!e.work_item_id && validEpics.has(e.id)) {
+                    if ((!e.work_item_id || e.work_item_id === 'UNASSIGNED') && validEpics.has(e.id)) {
                         visibleEpics.add(e.id);
                         visibleTeams.add(e.team_id);
                     }
