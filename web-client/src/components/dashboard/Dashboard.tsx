@@ -365,21 +365,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             >
                                 + Add Work Item
                             </button>
-                            <button
-                                onClick={() => onNavigateToSprint('new')}
-                                style={{
-                                    padding: '8px 16px',
-                                    backgroundColor: '#10b981',
-                                    border: '1px solid #059669',
-                                    color: '#ffffff',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    fontSize: '14px',
-                                    fontWeight: 'bold'
-                                }}
-                            >
-                                + New Sprint
-                            </button>
                         </div>
                     </div>
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>

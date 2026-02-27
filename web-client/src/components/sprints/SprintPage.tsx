@@ -13,6 +13,7 @@ export interface SprintPageProps {
     addSprint: (s: Sprint) => void;
     updateSprint: (id: string, updates: Partial<Sprint>) => void;
     deleteSprint: (id: string) => void;
+    onNavigateToSprint: (id: string) => void;
     saveDashboardData: (data: DashboardData) => Promise<void>;
 }
 
@@ -25,6 +26,7 @@ export const SprintPage: React.FC<SprintPageProps> = ({
     addSprint,
     updateSprint,
     deleteSprint,
+    onNavigateToSprint,
     saveDashboardData
 }) => {
     const { showConfirm } = useDashboardContext();
@@ -173,7 +175,20 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                 </section>
 
                 <section className={styles.card}>
-                    <h2>Sprint Schedule</h2>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                        <h2>Sprint Schedule</h2>
+                        <button 
+                            className={styles.primaryBtn} 
+                            style={{ backgroundColor: '#10b981', borderColor: '#059669' }}
+                            onClick={() => {
+                                if (!isNew) {
+                                    onNavigateToSprint('new');
+                                }
+                            }}
+                        >
+                            + Create New Sprint
+                        </button>
+                    </div>
                     <table className={styles.table}>
                         <thead>
                             <tr>

@@ -31,6 +31,7 @@ describe('SprintPage', () => {
         addSprint: addSprintSpy,
         updateSprint: updateSprintSpy,
         deleteSprint: deleteSprintSpy,
+        onNavigateToSprint: vi.fn(),
         saveDashboardData: saveDashboardDataSpy,
     };
 

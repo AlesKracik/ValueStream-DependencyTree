@@ -56,7 +56,7 @@ function SprintPageRouteWrapper({ dashboardState }: any) {
   const { id } = useParams();
   const navigate = useNavigate();
   // We'll need to create SprintPage.tsx
-  return <SprintPage sprintId={id!} onBack={() => navigate(-1)} {...dashboardState} />;
+  return <SprintPage sprintId={id!} onBack={() => navigate(-1)} onNavigateToSprint={(sid: string) => navigate(`/sprint/${sid}`)} {...dashboardState} />;
 }
 
 function App() {
