@@ -62,25 +62,33 @@ export const EpicPage: React.FC<EpicPageProps> = ({
         // If updating dates, check for historical overlap
         if (updates.target_start || updates.target_end) {
             const activeSprintStart = getActiveSprintStart();
-            const pastSprints = data.sprints.filter(s => parseISO(s.end_date) < activeSprintStart);
             
-            // Check if this epic has any effort/overrides in past sprints
-            const hasPastWork = pastSprints.some(s => 
-                epic.sprint_effort_overrides?.[s.id] !== undefined
-            );
+            // Refined Logic: 
+            // 1. If only target_end is changing AND it's still in the future (>= activeSprintStart), don't prompt.
+            // 2. Otherwise (start date changing OR end date moved to past), perform overlap check.
+            const isFutureEndShiftOnly = updates.target_end && !updates.target_start && parseISO(updates.target_end) >= activeSprintStart;
 
-            if (hasPastWork) {
-                const confirmed = await showConfirm(
-                    "Historical Work Warning",
-                    "This Epic has recorded effort in past sprints. Moving the dates will overwrite this historical data. Do you want to recalculate past work?"
-                );
+            if (!isFutureEndShiftOnly) {
+                const pastSprints = data.sprints.filter(s => parseISO(s.end_date) < activeSprintStart);
                 
-                if (!confirmed) return;
+                // Check if this epic has any effort/overrides in past sprints
+                const hasPastWork = pastSprints.some(s => 
+                    epic.sprint_effort_overrides?.[s.id] !== undefined
+                );
 
-                // User said YES: Unthaw past work
-                const newOverrides = { ...(epic.sprint_effort_overrides || {}) };
-                pastSprints.forEach(s => delete newOverrides[s.id]);
-                updates.sprint_effort_overrides = Object.keys(newOverrides).length > 0 ? newOverrides : undefined;
+                if (hasPastWork) {
+                    const confirmed = await showConfirm(
+                        "Historical Work Warning",
+                        "This Epic has recorded effort in past sprints. Shifting the start date or moving the end date into the past will overwrite this historical data. Do you want to recalculate past work?"
+                    );
+                    
+                    if (!confirmed) return;
+
+                    // User said YES: Unthaw past work
+                    const newOverrides = { ...(epic.sprint_effort_overrides || {}) };
+                    pastSprints.forEach(s => delete newOverrides[s.id]);
+                    updates.sprint_effort_overrides = Object.keys(newOverrides).length > 0 ? newOverrides : undefined;
+                }
             }
         }
         

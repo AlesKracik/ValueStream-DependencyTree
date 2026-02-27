@@ -100,26 +100,30 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
                 const epic = dashboardData.epics.find(ep => ep.id === data.epicId);
                 if (epic) {
                     const activeSprintStart = getActiveSprintStart();
-                    const pastSprints = dashboardData.sprints.filter(s => parseISO(s.end_date) < activeSprintStart);
-                    const hasPastWork = pastSprints.some(s => epic.sprint_effort_overrides?.[s.id] !== undefined);
+                    const isFutureEndShiftOnly = (newEndStr !== endStr) && (newStartStr === startStr) && parseISO(newEndStr) >= activeSprintStart;
 
                     const updates: any = { 
                         target_start: newStartStr,
                         target_end: newEndStr
                     };
 
-                    if (hasPastWork) {
-                        const confirmed = await showConfirm(
-                            "Historical Work Warning",
-                            "This Epic has recorded effort in past sprints. Moving the dates will overwrite this historical data. Do you want to recalculate past work?"
-                        );
-                        if (!confirmed) {
-                            setDragState({ active: null, startX: 0, currentDelta: 0 });
-                            return;
+                    if (!isFutureEndShiftOnly) {
+                        const pastSprints = dashboardData.sprints.filter(s => parseISO(s.end_date) < activeSprintStart);
+                        const hasPastWork = pastSprints.some(s => epic.sprint_effort_overrides?.[s.id] !== undefined);
+
+                        if (hasPastWork) {
+                            const confirmed = await showConfirm(
+                                "Historical Work Warning",
+                                "This Epic has recorded effort in past sprints. Shifting the start date or moving the end date into the past will overwrite this historical data. Do you want to recalculate past work?"
+                            );
+                            if (!confirmed) {
+                                setDragState({ active: null, startX: 0, currentDelta: 0 });
+                                return;
+                            }
+                            const newOverrides = { ...(epic.sprint_effort_overrides || {}) };
+                            pastSprints.forEach(s => delete newOverrides[s.id]);
+                            updates.sprint_effort_overrides = Object.keys(newOverrides).length > 0 ? newOverrides : undefined;
                         }
-                        const newOverrides = { ...(epic.sprint_effort_overrides || {}) };
-                        pastSprints.forEach(s => delete newOverrides[s.id]);
-                        updates.sprint_effort_overrides = Object.keys(newOverrides).length > 0 ? newOverrides : undefined;
                     }
                     updateEpic(data.epicId, updates);
                 }
