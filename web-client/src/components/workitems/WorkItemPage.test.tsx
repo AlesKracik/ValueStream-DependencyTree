@@ -71,4 +71,22 @@ describe('WorkItemPage', () => {
             throw new Error('Customer select not found');
         }
     });
+
+    it('should include epics with "UNASSIGNED" work_item_id in the assignment dropdown', () => {
+        const dataWithUnassigned: DashboardData = {
+            ...mockData,
+            epics: [
+                { id: 'e-unassigned', jira_key: 'PROJ-123', work_item_id: 'UNASSIGNED', team_id: 't1', remaining_md: 5, name: 'Unassigned Epic' }
+            ],
+            teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
+        };
+
+        const { container } = render(<WorkItemPage {...defaultProps} data={dataWithUnassigned} workItemId="f1" />);
+
+        const epicSelect = container.querySelector('#assignEpicSelect') as HTMLSelectElement;
+        expect(epicSelect).toBeDefined();
+
+        const options = Array.from(epicSelect.options).map(opt => opt.textContent);
+        expect(options).toContain('PROJ-123 Unassigned Epic');
+    });
 });

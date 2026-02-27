@@ -138,4 +138,28 @@ describe('useGraphLayout Math Engine', () => {
         const e3Edge = result.current.edges.find(e => e.id === 'edge-f1-t1-e3');
         expect(e3Edge).toBeDefined();
     });
+
+    it('treats epics with "UNASSIGNED" work_item_id as WorkItemless and renders them on timeline', () => {
+        const dataWithUnassigned: DashboardData = {
+            ...MOCK_DATA,
+            epics: [
+                { 
+                    id: 'e-unassigned', 
+                    jira_key: 'PROJ-123', 
+                    work_item_id: 'UNASSIGNED', 
+                    team_id: 't1', 
+                    remaining_md: 5, 
+                    name: 'Standalone Epic',
+                    target_start: '2026-02-12',
+                    target_end: '2026-02-20'
+                }
+            ]
+        };
+
+        const { result } = renderHook(() => useGraphLayout(dataWithUnassigned));
+        
+        const ganttNode = result.current.nodes.find(n => n.id === 'gantt-e-unassigned');
+        expect(ganttNode).toBeDefined();
+        expect(ganttNode?.data.label).toContain('Standalone Epic');
+    });
 });
