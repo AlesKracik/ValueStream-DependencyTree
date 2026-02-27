@@ -37,7 +37,7 @@ export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
                     overflow: 'hidden'
                 }}
             >
-                <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
+                <Handle type="target" position={Position.Left} style={{ top: nodeSize / 2, opacity: 0 }} />
 
                 <div style={{ 
                     fontWeight: 'bold', 
@@ -47,7 +47,7 @@ export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
                     {Math.round(data.score)}
                 </div>
 
-                <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
+                <Handle type="source" position={Position.Right} style={{ top: nodeSize / 2, opacity: 0 }} />
             </div>
 
             {/* External Label */}

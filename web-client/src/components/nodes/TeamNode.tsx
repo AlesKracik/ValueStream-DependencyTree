@@ -35,7 +35,7 @@ export const TeamNode = memo(({ data }: { data: TeamNodeData }) => {
                     overflow: 'hidden'
                 }}
             >
-                <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
+                <Handle type="target" position={Position.Left} style={{ top: nodeSize / 2, opacity: 0 }} />
 
                 <div style={{ 
                     fontWeight: 'bold', 
@@ -46,7 +46,7 @@ export const TeamNode = memo(({ data }: { data: TeamNodeData }) => {
                 </div>
                 <div style={{ fontSize: `${Math.max(8, nodeSize * 0.1)}px`, opacity: 0.8 }}>MDs</div>
 
-                <Handle type="source" position={Position.Right} style={{ opacity: 0 }} />
+                <Handle type="source" position={Position.Right} style={{ top: nodeSize / 2, opacity: 0 }} />
             </div>
 
             {/* External Label */}

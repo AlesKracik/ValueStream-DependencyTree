@@ -63,7 +63,7 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
                     type="source"
                     position={Position.Right}
                     id="potential"
-                    style={{ background: '#60a5fa', width: '6px', height: '6px', right: '-3px', opacity: 0 }}
+                    style={{ background: '#60a5fa', width: '6px', height: '6px', right: '-3px', top: outerSize / 2, opacity: 0 }}
                 />
             </div>
 
@@ -105,7 +105,7 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
                     type="source"
                     position={Position.Right}
                     id="existing"
-                    style={{ background: '#fff', width: '6px', height: '6px', right: '-3px', opacity: 0 }}
+                    style={{ background: '#fff', width: '6px', height: '6px', right: '-3px', top: innerSize / 2, opacity: 0 }}
                 />
             </div>
 
@@ -128,7 +128,7 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
             </div>
 
             {/* Input handle (just in case) */}
-            <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
+            <Handle type="target" position={Position.Left} style={{ top: outerSize / 2, opacity: 0 }} />
         </div>
     );
 });
