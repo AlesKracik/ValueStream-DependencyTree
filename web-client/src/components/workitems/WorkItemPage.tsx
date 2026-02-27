@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { DashboardData, WorkItem, Epic } from '../../types/models';
+import { SearchableDropdown } from '../common/SearchableDropdown';
 import styles from '../customers/CustomerPage.module.css';
 
 export interface WorkItemPageProps {
@@ -372,41 +373,29 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     <div className={styles.addWorkItemBox}>
                         <h3>Add Customer Target</h3>
                         <div style={{ display: 'flex', gap: '12px' }}>
-                            <select id="newCustomerSelect" style={{ flex: 1, padding: '8px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }}>
-                                <option value="">Select a customer to target...</option>
-                                {data.customers.filter(c => !targetedCustomers.find(tc => tc.id === c.id)).map(c => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                ))}
-                            </select>
-                            <button
-                                className={styles.primaryBtn}
-                                onClick={() => {
-                                    const selectEl = document.getElementById('newCustomerSelect') as HTMLSelectElement;
-                                    const customerSelectId = selectEl?.value;
-                                    if (customerSelectId) {
-                                        const customer = data.customers.find(c => c.id === customerSelectId);
-                                        if (customer) {
-                                            if (isNew) {
-                                                setNewWorkItemCustomers(prev => [...prev, {
-                                                    customerId: customerSelectId,
-                                                    tcv_type: 'potential',
-                                                    priority: 'Should-have'
-                                                }]);
-                                            } else {
-                                                const newTargets = [...(workItem.customer_targets || []), {
-                                                    customer_id: customerSelectId,
-                                                    tcv_type: 'potential',
-                                                    priority: 'Should-have'
-                                                }];
-                                                updateWorkItem(workItemId, { customer_targets: newTargets as any });
-                                            }
-                                            selectEl.value = ''; // reset
-                                        }
+                            <SearchableDropdown
+                                options={data.customers
+                                    .filter(c => !targetedCustomers.find(tc => tc.id === c.id))
+                                    .map(c => ({ id: c.id, label: c.name }))
+                                }
+                                onSelect={(customerSelectId) => {
+                                    if (isNew) {
+                                        setNewWorkItemCustomers(prev => [...prev, {
+                                            customerId: customerSelectId,
+                                            tcv_type: 'potential',
+                                            priority: 'Should-have'
+                                        }]);
+                                    } else {
+                                        const newTargets = [...(workItem.customer_targets || []), {
+                                            customer_id: customerSelectId,
+                                            tcv_type: 'potential',
+                                            priority: 'Should-have'
+                                        }];
+                                        updateWorkItem(workItemId, { customer_targets: newTargets as any });
                                     }
                                 }}
-                            >
-                                Target Customer
-                            </button>
+                                placeholder="Search for a customer to target..."
+                            />
                         </div>
                     </div>
                 </section>
@@ -439,11 +428,13 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                         <input type="text" value={epic.jira_key} onChange={e => handleUpdateEpic(epic.id, { jira_key: e.target.value })} style={{ width: '100px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
                                     </td>
                                     <td>
-                                        <select value={epic.team_id} onChange={e => handleUpdateEpic(epic.id, { team_id: e.target.value })} style={{ width: '100%', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }}>
-                                            {data.teams.map(t => (
-                                                <option key={t.id} value={t.id}>{t.name}</option>
-                                            ))}
-                                        </select>
+                                        <SearchableDropdown
+                                            options={data.teams.map(t => ({ id: t.id, label: t.name }))}
+                                            onSelect={(teamId) => handleUpdateEpic(epic.id, { team_id: teamId })}
+                                            placeholder="Select Team"
+                                            initialValue={data.teams.find(t => t.id === epic.team_id)?.name || ''}
+                                            clearOnSelect={false}
+                                        />
                                     </td>
                                     <td>
                                         <input type="number" min="0" value={epic.remaining_md} onChange={e => handleUpdateEpic(epic.id, { remaining_md: parseInt(e.target.value) || 0 })} style={{ width: '80px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
@@ -480,25 +471,21 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     <div className={styles.addWorkItemBox}>
                         <h3>Assign Existing Epic</h3>
                         <div style={{ display: 'flex', gap: '12px' }}>
-                            <select id="assignEpicSelect" style={{ flex: 1, padding: '8px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }}>
-                                <option value="">Select an unassigned epic to link...</option>
-                                {data.epics.filter(e => !e.work_item_id || e.work_item_id === 'UNASSIGNED').map(e => (
-                                    <option key={e.id} value={e.id}>{e.jira_key !== 'TBD' ? e.jira_key : ''} {e.name || 'Unnamed Epic'}</option>
-                                ))}
-                            </select>
-                            <button className={styles.primaryBtn} onClick={() => {
-                                const selectEl = document.getElementById('assignEpicSelect') as HTMLSelectElement;
-                                const epicId = selectEl?.value;
-                                if (epicId) {
+                            <SearchableDropdown
+                                options={data.epics
+                                    .filter(e => !e.work_item_id || e.work_item_id === 'UNASSIGNED')
+                                    .map(e => ({ id: e.id, label: `${e.jira_key !== 'TBD' ? e.jira_key : ''} ${e.name || 'Unnamed Epic'}` }))
+                                }
+                                onSelect={(epicId) => {
                                     if (isNew) {
                                         const epicToAssign = data.epics.find(e => e.id === epicId);
                                         if (epicToAssign) setNewWorkItemEpics(prev => [...prev, epicToAssign]);
                                     } else {
                                         updateEpic(epicId, { work_item_id: workItemId });
                                     }
-                                    selectEl.value = '';
-                                }
-                            }}>Assign Epic</button>
+                                }}
+                                placeholder="Search for an unassigned epic to link..."
+                            />
                         </div>
                     </div>
                 </section>

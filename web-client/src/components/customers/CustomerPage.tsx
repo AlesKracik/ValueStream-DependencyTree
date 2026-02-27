@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { DashboardData, Customer, WorkItem } from '../../types/models';
+import { SearchableDropdown } from '../common/SearchableDropdown';
 import styles from './CustomerPage.module.css';
 
 export interface CustomerPageProps {
@@ -270,41 +271,32 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                     <div className={styles.addWorkItemBox}>
                         <h3>Add Work Item Target</h3>
                         <div style={{ display: 'flex', gap: '12px' }}>
-                            <select id="newWorkItemSelect" style={{ flex: 1, padding: '8px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }}>
-                                <option value="">Select a work item to add...</option>
-                                {data.workItems.filter(f => !targetedWorkItems.find(tf => tf.id === f.id)).map(f => (
-                                    <option key={f.id} value={f.id}>{f.name}</option>
-                                ))}
-                            </select>
-                            <button 
-                                className={styles.primaryBtn}
-                                onClick={() => {
-                                    const selectEl = document.getElementById('newWorkItemSelect') as HTMLSelectElement;
-                                    const workItemId = selectEl?.value;
-                                    if (workItemId) {
+                            <SearchableDropdown
+                                options={data.workItems
+                                    .filter(f => !targetedWorkItems.find(tf => tf.id === f.id))
+                                    .map(f => ({ id: f.id, label: f.name }))
+                                }
+                                onSelect={(workItemId) => {
+                                    if (isNew) {
+                                        setNewCustomerWorkItems(prev => [...prev, {
+                                            workItemId,
+                                            tcv_type: 'potential',
+                                            priority: 'Should-have'
+                                        }]);
+                                    } else {
                                         const workItem = data.workItems.find(f => f.id === workItemId);
                                         if (workItem) {
-                                            if (isNew) {
-                                                setNewCustomerWorkItems(prev => [...prev, {
-                                                    workItemId,
-                                                    tcv_type: 'potential',
-                                                    priority: 'Should-have'
-                                                }]);
-                                            } else {
-                                                const newTargets = [...(workItem.customer_targets || []), {
-                                                    customer_id: customerId,
-                                                    tcv_type: 'potential',
-                                                    priority: 'Should-have'
-                                                }];
-                                                updateWorkItem(workItemId, { customer_targets: newTargets as any });
-                                            }
-                                            selectEl.value = ''; // reset
+                                            const newTargets = [...(workItem.customer_targets || []), {
+                                                customer_id: customerId,
+                                                tcv_type: 'potential',
+                                                priority: 'Should-have'
+                                            }];
+                                            updateWorkItem(workItemId, { customer_targets: newTargets as any });
                                         }
                                     }
                                 }}
-                            >
-                                Assign Work Item
-                            </button>
+                                placeholder="Search for a work item to add..."
+                            />
                         </div>
                     </div>
                 </section>

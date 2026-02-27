@@ -55,21 +55,19 @@ describe('WorkItemPage', () => {
     });
 
     it('should have Nice-to-have option in the priority dropdown when adding a new target', () => {
-        const { container } = render(<WorkItemPage {...defaultProps} workItemId="new" />);
+        render(<WorkItemPage {...defaultProps} workItemId="new" />);
 
-        const customerSelect = container.querySelector('#newCustomerSelect') as HTMLSelectElement;
-        const targetBtn = screen.getByRole('button', { name: 'Target Customer' });
+        const customerInput = screen.getByPlaceholderText('Search for a customer to target...');
+        
+        // Simulate typing and selecting a customer
+        fireEvent.change(customerInput, { target: { value: 'Customer A' } });
+        const option = screen.getByText('Customer A');
+        fireEvent.click(option);
 
-        if (customerSelect) {
-            fireEvent.change(customerSelect, { target: { value: 'c1' } });
-            fireEvent.click(targetBtn);
-
-            const niceToHaveOptions = screen.getAllByRole('option', { name: 'Nice-to-have' }) as HTMLOptionElement[];
-            expect(niceToHaveOptions.length).toBeGreaterThan(0);
-            expect(niceToHaveOptions[0].value).toBe('Nice-to-have');
-        } else {
-            throw new Error('Customer select not found');
-        }
+        // After selection, the priority dropdown for that customer should appear in the table
+        const niceToHaveOptions = screen.getAllByRole('option', { name: 'Nice-to-have' }) as HTMLOptionElement[];
+        expect(niceToHaveOptions.length).toBeGreaterThan(0);
+        expect(niceToHaveOptions[0].value).toBe('Nice-to-have');
     });
 
     it('should include epics with "UNASSIGNED" work_item_id in the assignment dropdown', () => {
@@ -81,12 +79,13 @@ describe('WorkItemPage', () => {
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
         };
 
-        const { container } = render(<WorkItemPage {...defaultProps} data={dataWithUnassigned} workItemId="f1" />);
+        render(<WorkItemPage {...defaultProps} data={dataWithUnassigned} workItemId="f1" />);
 
-        const epicSelect = container.querySelector('#assignEpicSelect') as HTMLSelectElement;
-        expect(epicSelect).toBeDefined();
+        const epicInput = screen.getByPlaceholderText('Search for an unassigned epic to link...');
+        fireEvent.focus(epicInput);
 
-        const options = Array.from(epicSelect.options).map(opt => opt.textContent);
-        expect(options).toContain('PROJ-123 Unassigned Epic');
+        // Options should appear in the list
+        const option = screen.getByText('PROJ-123 Unassigned Epic');
+        expect(option).toBeDefined();
     });
 });
