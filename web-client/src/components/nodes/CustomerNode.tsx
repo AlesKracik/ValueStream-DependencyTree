@@ -55,7 +55,7 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
             >
                 {/* Total Text */}
                 <span style={{ fontSize: `${Math.max(9, outerSize * 0.08)}px`, color: '#60a5fa', fontWeight: 'bold' }}>
-                    Σ ${(data.totalTcv / 1000).toFixed(0)}k
+                    ${(data.totalTcv / 1000).toFixed(0)}k
                 </span>
 
                 {/* Target Handle for Potential Connections */}
