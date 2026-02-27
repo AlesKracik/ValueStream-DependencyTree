@@ -5,20 +5,21 @@ interface CustomerNodeData {
     label: string;
     existingTcv: number;
     potentialTcv: number;
+    totalTcv: number;
     maxTcv: number;
     baseSize: number;
     highlightMode?: 'all' | 'existing' | 'potential' | 'none';
 }
 
 export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
-    // We assume data.maxTcv is the maximum potential TCV across all customers
-    const potentialRatio = data.maxTcv > 0 ? data.potentialTcv / data.maxTcv : 0.5;
+    // We assume data.maxTcv is the maximum TOTAL TCV across all customers
+    const totalRatio = data.maxTcv > 0 ? data.totalTcv / data.maxTcv : 0.5;
     const existingRatio = data.maxTcv > 0 ? data.existingTcv / data.maxTcv : 0;
 
     // Calculate sizes
-    const outerSize = data.baseSize * 0.6 + (data.baseSize * 0.8 * potentialRatio);
-    // Inner size shouldn't be larger than outer size. If they are equal, they perfectly overlap.
-    const innerSize = Math.min(outerSize, data.baseSize * 0.6 + (data.baseSize * 0.8 * existingRatio));
+    const outerSize = data.baseSize * 0.6 + (data.baseSize * 0.8 * totalRatio);
+    // Inner size is strictly existing TCV
+    const innerSize = data.baseSize * 0.6 + (data.baseSize * 0.8 * existingRatio);
 
     const hlMode = data.highlightMode || 'all';
     // If hlMode is 'none', the entire node is dimmed via its parent wrapper container, so we leave it 100% visible relative to the dim.
@@ -27,7 +28,7 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
 
     return (
         <div style={{ position: 'relative', width: outerSize, height: outerSize + 40 }}>
-            {/* Outer Circle (Potential TCV) */}
+            {/* Outer Circle (Total TCV: Existing + Potential) */}
             <div
                 style={{
                     position: 'absolute',
@@ -47,9 +48,9 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
                     opacity: potentialOpacity
                 }}
             >
-                {/* Potential Text */}
+                {/* Total Text */}
                 <span style={{ fontSize: `${Math.max(9, outerSize * 0.08)}px`, color: '#60a5fa', fontWeight: 'bold' }}>
-                    + ${(data.potentialTcv / 1000).toFixed(0)}k
+                    Σ ${(data.totalTcv / 1000).toFixed(0)}k
                 </span>
 
                 {/* Target Handle for Potential Connections */}
@@ -88,7 +89,7 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
             >
                 <div style={{ 
                     fontWeight: 'bold', 
-                    fontSize: `${Math.max(10, innerSize * 0.2)}px`, 
+                    fontSize: `${Math.max(10, innerSize * 0.22)}px`, 
                     opacity: 1
                 }}>
                     ${(data.existingTcv / 1000).toFixed(0)}k

@@ -298,16 +298,17 @@ export function useGraphLayout(
         }
 
         // 1. Process Customers (Column 1)
-        // Sort Highest TCV to Lowest, apply Min TCV filter
-        const maxTcv = Math.max(...data.customers.map(c => c.potential_tcv), 1);
+        // Sort Highest Total TCV to Lowest, apply Min TCV filter
+        const maxTcv = Math.max(...data.customers.map(c => c.existing_tcv + c.potential_tcv), 1);
         const sortedCustomers = [...data.customers]
-            .filter(c => visibleCustomers.has(c.id) && c.potential_tcv >= minTcv)
-            .sort((a, b) => b.potential_tcv - a.potential_tcv);
+            .filter(c => visibleCustomers.has(c.id) && (c.existing_tcv + c.potential_tcv) >= minTcv)
+            .sort((a, b) => (b.existing_tcv + b.potential_tcv) - (a.existing_tcv + a.potential_tcv));
 
         // Add Customer node removed from canvas
 
         sortedCustomers.forEach((customer, index) => {
-            const sizeRatio = maxTcv > 0 ? customer.potential_tcv / maxTcv : 0.5;
+            const totalTcv = customer.existing_tcv + customer.potential_tcv;
+            const sizeRatio = maxTcv > 0 ? totalTcv / maxTcv : 0.5;
             const nodeSize = 100 * 0.6 + (100 * 0.8 * sizeRatio);
 
             nodes.push({
@@ -318,6 +319,7 @@ export function useGraphLayout(
                     label: customer.name,
                     existingTcv: customer.existing_tcv,
                     potentialTcv: customer.potential_tcv,
+                    totalTcv: totalTcv,
                     maxTcv: maxTcv,
                     baseSize: 100, // base px size
                     highlightMode: 'all', // Default mode
