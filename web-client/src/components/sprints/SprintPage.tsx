@@ -113,22 +113,22 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                     </button>
                     <h1>Sprint Management</h1>
                 </div>
+                <div style={{ display: 'flex', gap: '16px' }}>
+                    <button 
+                        className={styles.saveBtn} 
+                        style={{ backgroundColor: '#2563eb', borderColor: '#1d4ed8' }}
+                        onClick={handleSave}
+                        disabled={saveStatus === 'saving'}
+                    >
+                        {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved!' : saveStatus === 'error' ? 'Error' : 'Save Changes'}
+                    </button>
+                </div>
             </div>
 
             <div className={styles.content}>
                 <section className={styles.card}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <h2>Sprint Schedule</h2>
-                        <div style={{ display: 'flex', gap: '12px' }}>
-                            <button 
-                                className={styles.saveBtn} 
-                                style={{ backgroundColor: '#2563eb', borderColor: '#1d4ed8', padding: '8px 16px' }}
-                                onClick={handleSave}
-                                disabled={saveStatus === 'saving'}
-                            >
-                                {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? '✓ Saved' : saveStatus === 'error' ? 'Error!' : 'Save Changes'}
-                            </button>
-                        </div>
                     </div>
                     <table className={styles.table}>
                         <thead>
