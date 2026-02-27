@@ -119,13 +119,6 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
                     style={{ background: '#fff', width: '6px', height: '6px', right: '-3px', top: innerSize / 2, opacity: 0 }}
                 />
             </div>
-                <Handle
-                    type="source"
-                    position={Position.Right}
-                    id="existing"
-                    style={{ background: '#fff', width: '6px', height: '6px', right: '-3px', top: innerSize / 2, opacity: 0 }}
-                />
-            </div>
 
             {/* External Label */}
             <div style={{
