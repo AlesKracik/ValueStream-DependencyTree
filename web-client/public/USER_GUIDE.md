@@ -32,11 +32,20 @@ The Gantt chart distinguishes between what has happened and what is planned:
 - **Effort Intensity:** In both colors, the brightness of a segment indicates the volume of work allocated to that specific sprint.
 - **Safety Prompts:** If you attempt to shift the **Start Date** of an Epic that has recorded historical work, the app will prompt you to confirm if you want to "unthaw" and overwrite those records.
 
-### 5. Native Jira Epic Synchronization
+### 5. Sprint Management & Continuity
+The dashboard ensures a continuous, unbroken timeline through strict schedule management:
+- **Access:** Left-click any **Sprint Header** (the capacity markers above the Gantt lanes) to open the Sprint Management page.
+- **Inline Editing:** To rename a sprint, simply click its header to enter the management page. The selected sprint will be highlighted and editable directly in the schedule table.
+- **Schedule Integrity:** 
+    - **Date Locking:** Start and end dates are managed automatically to ensure no gaps or overlaps exist in your timeline. They are read-only for existing sprints.
+    - **Deletion Protection:** To prevent orphaning data, only the **last sprint** in the schedule can be deleted. Earlier sprints are "Locked" to preserve the historical sequence.
+- **Timeline Expansion:** Click **"+ Create Next Sprint"** at the bottom of the table to add a new 14-day block. The system automatically calculates the next logical dates and name.
+
+### 6. Native Jira Epic Synchronization
 - **Proxy Sync:** Inside an Epic's detail page, click the **"Sync from Jira"** button.
 - **Automated Mapping:** The system automatically pulls the latest Summary, Remaining Estimate, Dates, and Team assignments from Atlassian.
 - **Configuration:** Use the ⚙️ **Settings** modal to set your Jira Base URL and Personal Access Token (PAT).
 
-### 6. Persistence & Collaboration
+### 7. Persistence & Collaboration
 - **Auto-Snapshot:** When a sprint ends, the system automatically snapshots the calculated effort into permanent overrides, preserving your delivery history.
 - **Save Changes:** Click the blue **"Save Changes"** button in the header to write all layout adjustments and node edits back to the central data store.
