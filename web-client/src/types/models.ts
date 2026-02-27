@@ -74,6 +74,7 @@ export interface DashboardViewState {
   teamFilter: string;
   epicFilter: string;
   showDependencies: boolean;
+  disableHoverHighlight: boolean;
   selectedNodeId?: string | null;
   viewport?: { x: number; y: number; zoom: number };
 }

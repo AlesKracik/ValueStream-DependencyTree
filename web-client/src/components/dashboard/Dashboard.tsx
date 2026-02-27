@@ -263,10 +263,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const hoverTimeoutRef = React.useRef<number | null>(null);
 
     const onNodeMouseEnter = React.useCallback((_: React.MouseEvent, node: Node) => {
+        if (viewState.disableHoverHighlight) return;
         if (['headerNode', 'sprintCapacityNode', 'todayLineNode'].includes(node.type || '')) return;
         if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
         setHoveredNodeId(node.id);
-    }, []);
+    }, [viewState.disableHoverHighlight]);
 
     const onNodeMouseLeave = React.useCallback(() => {
         if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
@@ -479,6 +480,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             style={{ marginRight: '8px', cursor: 'pointer' }}
                         />
                         Show Dependencies
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', color: '#cbd5e1', fontSize: '13px', marginLeft: '16px', cursor: 'pointer' }}>
+                        <input
+                            type="checkbox"
+                            checked={viewState.disableHoverHighlight}
+                            onChange={e => setViewState((s: DashboardViewState) => ({ ...s, disableHoverHighlight: e.target.checked }))}
+                            style={{ marginRight: '8px', cursor: 'pointer' }}
+                        />
+                        Disable Hover Highlight
                     </label>
                 </div>
                 <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
