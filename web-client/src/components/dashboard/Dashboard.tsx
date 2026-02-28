@@ -13,7 +13,6 @@ import { GanttBarNode } from '../nodes/GanttBarNode';
 import { SprintCapacityNode } from '../nodes/SprintCapacityNode';
 import { TodayLineNode } from '../nodes/TodayLineNode';
 import { HeaderNode } from '../nodes/HeaderNode';
-import { DatelessEpicNode } from '../nodes/DatelessEpicNode';
 import { EditNodeModal } from './EditNodeModal';
 import styles from './Dashboard.module.css';
 
@@ -26,7 +25,6 @@ const nodeTypes = {
     sprintCapacityNode: SprintCapacityNode,
     todayLineNode: TodayLineNode,
     headerNode: HeaderNode,
-    datelessEpicNode: DatelessEpicNode,
 };
 
 interface DashboardControlsProps {

@@ -388,6 +388,8 @@ export function useGraphLayout(
                 const epicMdsSum = epicsForWorkItem.reduce((sum, e) => sum + e.remaining_md, 0);
                 const displayEffort = Math.max(f.total_effort_mds || 0, epicMdsSum) || 1; // Prevent div by 0
 
+                const hasDatelessEpics = epicsForWorkItem.some(e => !e.target_start || !e.target_end);
+
                 let impact = 0;
 
                 if (f.all_customers_target) {
@@ -446,7 +448,8 @@ export function useGraphLayout(
                     epicMdsSum,
                     displayEffort,
                     impact,
-                    score
+                    score,
+                    hasDatelessEpics
                 };
             });
 
@@ -487,6 +490,7 @@ export function useGraphLayout(
                     baseSize: 100,
                     isGlobal: !!workItem.all_customers_target,
                     releasedInSprintId: workItem.released_in_sprint_id,
+                    hasDatelessEpics: workItem.hasDatelessEpics,
                 },
             });
 
