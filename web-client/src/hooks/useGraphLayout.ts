@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { differenceInDays, parseISO, min, max, format, isWeekend } from 'date-fns';
 import type { Node, Edge } from '@xyflow/react';
-import type { DashboardData } from '../types/models';
+import type { DashboardData, DashboardParameters } from '../types/models';
 import Holidays from 'date-holidays';
 
 export function useGraphLayout(
@@ -16,7 +16,8 @@ export function useGraphLayout(
     showDependencies: boolean = true,
     minTcv: number = 0,
     minScore: number = 0,
-    selectedNodeId: string | null = null
+    selectedNodeId: string | null = null,
+    baseParams: DashboardParameters | null = null
 ) {
     return useMemo(() => {
         if (!data) return { nodes: [], edges: [] };
@@ -57,12 +58,35 @@ export function useGraphLayout(
             draggable: false,
         });
 
-        // Calculate visible sets based on filters
+        // Calculate visible sets based on combined filters (Logical AND)
+        const bcf = (baseParams?.customerFilter || '').toLowerCase();
+        const bff = (baseParams?.workItemFilter || '').toLowerCase();
+        const btf = (baseParams?.teamFilter || '').toLowerCase();
+        const bef = (baseParams?.epicFilter || '').toLowerCase();
+        const bMinTcv = Number(baseParams?.minTcvFilter) || 0;
+        const bMinScore = Number(baseParams?.minScoreFilter) || 0;
+
         const cf = customerFilter.toLowerCase();
         const ff = workItemFilter.toLowerCase();
         const tf = teamFilter.toLowerCase();
         const ef = epicFilter.toLowerCase();
-        const isFilterActive = cf || ff || tf || ef || releasedFilter !== 'all';
+
+        const combinedMinTcv = Math.max(minTcv, bMinTcv);
+        const combinedMinScore = Math.max(minScore, bMinScore);
+
+        const bRel = baseParams?.releasedFilter || 'all';
+
+        const passRelease = (isR: boolean) => {
+            if (releasedFilter === 'released' && !isR) return false;
+            if (releasedFilter === 'unreleased' && isR) return false;
+            if (bRel === 'released' && !isR) return false;
+            if (bRel === 'unreleased' && isR) return false;
+            return true;
+        };
+
+        const isFilterActive = cf || bcf || ff || bff || tf || btf || ef || bef || 
+                             releasedFilter !== 'all' || bRel !== 'all' ||
+                             minTcv > 0 || bMinTcv > 0 || minScore > 0 || bMinScore > 0;
 
         const visibleCustomers = new Set<string>();
         const visibleWorkItems = new Set<string>();
@@ -72,27 +96,22 @@ export function useGraphLayout(
         // Identify intrinsically valid items based on text + number filters
         const validCustomers = new Set(
             data.customers.filter(c => {
-                const textMatch = !cf || c.name.toLowerCase().includes(cf);
-                const numMatch = (c.existing_tcv + c.potential_tcv) >= minTcv;
-                return textMatch && numMatch;
+                const transientTextMatch = !cf || c.name.toLowerCase().includes(cf);
+                const baseTextMatch = !bcf || c.name.toLowerCase().includes(bcf);
+                const numMatch = (c.existing_tcv + c.potential_tcv) >= combinedMinTcv;
+                return transientTextMatch && baseTextMatch && numMatch;
             }).map(c => c.id)
         );
 
-        // For workitems, we need their calculated score. We can do a quick pass to compute it just for intrinsic filtering.
+        // For workitems, we need their calculated score.
         const validWorkItems = new Set(
             data.workItems.filter(f => {
-                const textMatch = !ff || f.name.toLowerCase().includes(ff);
-                if (!textMatch) return false;
+                const transientTextMatch = !ff || f.name.toLowerCase().includes(ff);
+                const baseTextMatch = !bff || f.name.toLowerCase().includes(bff);
+                if (!transientTextMatch || !baseTextMatch) return false;
 
-                // Release Status Filter
-                if (releasedFilter === 'released' && !f.released_in_sprint_id) return false;
-                if (releasedFilter === 'unreleased' && f.released_in_sprint_id) return false;
+                if (!passRelease(!!f.released_in_sprint_id)) return false;
 
-                // Calculate baseline intrinsic score (similar to below, but over all valid epics/customers)
-                // Actually, if we require the exact score to pass `minScore` right here, we should calculate it.
-                // However, the true score depends on remaining epics/customers.
-                // To avoid circular dependency, let's calculate the "Max Possible Score" (all upstream/downstream intact)
-                // If the "Max Possible Score" fails minScore, it definitely fails.
                 const epicsForWorkItem = data.epics.filter(e => e.work_item_id === f.id);
                 const epicMdsSum = epicsForWorkItem.reduce((sum, e) => sum + e.remaining_md, 0);
                 const displayEffort = Math.max(f.total_effort_mds || 0, epicMdsSum) || 1;
@@ -124,22 +143,26 @@ export function useGraphLayout(
                 });
 
                 const maxPossibleScore = maxImpact / displayEffort;
-                return maxPossibleScore >= minScore;
+                return maxPossibleScore >= combinedMinScore;
             }).map(f => f.id)
         );
 
         const validEpics = new Set(
             data.epics.filter(e => {
                 const team = data.teams.find(t => t.id === e.team_id);
-                const teamMatches = team && (!tf || team.name.toLowerCase().includes(tf));
+                const transientTeamMatch = !tf || (team && team.name.toLowerCase().includes(tf));
+                const baseTeamMatch = !btf || (team && team.name.toLowerCase().includes(btf));
+                
                 const workItem = data.workItems.find(f => f.id === e.work_item_id);
                 const epicName = e.name || workItem?.name || 'Task';
-                const epicMatches = !ef || epicName.toLowerCase().includes(ef);
-                return teamMatches && epicMatches;
+                const transientEpicMatch = !ef || epicName.toLowerCase().includes(ef);
+                const baseEpicMatch = !bef || epicName.toLowerCase().includes(bef);
+
+                return transientTeamMatch && baseTeamMatch && transientEpicMatch && baseEpicMatch;
             }).map(e => e.id)
         );
 
-        if (!isFilterActive && minTcv === 0 && minScore === 0) {
+        if (!isFilterActive && !selectedNodeId) {
             data.customers.forEach(c => visibleCustomers.add(c.id));
             data.workItems.forEach(f => visibleWorkItems.add(f.id));
             data.teams.forEach(t => visibleTeams.add(t.id));
@@ -168,12 +191,12 @@ export function useGraphLayout(
                     .filter(e => e.work_item_id === f.id && validEpics.has(e.id));
 
                 // Strict intersection rules:
-                // If a customer filter is active (cf or minTcv), we MUST have a valid connected customer.
-                const hasCustomerFilter = cf !== '' || minTcv > 0;
+                // If a customer filter is active (transient or base), we MUST have a valid connected customer.
+                const hasCustomerFilter = cf !== '' || bcf !== '' || minTcv > 0 || bMinTcv > 0;
                 if (hasCustomerFilter && connectedValidCustomers.length === 0) return;
 
-                // If a team/epic filter is active, we MUST have a valid connected epic.
-                const hasTeamEpicFilter = tf !== '' || ef !== '';
+                // If a team/epic filter is active (transient or base), we MUST have a valid connected epic.
+                const hasTeamEpicFilter = tf !== '' || btf !== '' || ef !== '' || bef !== '';
                 if (hasTeamEpicFilter && connectedValidEpics.length === 0) return;
 
                 // If it survives to here, this workitem path is fully viable!
@@ -187,9 +210,9 @@ export function useGraphLayout(
 
             // Special case: WorkItemless Customers
             // If ONLY customer filters are applied, standalone valid customers should appear.
-            const hasTeamEpicFilter = tf !== '' || ef !== '';
-            const hasWorkItemFilter = ff !== '' || minScore > 0;
-            const hasCustomerFilter = cf !== '' || minTcv > 0;
+            const hasTeamEpicFilter = tf !== '' || btf !== '' || ef !== '' || bef !== '';
+            const hasWorkItemFilter = ff !== '' || bff !== '' || minScore > 0 || bMinScore > 0 || releasedFilter !== 'all' || bRel !== 'all';
+            const hasCustomerFilter = cf !== '' || bcf !== '' || minTcv > 0 || bMinTcv > 0;
             if (!hasTeamEpicFilter && !hasWorkItemFilter) {
                 validCustomers.forEach(cId => {
                     visibleCustomers.add(cId);
@@ -1069,5 +1092,5 @@ export function useGraphLayout(
         }
 
         return { nodes, edges };
-    }, [data, hoveredNodeId, sprintOffset, customerFilter, workItemFilter, releasedFilter, teamFilter, epicFilter, showDependencies, minTcv, minScore, selectedNodeId]);
+    }, [data, hoveredNodeId, sprintOffset, customerFilter, workItemFilter, releasedFilter, teamFilter, epicFilter, showDependencies, minTcv, minScore, selectedNodeId, baseParams]);
 }

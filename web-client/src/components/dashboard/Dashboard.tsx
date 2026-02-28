@@ -5,7 +5,7 @@ import { parseISO, differenceInDays } from 'date-fns';
 import '@xyflow/react/dist/style.css';
 
 import { useGraphLayout } from '../../hooks/useGraphLayout';
-import type { DashboardData, Customer, WorkItem, Team, DashboardViewState } from '../../types/models';
+import type { DashboardData, Customer, WorkItem, Team, DashboardViewState, DashboardParameters } from '../../types/models';
 import { CustomerNode } from '../nodes/CustomerNode';
 import { WorkItemNode } from '../nodes/WorkItemNode';
 import { TeamNode } from '../nodes/TeamNode';
@@ -121,6 +121,7 @@ export interface DashboardProps {
     updateCustomer: (id: string, updates: Partial<Customer>) => void;
     updateWorkItem: (id: string, updates: Partial<WorkItem>) => void;
     updateTeam: (id: string, updates: Partial<Team>) => void;
+    currentDashboardId?: string;
     
     viewState: DashboardViewState;
     setViewState: React.Dispatch<React.SetStateAction<DashboardViewState>>;
@@ -133,7 +134,7 @@ export interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({
     data, loading, error,
-    updateCustomer, updateWorkItem, updateTeam,
+    updateCustomer, updateWorkItem, updateTeam, currentDashboardId,
      viewState, setViewState,
     onNavigateToCustomer,
     onNavigateToWorkItem,
@@ -144,7 +145,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const { setViewport } = useReactFlow();
     const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
     const [editingNode, setEditingNode] = React.useState<Node | null>(null);
+
+    const currentDashboard = data?.dashboards.find(d => d.id === currentDashboardId);
     
+    const baseParams: DashboardParameters = {
+        customerFilter: currentDashboard?.parameters?.customerFilter || '',
+        workItemFilter: currentDashboard?.parameters?.workItemFilter || '',
+        releasedFilter: currentDashboard?.parameters?.releasedFilter || 'all',
+        minTcvFilter: currentDashboard?.parameters?.minTcvFilter || '',
+        minScoreFilter: currentDashboard?.parameters?.minScoreFilter || '',
+        teamFilter: currentDashboard?.parameters?.teamFilter || '',
+        epicFilter: currentDashboard?.parameters?.epicFilter || ''
+    };
 
     const { nodes, edges } = useGraphLayout(
         data,
@@ -158,7 +170,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
         viewState.showDependencies,
         viewState.minTcvFilter ? Number(viewState.minTcvFilter) : 0,
         viewState.minScoreFilter ? Number(viewState.minScoreFilter) : 0,
-        viewState.selectedNodeId || null
+        viewState.selectedNodeId || null,
+        baseParams
     );
 
     // Initial sprint offset and viewport calculation

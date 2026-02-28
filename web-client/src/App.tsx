@@ -26,10 +26,12 @@ import type { DashboardViewState } from './types/models';
 import './App.css';
 
 function DashboardRouteWrapper({ dashboardState, dashboardViewState, setDashboardViewState }: any) {
+  const { id } = useParams();
   const navigate = useNavigate();
   return (
     <Dashboard
       {...dashboardState}
+      currentDashboardId={id}
       viewState={dashboardViewState}
       setViewState={setDashboardViewState}
       onNavigateToCustomer={(id) => navigate(`/customer/${id}`)}
