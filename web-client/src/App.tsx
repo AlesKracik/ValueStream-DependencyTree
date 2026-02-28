@@ -38,7 +38,7 @@ function DashboardRouteWrapper({ dashboardState, dashboardViewState, setDashboar
       onNavigateToWorkItem={(id) => navigate(`/workitem/${id}`)}
       onNavigateToEpic={(id) => navigate(`/epic/${id}`)}
       onNavigateToTeam={(id) => navigate(`/team/${id}`)}
-      onNavigateToSprint={(id) => navigate(`/sprint/${id}`)}
+      onNavigateToSprint={(id) => id === 'list' ? navigate('/sprints') : navigate(`/sprint/${id}`)}
     />
   );
 }
