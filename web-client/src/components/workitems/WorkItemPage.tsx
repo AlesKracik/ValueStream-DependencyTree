@@ -514,7 +514,6 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                         <table className={styles.table}>
                             <thead>
                                 <tr>
-                                    <th>Status</th>
                                     <th>Name</th>
                                     <th>Jira Key</th>
                                     <th>Team</th>
@@ -527,11 +526,6 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                             <tbody>
                                 {epics.map(epic => (
                                     <tr key={epic.id}>
-                                        <td style={{ textAlign: 'center', fontSize: '18px' }}>
-                                            {(!epic.target_start || !epic.target_end) && (
-                                                <span title="Missing target dates - will not appear on Gantt chart">⚠️</span>
-                                            )}
-                                        </td>
                                         <td>
                                             <input type="text" value={epic.name || ''} onChange={e => handleUpdateEpic(epic.id, { name: e.target.value })} style={{ width: '100%', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
                                         </td>
@@ -551,10 +545,16 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                             <input type="number" min="0" value={epic.remaining_md} onChange={e => handleUpdateEpic(epic.id, { remaining_md: parseInt(e.target.value) || 0 })} style={{ width: '80px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
                                         </td>
                                         <td>
-                                            <input type="date" value={epic.target_start || ''} onChange={e => handleUpdateEpic(epic.id, { target_start: e.target.value })} style={{ width: '130px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <input type="date" value={epic.target_start || ''} onChange={e => handleUpdateEpic(epic.id, { target_start: e.target.value })} style={{ width: '130px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
+                                                {!epic.target_start && <span title="Missing start date" style={{ fontSize: '16px' }}>⚠️</span>}
+                                            </div>
                                         </td>
                                         <td>
-                                            <input type="date" value={epic.target_end || ''} onChange={e => handleUpdateEpic(epic.id, { target_end: e.target.value })} style={{ width: '130px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <input type="date" value={epic.target_end || ''} onChange={e => handleUpdateEpic(epic.id, { target_end: e.target.value })} style={{ width: '130px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
+                                                {!epic.target_end && <span title="Missing end date" style={{ fontSize: '16px' }}>⚠️</span>}
+                                            </div>
                                         </td>
                                         <td>
                                             <div style={{ display: 'flex', gap: '8px' }}>
