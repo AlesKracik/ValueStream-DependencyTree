@@ -10,6 +10,7 @@ export interface WorkItem {
   name: string;
   total_effort_mds: number;
   released_in_sprint_id?: string;
+  score: number;
   all_customers_target?: {
     tcv_type: 'existing' | 'potential';
     priority?: 'Must-have' | 'Should-have' | 'Nice-to-have';

@@ -72,7 +72,8 @@
                     "id",
                     "name",
                     "total_effort_mds",
-                    "customer_targets"
+                    "customer_targets",
+                    "score"
                 ],
                 "properties": {
                     "id": {
@@ -84,6 +85,9 @@
                     "total_effort_mds": {
                         "type": "number",
                         "minimum": 0
+                    },
+                    "score": {
+                        "type": "number"
                     },
                     "released_in_sprint_id": {
                         "type": "string"

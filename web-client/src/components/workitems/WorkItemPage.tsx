@@ -59,6 +59,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     id: newId,
                     name: newWorkItemDraft.name || 'New Work Item',
                     total_effort_mds: newWorkItemDraft.total_effort_mds || 0,
+                    score: 0,
                     customer_targets: newWorkItemCustomers.map(c => ({
                         customer_id: c.customerId,
                         tcv_type: c.tcv_type,

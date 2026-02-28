@@ -10,46 +10,43 @@ const mockData: DashboardData = {
         jira_api_version: '3'
     },
     customers: [
-        { id: 'c1', name: 'Customer With Work Item', existing_tcv: 100, potential_tcv: 200 },
-        { id: 'c2', name: 'Customer Without Work Item', existing_tcv: 0, potential_tcv: 0 },
+        { id: 'c1', name: 'Matched Customer', existing_tcv: 50, potential_tcv: 500 },
+        { id: 'c2', name: 'Other Customer', existing_tcv: 0, potential_tcv: 20 },
     ],
     workItems: [
         {
             id: 'f1',
-            name: 'Work Item A',
-            total_effort_mds: 10,
+            name: 'Work Item 1',
+            total_effort_mds: 1, score: 0,
             customer_targets: [
                 { customer_id: 'c1', tcv_type: 'potential', priority: 'Must-have' }
             ]
         }
     ],
-    epics: [],
-    teams: [],
-    sprints: [],
+    epics: [
+        { id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', remaining_md: 1, target_start: '2026-01-01', target_end: '2026-01-14' }
+    ],
+    teams: [{ id: 't1', name: 'T1', total_capacity_mds: 10 }],
+    sprints: [{ id: 's1', name: 'S1', start_date: '2026-01-01', end_date: '2026-01-14' }],
 };
 
-describe('useGraphLayout - WorkItemless Customer filters', () => {
-    it('should show all customers including those without work items when no filter is active', () => {
-        const { result } = renderHook(() => useGraphLayout(mockData));
+describe('useGraphLayout - Customer Filters', () => {
+    it('should filter out customers not matching the name filter', () => {
+        const { result } = renderHook(() => useGraphLayout(mockData, null, 0, 'Matched'));
 
         const nodes = result.current.nodes;
-
         const hasC1 = nodes.some(n => n.id === 'customer-c1');
         const hasC2 = nodes.some(n => n.id === 'customer-c2');
 
         expect(hasC1).toBe(true);
-        expect(hasC2).toBe(true);
+        expect(hasC2).toBe(false);
     });
 
-    it('should show workitemless customers if they match the active customer filter', () => {
-        const { result } = renderHook(() => useGraphLayout(mockData, null, 0, 'without'));
+    it('should filter out customers even if name matches but they target no visible work items', () => {
+        const { result } = renderHook(() => useGraphLayout(mockData, null, 0, 'Matched', 'NonExistent'));
 
         const nodes = result.current.nodes;
         const hasC1 = nodes.some(n => n.id === 'customer-c1');
-        const hasC2 = nodes.some(n => n.id === 'customer-c2');
-
-        // 'without' matches c2 but not c1
         expect(hasC1).toBe(false);
-        expect(hasC2).toBe(true);
     });
 });

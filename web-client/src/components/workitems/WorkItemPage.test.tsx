@@ -11,13 +11,13 @@ const mockData: DashboardData = {
         jira_api_version: '3'
     },
     customers: [
-        { id: 'c1', name: 'Customer A' } // Removed non-existent handle_dots
-    ] as any, // type assertion to bypass any missing properties
+        { id: 'c1', name: 'Customer A', existing_tcv: 100, potential_tcv: 0 }
+    ],
     workItems: [
         {
             id: 'f1',
             name: 'Work Item A',
-            total_effort_mds: 10,
+            total_effort_mds: 10, score: 0,
             customer_targets: [
                 {
                     customer_id: 'c1',

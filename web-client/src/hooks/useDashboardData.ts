@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { DashboardData, Customer, WorkItem, Team, Epic, Settings, Sprint, DashboardEntity } from '../types/models';
+import { calculateWorkItemScores } from './scoreCalculator';
 
 const persistEntity = async (collection: string, method: 'POST' | 'DELETE', entity: any) => {
     try {
@@ -48,6 +49,46 @@ export function useDashboardData() {
 
         fetchData();
     }, []);
+
+    // Automatic score recalculation and persistence
+    useEffect(() => {
+        if (!data || loading) return;
+
+        const workItemsWithNewScores = calculateWorkItemScores(data);
+        
+        // Find which work items actually had their score changed
+        const updatesToPersist: WorkItem[] = [];
+        let localStateNeedsUpdate = false;
+
+        workItemsWithNewScores.forEach((newItem) => {
+            const oldItem = data.workItems.find(w => w.id === newItem.id);
+            if (!oldItem || oldItem.score !== newItem.score) {
+                updatesToPersist.push(newItem);
+                localStateNeedsUpdate = true;
+            }
+        });
+
+        if (localStateNeedsUpdate) {
+            // Update local state once
+            setData(prev => {
+                if (!prev) return prev;
+                
+                // Avoid infinite loops by checking if update is still needed against latest prev
+                const stillNeedsUpdate = workItemsWithNewScores.some((newItem) => {
+                    const currentItem = prev.workItems.find(w => w.id === newItem.id);
+                    return !currentItem || currentItem.score !== newItem.score;
+                });
+                if (!stillNeedsUpdate) return prev;
+
+                return { ...prev, workItems: workItemsWithNewScores };
+            });
+
+            // Persist changes to DB
+            updatesToPersist.forEach(item => {
+                persistEntity('workItems', 'POST', item);
+            });
+        }
+    }, [data?.customers, data?.workItems, data?.epics, loading]);
 
     const addCustomer = (customer: Customer) => {
         setData(prev => {
