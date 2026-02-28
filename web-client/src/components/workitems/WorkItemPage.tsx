@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { parseISO } from 'date-fns';
 import type { DashboardData, WorkItem, Epic } from '../../types/models';
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import { useDashboardContext } from '../../contexts/DashboardContext';
@@ -117,7 +118,19 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
         }
     };
 
-    const handleUpdateEpic = (id: string, updates: Partial<Epic>) => {
+    const handleUpdateEpic = async (id: string, updates: Partial<Epic>) => {
+        const epic = isNew ? newWorkItemEpics.find(e => e.id === id) : data.epics.find(e => e.id === id);
+        if (!epic) return;
+
+        // Validation: Start Date must be before End Date
+        const newStart = updates.target_start || epic.target_start;
+        const newEnd = updates.target_end || epic.target_end;
+
+        if (newStart && newEnd && parseISO(newStart) >= parseISO(newEnd)) {
+            await showAlert('Invalid Dates', 'The Start Date must be before the End Date.');
+            return;
+        }
+
         if (isNew) {
             setNewWorkItemEpics(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
         } else {

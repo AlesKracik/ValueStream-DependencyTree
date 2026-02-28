@@ -53,7 +53,8 @@ describe('EpicPage Date Shift Logic', () => {
         );
         
         const startInput = screen.getByLabelText(/Target Start:/i);
-        fireEvent.change(startInput, { target: { value: '2026-03-01' } });
+        // Shift start from 2026-01-05 to 2026-01-10 (still before end 2026-02-25)
+        fireEvent.change(startInput, { target: { value: '2026-01-10' } });
         
         // Custom modal should be visible
         expect(screen.getByText('Historical Work Warning')).toBeDefined();
@@ -67,7 +68,7 @@ describe('EpicPage Date Shift Logic', () => {
         });
 
         expect(updateEpicSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
-            target_start: '2026-03-01',
+            target_start: '2026-01-10',
             sprint_effort_overrides: undefined
         }));
     });
@@ -80,7 +81,8 @@ describe('EpicPage Date Shift Logic', () => {
         );
         
         const startInput = screen.getByLabelText(/Target Start:/i);
-        fireEvent.change(startInput, { target: { value: '2026-03-01' } });
+        // Shift start from 2026-01-05 to 2026-01-10 (still before end 2026-02-25)
+        fireEvent.change(startInput, { target: { value: '2026-01-10' } });
         
         expect(screen.getByText('Historical Work Warning')).toBeDefined();
         
@@ -107,6 +109,39 @@ describe('EpicPage Date Shift Logic', () => {
         expect(updateEpicSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
             target_end: '2026-03-15'
         }));
+    });
+
+    it('shows an alert and prevents update if start date is not before end date', async () => {
+        render(
+            <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                <EpicPage {...defaultProps} />
+            </DashboardProvider>
+        );
+        
+        const startInput = screen.getByLabelText(/Target Start:/i);
+        // Current end is 2026-02-25. Setting start to 2026-02-26 (after end).
+        fireEvent.change(startInput, { target: { value: '2026-02-26' } });
+        
+        expect(screen.getByText('Invalid Dates')).toBeDefined();
+        expect(screen.getByText('The Start Date must be before the End Date.')).toBeDefined();
+        
+        expect(updateEpicSpy).not.toHaveBeenCalled();
+    });
+
+    it('shows an alert and prevents update if start date is equal to end date', async () => {
+        render(
+            <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                <EpicPage {...defaultProps} />
+            </DashboardProvider>
+        );
+        
+        const startInput = screen.getByLabelText(/Target Start:/i);
+        // Current end is 2026-02-25. Setting start to 2026-02-25.
+        fireEvent.change(startInput, { target: { value: '2026-02-25' } });
+        
+        expect(screen.getByText('Invalid Dates')).toBeDefined();
+        
+        expect(updateEpicSpy).not.toHaveBeenCalled();
     });
 
     afterEach(() => {

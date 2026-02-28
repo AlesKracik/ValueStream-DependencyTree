@@ -127,4 +127,37 @@ describe('WorkItemPage', () => {
             all_customers_target: expect.objectContaining({ tcv_type: 'existing' })
         }));
     });
+
+    it('shows an alert and prevents epic update if start date is not before end date', async () => {
+        const dataWithEpic: DashboardData = {
+            ...mockData,
+            epics: [
+                { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', remaining_md: 5, target_start: '2026-01-01', target_end: '2026-01-14' }
+            ],
+            teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
+        };
+
+        const updateEpicSpy = vi.fn();
+
+        render(
+            <DashboardProvider value={{ data: dataWithEpic, updateEpic: updateEpicSpy }}>
+                <WorkItemPage {...defaultProps} data={dataWithEpic} workItemId="f1" />
+            </DashboardProvider>
+        );
+
+        // Switch to Epics tab
+        const epicsTab = screen.getByText(/Epics \(/i);
+        fireEvent.click(epicsTab);
+
+        // Since it's a table, let's find by value
+        const startInput = screen.getByDisplayValue('2026-01-01');
+        
+        // Change start to 2026-01-15 (after end 2026-01-14)
+        fireEvent.change(startInput, { target: { value: '2026-01-15' } });
+
+        expect(screen.getByText('Invalid Dates')).toBeDefined();
+        expect(screen.getByText('The Start Date must be before the End Date.')).toBeDefined();
+        
+        expect(updateEpicSpy).not.toHaveBeenCalled();
+    });
 });

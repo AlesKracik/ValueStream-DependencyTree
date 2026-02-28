@@ -44,6 +44,15 @@ export const EpicPage: React.FC<EpicPageProps> = ({
     };
 
     const updateEpicWithOverlapCheck = async (id: string, updates: Partial<Epic>) => {
+        // Validation: Start Date must be before End Date
+        const newStart = updates.target_start || epic.target_start;
+        const newEnd = updates.target_end || epic.target_end;
+
+        if (newStart && newEnd && parseISO(newStart) >= parseISO(newEnd)) {
+            await showAlert('Invalid Dates', 'The Start Date must be before the End Date.');
+            return;
+        }
+
         // If updating dates, check for historical overlap
         if (updates.target_start || updates.target_end) {
             const activeSprintStart = getActiveSprintStart();

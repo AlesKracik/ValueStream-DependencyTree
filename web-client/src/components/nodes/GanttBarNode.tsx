@@ -79,7 +79,7 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
 
             if (dragState.active === 'left') {
                 const newStart = addDays(sDate, deltaDays);
-                if (newStart <= eDate) {
+                if (newStart < eDate) {
                     newStartStr = format(newStart, 'yyyy-MM-dd');
                 } else {
                     setDragState({ active: null, startX: 0, currentDelta: 0 });
@@ -87,7 +87,7 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
                 }
             } else if (dragState.active === 'right') {
                 const newEnd = addDays(eDate, deltaDays);
-                if (newEnd >= sDate) {
+                if (newEnd > sDate) {
                     newEndStr = format(newEnd, 'yyyy-MM-dd');
                 } else {
                     setDragState({ active: null, startX: 0, currentDelta: 0 });
