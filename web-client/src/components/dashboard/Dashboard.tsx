@@ -273,10 +273,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
             const epicId = node.id.replace('gantt-', '');
             onNavigateToEpic(epicId);
         } else if (node.type === 'sprintCapacityNode') {
-            // sprint-cap-{teamId}-{sprintId}
-            const parts = node.id.split('-');
-            const sprintId = parts[parts.length - 1];
-            onNavigateToSprint(sprintId);
+            // Navigate to the general sprint list instead of individual sprint
+            onNavigateToSprint('list');
         }
     }, [onNavigateToCustomer, onNavigateToWorkItem, onNavigateToTeam, onNavigateToEpic, onNavigateToSprint]);
 

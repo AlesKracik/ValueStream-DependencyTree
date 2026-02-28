@@ -1,0 +1,93 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { Dashboard } from '../Dashboard';
+import { ReactFlowProvider } from '@xyflow/react';
+import { DashboardProvider } from '../../../contexts/DashboardContext';
+import type { DashboardData, DashboardViewState } from '../../../types/models';
+
+// Mock ResizeObserver which is needed by React Flow
+global.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+};
+
+const mockData: DashboardData = {
+    dashboards: [],
+    settings: { jira_base_url: '', jira_api_version: '3' },
+    customers: [{ id: 'c1', name: 'Customer 1', existing_tcv: 100, potential_tcv: 50 }],
+    workItems: [{ id: 'w1', name: 'Work Item 1', total_effort_mds: 10, score: 0, customer_targets: [] }],
+    teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 100 }],
+    epics: [{ id: 'e1', jira_key: 'E1', work_item_id: 'w1', team_id: 't1', effort_md: 5, target_start: '2026-01-01', target_end: '2026-01-14' }],
+    sprints: [{ id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' }]
+};
+
+const mockViewState: DashboardViewState = {
+    sprintOffset: 0,
+    customerFilter: '',
+    workItemFilter: '',
+    teamFilter: '',
+    epicFilter: '',
+    releasedFilter: 'all',
+    minTcvFilter: '',
+    minScoreFilter: '',
+    showDependencies: true,
+    disableHoverHighlight: false,
+    isInitialOffsetSet: true
+};
+
+describe('Dashboard', () => {
+    const onNavigateToSprint = vi.fn();
+    const onNavigateToCustomer = vi.fn();
+
+    const defaultProps = {
+        data: mockData,
+        loading: false,
+        error: null,
+        updateCustomer: vi.fn(),
+        updateWorkItem: vi.fn(),
+        updateTeam: vi.fn(),
+        viewState: mockViewState,
+        setViewState: vi.fn(),
+        onNavigateToCustomer,
+        onNavigateToWorkItem: vi.fn(),
+        onNavigateToTeam: vi.fn(),
+        onNavigateToEpic: vi.fn(),
+        onNavigateToSprint
+    };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('navigates to sprint list when sprint capacity node is clicked', () => {
+        render(
+            <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ReactFlowProvider>
+                    <Dashboard {...defaultProps} />
+                </ReactFlowProvider>
+            </DashboardProvider>
+        );
+
+        // Find the sprint capacity node. In tests, we might need to look for the sprint label
+        const sprintHeader = screen.getByText('Sprint 1');
+        fireEvent.click(sprintHeader);
+
+        expect(onNavigateToSprint).toHaveBeenCalledWith('list');
+    });
+
+    it('navigates to customer page when customer node is clicked', () => {
+        render(
+            <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ReactFlowProvider>
+                    <Dashboard {...defaultProps} />
+                </ReactFlowProvider>
+            </DashboardProvider>
+        );
+
+        const customerNode = screen.getByText('Customer 1');
+        fireEvent.click(customerNode);
+
+        expect(onNavigateToCustomer).toHaveBeenCalledWith('c1');
+    });
+});
