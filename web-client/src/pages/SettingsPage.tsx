@@ -498,7 +498,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             <button
               type="button"
               onClick={handleImportFromJira}
-              style={{ padding: "8px 16px", backgroundColor: "#10b981", color: "#fff", border: "1px solid #059669", borderRadius: "4px", cursor: "pointer", fontWeight: 500, alignSelf: "flex-start", marginTop: "4px" }}
+              style={{ padding: "8px 16px", backgroundColor: "#3b82f6", color: "#fff", border: "1px solid #2563eb", borderRadius: "4px", cursor: "pointer", fontWeight: 500, alignSelf: "flex-start", marginTop: "4px" }}
               disabled={isTesting || isSyncing || isImporting || (!formData.jira_base_url && !formData.jira_api_token) || !importJql.trim()}
             >
               {isImporting ? importProgress : "Import from Jira"}
