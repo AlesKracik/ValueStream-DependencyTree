@@ -562,7 +562,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                     onClick={() => handleSyncJira(epic.id, epic.jira_key)}
                                                     disabled={!epic.jira_key || epic.jira_key === 'TBD' || syncingId === epic.id}
                                                     className={styles.saveBtn}
-                                                    style={{ backgroundColor: '#10b981', borderColor: '#059669', padding: '6px 12px' }}
+                                                    style={{ backgroundColor: '#10b981', borderColor: '#059669', padding: '6px 12px', whiteSpace: 'nowrap' }}
                                                 >
                                                     {syncingId === epic.id ? 'Syncing...' : 'Sync from Jira'}
                                                 </button>
