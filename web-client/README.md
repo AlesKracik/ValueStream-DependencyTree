@@ -34,8 +34,8 @@ The MVP is built entirely as a client-side Single Page Application (SPA), relyin
 * **Rendering Engine:** `@xyflow/react` (React Flow)
 * **CSS System:** Standard Modules (`*.module.css`) + Inline styles for dynamic SVG sizing.
 
-### 2. The Data Model (`mockData.json`)
-All dashboard state is hydrated from a strict dictionary footprint injected via `public/mockData.json`. This acts as the "backend database":
+### 2. The Data Model (`staticImport.json`)
+All dashboard state is hydrated from a strict dictionary footprint injected via `public/staticImport.json`. This acts as the "backend database":
 * **Customers:** Defined by `existing_tcv` and `potential_tcv`.
 * **Work Items:** Bound to Customers via `customer_targets` (existing vs potential). Contains the total Effort (MD).
 * **Teams:** Total specific capacity parameters.
@@ -53,7 +53,7 @@ Instead of using automated algorithm-based layout (like Dagre), the dashboard re
 ### 4. Custom Node Interactions
 * React Flow uses heavily customized Node types (e.g. `CustomerNode`, `WorkItemNode`, `GanttBarNode`) mapped in `Dashboard.tsx`.
 * **Hover Tracing:** Handled globally by edge-searching. When you hover a work item, it recursively traverses edges backward to highlight its owning Customers and forward to highlight its resulting Gantt Sprints.
-* **Context Modals:** Right-clicking almost any element pulls up React State `EditNodeModal.tsx` popups allowing real-time injection of patched metrics back into the running `mockData.json` DOM layout context!
+* **Context Modals:** Right-clicking almost any element pulls up React State `EditNodeModal.tsx` popups allowing real-time injection of patched metrics back into the running `staticImport.json` DOM layout context!
 
 ---
 

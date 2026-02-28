@@ -6,7 +6,7 @@
 
 To build an interactive, zero-mental-math visualization that connects **Customer Demand** ("Why"), **Work Item Scope** ("What"), **Team Supply** ("Who"), and **Delivery Schedule** ("When") in a single, horizontally flowing dashboard. It allows Product and Engineering leaders to instantly identify high-ROI initiatives, spot execution bottlenecks, and visualize parallel work streams.
 
-The solution is an entirely local, client-side web application built on Vite and React. It utilizes an injected node proxy dev-server to handle remote API connections securely and persists its internal state fully to local disk (`mockData.json`).
+The solution is an entirely local, client-side web application built on Vite and React. It utilizes an injected node proxy dev-server to handle remote API connections securely and persists its internal state fully to local disk (`staticImport.json`).
 
 ## 2. Layout & Architecture (4-Stage Flow)
 

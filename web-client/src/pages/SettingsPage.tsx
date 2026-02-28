@@ -85,13 +85,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'mockData.json';
+        link.download = 'staticImport.json';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
         
-        setTestResult({ success: true, message: "Export successful! mockData.json download started." });
+        setTestResult({ success: true, message: "Export successful! staticImport.json download started." });
       } else {
         setTestResult({ success: false, message: resData.error || "Export failed" });
       }
@@ -407,7 +407,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               Export Data
             </h3>
             <p style={{ color: "#9ca3af", fontSize: "13px", margin: "0 0 8px 0" }}>
-              Downloads current MongoDB content as mockData.json for local backup or sharing.
+              Downloads current MongoDB content as staticImport.json for local backup or sharing.
             </p>
             <button
               type="button"
@@ -415,7 +415,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               style={{ padding: "8px 16px", backgroundColor: "#3b82f6", color: "#fff", border: "1px solid #2563eb", borderRadius: "4px", cursor: "pointer", fontWeight: 500, alignSelf: "flex-start" }}
               disabled={isTesting || !formData.mongo_uri}
             >
-              {isTesting ? "Exporting..." : "Export to mockData.json"}
+              {isTesting ? "Exporting..." : "Export to staticImport.json"}
             </button>
           </>
         )}

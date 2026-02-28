@@ -54,7 +54,7 @@ describe('SettingsPage', () => {
         );
 
         expect(screen.getByText('MongoDB Persistence')).toBeDefined();
-        expect(screen.getByText('Export to mockData.json')).toBeDefined();
+        expect(screen.getByText('Export to staticImport.json')).toBeDefined();
     });
 
     it('calls export API and triggers download when Export button is clicked', async () => {
@@ -68,7 +68,7 @@ describe('SettingsPage', () => {
             />
         );
 
-        const exportBtn = screen.getByText('Export to mockData.json');
+        const exportBtn = screen.getByText('Export to staticImport.json');
         fireEvent.click(exportBtn);
 
         expect(global.fetch).toHaveBeenCalledWith('/api/mongo/export', expect.objectContaining({
@@ -77,7 +77,7 @@ describe('SettingsPage', () => {
 
         await vi.waitFor(() => {
             expect(global.URL.createObjectURL).toHaveBeenCalled();
-            expect(screen.getByText(/Export successful! mockData.json download started/i)).toBeDefined();
+            expect(screen.getByText(/Export successful! staticImport.json download started/i)).toBeDefined();
         });
     });
 
@@ -96,6 +96,6 @@ describe('SettingsPage', () => {
         fireEvent.click(jiraTab);
 
         expect(screen.getByLabelText(/Jira Base URL:/i)).toBeDefined();
-        expect(screen.queryByText('Export to mockData.json')).toBeNull();
+        expect(screen.queryByText('Export to staticImport.json')).toBeNull();
     });
 });

@@ -21,7 +21,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
       if (req.url === '/api/loadData' && req.method === 'GET') {
         try {
           const settingsPath = path.resolve(__dirname, 'public/settings.json');
-          const mockDataPath = path.resolve(__dirname, 'public/mockData.json');
+          const mockDataPath = path.resolve(__dirname, 'public/staticImport.json');
 
           let settings: any = {};
           if (fs.existsSync(settingsPath)) {
@@ -81,7 +81,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
                 dashboards: stripId(dashboards),
               };
 
-              // If database is empty, seed it with mockData.json
+              // If database is empty, seed it with staticImport.json
               if (dbData.customers.length === 0 && fs.existsSync(mockDataPath)) {
                  const localData = JSON.parse(fs.readFileSync(mockDataPath, 'utf-8'));
                  if (localData.customers && localData.customers.length > 0) {
@@ -222,7 +222,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
       } else if (req.url === '/api/mongo/export' && req.method === 'POST') {
         try {
           const settingsPath = path.resolve(__dirname, 'public/settings.json');
-          const mockDataPath = path.resolve(__dirname, 'public/mockData.json');
+          const mockDataPath = path.resolve(__dirname, 'public/staticImport.json');
 
           if (!fs.existsSync(settingsPath)) {
             throw new Error("Settings file not found.");
@@ -410,7 +410,7 @@ export default defineConfig({
   server: {
     watch: {
       // Prevent Vite server from full-page reloading every time mockData is written
-      ignored: ['**/public/mockData.json']
+      ignored: ['**/public/staticImport.json']
     }
   },
   test: {
