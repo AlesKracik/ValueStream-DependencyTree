@@ -1,10 +1,10 @@
 import { renderHook } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { useGraphLayout } from '../useGraphLayout';
 import type { DashboardData } from '../../types/models';
 
 const MOCK_DATA: DashboardData = {
-    settings: { jira_base_url: "https://jira", jira_api_version: "3" },
+    dashboards: [], settings: { jira_base_url: "https://jira", jira_api_version: "3" },
     customers: [
         { id: 'c1', name: 'Cust 1', existing_tcv: 100, potential_tcv: 0 },
         { id: 'c2', name: 'Cust 2', existing_tcv: 1000, potential_tcv: 500 }
@@ -34,7 +34,7 @@ const MOCK_DATA: DashboardData = {
     ],
     sprints: [
         { id: 's1', name: 'Sprint 1', start_date: '2026-02-12', end_date: '2026-02-26' }
-    ]
+    ],
 };
 
 describe('useGraphLayout Math Engine', () => {
@@ -75,7 +75,7 @@ describe('useGraphLayout Math Engine', () => {
     });
 
     it('gracefully handles empty data', () => {
-        const { result } = renderHook(() => useGraphLayout(null, null, 0, '', '', '', '', true));
+        const { result } = renderHook(() => useGraphLayout(null, null, 0, '', '', 'all', '', '', true));
         expect(result.current.nodes).toEqual([]);
         expect(result.current.edges).toEqual([]);
     });
@@ -193,8 +193,8 @@ describe('useGraphLayout Math Engine', () => {
         const splitSegments = splitNode?.data.segments;
 
         // Find segment for s_past
-        const pastSeg = splitSegments?.find((s: any) => s.isFrozen === true);
-        const currSeg = splitSegments?.find((s: any) => s.isFrozen === false);
+        const pastSeg = (splitSegments as any[])?.find((s: any) => s.isFrozen === true);
+        const currSeg = (splitSegments as any[])?.find((s: any) => s.isFrozen === false);
 
         expect(pastSeg).toBeDefined();
         expect(pastSeg.color).toBe('#475569'); // Slate Blue
@@ -228,13 +228,13 @@ describe('useGraphLayout Math Engine', () => {
         // Render with offset 0 (S1-S6)
         const { result: res1 } = renderHook(() => useGraphLayout(dataForIntensity, null, 0));
         const node1 = res1.current.nodes.find(n => n.id === 'gantt-e_long');
-        const intensityS2_view1 = node1?.data.segments.find((s: any) => s.startOffsetPixels > 0)?.intensity;
+        const intensityS2_view1 = (node1?.data.segments as any[])?.find((s: any) => s.startOffsetPixels > 0)?.intensity;
 
         // Render with offset 1 (S2-S7)
         const { result: res2 } = renderHook(() => useGraphLayout(dataForIntensity, null, 1));
         const node2 = res2.current.nodes.find(n => n.id === 'gantt-e_long');
         // In this view, S2 is the first visible sprint, so offset is 0
-        const intensityS2_view2 = node2?.data.segments[0].intensity;
+        const intensityS2_view2 = (node2?.data.segments as any[])?.[0].intensity;
 
         expect(intensityS2_view1).toBeDefined();
         expect(intensityS2_view2).toBeDefined();

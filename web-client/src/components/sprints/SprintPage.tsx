@@ -14,7 +14,7 @@ export interface SprintPageProps {
     updateSprint: (id: string, updates: Partial<Sprint>) => void;
     deleteSprint: (id: string) => void;
     onNavigateToSprint: (id: string) => void;
-    saveDashboardData: (data: DashboardData) => Promise<void>;
+    
 }
 
 export const SprintPage: React.FC<SprintPageProps> = ({
@@ -26,12 +26,10 @@ export const SprintPage: React.FC<SprintPageProps> = ({
     addSprint,
     updateSprint,
     deleteSprint,
-    onNavigateToSprint,
-    saveDashboardData
+    onNavigateToSprint
 }) => {
     const { showConfirm } = useDashboardContext();
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-    const isNew = sprintId === 'new';
+        const isNew = sprintId === 'new';
 
     // Draft states for new sprint creation
     const [newSprintDraft, setNewSprintDraft] = useState<Partial<Sprint>>(() => {
@@ -55,8 +53,7 @@ export const SprintPage: React.FC<SprintPageProps> = ({
     if (!sprint) return <div className={styles.pageContainer}>Sprint not found.</div>;
 
     const handleSave = async () => {
-        setSaveStatus('saving');
-        try {
+                try {
             if (isNew) {
                 const newId = `s${Date.now()}`;
                 const newSprint: Sprint = {
@@ -67,41 +64,30 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                 };
 
                 addSprint(newSprint);
-                const newData = { ...data, sprints: [...data.sprints, newSprint].sort((a, b) => a.start_date.localeCompare(b.start_date)) };
-                await saveDashboardData(newData);
-                setSaveStatus('saved');
-                setTimeout(() => {
-                    setSaveStatus('idle');
-                    onBack();
+                
+                
+                                setTimeout(() => {
+                                        onBack();
                 }, 1000);
             } else {
-                await saveDashboardData(data);
-                setSaveStatus('saved');
-                setTimeout(() => setSaveStatus('idle'), 2000);
-            }
+                
+                                            }
         } catch (err) {
             console.error('Save failed', err);
-            setSaveStatus('error');
-            setTimeout(() => setSaveStatus('idle'), 3000);
-        }
+                                }
     };
 
     const handleDelete = async () => {
         const confirmed = await showConfirm('Delete Sprint', `Are you sure you want to delete ${sprint.name}? This may affect Gantt bar alignments.`);
         if (!confirmed) return;
-        setSaveStatus('saving');
-        try {
+                try {
             deleteSprint(sprintId);
-            const newData = {
-                ...data,
-                sprints: data.sprints.filter(s => s.id !== sprintId)
-            };
-            await saveDashboardData(newData);
+            
+            
             onBack();
         } catch (err) {
             console.error('Delete failed', err);
-            setSaveStatus('error');
-        }
+                    }
     };
 
     return (
@@ -109,19 +95,19 @@ export const SprintPage: React.FC<SprintPageProps> = ({
             <div className={styles.header}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <button className={styles.backBtn} onClick={onBack}>
-                        ← Back to Dashboard
+                        ← Back
                     </button>
                     <h1>Sprint Management</h1>
                 </div>
                 <div style={{ display: 'flex', gap: '16px' }}>
-                    <button 
+                    {isNew ? (<button 
                         className={styles.saveBtn} 
                         style={{ backgroundColor: '#2563eb', borderColor: '#1d4ed8' }}
                         onClick={handleSave}
-                        disabled={saveStatus === 'saving'}
+                        
                     >
-                        {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved!' : saveStatus === 'error' ? 'Error' : 'Save Changes'}
-                    </button>
+                        Create
+                    </button>) : null}
                 </div>
             </div>
 

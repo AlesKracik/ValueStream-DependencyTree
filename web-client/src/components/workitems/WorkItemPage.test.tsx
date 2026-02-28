@@ -5,7 +5,7 @@ import { DashboardProvider } from '../../contexts/DashboardContext';
 import type { DashboardData } from '../../types/models';
 
 const mockData: DashboardData = {
-    settings: {
+    dashboards: [], settings: {
         jira_base_url: 'https://jira.example.com',
         jira_api_token: 'token',
         jira_api_version: '3'
@@ -29,7 +29,7 @@ const mockData: DashboardData = {
     ],
     epics: [],
     teams: [],
-    sprints: []
+    sprints: [],
 };
 
 describe('WorkItemPage', () => {
@@ -43,8 +43,7 @@ describe('WorkItemPage', () => {
         updateWorkItem: vi.fn(),
         addEpic: vi.fn(),
         deleteEpic: vi.fn(),
-        updateEpic: vi.fn(),
-        saveDashboardData: vi.fn(),
+        updateEpic: vi.fn()
     };
 
     it('should have Nice-to-have option in the priority dropdown for existing targets', () => {

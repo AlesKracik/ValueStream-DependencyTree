@@ -4,7 +4,7 @@ import type { DashboardData } from '../../types/models';
 import { describe, it, expect } from 'vitest';
 
 const mockData: DashboardData = {
-    settings: {
+    dashboards: [], settings: {
         jira_base_url: '',
         jira_api_token: '',
         jira_api_version: '3'
@@ -33,7 +33,7 @@ const mockData: DashboardData = {
     ],
     epics: [],
     teams: [],
-    sprints: []
+    sprints: [],
 };
 
 describe('useGraphLayout - Numeric Filters', () => {

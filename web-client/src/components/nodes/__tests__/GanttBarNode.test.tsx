@@ -1,5 +1,5 @@
 import { render, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { GanttBarNode } from '../GanttBarNode';
 import { DashboardProvider } from '../../../contexts/DashboardContext';
 import type { DashboardData } from '../../../types/models';
@@ -11,7 +11,7 @@ vi.mock('@xyflow/react', () => ({
 }));
 
 const mockData: DashboardData = {
-    settings: { jira_base_url: 'https://jira', jira_api_version: '3' },
+    dashboards: [], settings: { jira_base_url: 'https://jira', jira_api_version: '3' },
     customers: [],
     workItems: [],
     teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }],

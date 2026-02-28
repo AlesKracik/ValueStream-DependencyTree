@@ -1,5 +1,29 @@
 import { useState, useEffect } from 'react';
-import type { DashboardData, Customer, WorkItem, Team, Epic, Settings } from '../types/models';
+import type { DashboardData, Customer, WorkItem, Team, Epic, Settings, Sprint } from '../types/models';
+
+const persistEntity = async (collection: string, method: 'POST' | 'DELETE', entity: any) => {
+    try {
+        await fetch(`/api/entity/${collection}`, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(entity)
+        });
+    } catch (e) {
+        console.error(`Failed to ${method} entity in ${collection}`, e);
+    }
+};
+
+const persistSettings = async (settings: any) => {
+    try {
+        await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        });
+    } catch (e) {
+        console.error("Failed to persist settings", e);
+    }
+};
 
 export function useDashboardData() {
     const [data, setData] = useState<DashboardData | null>(null);
@@ -9,7 +33,7 @@ export function useDashboardData() {
     useEffect(() => {
         async function fetchData() {
             try {
-                const response = await fetch('/mockData.json');
+                const response = await fetch('/api/loadData');
                 if (!response.ok) {
                     throw new Error('Failed to fetch data');
                 }
@@ -28,23 +52,33 @@ export function useDashboardData() {
     const addCustomer = (customer: Customer) => {
         setData(prev => {
             if (!prev) return prev;
-            return {
-                ...prev,
-                customers: [...prev.customers, customer]
-            };
+            persistEntity('customers', 'POST', customer);
+            return { ...prev, customers: [...prev.customers, customer] };
         });
     };
 
     const deleteCustomer = (id: string) => {
         setData(prev => {
             if (!prev) return prev;
+            
+            const updatedWorkItems = prev.workItems.map(f => ({
+                ...f,
+                customer_targets: f.customer_targets.filter(ct => ct.customer_id !== id)
+            }));
+            
+            persistEntity('customers', 'DELETE', { id });
+            
+            // Persist cascaded updates
+            prev.workItems.forEach((oldW, i) => {
+                if (oldW.customer_targets.length !== updatedWorkItems[i].customer_targets.length) {
+                    persistEntity('workItems', 'POST', updatedWorkItems[i]);
+                }
+            });
+
             return {
                 ...prev,
                 customers: prev.customers.filter(c => c.id !== id),
-                workItems: prev.workItems.map(f => ({
-                    ...f,
-                    customer_targets: f.customer_targets.filter(ct => ct.customer_id !== id)
-                }))
+                workItems: updatedWorkItems
             };
         });
     };
@@ -52,6 +86,10 @@ export function useDashboardData() {
     const updateCustomer = (id: string, updates: Partial<Customer>) => {
         setData(prev => {
             if (!prev) return prev;
+            const existing = prev.customers.find(c => c.id === id);
+            if (existing) {
+                persistEntity('customers', 'POST', { ...existing, ...updates });
+            }
             return {
                 ...prev,
                 customers: prev.customers.map(c => c.id === id ? { ...c, ...updates } : c)
@@ -62,20 +100,29 @@ export function useDashboardData() {
     const addWorkItem = (workItem: WorkItem) => {
         setData(prev => {
             if (!prev) return prev;
-            return {
-                ...prev,
-                workItems: [...prev.workItems, workItem]
-            };
+            persistEntity('workItems', 'POST', workItem);
+            return { ...prev, workItems: [...prev.workItems, workItem] };
         });
     };
 
     const deleteWorkItem = (id: string) => {
         setData(prev => {
             if (!prev) return prev;
+            
+            const updatedEpics = prev.epics.map(e => e.work_item_id === id ? { ...e, work_item_id: undefined } : e);
+            
+            persistEntity('workItems', 'DELETE', { id });
+            
+            prev.epics.forEach((oldE, i) => {
+                if (oldE.work_item_id === id) {
+                    persistEntity('epics', 'POST', updatedEpics[i]);
+                }
+            });
+
             return {
                 ...prev,
                 workItems: prev.workItems.filter(f => f.id !== id),
-                epics: prev.epics.map(e => e.work_item_id === id ? { ...e, work_item_id: undefined } : e)
+                epics: updatedEpics
             };
         });
     };
@@ -83,6 +130,10 @@ export function useDashboardData() {
     const updateWorkItem = (id: string, updates: Partial<WorkItem>) => {
         setData(prev => {
             if (!prev) return prev;
+            const existing = prev.workItems.find(w => w.id === id);
+            if (existing) {
+                persistEntity('workItems', 'POST', { ...existing, ...updates });
+            }
             return {
                 ...prev,
                 workItems: prev.workItems.map(f => f.id === id ? { ...f, ...updates } : f)
@@ -93,6 +144,10 @@ export function useDashboardData() {
     const updateTeam = (id: string, updates: Partial<Team>) => {
         setData(prev => {
             if (!prev) return prev;
+            const existing = prev.teams.find(t => t.id === id);
+            if (existing) {
+                persistEntity('teams', 'POST', { ...existing, ...updates });
+            }
             return {
                 ...prev,
                 teams: prev.teams.map(t => t.id === id ? { ...t, ...updates } : t)
@@ -103,26 +158,26 @@ export function useDashboardData() {
     const addEpic = (epic: Epic) => {
         setData(prev => {
             if (!prev) return prev;
-            return {
-                ...prev,
-                epics: [...prev.epics, epic]
-            };
+            persistEntity('epics', 'POST', epic);
+            return { ...prev, epics: [...prev.epics, epic] };
         });
     };
 
     const deleteEpic = (id: string) => {
         setData(prev => {
             if (!prev) return prev;
-            return {
-                ...prev,
-                epics: prev.epics.filter(e => e.id !== id)
-            };
+            persistEntity('epics', 'DELETE', { id });
+            return { ...prev, epics: prev.epics.filter(e => e.id !== id) };
         });
     };
 
     const updateEpic = (id: string, updates: Partial<Epic>) => {
         setData(prev => {
             if (!prev) return prev;
+            const existing = prev.epics.find(e => e.id === id);
+            if (existing) {
+                persistEntity('epics', 'POST', { ...existing, ...updates });
+            }
             return {
                 ...prev,
                 epics: prev.epics.map(e => e.id === id ? { ...e, ...updates } : e)
@@ -133,16 +188,16 @@ export function useDashboardData() {
     const updateSettings = (updates: Partial<Settings>) => {
         setData(prev => {
             if (!prev) return prev;
-            return {
-                ...prev,
-                settings: { ...prev.settings, ...updates }
-            };
+            const newSettings = { ...prev.settings, ...updates };
+            persistSettings(newSettings);
+            return { ...prev, settings: newSettings };
         });
     };
 
     const addSprint = (sprint: Sprint) => {
         setData(prev => {
             if (!prev) return prev;
+            persistEntity('sprints', 'POST', sprint);
             return {
                 ...prev,
                 sprints: [...prev.sprints, sprint].sort((a, b) => a.start_date.localeCompare(b.start_date))
@@ -153,6 +208,10 @@ export function useDashboardData() {
     const updateSprint = (id: string, updates: Partial<Sprint>) => {
         setData(prev => {
             if (!prev) return prev;
+            const existing = prev.sprints.find(s => s.id === id);
+            if (existing) {
+                persistEntity('sprints', 'POST', { ...existing, ...updates });
+            }
             return {
                 ...prev,
                 sprints: prev.sprints.map(s => s.id === id ? { ...s, ...updates } : s).sort((a, b) => a.start_date.localeCompare(b.start_date))
@@ -163,30 +222,12 @@ export function useDashboardData() {
     const deleteSprint = (id: string) => {
         setData(prev => {
             if (!prev) return prev;
+            persistEntity('sprints', 'DELETE', { id });
             return {
                 ...prev,
                 sprints: prev.sprints.filter(s => s.id !== id)
             };
         });
-    };
-
-    const saveDashboardData = async (newData: DashboardData) => {
-        try {
-            const response = await fetch('/api/saveData', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(newData)
-            });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || 'Failed to save data');
-            }
-        } catch (err) {
-            console.error('Error saving dashboard data:', err);
-            throw err;
-        }
     };
 
     return {
@@ -206,7 +247,6 @@ export function useDashboardData() {
         addSprint,
         updateSprint,
         deleteSprint,
-        updateSettings,
-        saveDashboardData
+        updateSettings
     };
 }

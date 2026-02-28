@@ -5,7 +5,7 @@ import { parseISO, differenceInDays } from 'date-fns';
 import '@xyflow/react/dist/style.css';
 
 import { useGraphLayout } from '../../hooks/useGraphLayout';
-import type { DashboardData, Customer, WorkItem, Team, Epic, Settings, DashboardViewState } from '../../types/models';
+import type { DashboardData, Customer, WorkItem, Team, DashboardViewState } from '../../types/models';
 import { CustomerNode } from '../nodes/CustomerNode';
 import { WorkItemNode } from '../nodes/WorkItemNode';
 import { TeamNode } from '../nodes/TeamNode';
@@ -14,9 +14,6 @@ import { SprintCapacityNode } from '../nodes/SprintCapacityNode';
 import { TodayLineNode } from '../nodes/TodayLineNode';
 import { HeaderNode } from '../nodes/HeaderNode';
 import { EditNodeModal } from './EditNodeModal';
-import { SettingsModal } from './SettingsModal';
-import { DocumentationModal } from './DocumentationModal';
-import { DashboardProvider } from '../../contexts/DashboardContext';
 import styles from './Dashboard.module.css';
 
 // Register custom node types with React Flow
@@ -78,9 +75,9 @@ const DashboardControls: React.FC<DashboardControlsProps> = ({ data, nodes, setV
             const maxX = Math.max(...nodesToFit.map(n => n.position.x + (n.measured?.width || 220)));
             const contentWidth = maxX - minX;
 
-            const containerWidth = window.innerWidth;
+            const containerWidth = document.querySelector(`.${styles.flowWrapper}`)?.clientWidth || window.innerWidth;
             let targetZoom = (containerWidth * 0.9) / contentWidth;
-            targetZoom = Math.min(Math.max(targetZoom, 0.5), 0.8);
+            targetZoom = Math.min(Math.max(targetZoom, 0.3), 0.8); // allow zooming out slightly more if needed
 
             const contentCenterX = minX + (contentWidth / 2);
             const targetX = (containerWidth / 2) - (contentCenterX * targetZoom);
@@ -124,10 +121,7 @@ export interface DashboardProps {
     updateCustomer: (id: string, updates: Partial<Customer>) => void;
     updateWorkItem: (id: string, updates: Partial<WorkItem>) => void;
     updateTeam: (id: string, updates: Partial<Team>) => void;
-    updateEpic: (id: string, updates: Partial<Epic>) => void;
-    addEpic: (epic: Epic) => void;
-    updateSettings: (updates: Partial<Settings>) => void;
-    saveDashboardData: (data: DashboardData) => Promise<void>;
+    
     viewState: DashboardViewState;
     setViewState: React.Dispatch<React.SetStateAction<DashboardViewState>>;
     onNavigateToCustomer: (id: string) => void;
@@ -139,8 +133,8 @@ export interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({
     data, loading, error,
-    updateCustomer, updateWorkItem, updateTeam, updateEpic, addEpic, updateSettings,
-    saveDashboardData, viewState, setViewState,
+    updateCustomer, updateWorkItem, updateTeam,
+     viewState, setViewState,
     onNavigateToCustomer,
     onNavigateToWorkItem,
     onNavigateToEpic,
@@ -150,9 +144,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     const { setViewport } = useReactFlow();
     const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
     const [editingNode, setEditingNode] = React.useState<Node | null>(null);
-    const [isSettingsModalOpen, setIsSettingsModalOpen] = React.useState(false);
-    const [isDocsModalOpen, setIsDocsModalOpen] = React.useState(false);
-    const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    
 
     const { nodes, edges } = useGraphLayout(
         data,
@@ -216,9 +208,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 const maxX = Math.max(...nodesToFit.map(n => n.position.x + (n.measured?.width || 220)));
                 const contentWidth = maxX - minX;
 
-                const containerWidth = window.innerWidth;
+                const containerWidth = document.querySelector(`.${styles.flowWrapper}`)?.clientWidth || window.innerWidth;
                 let targetZoom = (containerWidth * 0.9) / contentWidth;
-                targetZoom = Math.min(Math.max(targetZoom, 0.5), 0.8);
+                targetZoom = Math.min(Math.max(targetZoom, 0.3), 0.8);
 
                 const contentCenterX = minX + (contentWidth / 2);
                 const targetX = (containerWidth / 2) - (contentCenterX * targetZoom);
@@ -230,37 +222,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             }
         }
     }, [data, setViewState, viewState.isInitialOffsetSet, nodes, setViewport, viewState.sprintOffset]);
-
-    const handleSave = async () => {
-        if (!data) return;
-        setSaveStatus('saving');
-        try {
-            await saveDashboardData(data);
-            setSaveStatus('saved');
-            setTimeout(() => setSaveStatus('idle'), 2000);
-        } catch (err) {
-            console.error('Failed to save data:', err);
-            setSaveStatus('error');
-            setTimeout(() => setSaveStatus('idle'), 3000);
-        }
-    };
-
-    const handleUpdateSettings = async (updates: Partial<Settings>) => {
-        updateSettings(updates); // update in-memory
-        if (data) {
-            const newData = { ...data, settings: { ...data.settings, ...updates } };
-            setSaveStatus('saving');
-            try {
-                await saveDashboardData(newData);
-                setSaveStatus('saved');
-                setTimeout(() => setSaveStatus('idle'), 2000);
-            } catch (err) {
-                console.error('Failed to save settings:', err);
-                setSaveStatus('error');
-                setTimeout(() => setSaveStatus('idle'), 3000);
-            }
-        }
-    };
 
     const hoverTimeoutRef = React.useRef<number | null>(null);
 
@@ -404,50 +365,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 &gt;
                             </button>
                         </div>
-                        <button
-                            onClick={handleSave}
-                            disabled={saveStatus === 'saving'}
-                            style={{
-                                padding: '8px 16px',
-                                backgroundColor: saveStatus === 'saved' ? '#10b981' : saveStatus === 'error' ? '#ef4444' : '#3b82f6',
-                                border: '1px solid ' + (saveStatus === 'saved' ? '#059669' : saveStatus === 'error' ? '#b91c1c' : '#2563eb'),
-                                color: '#ffffff',
-                                borderRadius: '4px',
-                                cursor: saveStatus === 'saving' ? 'wait' : 'pointer',
-                                fontSize: '14px',
-                                fontWeight: 'bold'
-                            }}
-                        >
-                            {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? '✓ Saved' : saveStatus === 'error' ? 'Error!' : 'Save Changes'}
-                        </button>
-                        <button
-                            onClick={() => setIsDocsModalOpen(true)}
-                            style={{
-                                padding: '8px 16px',
-                                backgroundColor: '#374151',
-                                border: '1px solid #4b5563',
-                                color: '#e5e7eb',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                fontSize: '14px'
-                            }}
-                        >
-                            📖 Documentation
-                        </button>
-                        <button
-                            onClick={() => setIsSettingsModalOpen(true)}
-                            style={{
-                                padding: '8px 16px',
-                                backgroundColor: '#374151',
-                                border: '1px solid #4b5563',
-                                color: '#e5e7eb',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                fontSize: '14px'
-                            }}
-                        >
-                            ⚙️ Settings
-                        </button>
                     </div>
                 </div>
                 <div className={styles.filterBar}>
@@ -586,21 +503,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     onUpdateWorkItem={updateWorkItem}
                     onUpdateTeam={updateTeam}
                 />
-            )}
-
-            {isSettingsModalOpen && (
-                <SettingsModal
-                    onClose={() => setIsSettingsModalOpen(false)}
-                    settings={data.settings}
-                    onUpdateSettings={handleUpdateSettings}
-                    data={data}
-                    updateEpic={updateEpic}
-                    addEpic={addEpic}
-                />
-            )}
-
-            {isDocsModalOpen && (
-                <DocumentationModal onClose={() => setIsDocsModalOpen(false)} />
             )}
         </div>
     );

@@ -1,0 +1,7 @@
+{
+  "jira_base_url": "https://jira.example.com/",
+  "jira_api_version": "2",
+  "jira_api_token": "",
+  "mongo_uri": "mongodb://localhost:27017",
+  "mongo_db": "valueStream"
+}

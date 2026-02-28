@@ -1,0 +1,75 @@
+.layoutContainer {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    background-color: #0f172a;
+    color: #f8fafc;
+}
+
+.sidebar {
+    width: 140px;
+    background-color: #1e293b;
+    border-right: 1px solid #334155;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+    flex-shrink: 0;
+}
+
+.logo {
+    padding: 0 12px 20px;
+    border-bottom: 1px solid #334155;
+    margin-bottom: 20px;
+}
+
+.logo h2 {
+    margin: 0;
+    font-size: 16px;
+    color: #60a5fa;
+    letter-spacing: 0.5px;
+}
+
+.navLinks {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0 8px;
+}
+
+.bottomLinks {
+    border-top: 1px solid #334155;
+    padding: 20px 8px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.navItem {
+    text-decoration: none;
+    color: #cbd5e1;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.navItem:hover {
+    background-color: #334155;
+    color: #fff;
+}
+
+.navItem.active {
+    background-color: #2563eb;
+    color: #fff;
+}
+
+.mainContent {
+    flex: 1;
+    height: 100%;
+    overflow-y: auto;
+    position: relative;
+    background-color: #0f172a;
+}

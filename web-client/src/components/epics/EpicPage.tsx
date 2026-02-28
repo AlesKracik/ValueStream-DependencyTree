@@ -12,7 +12,7 @@ export interface EpicPageProps {
     error: Error | null;
     updateEpic: (id: string, updates: Partial<Epic>) => void;
     deleteEpic: (id: string) => void;
-    saveDashboardData: (data: DashboardData) => Promise<void>;
+    
 }
 
 export const EpicPage: React.FC<EpicPageProps> = ({
@@ -22,11 +22,9 @@ export const EpicPage: React.FC<EpicPageProps> = ({
     loading,
     error,
     updateEpic,
-    deleteEpic,
-    saveDashboardData
+    deleteEpic
 }) => {
     const { showAlert, showConfirm } = useDashboardContext();
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
     const [syncing, setSyncing] = useState<boolean>(false);
     if (loading) return <div>Loading epic details...</div>;
     if (error) return <div>Error: {error.message}</div>;
@@ -34,19 +32,6 @@ export const EpicPage: React.FC<EpicPageProps> = ({
 
     const epic = data.epics.find(e => e.id === epicId);
     if (!epic) return <div>Epic not found.</div>;
-
-    const handleSave = async () => {
-        setSaveStatus('saving');
-        try {
-            await saveDashboardData(data);
-            setSaveStatus('saved');
-            setTimeout(() => setSaveStatus('idle'), 2000);
-        } catch (err) {
-            console.error('Failed to save data:', err);
-            setSaveStatus('error');
-            setTimeout(() => setSaveStatus('idle'), 3000);
-        }
-    };
 
     const getActiveSprintStart = () => {
         const today = new Date();
@@ -98,18 +83,13 @@ export const EpicPage: React.FC<EpicPageProps> = ({
     const handleDelete = async () => {
         const confirmed = await showConfirm('Delete Epic', 'Are you sure you want to completely delete this Epic?');
         if (!confirmed) return;
-        setSaveStatus('saving');
         try {
             deleteEpic(epicId);
-            const newData = {
-                ...data,
-                epics: data.epics.filter(e => e.id !== epicId)
-            };
-            await saveDashboardData(newData);
+            
+            
             onBack();
         } catch (err) {
             console.error('Delete failed', err);
-            setSaveStatus('error');
         }
     };
 
@@ -260,13 +240,12 @@ export const EpicPage: React.FC<EpicPageProps> = ({
         <div className={styles.pageContainer}>
             <div className={styles.header}>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                    <button onClick={onBack} className={styles.backBtn}>← Back to Dashboard</button>
+                    <button onClick={onBack} className={styles.backBtn}>← Back</button>
                     <h1>Epic: {epicId}</h1>
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
                     <button
                         onClick={handleDelete}
-                        disabled={saveStatus === 'saving'}
                         className={styles.dangerBtn}
                         style={{ padding: '8px 16px' }}
                     >
@@ -284,17 +263,6 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                         }}
                     >
                         {syncing ? 'Syncing...' : 'Sync from Jira'}
-                    </button>
-                    <button
-                        onClick={handleSave}
-                        disabled={saveStatus === 'saving'}
-                        className={styles.saveBtn}
-                        style={{
-                            backgroundColor: saveStatus === 'saved' ? '#10b981' : saveStatus === 'error' ? '#ef4444' : '#3b82f6',
-                            borderColor: saveStatus === 'saved' ? '#059669' : saveStatus === 'error' ? '#b91c1c' : '#2563eb'
-                        }}
-                    >
-                        {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? '✓ Saved' : saveStatus === 'error' ? 'Error!' : 'Save Changes'}
                     </button>
                 </div>
             </div>

@@ -4,7 +4,7 @@ import { useDashboardData } from '../useDashboardData';
 import type { DashboardData } from '../../types/models';
 
 const mockData: DashboardData = {
-    settings: { jira_base_url: "https://jira", jira_api_version: "3" },
+    dashboards: [], settings: { jira_base_url: "https://jira", jira_api_version: "3" },
     customers: [
         { id: 'c1', name: 'Cust 1', existing_tcv: 100, potential_tcv: 200 }
     ],
@@ -19,7 +19,7 @@ const mockData: DashboardData = {
     ],
     sprints: [
         { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' }
-    ]
+    ],
 };
 
 // Mock the global fetch

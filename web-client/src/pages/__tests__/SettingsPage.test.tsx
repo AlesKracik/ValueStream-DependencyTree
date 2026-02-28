@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { SettingsModal } from './SettingsModal';
+import { SettingsPage } from '../SettingsPage';
 
-describe('SettingsModal', () => {
+describe('SettingsPage', () => {
     const mockSettings = {
         jira_base_url: 'https://test.atlassian.net',
         jira_api_version: '3' as const,
-        jira_api_token: 'valid-token'
+        jira_api_token: 'valid-token',
+        mongo_uri: '',
+        mongo_db: ''
     };
 
     const mockData = {
@@ -21,6 +23,7 @@ describe('SettingsModal', () => {
         workItems: [],
         customers: [],
         sprints: [],
+        dashboards: [],
         settings: mockSettings
     } as any;
 
@@ -30,7 +33,10 @@ describe('SettingsModal', () => {
     });
 
     it('renders with existing settings', () => {
-        render(<SettingsModal onClose={vi.fn()} onUpdateSettings={vi.fn()} settings={mockSettings} data={mockData} updateEpic={vi.fn()} />);
+        render(<SettingsPage onUpdateSettings={vi.fn()} settings={mockSettings} data={mockData} updateEpic={vi.fn()} addEpic={vi.fn()} />);
+
+        // Switch to Jira tab explicitly
+        fireEvent.click(screen.getByRole('button', { name: 'Jira Integration' }));
 
         expect((screen.getByLabelText(/Jira Base URL/i) as HTMLInputElement).value).toBe('https://test.atlassian.net');
         expect((screen.getByLabelText(/Jira Personal Access Token/i) as HTMLInputElement).value).toBe('valid-token');
@@ -42,7 +48,9 @@ describe('SettingsModal', () => {
             json: async () => ({ success: true, message: 'Connection successful!' })
         });
 
-        render(<SettingsModal onClose={vi.fn()} onUpdateSettings={vi.fn()} settings={mockSettings} data={mockData} updateEpic={vi.fn()} />);
+        render(<SettingsPage onUpdateSettings={vi.fn()} settings={mockSettings} data={mockData} updateEpic={vi.fn()} addEpic={vi.fn()} />);
+        
+        fireEvent.click(screen.getByRole('button', { name: 'Jira Integration' }));
 
         const testBtn = screen.getByRole('button', { name: 'Test Connection' });
         fireEvent.click(testBtn);
@@ -69,7 +77,9 @@ describe('SettingsModal', () => {
             json: async () => ({ success: false, error: 'Unauthorized: Invalid token' })
         });
 
-        render(<SettingsModal onClose={vi.fn()} onUpdateSettings={vi.fn()} settings={mockSettings} data={mockData} updateEpic={vi.fn()} />);
+        render(<SettingsPage onUpdateSettings={vi.fn()} settings={mockSettings} data={mockData} updateEpic={vi.fn()} addEpic={vi.fn()} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Jira Integration' }));
 
         const testBtn = screen.getByRole('button', { name: 'Test Connection' });
         fireEvent.click(testBtn);
@@ -80,30 +90,32 @@ describe('SettingsModal', () => {
     });
 
     it('disables test button if fields are missing', () => {
-        render(<SettingsModal onClose={vi.fn()} onUpdateSettings={vi.fn()} settings={{ ...mockSettings, jira_api_token: '', jira_base_url: '' }} data={mockData} updateEpic={vi.fn()} />);
+        render(<SettingsPage onUpdateSettings={vi.fn()} settings={{ ...mockSettings, jira_api_token: '', jira_base_url: '' }} data={mockData} updateEpic={vi.fn()} addEpic={vi.fn()} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Jira Integration' }));
 
         const testBtn = screen.getByRole('button', { name: 'Test Connection' });
         // Empty token should disable the button
         expect((testBtn as HTMLButtonElement).disabled).toBe(true);
     });
 
-    it('saves updated settings', () => {
+    it('saves updated settings on blur', () => {
         const onUpdateSpy = vi.fn();
-        const onCloseSpy = vi.fn();
-        render(<SettingsModal onClose={onCloseSpy} onUpdateSettings={onUpdateSpy} settings={mockSettings} data={mockData} updateEpic={vi.fn()} />);
+        render(<SettingsPage onUpdateSettings={onUpdateSpy} settings={mockSettings} data={mockData} updateEpic={vi.fn()} addEpic={vi.fn()} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Jira Integration' }));
 
         const tokenInput = screen.getByLabelText(/Jira Personal Access Token/i);
         fireEvent.change(tokenInput, { target: { value: 'new-token' } });
-
-        const saveBtn = screen.getByRole('button', { name: 'Save Settings' });
-        fireEvent.click(saveBtn);
+        fireEvent.blur(tokenInput);
 
         expect(onUpdateSpy).toHaveBeenCalledWith({
             jira_base_url: 'https://test.atlassian.net',
             jira_api_version: '3',
-            jira_api_token: 'new-token'
+            jira_api_token: 'new-token',
+            mongo_db: "",
+            mongo_uri: ""
         });
-        expect(onCloseSpy).toHaveBeenCalled();
     });
 
     it('bulk syncs all valid epics from Jira and issues updates', async () => {
@@ -125,7 +137,9 @@ describe('SettingsModal', () => {
             })
         });
 
-        render(<SettingsModal onClose={vi.fn()} onUpdateSettings={vi.fn()} settings={mockSettings} data={mockData} updateEpic={updateEpicSpy} />);
+        render(<SettingsPage onUpdateSettings={vi.fn()} settings={mockSettings} data={mockData} updateEpic={updateEpicSpy} addEpic={vi.fn()} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Jira Integration' }));
 
         const syncBtn = screen.getByRole('button', { name: 'Sync Epics from Jira' });
         fireEvent.click(syncBtn);

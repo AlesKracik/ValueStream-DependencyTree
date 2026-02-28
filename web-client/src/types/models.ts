@@ -59,6 +59,14 @@ export interface Settings {
   jira_base_url: string;
   jira_api_version: '2' | '3';
   jira_api_token?: string;
+  mongo_uri?: string;
+  mongo_db?: string;
+}
+
+export interface DashboardEntity {
+  id: string;
+  name: string;
+  description: string;
 }
 
 export interface DashboardData {
@@ -68,6 +76,7 @@ export interface DashboardData {
   teams: Team[];
   epics: Epic[];
   sprints: Sprint[];
+  dashboards: DashboardEntity[];
 }
 
 export interface DashboardViewState {

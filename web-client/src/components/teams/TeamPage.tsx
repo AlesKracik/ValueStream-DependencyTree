@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { parseISO, isWeekend } from 'date-fns';
 import Holidays from 'date-holidays';
 import type { DashboardData, Team } from '../../types/models';
@@ -11,7 +11,7 @@ export interface TeamPageProps {
     loading: boolean;
     error: Error | null;
     updateTeam: (id: string, updates: Partial<Team>) => void;
-    saveDashboardData: (data: DashboardData) => Promise<void>;
+    
 }
 
 export const TeamPage: React.FC<TeamPageProps> = ({
@@ -20,30 +20,14 @@ export const TeamPage: React.FC<TeamPageProps> = ({
     data,
     loading,
     error,
-    updateTeam,
-    saveDashboardData
+    updateTeam
 }) => {
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-
     if (loading) return <div>Loading team details...</div>;
     if (error) return <div>Error: {error.message}</div>;
     if (!data) return <div>No data available</div>;
 
     const team = data.teams.find(t => t.id === teamId);
     if (!team) return <div>Team not found.</div>;
-
-    const handleSave = async () => {
-        setSaveStatus('saving');
-        try {
-            await saveDashboardData(data);
-            setSaveStatus('saved');
-            setTimeout(() => setSaveStatus('idle'), 2000);
-        } catch (err) {
-            console.error('Failed to save data:', err);
-            setSaveStatus('error');
-            setTimeout(() => setSaveStatus('idle'), 3000);
-        }
-    };
 
     const hd = useMemo(() => {
         if (!team.country) return null;
@@ -73,21 +57,8 @@ export const TeamPage: React.FC<TeamPageProps> = ({
         <div className={styles.pageContainer}>
             <div className={styles.header}>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                    <button onClick={onBack} className={styles.backBtn}>← Back to Dashboard</button>
+                    <button onClick={onBack} className={styles.backBtn}>← Back</button>
                     <h1>Team: {team.name}</h1>
-                </div>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    <button
-                        onClick={handleSave}
-                        disabled={saveStatus === 'saving'}
-                        className={styles.saveBtn}
-                        style={{
-                            backgroundColor: saveStatus === 'saved' ? '#10b981' : saveStatus === 'error' ? '#ef4444' : '#3b82f6',
-                            borderColor: saveStatus === 'saved' ? '#059669' : saveStatus === 'error' ? '#b91c1c' : '#2563eb'
-                        }}
-                    >
-                        {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? '✓ Saved' : saveStatus === 'error' ? 'Error!' : 'Save Changes'}
-                    </button>
                 </div>
             </div>
 

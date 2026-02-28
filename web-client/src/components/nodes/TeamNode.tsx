@@ -12,7 +12,6 @@ export const TeamNode = memo(({ data }: { data: TeamNodeData }) => {
     // Size ranges from 60px to 140px based on Capacity proportion
     const sizeRatio = data.maxCapacity > 0 ? data.capacityMds / data.maxCapacity : 0.5;
     const nodeSize = data.baseSize * 0.6 + (data.baseSize * 0.8 * sizeRatio);
-    const isSmall = nodeSize < 100;
 
     return (
         <div style={{ position: 'relative', width: nodeSize, height: nodeSize + 40 }}>

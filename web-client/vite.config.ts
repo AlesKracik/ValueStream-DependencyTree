@@ -4,29 +4,205 @@ import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
+import { MongoClient } from 'mongodb'
 
 const MockDataPersistencePlugin = (): Plugin => ({
   name: 'mock-data-persistence',
   configureServer(server: any) {
-    server.middlewares.use((req: any, res: any, next: any) => {
-      if (req.url === '/api/saveData' && req.method === 'POST') {
+    server.middlewares.use(async (req: any, res: any, next: any) => {
+      // helper to connect to Mongo
+      async function getDb(uri: string, dbName: string) {
+        if (!uri) throw new Error("Mongo URI not provided");
+        const client = new MongoClient(uri);
+        await client.connect();
+        return client.db(dbName || 'valuestream');
+      }
+
+      if (req.url === '/api/loadData' && req.method === 'GET') {
+        try {
+          const settingsPath = path.resolve(__dirname, 'public/settings.json');
+          const mockDataPath = path.resolve(__dirname, 'public/mockData.json');
+
+          let settings: any = {};
+          if (fs.existsSync(settingsPath)) {
+            settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+          } else if (fs.existsSync(mockDataPath)) {
+            // Fallback to extract settings from mockData if settings.json doesn't exist yet
+            const mockData = JSON.parse(fs.readFileSync(mockDataPath, 'utf-8'));
+            settings = mockData.settings || {};
+            fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+          }
+
+          const mongoUri = settings.mongo_uri;
+          const mongoDbName = settings.mongo_db;
+
+          let dbData: {
+            settings: any;
+            customers: any[];
+            workItems: any[];
+            teams: any[];
+            epics: any[];
+            sprints: any[];
+            dashboards: any[];
+          } = {
+            settings,
+            customers: [],
+            workItems: [],
+            teams: [],
+            epics: [],
+            sprints: [],
+            dashboards: []
+          };
+
+          if (mongoUri) {
+            try {
+              const db = await getDb(mongoUri, mongoDbName);
+              // Collections to read:
+              const customers = await db.collection('customers').find({}).toArray();
+              const workItems = await db.collection('workItems').find({}).toArray();
+              const teams = await db.collection('teams').find({}).toArray();
+              const epics = await db.collection('epics').find({}).toArray();
+              const sprints = await db.collection('sprints').find({}).toArray();
+              const dashboards = await db.collection('dashboards').find({}).toArray();
+              
+              // strip _id
+              const stripId = (arr: any[]) => arr.map(doc => {
+                const { _id, ...rest } = doc;
+                return rest;
+              });
+
+              dbData = {
+                settings,
+                customers: stripId(customers),
+                workItems: stripId(workItems),
+                teams: stripId(teams),
+                epics: stripId(epics),
+                sprints: stripId(sprints),
+                dashboards: stripId(dashboards),
+              };
+
+              // If database is empty, seed it with mockData.json
+              if (dbData.customers.length === 0 && fs.existsSync(mockDataPath)) {
+                 const localData = JSON.parse(fs.readFileSync(mockDataPath, 'utf-8'));
+                 if (localData.customers && localData.customers.length > 0) {
+                   await db.collection('customers').insertMany(localData.customers);
+                   if (localData.workItems?.length > 0) await db.collection('workItems').insertMany(localData.workItems);
+                   if (localData.teams?.length > 0) await db.collection('teams').insertMany(localData.teams);
+                   if (localData.epics?.length > 0) await db.collection('epics').insertMany(localData.epics);
+                   if (localData.sprints?.length > 0) await db.collection('sprints').insertMany(localData.sprints);
+                   // Create a default dashboard if missing in localData
+                   const defaultDashboards = localData.dashboards || [{ id: 'main', name: 'Main Dependency Tree Dashboard', description: 'Visualizes customers, work items, and epics on a timeline.' }];
+                   await db.collection('dashboards').insertMany(defaultDashboards);
+                   
+                   dbData.customers = localData.customers || [];
+                   dbData.workItems = localData.workItems || [];
+                   dbData.teams = localData.teams || [];
+                   dbData.epics = localData.epics || [];
+                   dbData.sprints = localData.sprints || [];
+                   dbData.dashboards = defaultDashboards;
+                 }
+              }
+            } catch(e) {
+              console.error("MongoDB Error loading data:", e);
+              // Provide empty data instead of falling back to mockData full state
+            }
+          } else {
+             // If no mongo configured, maybe return mockData as a fallback for the very first time, but we don't save to it anymore.
+             if (fs.existsSync(mockDataPath)) {
+                const localData = JSON.parse(fs.readFileSync(mockDataPath, 'utf-8'));
+                if (!localData.dashboards) {
+                    localData.dashboards = [{ id: 'main', name: 'Main Dependency Tree Dashboard', description: 'Visualizes customers, work items, and epics on a timeline.' }];
+                }
+                dbData = { ...localData, settings };
+             }
+          }
+          
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 200;
+          return res.end(JSON.stringify(dbData));
+        } catch (e: any) {
+          console.error('Error loading data:', e);
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 500;
+          res.end(JSON.stringify({ success: false, error: e.message }));
+        }
+      } else if (req.url === '/api/settings' && req.method === 'POST') {
         let body = '';
-        req.on('data', (chunk: any) => {
-          body += chunk.toString();
-        });
+        req.on('data', (chunk: any) => { body += chunk.toString(); });
         req.on('end', () => {
           try {
-            const filePath = path.resolve(__dirname, 'public/mockData.json');
-            // Write formatted JSON
-            fs.writeFileSync(filePath, JSON.stringify(JSON.parse(body), null, 2));
+            const data = JSON.parse(body);
+            const settingsPath = path.resolve(__dirname, 'public/settings.json');
+            fs.writeFileSync(settingsPath, JSON.stringify(data, null, 2));
 
             res.setHeader('Content-Type', 'application/json');
             res.statusCode = 200;
             res.end(JSON.stringify({ success: true }));
           } catch (e: any) {
-            console.error('Error saving mock data:', e);
+            console.error('Error saving settings:', e);
             res.setHeader('Content-Type', 'application/json');
             res.statusCode = 500;
+            res.end(JSON.stringify({ success: false, error: e.message }));
+          }
+        });
+      } else if (req.url.startsWith('/api/entity/') && (req.method === 'POST' || req.method === 'DELETE')) {
+        let body = '';
+        req.on('data', (chunk: any) => { body += chunk.toString(); });
+        req.on('end', async () => {
+          try {
+            const parts = req.url.split('?')[0].split('/');
+            const collectionName = parts[3];
+            const entityId = parts[4]; // might be undefined for POST
+
+            const data = body ? JSON.parse(body) : {};
+            const id = data.id || entityId;
+
+            const settingsPath = path.resolve(__dirname, 'public/settings.json');
+            const settings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+
+            if (!settings.mongo_uri) {
+                throw new Error("No MongoDB URI configured.");
+            }
+            
+            const db = await getDb(settings.mongo_uri, settings.mongo_db);
+
+            if (req.method === 'POST') {
+                if (!id) throw new Error("Missing entity id");
+                await db.collection(collectionName).updateOne({ id }, { $set: data }, { upsert: true });
+            } else if (req.method === 'DELETE') {
+                if (!id) throw new Error("Missing entity id");
+                await db.collection(collectionName).deleteOne({ id });
+            }
+
+            res.setHeader('Content-Type', 'application/json');
+            res.statusCode = 200;
+            res.end(JSON.stringify({ success: true }));
+          } catch (e: any) {
+            console.error(`Error ${req.method} entity:`, e);
+            res.setHeader('Content-Type', 'application/json');
+            res.statusCode = 500;
+            res.end(JSON.stringify({ success: false, error: e.message }));
+          }
+        });
+      } else if (req.url === '/api/mongo/test' && req.method === 'POST') {
+        let body = '';
+        req.on('data', (chunk: any) => { body += chunk.toString(); });
+        req.on('end', async () => {
+          try {
+            const { mongo_uri, mongo_db } = JSON.parse(body);
+            if (!mongo_uri) {
+              throw new Error('Missing mongo_uri');
+            }
+            const db = await getDb(mongo_uri, mongo_db);
+            // Verify connection by fetching a ping command or simply listing collections
+            await db.command({ ping: 1 });
+            res.setHeader('Content-Type', 'application/json');
+            res.statusCode = 200;
+            res.end(JSON.stringify({ success: true, message: 'MongoDB connection successful!' }));
+          } catch (e: any) {
+            console.error('Error testing mongo connection:', e);
+            res.setHeader('Content-Type', 'application/json');
+            res.statusCode = 200; // Return 200 with semantic failure so client parses JSON
             res.end(JSON.stringify({ success: false, error: e.message }));
           }
         });

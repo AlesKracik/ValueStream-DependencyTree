@@ -38,6 +38,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         jira_base_url: settings.jira_base_url,
         jira_api_version: settings.jira_api_version || "3",
         jira_api_token: settings.jira_api_token || "",
+        mongo_uri: settings.mongo_uri || "",
+        mongo_db: settings.mongo_db || "",
       });
     }
   }, [settings]);
@@ -352,6 +354,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       jira_base_url: formData.jira_base_url,
       jira_api_version: formData.jira_api_version as "2" | "3",
       jira_api_token: formData.jira_api_token,
+      mongo_uri: formData.mongo_uri,
+      mongo_db: formData.mongo_db,
     });
     onClose();
   };
@@ -362,6 +366,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <form onSubmit={handleSubmit} style={styles.formContainer}>
           <h2 style={styles.title}>Global Settings</h2>
 
+          <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#e5e7eb", borderBottom: "1px solid #374151", paddingBottom: "4px" }}>
+            Jira Integration
+          </h3>
           <label style={styles.label}>
             Jira Base URL:
             <input
@@ -406,61 +413,42 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             />
           </label>
 
-          {testResult && (
-            <div
-              style={{
-                padding: "10px",
-                borderRadius: "4px",
-                fontSize: "14px",
-                backgroundColor: testResult.success
-                  ? "rgba(16, 185, 129, 0.2)"
-                  : "rgba(239, 68, 68, 0.2)",
-                color: testResult.success ? "#34d399" : "#f87171",
-                border: `1px solid ${testResult.success ? "#059669" : "#b91c1c"}`,
-                marginTop: "8px",
-              }}
+          <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+            <button
+              type="button"
+              onClick={handleTestConnection}
+              style={styles.testBtn}
+              disabled={
+                isTesting ||
+                isSyncing ||
+                isImporting ||
+                (!formData.jira_base_url && !formData.jira_api_token)
+              }
             >
-              {testResult.message}
-            </div>
-          )}
-
-          <div style={styles.buttonGroup}>
-            <div style={{ display: "flex", gap: "8px" }}>
-              <button
-                type="button"
-                onClick={handleTestConnection}
-                style={styles.testBtn}
-                disabled={
-                  isTesting ||
-                  isSyncing ||
-                  isImporting ||
-                  (!formData.jira_base_url && !formData.jira_api_token)
-                }
-              >
-                {isTesting ? "Testing..." : "Test Connection"}
-              </button>
-              <button
-                type="button"
-                onClick={handleSyncAllFromJira}
-                style={{
-                  ...styles.testBtn,
-                  backgroundColor: "#3b82f6",
-                  color: "#fff",
-                  borderColor: "#2563eb",
-                }}
-                disabled={
-                  isTesting ||
-                  isSyncing ||
-                  isImporting ||
-                  (!formData.jira_base_url && !formData.jira_api_token)
-                }
-              >
-                {isSyncing ? syncProgress : "Sync Epics from Jira"}
-              </button>
-            </div>
+              {isTesting ? "Testing..." : "Test Connection"}
+            </button>
+            <button
+              type="button"
+              onClick={handleSyncAllFromJira}
+              style={{
+                ...styles.testBtn,
+                backgroundColor: "#3b82f6",
+                color: "#fff",
+                borderColor: "#2563eb",
+              }}
+              disabled={
+                isTesting ||
+                isSyncing ||
+                isImporting ||
+                (!formData.jira_base_url && !formData.jira_api_token)
+              }
+            >
+              {isSyncing ? syncProgress : "Sync Epics from Jira"}
+            </button>
           </div>
+
           <hr
-            style={{ borderColor: "#374151", width: "100%", margin: "8px 0" }}
+            style={{ borderColor: "#374151", width: "100%", margin: "16px 0 8px 0" }}
           />
           <h3
             style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#e5e7eb" }}
@@ -486,6 +474,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               color: "#fff",
               borderColor: "#059669",
               alignSelf: "flex-start",
+              marginTop: "4px",
             }}
             disabled={
               isTesting ||
@@ -497,6 +486,104 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           >
             {isImporting ? importProgress : "Import from Jira"}
           </button>
+
+          <h3 style={{ margin: "24px 0 4px 0", fontSize: "15px", color: "#e5e7eb", borderBottom: "1px solid #374151", paddingBottom: "4px" }}>
+            MongoDB Persistence
+          </h3>
+          <label style={styles.label}>
+            MongoDB URI (Local SCRAM):
+            <input
+              style={styles.input}
+              type="text"
+              placeholder="mongodb://username:password@localhost:27017"
+              value={formData.mongo_uri || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, mongo_uri: e.target.value })
+              }
+            />
+          </label>
+
+          <label style={styles.label}>
+            MongoDB Database Name:
+            <input
+              style={styles.input}
+              type="text"
+              placeholder="valuestream"
+              value={formData.mongo_db || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, mongo_db: e.target.value })
+              }
+            />
+          </label>
+          <button
+            type="button"
+            onClick={async () => {
+                if (!formData.mongo_uri) {
+                    setTestResult({
+                        success: false,
+                        message: "MongoDB URI is required to test.",
+                    });
+                    return;
+                }
+                setIsTesting(true);
+                setTestResult(null);
+                try {
+                    const response = await fetch("/api/mongo/test", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            mongo_uri: formData.mongo_uri,
+                            mongo_db: formData.mongo_db
+                        }),
+                    });
+                    const data = await response.json();
+                    if (response.ok && data.success) {
+                        setTestResult({
+                            success: true,
+                            message: data.message || "MongoDB connection successful!",
+                        });
+                    } else {
+                        setTestResult({
+                            success: false,
+                            message: data.error || "MongoDB connection failed",
+                        });
+                    }
+                } catch (e: any) {
+                    setTestResult({
+                        success: false,
+                        message: e.message || "Network error occurred testing MongoDB connection.",
+                    });
+                } finally {
+                    setIsTesting(false);
+                }
+            }}
+            style={{
+                ...styles.testBtn,
+                alignSelf: "flex-start",
+                marginTop: "4px"
+            }}
+            disabled={isTesting || !formData.mongo_uri}
+          >
+            {isTesting ? "Testing Mongo..." : "Test Mongo Connection"}
+          </button>
+
+          {testResult && (
+            <div
+              style={{
+                padding: "10px",
+                borderRadius: "4px",
+                fontSize: "14px",
+                backgroundColor: testResult.success
+                  ? "rgba(16, 185, 129, 0.2)"
+                  : "rgba(239, 68, 68, 0.2)",
+                color: testResult.success ? "#34d399" : "#f87171",
+                border: `1px solid ${testResult.success ? "#059669" : "#b91c1c"}`,
+                marginTop: "16px",
+              }}
+            >
+              {testResult.message}
+            </div>
+          )}
 
           <div
             style={{

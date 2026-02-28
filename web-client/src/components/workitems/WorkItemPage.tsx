@@ -16,7 +16,7 @@ export interface WorkItemPageProps {
     addEpic: (e: Epic) => void;
     deleteEpic: (id: string) => void;
     updateEpic: (id: string, updates: Partial<Epic>) => void;
-    saveDashboardData: (data: DashboardData) => Promise<void>;
+    
 }
 
 export const WorkItemPage: React.FC<WorkItemPageProps> = ({
@@ -29,12 +29,10 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     deleteWorkItem,
     updateWorkItem,
     addEpic,
-    updateEpic,
-    saveDashboardData
+    updateEpic
 }) => {
     const { showAlert, showConfirm } = useDashboardContext();
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-    const isNew = workItemId === 'new';
+        const isNew = workItemId === 'new';
 
     // Draft states for new workItem creation
     const [newWorkItemDraft, setNewWorkItemDraft] = useState<Partial<WorkItem>>({ name: 'New Work Item', total_effort_mds: 0, customer_targets: [] });
@@ -55,8 +53,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
         : data.customers.filter(c => workItem.customer_targets?.some(ct => ct.customer_id === c.id));
 
     const handleSave = async () => {
-        setSaveStatus('saving');
-        try {
+                try {
             if (isNew) {
                 const newId = `f${Date.now()}`;
                 const newFeat: WorkItem = {
@@ -79,47 +76,31 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                 addWorkItem(newFeat);
                 epicsToAdd.forEach(e => addEpic(e));
 
-                const newData = {
-                    ...data,
-                    workItems: [...data.workItems, newFeat],
-                    epics: [...data.epics, ...epicsToAdd]
-                };
-                await saveDashboardData(newData);
+                
+                
 
-                setSaveStatus('saved');
-                setTimeout(() => {
-                    setSaveStatus('idle');
-                    onBack(); // Return to dashboard once fully saved and injected
+                                setTimeout(() => {
+                                        onBack(); // Return to dashboard once fully saved and injected
                 }, 1000);
             } else {
-                await saveDashboardData(data);
-                setSaveStatus('saved');
-                setTimeout(() => setSaveStatus('idle'), 2000);
-            }
+                
+                                            }
         } catch (err) {
             console.error('Save failed', err);
-            setSaveStatus('error');
-            setTimeout(() => setSaveStatus('idle'), 3000);
-        }
+                                }
     };
 
     const handleDelete = async () => {
         const confirmed = await showConfirm('Delete Work Item', 'Are you sure you want to delete this work item? It will be removed from all associated epics.');
         if (!confirmed) return;
-        setSaveStatus('saving');
-        try {
+                try {
             deleteWorkItem(workItemId);
-            const newData = {
-                ...data,
-                workItems: data.workItems.filter(f => f.id !== workItemId),
-                epics: data.epics.map(e => e.work_item_id === workItemId ? { ...e, work_item_id: undefined } : e)
-            };
-            await saveDashboardData(newData);
+            
+            
             onBack();
         } catch (err) {
             console.error('Delete failed', err);
-            setSaveStatus('error');
-        }
+                    }
     };
 
     const epics = isNew ? newWorkItemEpics : data.epics.filter(e => e.work_item_id === workItemId);
@@ -232,7 +213,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
             <div className={styles.header}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <button className={styles.backBtn} onClick={onBack}>
-                        ← Back to Dashboard
+                        ← Back
                     </button>
                     <h1>{isNew ? 'New Work Item' : workItem.name}</h1>
                 </div>
@@ -246,14 +227,14 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                             Delete Work Item
                         </button>
                     )}
-                    <button
+                    {isNew ? (<button
                         className={styles.saveBtn}
                         style={{ backgroundColor: '#2563eb', borderColor: '#1d4ed8' }}
                         onClick={handleSave}
-                        disabled={saveStatus === 'saving'}
+                        
                     >
-                        {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved!' : saveStatus === 'error' ? 'Error' : 'Save Changes'}
-                    </button>
+                        Create
+                    </button>) : null}
                 </div>
             </div>
 

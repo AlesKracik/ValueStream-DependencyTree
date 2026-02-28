@@ -1,12 +1,24 @@
 import { useState } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate, useParams, Navigate } from 'react-router-dom';
 import { ReactFlowProvider } from '@xyflow/react';
+
+// Main entities
 import { Dashboard } from './components/dashboard/Dashboard';
 import { CustomerPage } from './components/customers/CustomerPage';
 import { WorkItemPage } from './components/workitems/WorkItemPage';
 import { EpicPage } from './components/epics/EpicPage';
 import { TeamPage } from './components/teams/TeamPage';
 import { SprintPage } from './components/sprints/SprintPage';
+
+// Layout & List Pages
+import { Layout } from './components/layout/Layout';
+import { DashboardListPage } from './pages/DashboardListPage';
+import { CustomerListPage } from './pages/CustomerListPage';
+import { WorkItemListPage } from './pages/WorkItemListPage';
+import { TeamListPage } from './pages/TeamListPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { DocumentationPage } from './pages/DocumentationPage';
+
 import { useDashboardData } from './hooks/useDashboardData';
 import { DashboardProvider } from './contexts/DashboardContext';
 import type { DashboardViewState } from './types/models';
@@ -31,7 +43,7 @@ function DashboardRouteWrapper({ dashboardState, dashboardViewState, setDashboar
 function CustomerPageRouteWrapper({ dashboardState }: any) {
   const { id } = useParams();
   const navigate = useNavigate();
-  return <CustomerPage customerId={id!} onBack={() => navigate(-1)} {...dashboardState} />;
+  return <CustomerPage customerId={id!} onBack={() => navigate(-1)} addCustomer={dashboardState.addCustomer} {...dashboardState} />;
 }
 
 function WorkItemPageRouteWrapper({ dashboardState }: any) {
@@ -55,8 +67,20 @@ function TeamPageRouteWrapper({ dashboardState }: any) {
 function SprintPageRouteWrapper({ dashboardState }: any) {
   const { id } = useParams();
   const navigate = useNavigate();
-  // We'll need to create SprintPage.tsx
   return <SprintPage sprintId={id!} onBack={() => navigate(-1)} onNavigateToSprint={(sid: string) => navigate(`/sprint/${sid}`)} {...dashboardState} />;
+}
+
+function SettingsPageRouteWrapper({ dashboardState }: any) {
+  if (dashboardState.loading) return <div style={{ color: 'white', padding: '24px' }}>Loading settings...</div>;
+  return (
+    <SettingsPage 
+      settings={dashboardState.data?.settings || {}} 
+      onUpdateSettings={dashboardState.updateSettings} 
+      data={dashboardState.data} 
+      updateEpic={dashboardState.updateEpic} 
+      addEpic={dashboardState.addEpic} 
+    />
+  );
 }
 
 function App() {
@@ -76,23 +100,37 @@ function App() {
   });
 
   return (
-    <div className="app-container">
-      <DashboardProvider value={{ data: dashboardState.data, updateEpic: dashboardState.updateEpic }}>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={
+    <DashboardProvider value={{ data: dashboardState.data, updateEpic: dashboardState.updateEpic }}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboards" replace />} />
+          
+          <Route element={<Layout />}>
+            {/* List Pages */}
+            <Route path="/dashboards" element={<DashboardListPage data={dashboardState.data} loading={dashboardState.loading} />} />
+            <Route path="/customers" element={<CustomerListPage data={dashboardState.data} loading={dashboardState.loading} />} />
+            <Route path="/workitems" element={<WorkItemListPage data={dashboardState.data} loading={dashboardState.loading} />} />
+            <Route path="/teams" element={<TeamListPage data={dashboardState.data} loading={dashboardState.loading} />} />
+            
+            {/* Other Pages */}
+            <Route path="/settings" element={<SettingsPageRouteWrapper dashboardState={dashboardState} />} />
+            <Route path="/documentation" element={<DocumentationPage />} />
+
+            {/* Entity Detail Pages */}
+            <Route path="/dashboard/:id" element={
               <ReactFlowProvider>
                 <DashboardRouteWrapper dashboardState={dashboardState} dashboardViewState={dashboardViewState} setDashboardViewState={setDashboardViewState} />
               </ReactFlowProvider>
             } />
             <Route path="/customer/:id" element={<CustomerPageRouteWrapper dashboardState={dashboardState} />} />
-                      <Route path="/workitem/:id" element={<WorkItemPageRouteWrapper dashboardState={dashboardState} />} />
-                      <Route path="/epic/:id" element={<EpicPageRouteWrapper dashboardState={dashboardState} />} />
-                      <Route path="/team/:id" element={<TeamPageRouteWrapper dashboardState={dashboardState} />} />
-                      <Route path="/sprint/:id" element={<SprintPageRouteWrapper dashboardState={dashboardState} />} />
-                    </Routes>        </BrowserRouter>
-      </DashboardProvider>
-    </div>
+            <Route path="/workitem/:id" element={<WorkItemPageRouteWrapper dashboardState={dashboardState} />} />
+            <Route path="/epic/:id" element={<EpicPageRouteWrapper dashboardState={dashboardState} />} />
+            <Route path="/team/:id" element={<TeamPageRouteWrapper dashboardState={dashboardState} />} />
+            <Route path="/sprint/:id" element={<SprintPageRouteWrapper dashboardState={dashboardState} />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </DashboardProvider>
   );
 }
 

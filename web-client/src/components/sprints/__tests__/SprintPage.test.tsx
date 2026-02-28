@@ -5,7 +5,7 @@ import * as DashboardContext from '../../../contexts/DashboardContext';
 import type { DashboardData } from '../../../types/models';
 
 const mockData: DashboardData = {
-    settings: { jira_base_url: 'https://jira', jira_api_version: '3' },
+    dashboards: [], settings: { jira_base_url: 'https://jira', jira_api_version: '3' },
     customers: [],
     workItems: [],
     teams: [],
@@ -19,7 +19,7 @@ describe('SprintPage', () => {
     const updateSprintSpy = vi.fn();
     const addSprintSpy = vi.fn();
     const deleteSprintSpy = vi.fn();
-    const saveDashboardDataSpy = vi.fn().mockResolvedValue(undefined);
+    
     const showConfirmSpy = vi.fn();
 
     const defaultProps = {
@@ -31,8 +31,7 @@ describe('SprintPage', () => {
         addSprint: addSprintSpy,
         updateSprint: updateSprintSpy,
         deleteSprint: deleteSprintSpy,
-        onNavigateToSprint: vi.fn(),
-        saveDashboardData: saveDashboardDataSpy,
+        onNavigateToSprint: vi.fn()
     };
 
     beforeEach(() => {
@@ -49,7 +48,7 @@ describe('SprintPage', () => {
         render(<SprintPage {...defaultProps} />);
         
         expect(screen.getByText('Sprint Management')).toBeDefined();
-        const backBtn = screen.getByRole('button', { name: /Back to Dashboard/i });
+        const backBtn = screen.getByRole('button', { name: /Back/i });
         expect(backBtn).toBeDefined();
         
         fireEvent.click(backBtn);
@@ -103,18 +102,17 @@ describe('SprintPage', () => {
         expect(lastRow.contains(input)).toBe(true);
     });
 
-    it('calls addSprint and saveDashboardData when saving a new sprint', async () => {
+    it('calls addSprint when saving a new sprint', async () => {
         render(<SprintPage {...defaultProps} sprintId="new" />);
 
-        // Get the single Save button now remaining in the UI
-        const saveBtn = screen.getByRole('button', { name: /Save Changes/i });
+        const saveBtn = screen.getByRole('button', { name: /Create/i });
         
         await act(async () => {
             fireEvent.click(saveBtn);
         });
 
         expect(addSprintSpy).toHaveBeenCalled();
-        expect(saveDashboardDataSpy).toHaveBeenCalled();
+        
     });
 
     it('prompts for confirmation before deleting a sprint', async () => {

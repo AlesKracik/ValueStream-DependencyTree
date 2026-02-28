@@ -5,7 +5,7 @@ import { DashboardProvider } from '../../../contexts/DashboardContext';
 import type { DashboardData } from '../../../types/models';
 
 const mockData: DashboardData = {
-    settings: { jira_base_url: 'https://jira', jira_api_version: '3' },
+    dashboards: [], settings: { jira_base_url: 'https://jira', jira_api_version: '3' },
     customers: [],
     workItems: [],
     teams: [],
@@ -36,8 +36,7 @@ describe('EpicPage Date Shift Logic', () => {
         loading: false,
         error: null,
         updateEpic: updateEpicSpy,
-        deleteEpic: vi.fn(),
-        saveDashboardData: vi.fn(),
+        deleteEpic: vi.fn()
     };
 
     beforeEach(() => {

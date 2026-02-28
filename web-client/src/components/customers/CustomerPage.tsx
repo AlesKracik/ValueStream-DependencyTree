@@ -12,8 +12,9 @@ export interface CustomerPageProps {
     error: Error | null;
     updateCustomer: (id: string, updates: Partial<Customer>) => void;
     deleteCustomer: (id: string) => void;
+    addCustomer: (customer: Customer) => void;
     updateWorkItem: (id: string, updates: Partial<WorkItem>) => void;
-    saveDashboardData: (data: DashboardData) => Promise<void>;
+    
 }
 
 export const CustomerPage: React.FC<CustomerPageProps> = ({
@@ -24,12 +25,11 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     error,
     updateCustomer,
     deleteCustomer,
-    updateWorkItem,
-    saveDashboardData
+    addCustomer,
+    updateWorkItem
 }) => {
     const { showConfirm } = useDashboardContext();
-    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-    const isNew = customerId === 'new';
+        const isNew = customerId === 'new';
 
     // Draft states for new customer creation
     const [newCustDraft, setNewCustDraft] = useState<Partial<Customer>>({ name: 'New Customer', existing_tcv: 0, potential_tcv: 0 });
@@ -47,8 +47,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         : data.workItems.filter(f => f.customer_targets.some(ct => ct.customer_id === customerId));
 
     const handleSave = async () => {
-        setSaveStatus('saving');
-        try {
+                try {
             if (isNew) {
                 const newId = `c${Date.now()}`;
                 const newCust: Customer = {
@@ -77,46 +76,39 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                     return f;
                 });
 
-                const newData = { ...data, customers: [...data.customers, newCust], workItems: updatedWorkItems };
-                await saveDashboardData(newData);
-                setSaveStatus('saved');
-                setTimeout(() => {
-                    setSaveStatus('idle');
-                    onBack();
+                // Actually add the customer using the hook (which also persists)
+                addCustomer(newCust);
+                
+                // Update affected work items
+                updatedWorkItems.forEach((f, i) => {
+                    const oldF = data.workItems[i];
+                    if (oldF.customer_targets.length !== f.customer_targets.length) {
+                        updateWorkItem(f.id, { customer_targets: f.customer_targets });
+                    }
+                });
+
+                                setTimeout(() => {
+                                        onBack();
                 }, 1000);
             } else {
-                await saveDashboardData(data);
-                setSaveStatus('saved');
-                setTimeout(() => setSaveStatus('idle'), 2000);
-            }
+                                            }
         } catch (err) {
             console.error('Save failed', err);
-            setSaveStatus('error');
-            setTimeout(() => setSaveStatus('idle'), 3000);
-        }
+                                }
     };
 
     const handleDelete = async () => {
         const confirmed = await showConfirm('Delete Customer', `Are you sure you want to delete ${customer.name}? This will remove all their work item impact.`);
         if (!confirmed) return;
-        setSaveStatus('saving');
-        try {
+                try {
             deleteCustomer(customerId);
             // Also need to scrub workItems
-            const newData = {
-                ...data,
-                customers: data.customers.filter(c => c.id !== customerId),
-                workItems: data.workItems.map(f => ({
-                    ...f,
-                    customer_targets: f.customer_targets.filter(ct => ct.customer_id !== customerId)
-                }))
-            };
-            await saveDashboardData(newData);
+            
+            
             onBack();
         } catch (err) {
             console.error('Delete failed', err);
-            setSaveStatus('error');
-        }
+                    }
     };
 
     return (
@@ -124,7 +116,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
             <div className={styles.header}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <button className={styles.backBtn} onClick={onBack}>
-                        ← Back to Dashboard
+                        ← Back
                     </button>
                     <h1>{isNew ? 'New Customer' : customer.name}</h1>
                 </div>
@@ -138,14 +130,14 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                             Delete Customer
                         </button>
                     )}
-                    <button 
+                    {isNew ? (<button 
                         className={styles.saveBtn} 
                         style={{ backgroundColor: '#2563eb', borderColor: '#1d4ed8' }}
                         onClick={handleSave}
-                        disabled={saveStatus === 'saving'}
+                        
                     >
-                        {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved!' : saveStatus === 'error' ? 'Error' : 'Save Changes'}
-                    </button>
+                        Create
+                    </button>) : null}
                 </div>
             </div>
 
