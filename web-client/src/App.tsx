@@ -65,9 +65,7 @@ function TeamPageRouteWrapper({ dashboardState }: any) {
 }
 
 function SprintPageRouteWrapper({ dashboardState }: any) {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  return <SprintPage sprintId={id!} onBack={() => navigate(-1)} onNavigateToSprint={(sid: string) => navigate(`/sprint/${sid}`)} {...dashboardState} />;
+  return <SprintPage {...dashboardState} />;
 }
 
 function SettingsPageRouteWrapper({ dashboardState }: any) {
@@ -111,6 +109,7 @@ function App() {
             <Route path="/customers" element={<CustomerListPage data={dashboardState.data} loading={dashboardState.loading} />} />
             <Route path="/workitems" element={<WorkItemListPage data={dashboardState.data} loading={dashboardState.loading} />} />
             <Route path="/teams" element={<TeamListPage data={dashboardState.data} loading={dashboardState.loading} />} />
+            <Route path="/sprints" element={<SprintPageRouteWrapper dashboardState={dashboardState} />} />
             
             {/* Other Pages */}
             <Route path="/settings" element={<SettingsPageRouteWrapper dashboardState={dashboardState} />} />
@@ -126,7 +125,6 @@ function App() {
             <Route path="/workitem/:id" element={<WorkItemPageRouteWrapper dashboardState={dashboardState} />} />
             <Route path="/epic/:id" element={<EpicPageRouteWrapper dashboardState={dashboardState} />} />
             <Route path="/team/:id" element={<TeamPageRouteWrapper dashboardState={dashboardState} />} />
-            <Route path="/sprint/:id" element={<SprintPageRouteWrapper dashboardState={dashboardState} />} />
           </Route>
         </Routes>
       </BrowserRouter>

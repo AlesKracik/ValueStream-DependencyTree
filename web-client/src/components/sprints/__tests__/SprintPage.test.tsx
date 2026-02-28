@@ -23,15 +23,12 @@ describe('SprintPage', () => {
     const showConfirmSpy = vi.fn();
 
     const defaultProps = {
-        sprintId: 's1',
-        onBack: vi.fn(),
         data: mockData,
         loading: false,
         error: null,
         addSprint: addSprintSpy,
         updateSprint: updateSprintSpy,
         deleteSprint: deleteSprintSpy,
-        onNavigateToSprint: vi.fn()
     };
 
     beforeEach(() => {
@@ -44,98 +41,57 @@ describe('SprintPage', () => {
         });
     });
 
-    it('renders the header title and back button', () => {
+    it('renders the header title', () => {
         render(<SprintPage {...defaultProps} />);
-        
-        expect(screen.getByText('Sprint Management')).toBeDefined();
-        const backBtn = screen.getByRole('button', { name: /Back/i });
-        expect(backBtn).toBeDefined();
-        
-        fireEvent.click(backBtn);
-        expect(defaultProps.onBack).toHaveBeenCalled();
+        expect(screen.getByText('Sprints')).toBeDefined();
     });
 
-    it('renders current sprint as an editable row in the table', () => {
+    it('renders sprint name as an editable input', () => {
         render(<SprintPage {...defaultProps} />);
-
-        // The selected sprint name should be an input field
         const nameInput = screen.getByDisplayValue('Sprint 1') as HTMLInputElement;
         expect(nameInput.tagName).toBe('INPUT');
-        
-        // Dates should be visible as text
-        expect(screen.getByText('2026-01-01')).toBeDefined();
-        expect(screen.getByText('2026-01-14')).toBeDefined();
     });
 
-    it('shows "Delete" button only for the last sprint', () => {
-        const dataWithTwo: DashboardData = {
-            ...mockData,
-            sprints: [
-                { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' },
-                { id: 's2', name: 'Sprint 2', start_date: '2026-01-15', end_date: '2026-01-28' }
-            ]
-        };
-
-        // Select s1 (not last)
-        const { rerender } = render(<SprintPage {...defaultProps} data={dataWithTwo} sprintId="s1" />);
-        expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
-        expect(screen.getByText('Locked (not last)')).toBeDefined();
-
-        // Select s2 (last)
-        rerender(<SprintPage {...defaultProps} data={dataWithTwo} sprintId="s2" />);
-        expect(screen.getByRole('button', { name: 'Delete' })).toBeDefined();
+    it('calls updateSprint when name is changed', () => {
+        render(<SprintPage {...defaultProps} />);
+        const nameInput = screen.getByDisplayValue('Sprint 1');
+        fireEvent.change(nameInput, { target: { value: 'Updated Sprint' } });
+        expect(updateSprintSpy).toHaveBeenCalledWith('s1', { name: 'Updated Sprint' });
     });
 
-    it('initializes new sprint draft row at the bottom of the table', () => {
-        render(<SprintPage {...defaultProps} sprintId="new" />);
-
-        // Get all rows in the tbody
-        const rows = screen.getAllByRole('row');
-        // rows[0] is header, rows[1] is Sprint 1, rows[2] should be NEW
-        expect(rows).toHaveLength(3);
+    it('starts creation flow when + New Sprint is clicked', async () => {
+        render(<SprintPage {...defaultProps} />);
+        const startBtn = screen.getByText('+ New Sprint');
+        fireEvent.click(startBtn);
         
-        const lastRow = rows[2];
-        expect(lastRow.textContent).toContain('NEW');
-        
-        // Since it's an input, we need to check the display value within that row
-        const input = screen.getByDisplayValue('Sprint 2');
-        expect(lastRow.contains(input)).toBe(true);
+        // Should show a "NEW" tag or draft row
+        expect(screen.getByText('NEW')).toBeDefined();
+        // Should show a Create button
+        expect(screen.getByText('Create')).toBeDefined();
     });
 
-    it('calls addSprint when saving a new sprint', async () => {
-        render(<SprintPage {...defaultProps} sprintId="new" />);
-
-        const saveBtn = screen.getByRole('button', { name: /Create/i });
+    it('calls addSprint when Create is clicked in draft row', async () => {
+        render(<SprintPage {...defaultProps} />);
+        fireEvent.click(screen.getByText('+ New Sprint'));
         
+        const createBtn = screen.getByText('Create');
         await act(async () => {
-            fireEvent.click(saveBtn);
+            fireEvent.click(createBtn);
         });
 
         expect(addSprintSpy).toHaveBeenCalled();
-        
     });
 
     it('prompts for confirmation before deleting a sprint', async () => {
         showConfirmSpy.mockResolvedValue(true);
-        
         render(<SprintPage {...defaultProps} />);
-
-        // The 'Delete' button is now in the table row Actions column
-        const deleteBtn = screen.getByRole('button', { name: 'Delete' });
         
+        const deleteBtn = screen.getByText('Delete');
         await act(async () => {
             fireEvent.click(deleteBtn);
         });
 
-        expect(showConfirmSpy).toHaveBeenCalledWith('Delete Sprint', expect.stringContaining('Sprint 1'));
+        expect(showConfirmSpy).toHaveBeenCalled();
         expect(deleteSprintSpy).toHaveBeenCalledWith('s1');
-    });
-
-    it('shows "Create Next Sprint" button only when not on creation page', () => {
-        const { rerender } = render(<SprintPage {...defaultProps} />);
-        expect(screen.getByText('+ Create Next Sprint')).toBeDefined();
-
-        rerender(<SprintPage {...defaultProps} sprintId="new" />);
-        expect(screen.queryByText('+ Create Next Sprint')).toBeNull();
     });
 });

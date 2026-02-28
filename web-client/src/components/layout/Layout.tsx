@@ -22,6 +22,9 @@ export const Layout: React.FC = () => {
                     <NavLink to="/teams" className={({ isActive }) => isActive ? `${styles.navItem} ${styles.active}` : styles.navItem}>
                         Teams
                     </NavLink>
+                    <NavLink to="/sprints" className={({ isActive }) => isActive ? `${styles.navItem} ${styles.active}` : styles.navItem}>
+                        Sprints
+                    </NavLink>
                 </div>
                 <div className={styles.bottomLinks}>
                     <NavLink to="/settings" className={({ isActive }) => isActive ? `${styles.navItem} ${styles.active}` : styles.navItem}>

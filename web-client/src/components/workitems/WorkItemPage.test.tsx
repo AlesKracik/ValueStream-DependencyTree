@@ -93,6 +93,10 @@ describe('WorkItemPage', () => {
             </DashboardProvider>
         );
 
+        // Switch to Epics tab
+        const epicsTab = screen.getByText(/Epics \(/i);
+        fireEvent.click(epicsTab);
+
         const epicInput = screen.getByPlaceholderText('Search for an unassigned epic to link...');
         fireEvent.focus(epicInput);
 

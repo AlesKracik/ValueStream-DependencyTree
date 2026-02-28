@@ -1,5 +1,7 @@
 .pageContainer {
-    padding: 24px;
+    padding: 32px;
+    max-width: 1000px;
+    margin: 0 auto;
     height: 100%;
     box-sizing: border-box;
     display: flex;

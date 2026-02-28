@@ -16,7 +16,6 @@ export interface WorkItemPageProps {
     addEpic: (e: Epic) => void;
     deleteEpic: (id: string) => void;
     updateEpic: (id: string, updates: Partial<Epic>) => void;
-    
 }
 
 export const WorkItemPage: React.FC<WorkItemPageProps> = ({
@@ -32,14 +31,14 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     updateEpic
 }) => {
     const { showAlert, showConfirm } = useDashboardContext();
-        const isNew = workItemId === 'new';
+    const isNew = workItemId === 'new';
 
     // Draft states for new workItem creation
     const [newWorkItemDraft, setNewWorkItemDraft] = useState<Partial<WorkItem>>({ name: 'New Work Item', total_effort_mds: 0, customer_targets: [] });
-    // Using the same mock state pattern as customers
     const [newWorkItemCustomers, setNewWorkItemCustomers] = useState<{ customerId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have' }[]>([]);
     const [newWorkItemEpics, setNewWorkItemEpics] = useState<Epic[]>([]);
     const [syncingId, setSyncingId] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'customers' | 'epics'>('customers');
 
     if (loading) return <div className={styles.pageContainer}>Loading work item details...</div>;
     if (error) return <div className={styles.pageContainer}>Error: {error.message}</div>;
@@ -53,7 +52,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
         : data.customers.filter(c => workItem.customer_targets?.some(ct => ct.customer_id === c.id));
 
     const handleSave = async () => {
-                try {
+        try {
             if (isNew) {
                 const newId = `f${Date.now()}`;
                 const newFeat: WorkItem = {
@@ -76,31 +75,24 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                 addWorkItem(newFeat);
                 epicsToAdd.forEach(e => addEpic(e));
 
-                
-                
-
-                                setTimeout(() => {
-                                        onBack(); // Return to dashboard once fully saved and injected
+                setTimeout(() => {
+                    onBack();
                 }, 1000);
-            } else {
-                
-                                            }
+            }
         } catch (err) {
             console.error('Save failed', err);
-                                }
+        }
     };
 
     const handleDelete = async () => {
         const confirmed = await showConfirm('Delete Work Item', 'Are you sure you want to delete this work item? It will be removed from all associated epics.');
         if (!confirmed) return;
-                try {
+        try {
             deleteWorkItem(workItemId);
-            
-            
             onBack();
         } catch (err) {
             console.error('Delete failed', err);
-                    }
+        }
     };
 
     const epics = isNew ? newWorkItemEpics : data.epics.filter(e => e.work_item_id === workItemId);
@@ -208,6 +200,8 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
         }
     };
 
+    const customersCount = (isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target) ? 'All' : targetedCustomers.length;
+
     return (
         <div className={styles.pageContainer}>
             <div className={styles.header}>
@@ -227,14 +221,15 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                             Delete Work Item
                         </button>
                     )}
-                    {isNew ? (<button
-                        className={styles.saveBtn}
-                        style={{ backgroundColor: '#2563eb', borderColor: '#1d4ed8' }}
-                        onClick={handleSave}
-                        
-                    >
-                        Create
-                    </button>) : null}
+                    {isNew ? (
+                        <button
+                            className={styles.saveBtn}
+                            style={{ backgroundColor: '#2563eb', borderColor: '#1d4ed8' }}
+                            onClick={handleSave}
+                        >
+                            Create
+                        </button>
+                    ) : null}
                 </div>
             </div>
 
@@ -291,251 +286,286 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     </div>
                 </section>
 
-                <section className={styles.card}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                        <h2>Targeted Customers</h2>
-                    </div>
+                <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #334155', marginBottom: '24px', marginTop: '24px' }}>
+                    <button
+                        onClick={() => setActiveTab('customers')}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: '12px 16px',
+                            color: activeTab === 'customers' ? '#60a5fa' : '#94a3b8',
+                            borderBottom: activeTab === 'customers' ? '2px solid #60a5fa' : '2px solid transparent',
+                            cursor: 'pointer',
+                            fontSize: '15px',
+                            fontWeight: activeTab === 'customers' ? 'bold' : '500',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        Targeted Customers ({customersCount})
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('epics')}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: '12px 16px',
+                            color: activeTab === 'epics' ? '#60a5fa' : '#94a3b8',
+                            borderBottom: activeTab === 'epics' ? '2px solid #60a5fa' : '2px solid transparent',
+                            cursor: 'pointer',
+                            fontSize: '15px',
+                            fontWeight: activeTab === 'epics' ? 'bold' : '500',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        Epics ({epics.length})
+                    </button>
+                </div>
 
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th>Customer</th>
-                                <th>TCV Target</th>
-                                <th>Priority</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {/* Special Global Target Row */}
-                            <tr style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderLeft: '4px solid #3b82f6' }}>
-                                <td style={{ fontWeight: 'bold' }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            checked={isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target}
-                                            onChange={e => {
-                                                const checked = e.target.checked;
-                                                const defaultTarget = { tcv_type: 'existing' as const, priority: 'Must-have' as const };
-                                                if (isNew) {
-                                                    setNewWorkItemDraft(prev => ({ ...prev, all_customers_target: checked ? defaultTarget : undefined }));
-                                                } else {
-                                                    updateWorkItem(workItem.id, { all_customers_target: checked ? defaultTarget : undefined });
-                                                }
-                                            }}
-                                        />
-                                        ALL CUSTOMERS (Global)
-                                    </label>
-                                </td>
-                                <td>
-                                    {(isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target) && (
-                                        <select
-                                            value={isNew ? newWorkItemDraft.all_customers_target?.tcv_type : workItem.all_customers_target?.tcv_type}
-                                            onChange={e => {
-                                                const type = e.target.value as 'existing' | 'potential';
-                                                if (isNew) {
-                                                    setNewWorkItemDraft(prev => ({ ...prev, all_customers_target: { ...prev.all_customers_target!, tcv_type: type } }));
-                                                } else {
-                                                    updateWorkItem(workItem.id, { all_customers_target: { ...workItem.all_customers_target!, tcv_type: type } });
-                                                }
-                                            }}
-                                        >
-                                            <option value="existing">Existing TCV</option>
-                                            <option value="potential">Potential TCV</option>
-                                        </select>
-                                    )}
-                                </td>
-                                <td>
-                                    {(isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target) && (
-                                        <select
-                                            value={isNew ? newWorkItemDraft.all_customers_target?.priority : workItem.all_customers_target?.priority}
-                                            onChange={e => {
-                                                const prio = e.target.value as 'Must-have' | 'Should-have' | 'Nice-to-have';
-                                                if (isNew) {
-                                                    setNewWorkItemDraft(prev => ({ ...prev, all_customers_target: { ...prev.all_customers_target!, priority: prio } }));
-                                                } else {
-                                                    updateWorkItem(workItem.id, { all_customers_target: { ...workItem.all_customers_target!, priority: prio } });
-                                                }
-                                            }}
-                                        >
-                                            <option value="Must-have">Must-have</option>
-                                            <option value="Should-have">Should-have</option>
-                                            <option value="Nice-to-have">Nice-to-have</option>
-                                        </select>
-                                    )}
-                                </td>
-                                <td>
-                                    {/* No specific action for global row */}
-                                </td>
-                            </tr>
+                {activeTab === 'customers' && (
+                    <section className={styles.card}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <h2>Targeted Customers</h2>
+                        </div>
 
-                            {!(isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target) && targetedCustomers.map(customer => {
-                                const targetDef = isNew
-                                    ? newWorkItemCustomers.find(nfc => nfc.customerId === customer.id)!
-                                    : workItem.customer_targets?.find(ct => ct.customer_id === customer.id)!;
-
-                                const updateTarget = (updates: Partial<typeof targetDef>) => {
-                                    if (isNew) {
-                                        setNewWorkItemCustomers(prev => prev.map(nfc =>
-                                            nfc.customerId === customer.id ? { ...nfc, ...updates } : nfc
-                                        ));
-                                    } else {
-                                        const newTargets = workItem.customer_targets!.map(ct =>
-                                            ct.customer_id === customer.id ? { ...ct, ...updates } : ct
-                                        );
-                                        updateWorkItem(workItem.id, { customer_targets: newTargets as any });
-                                    }
-                                };
-
-                                const removeTarget = () => {
-                                    if (isNew) {
-                                        setNewWorkItemCustomers(prev => prev.filter(nfc => nfc.customerId !== customer.id));
-                                    } else {
-                                        const newTargets = workItem.customer_targets!.filter(ct => ct.customer_id !== customer.id);
-                                        updateWorkItem(workItem.id, { customer_targets: newTargets });
-                                    }
-                                };
-
-                                return (
-                                    <tr key={customer.id}>
-                                        <td>{customer.name}</td>
-                                        <td>
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th>Customer</th>
+                                    <th>TCV Target</th>
+                                    <th>Priority</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderLeft: '4px solid #3b82f6' }}>
+                                    <td style={{ fontWeight: 'bold' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target}
+                                                onChange={e => {
+                                                    const checked = e.target.checked;
+                                                    const defaultTarget = { tcv_type: 'existing' as const, priority: 'Must-have' as const };
+                                                    if (isNew) {
+                                                        setNewWorkItemDraft(prev => ({ ...prev, all_customers_target: checked ? defaultTarget : undefined }));
+                                                    } else {
+                                                        updateWorkItem(workItem.id, { all_customers_target: checked ? defaultTarget : undefined });
+                                                    }
+                                                }}
+                                            />
+                                            ALL CUSTOMERS (Global)
+                                        </label>
+                                    </td>
+                                    <td>
+                                        {(isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target) && (
                                             <select
-                                                value={targetDef.tcv_type}
-                                                onChange={e => updateTarget({ tcv_type: e.target.value as 'existing' | 'potential' })}
+                                                value={isNew ? newWorkItemDraft.all_customers_target?.tcv_type : workItem.all_customers_target?.tcv_type}
+                                                onChange={e => {
+                                                    const type = e.target.value as 'existing' | 'potential';
+                                                    if (isNew) {
+                                                        setNewWorkItemDraft(prev => ({ ...prev, all_customers_target: { ...prev.all_customers_target!, tcv_type: type } }));
+                                                    } else {
+                                                        updateWorkItem(workItem.id, { all_customers_target: { ...workItem.all_customers_target!, tcv_type: type } });
+                                                    }
+                                                }}
                                             >
-                                                <option value="existing">Existing</option>
-                                                <option value="potential">Potential</option>
+                                                <option value="existing">Existing TCV</option>
+                                                <option value="potential">Potential TCV</option>
                                             </select>
-                                        </td>
-                                        <td>
+                                        )}
+                                    </td>
+                                    <td>
+                                        {(isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target) && (
                                             <select
-                                                value={targetDef.priority || 'Must-have'}
-                                                onChange={e => updateTarget({ priority: e.target.value as 'Must-have' | 'Should-have' | 'Nice-to-have' })}
+                                                value={isNew ? newWorkItemDraft.all_customers_target?.priority : workItem.all_customers_target?.priority}
+                                                onChange={e => {
+                                                    const prio = e.target.value as 'Must-have' | 'Should-have' | 'Nice-to-have';
+                                                    if (isNew) {
+                                                        setNewWorkItemDraft(prev => ({ ...prev, all_customers_target: { ...prev.all_customers_target!, priority: prio } }));
+                                                    } else {
+                                                        updateWorkItem(workItem.id, { all_customers_target: { ...workItem.all_customers_target!, priority: prio } });
+                                                    }
+                                                }}
                                             >
                                                 <option value="Must-have">Must-have</option>
                                                 <option value="Should-have">Should-have</option>
                                                 <option value="Nice-to-have">Nice-to-have</option>
                                             </select>
+                                        )}
+                                    </td>
+                                    <td></td>
+                                </tr>
+
+                                {!(isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target) && targetedCustomers.map(customer => {
+                                    const targetDef = isNew
+                                        ? newWorkItemCustomers.find(nfc => nfc.customerId === customer.id)!
+                                        : workItem.customer_targets?.find(ct => ct.customer_id === customer.id)!;
+
+                                    const updateTarget = (updates: Partial<typeof targetDef>) => {
+                                        if (isNew) {
+                                            setNewWorkItemCustomers(prev => prev.map(nfc =>
+                                                nfc.customerId === customer.id ? { ...nfc, ...updates } : nfc
+                                            ));
+                                        } else {
+                                            const newTargets = workItem.customer_targets!.map(ct =>
+                                                ct.customer_id === customer.id ? { ...ct, ...updates } : ct
+                                            );
+                                            updateWorkItem(workItem.id, { customer_targets: newTargets as any });
+                                        }
+                                    };
+
+                                    const removeTarget = () => {
+                                        if (isNew) {
+                                            setNewWorkItemCustomers(prev => prev.filter(nfc => nfc.customerId !== customer.id));
+                                        } else {
+                                            const newTargets = workItem.customer_targets!.filter(ct => ct.customer_id !== customer.id);
+                                            updateWorkItem(workItem.id, { customer_targets: newTargets });
+                                        }
+                                    };
+
+                                    return (
+                                        <tr key={customer.id}>
+                                            <td>{customer.name}</td>
+                                            <td>
+                                                <select
+                                                    value={targetDef.tcv_type}
+                                                    onChange={e => updateTarget({ tcv_type: e.target.value as 'existing' | 'potential' })}
+                                                >
+                                                    <option value="existing">Existing</option>
+                                                    <option value="potential">Potential</option>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <select
+                                                    value={targetDef.priority || 'Must-have'}
+                                                    onChange={e => updateTarget({ priority: e.target.value as 'Must-have' | 'Should-have' | 'Nice-to-have' })}
+                                                >
+                                                    <option value="Must-have">Must-have</option>
+                                                    <option value="Should-have">Should-have</option>
+                                                    <option value="Nice-to-have">Nice-to-have</option>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <button onClick={removeTarget} className={styles.dangerBtn}>Remove</button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                                {targetedCustomers.length === 0 && !(isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target) && (
+                                    <tr>
+                                        <td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No targeted customers found.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+
+                        <div className={styles.addWorkItemBox}>
+                            <h3>Add Customer Target</h3>
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <SearchableDropdown
+                                    options={data.customers
+                                        .filter(c => !targetedCustomers.find(tc => tc.id === c.id))
+                                        .map(c => ({ id: c.id, label: c.name }))
+                                    }
+                                    onSelect={(customerSelectId) => {
+                                        if (isNew) {
+                                            setNewWorkItemCustomers(prev => [...prev, {
+                                                customerId: customerSelectId,
+                                                tcv_type: 'potential',
+                                                priority: 'Should-have'
+                                            }]);
+                                        } else {
+                                            const newTargets = [...(workItem.customer_targets || []), {
+                                                customer_id: customerSelectId,
+                                                tcv_type: 'potential',
+                                                priority: 'Should-have'
+                                            }];
+                                            updateWorkItem(workItemId, { customer_targets: newTargets as any });
+                                        }
+                                    }}
+                                    placeholder="Search for a customer to target..."
+                                />
+                            </div>
+                        </div>
+                    </section>
+                )}
+
+                {activeTab === 'epics' && (
+                    <section className={styles.card}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <h2>Epics</h2>
+                            <button className={styles.primaryBtn} onClick={handleAddEpic}>+ Create New Epic</button>
+                        </div>
+
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Jira Key</th>
+                                    <th>Team</th>
+                                    <th>Remaining (MDs)</th>
+                                    <th>Start Date</th>
+                                    <th>End Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {epics.map(epic => (
+                                    <tr key={epic.id}>
+                                        <td>
+                                            <input type="text" value={epic.name || ''} onChange={e => handleUpdateEpic(epic.id, { name: e.target.value })} style={{ width: '100%', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
                                         </td>
                                         <td>
-                                            <button onClick={removeTarget} className={styles.dangerBtn}>Remove</button>
+                                            <input type="text" value={epic.jira_key} onChange={e => handleUpdateEpic(epic.id, { jira_key: e.target.value })} style={{ width: '100px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
+                                        </td>
+                                        <td>
+                                            <SearchableDropdown
+                                                options={data.teams.map(t => ({ id: t.id, label: t.name }))}
+                                                onSelect={(teamId) => handleUpdateEpic(epic.id, { team_id: teamId })}
+                                                placeholder="Select Team"
+                                                initialValue={data.teams.find(t => t.id === epic.team_id)?.name || ''}
+                                                clearOnSelect={false}
+                                            />
+                                        </td>
+                                        <td>
+                                            <input type="number" min="0" value={epic.remaining_md} onChange={e => handleUpdateEpic(epic.id, { remaining_md: parseInt(e.target.value) || 0 })} style={{ width: '80px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
+                                        </td>
+                                        <td>
+                                            <input type="date" value={epic.target_start || ''} onChange={e => handleUpdateEpic(epic.id, { target_start: e.target.value })} style={{ width: '130px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
+                                        </td>
+                                        <td>
+                                            <input type="date" value={epic.target_end || ''} onChange={e => handleUpdateEpic(epic.id, { target_end: e.target.value })} style={{ width: '130px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
+                                        </td>
+                                        <td>
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                <button
+                                                    onClick={() => handleSyncJira(epic.id, epic.jira_key)}
+                                                    disabled={!epic.jira_key || epic.jira_key === 'TBD' || syncingId === epic.id}
+                                                    className={styles.saveBtn}
+                                                    style={{ backgroundColor: '#10b981', borderColor: '#059669', padding: '6px 12px' }}
+                                                >
+                                                    {syncingId === epic.id ? 'Syncing...' : 'Sync from Jira'}
+                                                </button>
+                                                <button onClick={() => handleRemoveEpic(epic.id)} className={styles.dangerBtn} style={{ padding: '6px 12px' }}>Remove</button>
+                                            </div>
                                         </td>
                                     </tr>
-                                );
-                            })}
-                            {targetedCustomers.length === 0 && (
-                                <tr>
-                                    <td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No targeted customers found.</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
+                                ))}
+                                {epics.length === 0 && (
+                                    <tr>
+                                        <td colSpan={7} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No epics currently mapped to this work item.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
 
-                    <div className={styles.addWorkItemBox}>
-                        <h3>Add Customer Target</h3>
-                        <div style={{ display: 'flex', gap: '12px' }}>
-                            <SearchableDropdown
-                                options={data.customers
-                                    .filter(c => !targetedCustomers.find(tc => tc.id === c.id))
-                                    .map(c => ({ id: c.id, label: c.name }))
-                                }
-                                onSelect={(customerSelectId) => {
-                                    if (isNew) {
-                                        setNewWorkItemCustomers(prev => [...prev, {
-                                            customerId: customerSelectId,
-                                            tcv_type: 'potential',
-                                            priority: 'Should-have'
-                                        }]);
-                                    } else {
-                                        const newTargets = [...(workItem.customer_targets || []), {
-                                            customer_id: customerSelectId,
-                                            tcv_type: 'potential',
-                                            priority: 'Should-have'
-                                        }];
-                                        updateWorkItem(workItemId, { customer_targets: newTargets as any });
-                                    }
-                                }}
-                                placeholder="Search for a customer to target..."
-                            />
-                        </div>
-                    </div>
-                </section>
-
-                <section className={styles.card}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                        <h2>Epics</h2>
-                        <button className={styles.primaryBtn} onClick={handleAddEpic}>+ Create New Epic</button>
-                    </div>
-
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Jira Key</th>
-                                <th>Team</th>
-                                <th>Remaining (MDs)</th>
-                                <th>Start Date</th>
-                                <th>End Date</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {epics.map(epic => (
-                                <tr key={epic.id}>
-                                    <td>
-                                        <input type="text" value={epic.name || ''} onChange={e => handleUpdateEpic(epic.id, { name: e.target.value })} style={{ width: '100%', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
-                                    </td>
-                                    <td>
-                                        <input type="text" value={epic.jira_key} onChange={e => handleUpdateEpic(epic.id, { jira_key: e.target.value })} style={{ width: '100px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
-                                    </td>
-                                    <td>
-                                        <SearchableDropdown
-                                            options={data.teams.map(t => ({ id: t.id, label: t.name }))}
-                                            onSelect={(teamId) => handleUpdateEpic(epic.id, { team_id: teamId })}
-                                            placeholder="Select Team"
-                                            initialValue={data.teams.find(t => t.id === epic.team_id)?.name || ''}
-                                            clearOnSelect={false}
-                                        />
-                                    </td>
-                                    <td>
-                                        <input type="number" min="0" value={epic.remaining_md} onChange={e => handleUpdateEpic(epic.id, { remaining_md: parseInt(e.target.value) || 0 })} style={{ width: '80px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
-                                    </td>
-                                    <td>
-                                        <input type="date" value={epic.target_start || ''} onChange={e => handleUpdateEpic(epic.id, { target_start: e.target.value })} style={{ width: '130px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
-                                    </td>
-                                    <td>
-                                        <input type="date" value={epic.target_end || ''} onChange={e => handleUpdateEpic(epic.id, { target_end: e.target.value })} style={{ width: '130px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
-                                    </td>
-                                    <td>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <button
-                                                onClick={() => handleSyncJira(epic.id, epic.jira_key)}
-                                                disabled={!epic.jira_key || epic.jira_key === 'TBD' || syncingId === epic.id}
-                                                className={styles.saveBtn}
-                                                style={{ backgroundColor: '#10b981', borderColor: '#059669', padding: '6px 12px' }}
-                                            >
-                                                {syncingId === epic.id ? 'Syncing...' : 'Sync from Jira'}
-                                            </button>
-                                            <button onClick={() => handleRemoveEpic(epic.id)} className={styles.dangerBtn} style={{ padding: '6px 12px' }}>Remove</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                            {epics.length === 0 && (
-                                <tr>
-                                    <td colSpan={7} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No epics currently mapped to this work item.</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-
-                    <div className={styles.addWorkItemBox}>
-                        <h3>Assign Existing Epic</h3>
-                        <div style={{ display: 'flex', gap: '12px' }}>
-                            <SearchableDropdown
-                                options={data.epics
-                                    .filter(e => !e.work_item_id || e.work_item_id === 'UNASSIGNED')
-                                    .map(e => ({ id: e.id, label: `${e.jira_key !== 'TBD' ? e.jira_key : ''} ${e.name || 'Unnamed Epic'}` }))
+                        <div className={styles.addWorkItemBox}>
+                            <h3>Assign Existing Epic</h3>
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <SearchableDropdown
+                                    options={data.epics
+                                        .filter(e => !e.work_item_id || e.work_item_id === 'UNASSIGNED')
+                                        .map(e => ({ id: e.id, label: `${e.jira_key !== 'TBD' ? e.jira_key : ''} ${e.name || 'Unnamed Epic'}` }))
                                 }
                                 onSelect={(epicId) => {
                                     if (isNew) {
@@ -546,10 +576,11 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                     }
                                 }}
                                 placeholder="Search for an unassigned epic to link..."
-                            />
+                                />
+                            </div>
                         </div>
-                    </div>
-                </section>
+                    </section>
+                )}
             </div>
         </div>
     );
