@@ -600,19 +600,11 @@ export function useGraphLayout(
                     laneIdx++;
                 }
                 lanes[laneIdx] = end;
-            } else {
-                // Pack dateless at the beginning
-                const dummyStart = windowStartDate;
-                const dummyEnd = addDays(windowStartDate, 5);
-                while (laneIdx < lanes.length && dummyStart <= lanes[laneIdx]) {
-                    laneIdx++;
-                }
-                lanes[laneIdx] = dummyEnd;
-            }
 
-            epicLanes[epic.id] = laneIdx;
-            if (laneIdx + 1 > teamMaxLanes[team.id]) {
-                teamMaxLanes[team.id] = laneIdx + 1;
+                epicLanes[epic.id] = laneIdx;
+                if (laneIdx + 1 > teamMaxLanes[team.id]) {
+                    teamMaxLanes[team.id] = laneIdx + 1;
+                }
             }
         });
 
@@ -798,40 +790,19 @@ export function useGraphLayout(
                             segments: segments
                         },
                     });
-                } else {
-                    // Epic missing dates - render as a DatelessEpicNode
-                    const laneIdx = epicLanes[epic.id];
-                    const maxLanes = Math.max(teamMaxLanes[team.id] || 1, 1);
-                    const ganttStartY = baseY - ((maxLanes - 1) * 45) / 2;
-                    const yPos = ganttStartY + (laneIdx * 45);
 
-                    const workItem = data.workItems.find(f => f.id === epic.work_item_id);
-                    const epicName = epic.name || workItem?.name || 'Task';
-
-                    nodes.push({
-                        id: `gantt-${epic.id}`,
-                        type: 'datelessEpicNode',
-                        position: { x: COL_GANTT_START_X - 180, y: yPos },
-                        data: {
-                            label: epicName,
-                            epicId: epic.id,
-                            jiraKey: epic.jira_key,
-                            jiraBaseUrl: data.settings.jira_base_url
-                        }
+                    edges.push({
+                        id: `edge-team-gantt-${epic.id}`,
+                        source: `team-${epic.team_id}`,
+                        target: `gantt-${epic.id}`,
+                        type: 'default',
+                        style: {
+                            strokeWidth: 1.5,
+                            stroke: '#b0b0b0',
+                            opacity: 0.5,
+                        },
                     });
                 }
-
-                edges.push({
-                    id: `edge-team-gantt-${epic.id}`,
-                    source: `team-${epic.team_id}`,
-                    target: `gantt-${epic.id}`,
-                    type: 'default',
-                    style: {
-                        strokeWidth: 1.5,
-                        stroke: '#b0b0b0',
-                        opacity: 0.5,
-                    },
-                });
 
                 // Map Explicit Epic Dependencies
                 if (epic.dependencies && showDependencies) {
