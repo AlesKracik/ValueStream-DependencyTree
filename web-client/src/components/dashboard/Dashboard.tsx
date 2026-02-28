@@ -227,7 +227,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
                 const contentCenterX = minX + (contentWidth / 2);
                 const targetX = (containerWidth / 2) - (contentCenterX * targetZoom);
-                const targetY = 0;
+                const targetY = -150;
 
                 // Set immediately without duration for initial load
                 setViewport({ x: targetX, y: targetY, zoom: targetZoom });
