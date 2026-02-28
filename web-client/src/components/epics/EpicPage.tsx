@@ -314,6 +314,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                             <input
                                 type="number"
                                 step="0.1"
+                                style={{ width: '50px' }}
                                 value={epic.effort_md === undefined ? '' : epic.effort_md}
                                 onChange={e => updateEpic(epicId, { effort_md: Number(e.target.value) })}
                             />
@@ -322,6 +323,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                             Target Start:
                             <input
                                 type="date"
+                                style={{ width: '110px' }}
                                 value={epic.target_start || ''}
                                 onChange={e => updateEpicWithOverlapCheck(epicId, { target_start: e.target.value })}
                             />
@@ -330,6 +332,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                             Target End:
                             <input
                                 type="date"
+                                style={{ width: '110px' }}
                                 value={epic.target_end || ''}
                                 onChange={e => updateEpicWithOverlapCheck(epicId, { target_end: e.target.value })}
                             />
