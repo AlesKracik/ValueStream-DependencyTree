@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { differenceInDays, parseISO, min, max, format, isWeekend } from 'date-fns';
+import { differenceInDays, parseISO, min, max, format, isWeekend, addDays } from 'date-fns';
 import type { Node, Edge } from '@xyflow/react';
 import type { DashboardData, DashboardParameters } from '../types/models';
 import Holidays from 'date-holidays';
@@ -563,74 +563,53 @@ export function useGraphLayout(
             sprints.forEach(s => teamSprintUsage[team.id][s.id] = 0);
         });
 
-        const epicsWithDates = (data.epics || []).filter(e => e.target_start && e.target_end);
-        const sortedEpics = epicsWithDates.sort((a, b) => parseISO(a.target_start!).getTime() - parseISO(b.target_start!).getTime());
+        const visibleEpicIds = new Set(visibleEpics);
+        const allEpicsToShow = (data.epics || []).filter(e => visibleEpicIds.has(e.id));
+        
+        // Sort epics: first those with dates (by start date), then those without.
+        const sortedEpics = [...allEpicsToShow].sort((a, b) => {
+            const hasDateA = !!(a.target_start && a.target_end);
+            const hasDateB = !!(b.target_start && b.target_end);
+            
+            if (hasDateA && hasDateB) {
+                return parseISO(a.target_start!).getTime() - parseISO(b.target_start!).getTime();
+            }
+            if (hasDateA) return -1;
+            if (hasDateB) return 1;
+            return 0;
+        });
+
         const epicLanes: Record<string, number> = {};
 
         sortedEpics.forEach(epic => {
             const team = data.teams.find(t => t.id === epic.team_id);
             if (!team) return;
 
-            const start = parseISO(epic.target_start!);
-            const end = parseISO(epic.target_end!);
-            const duration = differenceInDays(end, start) + 1;
+            const lanes = teamLanes[team.id].endDates;
+            let laneIdx = 0;
 
-            if (visibleEpics.has(epic.id)) {
-                const lanes = teamLanes[team.id].endDates;
-                let laneIdx = 0;
+            if (epic.target_start && epic.target_end) {
+                const start = parseISO(epic.target_start);
+                const end = parseISO(epic.target_end);
+                
                 while (laneIdx < lanes.length && start <= lanes[laneIdx]) {
                     laneIdx++;
                 }
                 lanes[laneIdx] = end;
-
-                epicLanes[epic.id] = laneIdx;
-                if (laneIdx + 1 > teamMaxLanes[team.id]) {
-                    teamMaxLanes[team.id] = laneIdx + 1;
+            } else {
+                // Pack dateless at the beginning
+                const dummyStart = windowStartDate;
+                const dummyEnd = addDays(windowStartDate, 5);
+                while (laneIdx < lanes.length && dummyStart <= lanes[laneIdx]) {
+                    laneIdx++;
                 }
+                lanes[laneIdx] = dummyEnd;
             }
 
-            let totalOverrideMd = 0;
-            let overrideDays = 0;
-
-            // Pre-calculate overrides to determine remaining MDs
-            sprints.forEach(sprint => {
-                const spStart = parseISO(sprint.start_date);
-                const spEnd = parseISO(sprint.end_date);
-                const overlapStart = max([start, spStart]);
-                const overlapEnd = min([end, spEnd]);
-                if (overlapStart <= overlapEnd) {
-                    const overrideVal = epic.sprint_effort_overrides?.[sprint.id];
-                    if (overrideVal !== undefined) {
-                        totalOverrideMd += overrideVal;
-                        overrideDays += (differenceInDays(overlapEnd, overlapStart) + 1);
-                    }
-                }
-            });
-
-            const remainingDefaultMd = Math.max(0, epic.remaining_md - totalOverrideMd);
-            const remainingDefaultDays = Math.max(0, duration - overrideDays);
-
-            sprints.forEach((sprint) => {
-                const sprintStart = parseISO(sprint.start_date);
-                const sprintEnd = parseISO(sprint.end_date);
-
-                const overlapStart = max([start, sprintStart]);
-                const overlapEnd = min([end, sprintEnd]);
-
-                if (overlapStart <= overlapEnd) {
-                    const overlapDays = differenceInDays(overlapEnd, overlapStart) + 1;
-                    const overrideVal = epic.sprint_effort_overrides?.[sprint.id];
-
-                    if (overrideVal !== undefined) {
-                        // User manually provided raw MD effort for this intersection
-                        teamSprintUsage[team.id][sprint.id] += overrideVal;
-                    } else {
-                        // Default proportional spread from REMAINING pool
-                        const proportion = remainingDefaultDays > 0 ? (overlapDays / remainingDefaultDays) : 0;
-                        teamSprintUsage[team.id][sprint.id] += (remainingDefaultMd * proportion);
-                    }
-                }
-            });
+            epicLanes[epic.id] = laneIdx;
+            if (laneIdx + 1 > teamMaxLanes[team.id]) {
+                teamMaxLanes[team.id] = laneIdx + 1;
+            }
         });
 
         const teamBaseY: Record<string, number> = {};
@@ -697,122 +676,146 @@ export function useGraphLayout(
                 if (!team) return;
 
                 const baseY = teamBaseY[team.id];
-                const start = parseISO(epic.target_start!);
-                const end = parseISO(epic.target_end!);
 
-                // Only render if it overlaps the visible window
-                if (end < windowStartDate || start > windowEndDate) return;
+                if (epic.target_start && epic.target_end) {
+                    const start = parseISO(epic.target_start);
+                    const end = parseISO(epic.target_end);
 
-                const renderStart = max([start, windowStartDate]);
-                const renderEnd = min([end, windowEndDate]);
+                    // Only render if it overlaps the visible window
+                    if (end < windowStartDate || start > windowEndDate) return;
 
-                const daysOffset = Math.max(0, differenceInDays(renderStart, windowStartDate));
-                // Ensure duration doesn't go negative or 0 if start == end
-                const visibleDuration = Math.max(1, differenceInDays(renderEnd, renderStart) + 1);
-                const totalEpicDuration = Math.max(1, differenceInDays(end, start) + 1);
+                    const renderStart = max([start, windowStartDate]);
+                    const renderEnd = min([end, windowEndDate]);
 
-                const laneIdx = epicLanes[epic.id];
-                const maxLanes = Math.max(teamMaxLanes[team.id] || 1, 1);
+                    const daysOffset = Math.max(0, differenceInDays(renderStart, windowStartDate));
+                    // Ensure duration doesn't go negative or 0 if start == end
+                    const visibleDuration = Math.max(1, differenceInDays(renderEnd, renderStart) + 1);
+                    const totalEpicDuration = Math.max(1, differenceInDays(end, start) + 1);
 
-                // Center vertically around baseY
-                const ganttStartY = baseY - ((maxLanes - 1) * 45) / 2;
-                const yPos = ganttStartY + (laneIdx * 45);
+                    const laneIdx = epicLanes[epic.id];
+                    const maxLanes = Math.max(teamMaxLanes[team.id] || 1, 1);
 
-                const workItem = data.workItems.find(f => f.id === epic.work_item_id);
+                    // Center vertically around baseY
+                    const ganttStartY = baseY - ((maxLanes - 1) * 45) / 2;
+                    const yPos = ganttStartY + (laneIdx * 45);
 
-                // Build the segments for heat/intensity mapping
-                const segments: { startOffsetPixels: number, widthPixels: number, intensity: number, color: string, isFrozen: boolean }[] = [];
-                sprints.forEach(sprint => {
-                    const sprintStart = parseISO(sprint.start_date);
-                    const sprintEnd = parseISO(sprint.end_date);
-                    const overlapStart = max([start, sprintStart]);
-                    const overlapEnd = min([end, sprintEnd]);
+                    const workItem = data.workItems.find(f => f.id === epic.work_item_id);
 
-                    if (overlapStart <= overlapEnd) {
-                        const overlapStartOffsetDays = differenceInDays(overlapStart, windowStartDate);
-                        const segmentOffsetPixels = Math.max(0, (overlapStartOffsetDays - daysOffset) * PIXELS_PER_DAY);
+                    // Build the segments for heat/intensity mapping
+                    const segments: { startOffsetPixels: number, widthPixels: number, intensity: number, color: string, isFrozen: boolean }[] = [];
+                    sprints.forEach(sprint => {
+                        const sprintStart = parseISO(sprint.start_date);
+                        const sprintEnd = parseISO(sprint.end_date);
+                        const overlapStart = max([start, sprintStart]);
+                        const overlapEnd = min([end, sprintEnd]);
 
-                        const overlapDays = differenceInDays(overlapEnd, overlapStart) + 1;
-                        let segmentWidthPixels = overlapDays * PIXELS_PER_DAY;
+                        if (overlapStart <= overlapEnd) {
+                            const overlapStartOffsetDays = differenceInDays(overlapStart, windowStartDate);
+                            const segmentOffsetPixels = Math.max(0, (overlapStartOffsetDays - daysOffset) * PIXELS_PER_DAY);
 
-                        // Crop segments so they don't draw outside the main rendering bar boundary
-                        if (segmentOffsetPixels + segmentWidthPixels > visibleDuration * PIXELS_PER_DAY) {
-                            segmentWidthPixels = (visibleDuration * PIXELS_PER_DAY) - segmentOffsetPixels;
-                        }
+                            const overlapDays = differenceInDays(overlapEnd, overlapStart) + 1;
+                            let segmentWidthPixels = overlapDays * PIXELS_PER_DAY;
 
-                        let segmentEffort = 0;
-                        const overrideVal = epic.sprint_effort_overrides?.[sprint.id];
-
-                        let totalOverrideMd = 0;
-                        let overrideDays = 0;
-                        sprints.forEach(sp => {
-                            const spStart = parseISO(sp.start_date);
-                            const spEnd = parseISO(sp.end_date);
-                            const oStart = max([start, spStart]);
-                            const oEnd = min([end, spEnd]);
-                            if (oStart <= oEnd) {
-                                const oVal = epic.sprint_effort_overrides?.[sp.id];
-                                if (oVal !== undefined) {
-                                    totalOverrideMd += oVal;
-                                    overrideDays += (differenceInDays(oEnd, oStart) + 1);
-                                }
+                            // Crop segments so they don't draw outside the main rendering bar boundary
+                            if (segmentOffsetPixels + segmentWidthPixels > visibleDuration * PIXELS_PER_DAY) {
+                                segmentWidthPixels = (visibleDuration * PIXELS_PER_DAY) - segmentOffsetPixels;
                             }
-                        });
-                        const remainingDefaultMd = Math.max(0, epic.remaining_md - totalOverrideMd);
-                        const remainingDefaultDays = Math.max(0, totalEpicDuration - overrideDays);
 
-                        if (overrideVal !== undefined) {
-                            segmentEffort = overrideVal;
-                        } else {
-                            const proportion = remainingDefaultDays > 0 ? (overlapDays / remainingDefaultDays) : 0;
-                            segmentEffort = remainingDefaultMd * proportion;
+                            let segmentEffort = 0;
+                            const overrideVal = epic.sprint_effort_overrides?.[sprint.id];
+
+                            let totalOverrideMd = 0;
+                            let overrideDays = 0;
+                            sprints.forEach(sp => {
+                                const spStart = parseISO(sp.start_date);
+                                const spEnd = parseISO(sp.end_date);
+                                const oStart = max([start, spStart]);
+                                const oEnd = min([end, spEnd]);
+                                if (oStart <= oEnd) {
+                                    const oVal = epic.sprint_effort_overrides?.[sp.id];
+                                    if (oVal !== undefined) {
+                                        totalOverrideMd += oVal;
+                                        overrideDays += (differenceInDays(oEnd, oStart) + 1);
+                                    }
+                                }
+                            });
+                            const remainingDefaultMd = Math.max(0, epic.remaining_md - totalOverrideMd);
+                            const remainingDefaultDays = Math.max(0, totalEpicDuration - overrideDays);
+
+                            if (overrideVal !== undefined) {
+                                segmentEffort = overrideVal;
+                            } else {
+                                const proportion = remainingDefaultDays > 0 ? (overlapDays / remainingDefaultDays) : 0;
+                                segmentEffort = remainingDefaultMd * proportion;
+                            }
+
+                            // Calculate mathematical strictly uniform proportion for the baseline:
+                            // Use TOTAL duration for baseline, so intensity remains constant regardless of visible window
+                            const baselineProportion = overlapDays / totalEpicDuration;
+                            const baselineEffort = epic.remaining_md * baselineProportion;
+
+                            let intensityRatio = 1;
+                            if (baselineEffort > 0) {
+                                intensityRatio = segmentEffort / baselineEffort;
+                            } else if (segmentEffort > 0) {
+                                intensityRatio = 2; // if baseline is 0 but we threw effort on it, glow white
+                            }
+
+                            // Progress-Aware Color Logic: Sprints older than Active Sprint are frozen
+                            const isFrozen = sprintEnd < activeSprintStartDate;
+                            const baseColor = isFrozen ? '#475569' : '#8b5cf6'; // Slate Blue for past, Purple for future
+
+                            segments.push({
+                                startOffsetPixels: segmentOffsetPixels,
+                                widthPixels: segmentWidthPixels,
+                                intensity: intensityRatio,
+                                color: baseColor,
+                                isFrozen: isFrozen
+                            });
                         }
+                    });
 
-                        // Calculate mathematical strictly uniform proportion for the baseline:
-                        // Use TOTAL duration for baseline, so intensity remains constant regardless of visible window
-                        const baselineProportion = overlapDays / totalEpicDuration;
-                        const baselineEffort = epic.remaining_md * baselineProportion;
+                    nodes.push({
+                        id: `gantt-${epic.id}`,
+                        type: 'ganttBarNode',
+                        position: {
+                            x: COL_GANTT_START_X + (daysOffset * PIXELS_PER_DAY),
+                            y: yPos
+                        },
+                        data: {
+                            label: `${epic.name || workItem?.name || 'Task'} (${epic.remaining_md} MDs)`,
+                            width: visibleDuration * PIXELS_PER_DAY,
+                            color: '#8b5cf6',
+                            jiraKey: epic.jira_key,
+                            jiraBaseUrl: data?.settings?.jira_base_url,
+                            epicId: epic.id,
+                            targetStart: epic.target_start!,
+                            targetEnd: epic.target_end!,
+                            segments: segments
+                        },
+                    });
+                } else {
+                    // Epic missing dates - render as a DatelessEpicNode
+                    const laneIdx = epicLanes[epic.id];
+                    const maxLanes = Math.max(teamMaxLanes[team.id] || 1, 1);
+                    const ganttStartY = baseY - ((maxLanes - 1) * 45) / 2;
+                    const yPos = ganttStartY + (laneIdx * 45);
 
-                        let intensityRatio = 1;
-                        if (baselineEffort > 0) {
-                            intensityRatio = segmentEffort / baselineEffort;
-                        } else if (segmentEffort > 0) {
-                            intensityRatio = 2; // if baseline is 0 but we threw effort on it, glow white
+                    const workItem = data.workItems.find(f => f.id === epic.work_item_id);
+                    const epicName = epic.name || workItem?.name || 'Task';
+
+                    nodes.push({
+                        id: `gantt-${epic.id}`,
+                        type: 'datelessEpicNode',
+                        position: { x: COL_GANTT_START_X - 180, y: yPos },
+                        data: {
+                            label: epicName,
+                            epicId: epic.id,
+                            jiraKey: epic.jira_key,
+                            jiraBaseUrl: data.settings.jira_base_url
                         }
-
-                        // Progress-Aware Color Logic: Sprints older than Active Sprint are frozen
-                        const isFrozen = sprintEnd < activeSprintStartDate;
-                        const baseColor = isFrozen ? '#475569' : '#8b5cf6'; // Slate Blue for past, Purple for future
-
-                        segments.push({
-                            startOffsetPixels: segmentOffsetPixels,
-                            widthPixels: segmentWidthPixels,
-                            intensity: intensityRatio,
-                            color: baseColor,
-                            isFrozen: isFrozen
-                        });
-                    }
-                });
-
-                nodes.push({
-                    id: `gantt-${epic.id}`,
-                    type: 'ganttBarNode',
-                    position: {
-                        x: COL_GANTT_START_X + (daysOffset * PIXELS_PER_DAY),
-                        y: yPos
-                    },
-                    data: {
-                        label: `${epic.name || workItem?.name || 'Task'} (${epic.remaining_md} MDs)`,
-                        width: visibleDuration * PIXELS_PER_DAY,
-                        color: '#8b5cf6',
-                        jiraKey: epic.jira_key,
-                        jiraBaseUrl: data?.settings?.jira_base_url,
-                        epicId: epic.id,
-                        targetStart: epic.target_start!,
-                        targetEnd: epic.target_end!,
-                        segments: segments
-                    },
-                });
+                    });
+                }
 
                 edges.push({
                     id: `edge-team-gantt-${epic.id}`,
