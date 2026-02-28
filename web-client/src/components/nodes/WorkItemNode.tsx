@@ -32,7 +32,7 @@ export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
                     justifyContent: 'center',
                     color: '#fff',
                     boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                    border: data.isGlobal ? '3px solid #fcd34d' : '3px solid rgba(255, 255, 255, 0.2)',
+                    border: '3px solid rgba(255, 255, 255, 0.2)',
                     transition: 'all 0.2s',
                     textAlign: 'center',
                     boxSizing: 'border-box',

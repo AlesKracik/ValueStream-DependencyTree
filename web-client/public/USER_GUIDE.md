@@ -25,7 +25,7 @@ Customers are represented by dual-layer additive circles:
 - **Node Status Icons:** Work Items display status indicators in the top-right of their circle:
     - **📦 Released:** Marked when a Work Item is associated with a specific release sprint.
     - **⚠️ Missing Dates:** Displays when a Work Item has connected Epics that are missing target start or end dates (meaning they cannot be visualized on the Gantt chart).
-    - **🌐 Global:** Marked when a Work Item is designated to impact **ALL Customers** simultaneously. These items also feature a **gold border**.
+    - **🌐 Global:** Marked when a Work Item is designated to impact **ALL Customers** simultaneously.
 - **Global Work Items (Maintenance/Tech Debt):** 
     - **Configuration:** In the Work Item detail page, check the **"ALL CUSTOMERS (Global)"** row at the top of the target table.
     - **TCV Basis:** You can choose whether the item's impact is calculated based on total **Existing TCV** or **Potential TCV** across the entire system.
