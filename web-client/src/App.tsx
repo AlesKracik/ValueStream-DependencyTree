@@ -115,7 +115,7 @@ function App() {
           <Route element={<Layout />}>
             {/* List Pages */}
             <Route path="/dashboards" element={<DashboardListPage data={dashboardState.data} loading={dashboardState.loading} />} />
-            <Route path="/dashboard/new" element={<DashboardEditPageRouteWrapper dashboardState={dashboardState} />} />
+            <Route path="/dashboard/new" element={<DashboardEditPage dashboardId="new" onBack={() => window.history.back()} {...dashboardState} />} />
             <Route path="/customers" element={<CustomerListPage data={dashboardState.data} loading={dashboardState.loading} />} />
             <Route path="/workitems" element={<WorkItemListPage data={dashboardState.data} loading={dashboardState.loading} />} />
             <Route path="/teams" element={<TeamListPage data={dashboardState.data} loading={dashboardState.loading} />} />
