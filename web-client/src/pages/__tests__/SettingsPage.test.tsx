@@ -30,8 +30,16 @@ describe('SettingsPage', () => {
         vi.clearAllMocks();
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
             ok: true,
-            json: () => Promise.resolve({ success: true, message: 'Export successful!' })
+            json: () => Promise.resolve({ 
+                success: true, 
+                data: mockData,
+                message: 'Export successful!' 
+            })
         }));
+        
+        // Mock URL methods for download
+        global.URL.createObjectURL = vi.fn().mockReturnValue('mock-url');
+        global.URL.revokeObjectURL = vi.fn();
     });
 
     it('renders and shows Export button in MongoDB tab', () => {
@@ -49,7 +57,7 @@ describe('SettingsPage', () => {
         expect(screen.getByText('Export to mockData.json')).toBeDefined();
     });
 
-    it('calls export API when Export button is clicked', async () => {
+    it('calls export API and triggers download when Export button is clicked', async () => {
         render(
             <SettingsPage 
                 settings={mockSettings} 
@@ -67,8 +75,10 @@ describe('SettingsPage', () => {
             method: 'POST'
         }));
 
-        const successMsg = await screen.findByText('Export successful!');
-        expect(successMsg).toBeDefined();
+        await vi.waitFor(() => {
+            expect(global.URL.createObjectURL).toHaveBeenCalled();
+            expect(screen.getByText(/Export successful! mockData.json download started/i)).toBeDefined();
+        });
     });
 
     it('switches to Jira tab and shows Jira settings', () => {

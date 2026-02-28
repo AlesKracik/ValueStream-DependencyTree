@@ -257,11 +257,9 @@ const MockDataPersistencePlugin = (): Plugin => ({
             dashboards: stripId(dashboards),
           };
 
-          fs.writeFileSync(mockDataPath, JSON.stringify(fullExport, null, 2));
-
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
-          res.end(JSON.stringify({ success: true, message: 'Successfully exported to mockData.json' }));
+          res.end(JSON.stringify({ success: true, data: fullExport }));
         } catch (e: any) {
           console.error('Error exporting mongo data:', e);
           res.setHeader('Content-Type', 'application/json');

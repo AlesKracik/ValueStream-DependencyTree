@@ -80,7 +80,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       });
       const resData = await response.json();
       if (response.ok && resData.success) {
-        setTestResult({ success: true, message: resData.message || "Export successful!" });
+        // Trigger browser download
+        const blob = new Blob([JSON.stringify(resData.data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'mockData.json';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        setTestResult({ success: true, message: "Export successful! mockData.json download started." });
       } else {
         setTestResult({ success: false, message: resData.error || "Export failed" });
       }
@@ -396,7 +407,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               Export Data
             </h3>
             <p style={{ color: "#9ca3af", fontSize: "13px", margin: "0 0 8px 0" }}>
-              Saves current MongoDB content to public/mockData.json for local use or seeding.
+              Downloads current MongoDB content as mockData.json for local backup or sharing.
             </p>
             <button
               type="button"
