@@ -567,6 +567,56 @@ export function useGraphLayout(
             sprints.forEach(s => teamSprintUsage[team.id][s.id] = 0);
         });
 
+        // 4.1. Pre-calculate global team capacity usage (NOT affected by UI filters)
+        data.epics.forEach(epic => {
+            if (!epic.target_start || !epic.target_end) return;
+            const team = data.teams.find(t => t.id === epic.team_id);
+            if (!team) return;
+
+            const start = parseISO(epic.target_start);
+            const end = parseISO(epic.target_end);
+            const duration = differenceInDays(end, start) + 1;
+
+            let totalOverrideMd = 0;
+            let overrideDays = 0;
+
+            sprints.forEach(sprint => {
+                const spStart = parseISO(sprint.start_date);
+                const spEnd = parseISO(sprint.end_date);
+                const overlapStart = max([start, spStart]);
+                const overlapEnd = min([end, spEnd]);
+                if (overlapStart <= overlapEnd) {
+                    const overrideVal = epic.sprint_effort_overrides?.[sprint.id];
+                    if (overrideVal !== undefined) {
+                        totalOverrideMd += overrideVal;
+                        overrideDays += (differenceInDays(overlapEnd, overlapStart) + 1);
+                    }
+                }
+            });
+
+            const remainingDefaultMd = Math.max(0, epic.effort_md - totalOverrideMd);
+            const remainingDefaultDays = Math.max(0, duration - overrideDays);
+
+            sprints.forEach((sprint) => {
+                const sprintStart = parseISO(sprint.start_date);
+                const sprintEnd = parseISO(sprint.end_date);
+                const overlapStart = max([start, sprintStart]);
+                const overlapEnd = min([end, sprintEnd]);
+
+                if (overlapStart <= overlapEnd) {
+                    const overlapDays = differenceInDays(overlapEnd, overlapStart) + 1;
+                    const overrideVal = epic.sprint_effort_overrides?.[sprint.id];
+
+                    if (overrideVal !== undefined) {
+                        teamSprintUsage[team.id][sprint.id] += overrideVal;
+                    } else {
+                        const proportion = remainingDefaultDays > 0 ? (overlapDays / remainingDefaultDays) : 0;
+                        teamSprintUsage[team.id][sprint.id] += (remainingDefaultMd * proportion);
+                    }
+                }
+            });
+        });
+
         const visibleEpicIds = new Set(visibleEpics);
         const allEpicsToShow = (data.epics || []).filter(e => visibleEpicIds.has(e.id));
         
