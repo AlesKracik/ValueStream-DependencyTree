@@ -113,7 +113,7 @@ export function useGraphLayout(
                 if (!passRelease(!!f.released_in_sprint_id)) return false;
 
                 const epicsForWorkItem = data.epics.filter(e => e.work_item_id === f.id);
-                const epicMdsSum = epicsForWorkItem.reduce((sum, e) => sum + e.remaining_md, 0);
+                const epicMdsSum = epicsForWorkItem.reduce((sum, e) => sum + e.effort_md, 0);
                 const displayEffort = Math.max(f.total_effort_mds || 0, epicMdsSum) || 1;
 
                 let maxImpact = 0;
@@ -385,7 +385,7 @@ export function useGraphLayout(
             .filter(f => visibleWorkItems.has(f.id))
             .map(f => {
                 const epicsForWorkItem = data.epics.filter(e => e.work_item_id === f.id && visibleEpics.has(e.id));
-                const epicMdsSum = epicsForWorkItem.reduce((sum, e) => sum + e.remaining_md, 0);
+                const epicMdsSum = epicsForWorkItem.reduce((sum, e) => sum + e.effort_md, 0);
                 const displayEffort = Math.max(f.total_effort_mds || 0, epicMdsSum) || 1; // Prevent div by 0
 
                 const hasDatelessEpics = epicsForWorkItem.some(e => !e.target_start || !e.target_end);
@@ -643,14 +643,14 @@ export function useGraphLayout(
         let maxRemainingMd = 0.0001;
         data.epics.forEach(epic => {
             if (!epic.work_item_id || !visibleWorkItems.has(epic.work_item_id) || !visibleTeams.has(epic.team_id) || !visibleEpics.has(epic.id)) return;
-            if (epic.remaining_md > maxRemainingMd) maxRemainingMd = epic.remaining_md;
+            if (epic.effort_md > maxRemainingMd) maxRemainingMd = epic.effort_md;
         });
 
         data.epics.forEach(epic => {
             if (!epic.work_item_id || !visibleWorkItems.has(epic.work_item_id) || !visibleTeams.has(epic.team_id) || !visibleEpics.has(epic.id)) return;
 
             // Scale width based on remaining MDs, keeping min 2px and max 10px
-            const normalizedStrokeWidth = Math.min(10, Math.max(2, (epic.remaining_md / maxRemainingMd) * 10));
+            const normalizedStrokeWidth = Math.min(10, Math.max(2, (epic.effort_md / maxRemainingMd) * 10));
             edges.push({
                 id: `edge-${epic.work_item_id}-${epic.team_id}-${epic.id}`,
                 source: `workitem-${epic.work_item_id}`,
@@ -735,7 +735,7 @@ export function useGraphLayout(
                                     }
                                 }
                             });
-                            const remainingDefaultMd = Math.max(0, epic.remaining_md - totalOverrideMd);
+                            const remainingDefaultMd = Math.max(0, epic.effort_md - totalOverrideMd);
                             const remainingDefaultDays = Math.max(0, totalEpicDuration - overrideDays);
 
                             if (overrideVal !== undefined) {
@@ -748,7 +748,7 @@ export function useGraphLayout(
                             // Calculate mathematical strictly uniform proportion for the baseline:
                             // Use TOTAL duration for baseline, so intensity remains constant regardless of visible window
                             const baselineProportion = overlapDays / totalEpicDuration;
-                            const baselineEffort = epic.remaining_md * baselineProportion;
+                            const baselineEffort = epic.effort_md * baselineProportion;
 
                             let intensityRatio = 1;
                             if (baselineEffort > 0) {
@@ -779,7 +779,7 @@ export function useGraphLayout(
                             y: yPos
                         },
                         data: {
-                            label: `${epic.name || workItem?.name || 'Task'} (${epic.remaining_md} MDs)`,
+                            label: `${epic.name || workItem?.name || 'Task'} (${epic.effort_md} MDs)`,
                             width: visibleDuration * PIXELS_PER_DAY,
                             color: '#8b5cf6',
                             jiraKey: epic.jira_key,

@@ -113,7 +113,7 @@ describe('scoreCalculator', () => {
         ];
 
         const epics: Epic[] = [
-            { id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', remaining_md: 20, name: 'Epic 1' }
+            { id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', effort_md: 20, name: 'Epic 1' }
         ];
 
         const data: DashboardData = { ...mockData, workItems, epics };

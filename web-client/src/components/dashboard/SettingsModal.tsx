@@ -156,7 +156,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         const updates: Partial<Epic> = {};
         if (fields.summary) updates.name = fields.summary;
         if (fields.timeestimate !== undefined && fields.timeestimate !== null) {
-          updates.remaining_md = Math.round(fields.timeestimate / 28800);
+          updates.effort_md = Math.round(fields.timeestimate / 28800);
         }
 
         if (targetStartKey && fields[targetStartKey])
@@ -277,7 +277,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         const updates: Partial<Epic> = {};
         if (fields.summary) updates.name = fields.summary;
         if (fields.timeestimate !== undefined && fields.timeestimate !== null) {
-          updates.remaining_md = Math.round(fields.timeestimate / 28800);
+          updates.effort_md = Math.round(fields.timeestimate / 28800);
         }
 
         if (targetStartKey && fields[targetStartKey])
@@ -317,7 +317,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               team_id:
                 updates.team_id ||
                 (data.teams.length > 0 ? data.teams[0].id : ""),
-              remaining_md: updates.remaining_md || 0,
+              effort_md: updates.effort_md || 0,
               name: updates.name,
               target_start: updates.target_start,
               target_end: updates.target_end,

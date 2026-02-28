@@ -41,7 +41,7 @@ export interface Epic {
   jira_key: string;
   work_item_id?: string;
   team_id: string;
-  remaining_md: number;
+  effort_md: number;
   target_start?: string;
   target_end?: string;
   name?: string;

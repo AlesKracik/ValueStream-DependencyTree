@@ -106,7 +106,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
             jira_key: 'TBD',
             work_item_id: isNew ? 'new' : workItemId,
             team_id: data.teams[0]?.id || '',
-            remaining_md: 0,
+            effort_md: 0,
             target_start: new Date().toISOString().split('T')[0],
             target_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
             name: 'New Epic'
@@ -186,7 +186,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
             const updates: Partial<Epic> = {};
             if (fields.summary) updates.name = fields.summary;
             if (fields.timeestimate !== undefined && fields.timeestimate !== null) {
-                updates.remaining_md = Math.round(fields.timeestimate / 28800);
+                updates.effort_md = Math.round(fields.timeestimate / 28800);
             }
 
             if (targetStartKey && fields[targetStartKey]) updates.target_start = fields[targetStartKey];
@@ -517,7 +517,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                     <th>Name</th>
                                     <th>Jira Key</th>
                                     <th>Team</th>
-                                    <th>Remaining (MDs)</th>
+                                    <th>Effort MDs</th>
                                     <th>Start Date</th>
                                     <th>End Date</th>
                                     <th>Actions</th>
@@ -542,7 +542,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                             />
                                         </td>
                                         <td>
-                                            <input type="number" min="0" value={epic.remaining_md} onChange={e => handleUpdateEpic(epic.id, { remaining_md: parseInt(e.target.value) || 0 })} style={{ width: '60px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
+                                            <input type="number" min="0" value={epic.effort_md} onChange={e => handleUpdateEpic(epic.id, { effort_md: parseInt(e.target.value) || 0 })} style={{ width: '60px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
                                         </td>
                                         <td>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>

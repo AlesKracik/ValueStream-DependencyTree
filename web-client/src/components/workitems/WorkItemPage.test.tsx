@@ -82,7 +82,7 @@ describe('WorkItemPage', () => {
         const dataWithUnassigned: DashboardData = {
             ...mockData,
             epics: [
-                { id: 'e-unassigned', jira_key: 'PROJ-123', work_item_id: 'UNASSIGNED', team_id: 't1', remaining_md: 5, name: 'Unassigned Epic' }
+                { id: 'e-unassigned', jira_key: 'PROJ-123', work_item_id: 'UNASSIGNED', team_id: 't1', effort_md: 5, name: 'Unassigned Epic' }
             ],
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
         };
@@ -132,7 +132,7 @@ describe('WorkItemPage', () => {
         const dataWithEpic: DashboardData = {
             ...mockData,
             epics: [
-                { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', remaining_md: 5, target_start: '2026-01-01', target_end: '2026-01-14' }
+                { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5, target_start: '2026-01-01', target_end: '2026-01-14' }
             ],
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
         };
@@ -165,7 +165,7 @@ describe('WorkItemPage', () => {
         const dataWithDatelessEpic: DashboardData = {
             ...mockData,
             epics: [
-                { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', remaining_md: 5, target_start: undefined, target_end: undefined }
+                { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5, target_start: undefined, target_end: undefined }
             ],
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
         };
@@ -181,7 +181,7 @@ describe('WorkItemPage', () => {
         fireEvent.click(epicsTab);
 
         // Check for ⚠️ icon
-        const warningIcon = screen.getByTitle(/Missing target dates/i);
+        const warningIcon = screen.getByTitle(/Missing start date/i);
         expect(warningIcon).toBeDefined();
     });
 });

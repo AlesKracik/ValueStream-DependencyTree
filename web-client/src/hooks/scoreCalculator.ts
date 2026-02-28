@@ -9,7 +9,7 @@ import type { DashboardData, WorkItem } from '../types/models';
 export function calculateWorkItemScores(data: DashboardData): WorkItem[] {
     return data.workItems.map(workItem => {
         const epicsForWorkItem = data.epics.filter(e => e.work_item_id === workItem.id);
-        const epicMdsSum = epicsForWorkItem.reduce((sum, e) => sum + e.remaining_md, 0);
+        const epicMdsSum = epicsForWorkItem.reduce((sum, e) => sum + e.effort_md, 0);
         const displayEffort = Math.max(workItem.total_effort_mds || 0, epicMdsSum) || 1; // Prevent div by 0
 
         let impact = 0;

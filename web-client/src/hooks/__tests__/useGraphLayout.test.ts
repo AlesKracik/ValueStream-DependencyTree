@@ -27,9 +27,9 @@ const MOCK_DATA: DashboardData = {
         { id: 't1', name: 'Team Alpha', total_capacity_mds: 10 }
     ],
     epics: [
-        { id: 'e1', jira_key: 'J-1', work_item_id: 'f1', team_id: 't1', remaining_md: 8, target_start: '2026-02-12', target_end: '2026-02-26' },
-        { id: 'e2', jira_key: 'J-2', work_item_id: 'f2', team_id: 't1', remaining_md: 5, target_start: '2026-02-12', target_end: '2026-02-26' },
-        { id: 'e3', jira_key: 'J-3', work_item_id: 'f1', team_id: 't1', remaining_md: 3 }
+        { id: 'e1', jira_key: 'J-1', work_item_id: 'f1', team_id: 't1', effort_md: 8, target_start: '2026-02-12', target_end: '2026-02-26' },
+        { id: 'e2', jira_key: 'J-2', work_item_id: 'f2', team_id: 't1', effort_md: 5, target_start: '2026-02-12', target_end: '2026-02-26' },
+        { id: 'e3', jira_key: 'J-3', work_item_id: 'f1', team_id: 't1', effort_md: 3 }
     ],
     sprints: [
         { id: 's1', name: 'Sprint 1', start_date: '2026-02-12', end_date: '2026-02-26' }

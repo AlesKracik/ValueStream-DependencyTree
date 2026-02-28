@@ -143,7 +143,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({
             const updates: Partial<Epic> = {};
             if (fields.summary) updates.name = fields.summary;
             if (fields.timeestimate !== undefined && fields.timeestimate !== null) {
-                updates.remaining_md = Math.round(fields.timeestimate / 28800);
+                updates.effort_md = Math.round(fields.timeestimate / 28800);
             }
 
             if (targetStartKey && fields[targetStartKey]) updates.target_start = fields[targetStartKey];
@@ -189,7 +189,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({
     // Calculate effort overlaps
     const sStart = epic.target_start ? parseISO(epic.target_start) : null;
     const sEnd = epic.target_end ? parseISO(epic.target_end) : null;
-    const totalMd = Number(epic.remaining_md) || 0;
+    const totalMd = Number(epic.effort_md) || 0;
     const overrides = epic.sprint_effort_overrides || {};
 
     let overlappingSprints: { id: string, name: string, defaultEffort: number, hasOverride: boolean }[] = [];
@@ -310,12 +310,12 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                             />
                         </label>
                         <label>
-                            Remaining Estimate (MDs):
+                            Effort MDs:
                             <input
                                 type="number"
                                 step="0.1"
-                                value={epic.remaining_md === undefined ? '' : epic.remaining_md}
-                                onChange={e => updateEpic(epicId, { remaining_md: Number(e.target.value) })}
+                                value={epic.effort_md === undefined ? '' : epic.effort_md}
+                                onChange={e => updateEpic(epicId, { effort_md: Number(e.target.value) })}
                             />
                         </label>
                         <label>

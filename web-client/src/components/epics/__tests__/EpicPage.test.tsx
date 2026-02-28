@@ -18,7 +18,7 @@ const mockData: DashboardData = {
             id: 'e1',
             jira_key: 'J-1',
             team_id: 't1',
-            remaining_md: 10,
+            effort_md: 10,
             target_start: '2026-01-05',
             target_end: '2026-02-25',
             sprint_effort_overrides: { 's_past': 5 }

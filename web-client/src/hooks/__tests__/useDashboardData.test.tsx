@@ -88,7 +88,7 @@ describe('useDashboardData', () => {
     it('cascades deleteWorkItem to epics', async () => {
         const dataWithEpic: DashboardData = {
             ...mockData,
-            epics: [{ id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', remaining_md: 5, name: 'Epic 1' }]
+            epics: [{ id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', effort_md: 5, name: 'Epic 1' }]
         };
         vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => {
             if (url === '/api/loadData') return Promise.resolve({ ok: true, json: () => Promise.resolve(dataWithEpic) });
