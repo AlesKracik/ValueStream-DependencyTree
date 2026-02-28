@@ -274,7 +274,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             onNavigateToEpic(epicId);
         } else if (node.type === 'sprintCapacityNode') {
             // Navigate to the general sprint list instead of individual sprint
-            onNavigateToSprint('list');
+            onNavigateToSprint('sprints');
         }
     }, [onNavigateToCustomer, onNavigateToWorkItem, onNavigateToTeam, onNavigateToEpic, onNavigateToSprint]);
 

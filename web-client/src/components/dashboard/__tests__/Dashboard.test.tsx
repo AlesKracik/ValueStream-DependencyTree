@@ -73,7 +73,7 @@ describe('Dashboard', () => {
         const sprintHeader = screen.getByText('Sprint 1');
         fireEvent.click(sprintHeader);
 
-        expect(onNavigateToSprint).toHaveBeenCalledWith('list');
+        expect(onNavigateToSprint).toHaveBeenCalledWith('sprints');
     });
 
     it('navigates to customer page when customer node is clicked', () => {
