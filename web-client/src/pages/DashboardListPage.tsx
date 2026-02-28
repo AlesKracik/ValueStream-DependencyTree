@@ -35,11 +35,23 @@ export const DashboardListPage: React.FC<Props> = ({ data, loading }) => {
             </div>
             <div className={styles.list}>
                 {filtered.map(d => (
-                    <div key={d.id} className={styles.listItem} onClick={() => navigate(`/dashboard/${d.id}`)}>
-                        <div className={styles.itemTitle}>{d.name}</div>
-                        <div className={styles.itemDetails}>
-                            {d.description}
+                    <div key={d.id} className={styles.listItem} onClick={() => navigate(`/dashboard/${d.id}`)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                            <div className={styles.itemTitle}>{d.name}</div>
+                            <div className={styles.itemDetails}>
+                                {d.description}
+                            </div>
                         </div>
+                        <button 
+                            className={styles.createBtn} 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/dashboard/edit/${d.id}`);
+                            }}
+                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                        >
+                            Edit Parameters
+                        </button>
                     </div>
                 ))}
                 {filtered.length === 0 && <div className={styles.empty}>No dashboards found.</div>}

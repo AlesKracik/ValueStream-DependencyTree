@@ -13,6 +13,7 @@ import { SprintPage } from './components/sprints/SprintPage';
 // Layout & List Pages
 import { Layout } from './components/layout/Layout';
 import { DashboardListPage } from './pages/DashboardListPage';
+import { DashboardEditPage } from './pages/DashboardEditPage';
 import { CustomerListPage } from './pages/CustomerListPage';
 import { WorkItemListPage } from './pages/WorkItemListPage';
 import { TeamListPage } from './pages/TeamListPage';
@@ -64,6 +65,12 @@ function TeamPageRouteWrapper({ dashboardState }: any) {
   return <TeamPage teamId={id!} onBack={() => navigate(-1)} {...dashboardState} />;
 }
 
+function DashboardEditPageRouteWrapper({ dashboardState }: any) {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  return <DashboardEditPage dashboardId={id!} onBack={() => navigate(-1)} {...dashboardState} />;
+}
+
 function SprintPageRouteWrapper({ dashboardState }: any) {
   return <SprintPage {...dashboardState} />;
 }
@@ -106,6 +113,7 @@ function App() {
           <Route element={<Layout />}>
             {/* List Pages */}
             <Route path="/dashboards" element={<DashboardListPage data={dashboardState.data} loading={dashboardState.loading} />} />
+            <Route path="/dashboard/new" element={<DashboardEditPageRouteWrapper dashboardState={dashboardState} />} />
             <Route path="/customers" element={<CustomerListPage data={dashboardState.data} loading={dashboardState.loading} />} />
             <Route path="/workitems" element={<WorkItemListPage data={dashboardState.data} loading={dashboardState.loading} />} />
             <Route path="/teams" element={<TeamListPage data={dashboardState.data} loading={dashboardState.loading} />} />
@@ -121,6 +129,7 @@ function App() {
                 <DashboardRouteWrapper dashboardState={dashboardState} dashboardViewState={dashboardViewState} setDashboardViewState={setDashboardViewState} />
               </ReactFlowProvider>
             } />
+            <Route path="/dashboard/edit/:id" element={<DashboardEditPageRouteWrapper dashboardState={dashboardState} />} />
             <Route path="/customer/:id" element={<CustomerPageRouteWrapper dashboardState={dashboardState} />} />
             <Route path="/workitem/:id" element={<WorkItemPageRouteWrapper dashboardState={dashboardState} />} />
             <Route path="/epic/:id" element={<EpicPageRouteWrapper dashboardState={dashboardState} />} />

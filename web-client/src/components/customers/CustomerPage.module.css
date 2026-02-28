@@ -87,7 +87,7 @@
     flex: 1;
 }
 
-.formGrid input {
+.formGrid input, .formGrid select {
     padding: 10px 14px;
     border-radius: 6px;
     border: 1px solid #4b5563;
@@ -96,7 +96,7 @@
     font-size: 15px;
 }
 
-.formGrid input:focus {
+.formGrid input:focus, .formGrid select:focus {
     outline: 2px solid #3b82f6;
     outline-offset: -1px;
 }
