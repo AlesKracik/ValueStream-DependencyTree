@@ -160,4 +160,28 @@ describe('WorkItemPage', () => {
         
         expect(updateEpicSpy).not.toHaveBeenCalled();
     });
+
+    it('shows warning icon for epics with missing dates', async () => {
+        const dataWithDatelessEpic: DashboardData = {
+            ...mockData,
+            epics: [
+                { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', remaining_md: 5, target_start: undefined, target_end: undefined }
+            ],
+            teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
+        };
+
+        render(
+            <DashboardProvider value={{ data: dataWithDatelessEpic, updateEpic: vi.fn() }}>
+                <WorkItemPage {...defaultProps} data={dataWithDatelessEpic} workItemId="f1" />
+            </DashboardProvider>
+        );
+
+        // Switch to Epics tab
+        const epicsTab = screen.getByText(/Epics \(/i);
+        fireEvent.click(epicsTab);
+
+        // Check for ⚠️ icon
+        const warningIcon = screen.getByTitle(/Missing target dates/i);
+        expect(warningIcon).toBeDefined();
+    });
 });

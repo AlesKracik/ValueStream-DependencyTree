@@ -514,6 +514,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                         <table className={styles.table}>
                             <thead>
                                 <tr>
+                                    <th>Status</th>
                                     <th>Name</th>
                                     <th>Jira Key</th>
                                     <th>Team</th>
@@ -526,6 +527,11 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                             <tbody>
                                 {epics.map(epic => (
                                     <tr key={epic.id}>
+                                        <td style={{ textAlign: 'center', fontSize: '18px' }}>
+                                            {(!epic.target_start || !epic.target_end) && (
+                                                <span title="Missing target dates - will not appear on Gantt chart">⚠️</span>
+                                            )}
+                                        </td>
                                         <td>
                                             <input type="text" value={epic.name || ''} onChange={e => handleUpdateEpic(epic.id, { name: e.target.value })} style={{ width: '100%', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
                                         </td>
@@ -567,7 +573,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                 ))}
                                 {epics.length === 0 && (
                                     <tr>
-                                        <td colSpan={7} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No epics currently mapped to this work item.</td>
+                                        <td colSpan={8} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No epics currently mapped to this work item.</td>
                                     </tr>
                                 )}
                             </tbody>
