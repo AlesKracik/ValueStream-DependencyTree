@@ -23,11 +23,15 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState(initialValue);
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const skipSyncRef = useRef(false);
 
     // Sync searchTerm with initialValue when it changes (e.g. for table rows)
     useEffect(() => {
-        if (!isOpen) {
+        if (!isOpen && !skipSyncRef.current) {
             setSearchTerm(initialValue);
+        }
+        if (!isOpen) {
+            skipSyncRef.current = false;
         }
     }, [initialValue, isOpen]);
 
@@ -45,10 +49,13 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const handleSelect = (id: string) => {
-        onSelect(id);
+    const handleSelect = (option: Option) => {
+        onSelect(option.id);
+        skipSyncRef.current = true;
         if (clearOnSelect) {
             setSearchTerm('');
+        } else {
+            setSearchTerm(option.label);
         }
         setIsOpen(false);
     };
@@ -95,7 +102,7 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                     {filteredOptions.map(option => (
                         <li
                             key={option.id}
-                            onClick={() => handleSelect(option.id)}
+                            onClick={() => handleSelect(option)}
                             style={{
                                 padding: '8px 12px',
                                 cursor: 'pointer',
