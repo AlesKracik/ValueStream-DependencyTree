@@ -219,6 +219,55 @@ const MockDataPersistencePlugin = (): Plugin => ({
             res.end(JSON.stringify({ success: false, error: e.message }));
           }
         });
+      } else if (req.url === '/api/mongo/export' && req.method === 'POST') {
+        try {
+          const settingsPath = path.resolve(__dirname, 'public/settings.json');
+          const mockDataPath = path.resolve(__dirname, 'public/mockData.json');
+
+          if (!fs.existsSync(settingsPath)) {
+            throw new Error("Settings file not found.");
+          }
+          const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+
+          if (!settings.mongo_uri) {
+            throw new Error("MongoDB URI not configured in settings.");
+          }
+
+          const db = await getDb(settings.mongo_uri, settings.mongo_db);
+          
+          const customers = await db.collection('customers').find({}).toArray();
+          const workItems = await db.collection('workItems').find({}).toArray();
+          const teams = await db.collection('teams').find({}).toArray();
+          const epics = await db.collection('epics').find({}).toArray();
+          const sprints = await db.collection('sprints').find({}).toArray();
+          const dashboards = await db.collection('dashboards').find({}).toArray();
+          
+          const stripId = (arr: any[]) => arr.map(doc => {
+            const { _id, ...rest } = doc;
+            return rest;
+          });
+
+          const fullExport = {
+            settings,
+            customers: stripId(customers),
+            workItems: stripId(workItems),
+            teams: stripId(teams),
+            epics: stripId(epics),
+            sprints: stripId(sprints),
+            dashboards: stripId(dashboards),
+          };
+
+          fs.writeFileSync(mockDataPath, JSON.stringify(fullExport, null, 2));
+
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, message: 'Successfully exported to mockData.json' }));
+        } catch (e: any) {
+          console.error('Error exporting mongo data:', e);
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 500;
+          res.end(JSON.stringify({ success: false, error: e.message }));
+        }
       } else if (req.url === '/api/jira/test' && req.method === 'POST') {
         let body = '';
         req.on('data', (chunk: any) => { body += chunk.toString(); });

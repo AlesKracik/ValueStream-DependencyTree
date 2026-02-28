@@ -70,6 +70,27 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
   };
 
+  const handleExportMongo = async () => {
+    setIsTesting(true);
+    setTestResult(null);
+    try {
+      const response = await fetch("/api/mongo/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const resData = await response.json();
+      if (response.ok && resData.success) {
+        setTestResult({ success: true, message: resData.message || "Export successful!" });
+      } else {
+        setTestResult({ success: false, message: resData.error || "Export failed" });
+      }
+    } catch (e: any) {
+      setTestResult({ success: false, message: e.message || "Network error occurred during export." });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
   const handleSyncAllFromJira = async () => {
     if (!data) return;
     const epicsWithKeys = data.epics.filter(e => e.jira_key && e.jira_key !== "TBD");
@@ -367,6 +388,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               disabled={isTesting || !formData.mongo_uri}
             >
               {isTesting ? "Testing Mongo..." : "Test Mongo Connection"}
+            </button>
+
+            <hr style={{ borderColor: "#374151", width: "100%", margin: "16px 0 8px 0" }} />
+            
+            <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#e5e7eb" }}>
+              Export Data
+            </h3>
+            <p style={{ color: "#9ca3af", fontSize: "13px", margin: "0 0 8px 0" }}>
+              Saves current MongoDB content to public/mockData.json for local use or seeding.
+            </p>
+            <button
+              type="button"
+              onClick={handleExportMongo}
+              style={{ padding: "8px 16px", backgroundColor: "#3b82f6", color: "#fff", border: "1px solid #2563eb", borderRadius: "4px", cursor: "pointer", fontWeight: 500, alignSelf: "flex-start" }}
+              disabled={isTesting || !formData.mongo_uri}
+            >
+              {isTesting ? "Exporting..." : "Export to mockData.json"}
             </button>
           </>
         )}

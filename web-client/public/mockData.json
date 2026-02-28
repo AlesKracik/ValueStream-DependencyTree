@@ -1,5 +1,4 @@
 {
-  "$schema": "./schema.json",
   "settings": {
     "jira_base_url": "https://jira.example.com/",
     "jira_api_version": "2",
@@ -82,7 +81,7 @@
     },
     {
       "id": "c13",
-      "name": "Customer Nu",
+      "name": "Customer Nur",
       "existing_tcv": 2000000,
       "potential_tcv": 5100000
     },
@@ -217,7 +216,8 @@
         "priority": "Must-have"
       },
       "customer_targets": [],
-      "released_in_sprint_id": "s4"
+      "released_in_sprint_id": "s4",
+      "score": 146750
     },
     {
       "id": "f1",
@@ -242,7 +242,8 @@
           "tcv_type": "potential",
           "priority": "Must-have"
         }
-      ]
+      ],
+      "score": 7090.909090909091
     },
     {
       "id": "f2",
@@ -272,7 +273,8 @@
           "priority": "Must-have"
         }
       ],
-      "released_in_sprint_id": "s14"
+      "released_in_sprint_id": "s14",
+      "score": 15154.545454545454
     },
     {
       "id": "f3",
@@ -298,26 +300,35 @@
           "customer_id": "c1772100453672",
           "tcv_type": "potential",
           "priority": "Should-have"
+        },
+        {
+          "customer_id": "c2",
+          "tcv_type": "potential",
+          "priority": "Should-have"
         }
-      ]
+      ],
+      "score": 9514.792899408283
     },
     {
       "id": "f4",
       "name": "Raw Device Mapping Support",
       "total_effort_mds": 0,
-      "customer_targets": []
+      "customer_targets": [],
+      "score": 0
     },
     {
       "id": "f5",
       "name": "Failover Alignment",
       "total_effort_mds": 0,
-      "customer_targets": []
+      "customer_targets": [],
+      "score": 0
     },
     {
       "id": "f6",
       "name": "Non-Disruptive Upgrades",
       "total_effort_mds": 0,
-      "customer_targets": []
+      "customer_targets": [],
+      "score": 0
     },
     {
       "id": "f7",
@@ -329,79 +340,92 @@
           "tcv_type": "potential",
           "priority": "Must-have"
         }
-      ]
+      ],
+      "score": 14615.384615384615
     },
     {
       "id": "f8",
       "name": "UI Enhancements",
       "total_effort_mds": 0,
-      "customer_targets": []
+      "customer_targets": [],
+      "score": 0
     },
     {
       "id": "f9",
       "name": "Async Volume Protection",
       "total_effort_mds": 0,
-      "customer_targets": []
+      "customer_targets": [],
+      "score": 0
     },
     {
       "id": "f10",
       "name": "Scalability Improvements",
       "total_effort_mds": 0,
-      "customer_targets": []
+      "customer_targets": [],
+      "score": 0
     },
     {
       "id": "f11",
       "name": "Fan-out Recovery",
       "total_effort_mds": 0,
-      "customer_targets": []
+      "customer_targets": [],
+      "score": 0
     },
     {
       "id": "f12",
       "name": "Active DR Hardening",
       "total_effort_mds": 0,
-      "customer_targets": []
+      "customer_targets": [],
+      "score": 0
     },
     {
       "id": "f13",
       "name": "Independent Disk Support",
       "total_effort_mds": 0,
-      "customer_targets": []
+      "customer_targets": [],
+      "score": 0
     },
     {
       "id": "f14",
       "name": "Multi-Datastore VM Support",
       "total_effort_mds": 0,
-      "customer_targets": []
+      "customer_targets": [],
+      "score": 0
     },
     {
       "id": "f15",
       "name": "Cloud Encryption Enhancement",
       "total_effort_mds": 0,
-      "customer_targets": []
+      "customer_targets": [],
+      "score": 0
     },
     {
       "id": "f16",
       "name": "Recovery Zones - Phase 1",
       "total_effort_mds": 0,
-      "customer_targets": []
+      "customer_targets": [],
+      "score": 0
     },
     {
       "id": "f17",
       "name": "Public API",
       "total_effort_mds": 0,
-      "customer_targets": []
+      "customer_targets": [],
+      "score": 0
     },
     {
       "id": "f19",
       "name": "Repository Hardening",
       "total_effort_mds": 0,
-      "customer_targets": []
+      "customer_targets": [],
+      "score": 0
     },
     {
       "id": "f20",
       "name": "Admin UI Portal",
       "total_effort_mds": 0,
-      "customer_targets": []
+      "customer_targets": [],
+      "score": 0
     },
     {
       "id": "f1771836442372",
@@ -418,13 +442,15 @@
           "tcv_type": "potential",
           "priority": "Should-have"
         }
-      ]
+      ],
+      "score": 450000
     },
     {
       "id": "f1772024262207",
       "name": "Test Ownership Transfer",
       "total_effort_mds": 0,
-      "customer_targets": []
+      "customer_targets": [],
+      "score": 0
     }
   ],
   "teams": [
@@ -527,7 +553,7 @@
       "team_id": "t4",
       "remaining_md": 20,
       "target_start": "2026-02-18",
-      "target_end": "2026-03-14",
+      "target_end": "2026-03-26",
       "name": "Device Recreation from Metadata",
       "sprint_effort_overrides": {
         "s1": 6.4
@@ -701,11 +727,11 @@
       "work_item_id": "f7",
       "team_id": "t4",
       "remaining_md": 26,
-      "target_start": "2025-12-07",
+      "target_start": "2026-02-05",
       "target_end": "2026-02-11",
       "name": "Source VM Power Management",
       "sprint_effort_overrides": {
-        "s0": 5.8
+        "s0": 26
       }
     },
     {
@@ -751,7 +777,7 @@
     {
       "id": "e1771943219889_6",
       "jira_key": "PROJ-1024",
-      "work_item_id": "UNASSIGNED",
+      "work_item_id": "f3",
       "team_id": "t2",
       "remaining_md": 120,
       "name": "Team Beta Interrupts",
@@ -1488,7 +1514,16 @@
     {
       "id": "main",
       "name": "Main Dependency Tree Dashboard",
-      "description": "Visualizes customers, work items, and epics on a timeline."
+      "description": "Visualizes customers, work items, and epics on a timeline.",
+      "parameters": {
+        "customerFilter": "",
+        "workItemFilter": "",
+        "releasedFilter": "all",
+        "minTcvFilter": "",
+        "minScoreFilter": "",
+        "teamFilter": "",
+        "epicFilter": ""
+      }
     }
   ]
 }
