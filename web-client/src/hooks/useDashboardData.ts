@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { DashboardData, Customer, WorkItem, Team, Epic, Settings, Sprint } from '../types/models';
+import type { DashboardData, Customer, WorkItem, Team, Epic, Settings, Sprint, DashboardEntity } from '../types/models';
 
 const persistEntity = async (collection: string, method: 'POST' | 'DELETE', entity: any) => {
     try {
@@ -230,6 +230,36 @@ export function useDashboardData() {
         });
     };
 
+    const addDashboard = (dashboard: DashboardEntity) => {
+        setData(prev => {
+            if (!prev) return prev;
+            persistEntity('dashboards', 'POST', dashboard);
+            return { ...prev, dashboards: [...prev.dashboards, dashboard] };
+        });
+    };
+
+    const updateDashboard = (id: string, updates: Partial<DashboardEntity>) => {
+        setData(prev => {
+            if (!prev) return prev;
+            const existing = prev.dashboards.find(d => d.id === id);
+            if (existing) {
+                persistEntity('dashboards', 'POST', { ...existing, ...updates });
+            }
+            return {
+                ...prev,
+                dashboards: prev.dashboards.map(d => d.id === id ? { ...d, ...updates } : d)
+            };
+        });
+    };
+
+    const deleteDashboard = (id: string) => {
+        setData(prev => {
+            if (!prev) return prev;
+            persistEntity('dashboards', 'DELETE', { id });
+            return { ...prev, dashboards: prev.dashboards.filter(d => d.id !== id) };
+        });
+    };
+
     return {
         data,
         loading,
@@ -247,6 +277,9 @@ export function useDashboardData() {
         addSprint,
         updateSprint,
         deleteSprint,
-        updateSettings
+        updateSettings,
+        addDashboard,
+        updateDashboard,
+        deleteDashboard
     };
 }

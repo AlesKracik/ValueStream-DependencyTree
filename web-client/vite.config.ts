@@ -91,7 +91,20 @@ const MockDataPersistencePlugin = (): Plugin => ({
                    if (localData.epics?.length > 0) await db.collection('epics').insertMany(localData.epics);
                    if (localData.sprints?.length > 0) await db.collection('sprints').insertMany(localData.sprints);
                    // Create a default dashboard if missing in localData
-                   const defaultDashboards = localData.dashboards || [{ id: 'main', name: 'Main Dependency Tree Dashboard', description: 'Visualizes customers, work items, and epics on a timeline.' }];
+                   const defaultDashboards = localData.dashboards || [{ 
+                     id: 'main', 
+                     name: 'Main Dependency Tree Dashboard', 
+                     description: 'Visualizes customers, work items, and epics on a timeline.',
+                     parameters: {
+                       customerFilter: '',
+                       workItemFilter: '',
+                       releasedFilter: 'all',
+                       minTcvFilter: '',
+                       minScoreFilter: '',
+                       teamFilter: '',
+                       epicFilter: ''
+                     }
+                   }];
                    await db.collection('dashboards').insertMany(defaultDashboards);
                    
                    dbData.customers = localData.customers || [];

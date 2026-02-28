@@ -63,10 +63,21 @@ export interface Settings {
   mongo_db?: string;
 }
 
+export interface DashboardParameters {
+  customerFilter: string;
+  workItemFilter: string;
+  releasedFilter: 'all' | 'released' | 'unreleased';
+  minTcvFilter: string;
+  minScoreFilter: string;
+  teamFilter: string;
+  epicFilter: string;
+}
+
 export interface DashboardEntity {
   id: string;
   name: string;
   description: string;
+  parameters: DashboardParameters;
 }
 
 export interface DashboardData {

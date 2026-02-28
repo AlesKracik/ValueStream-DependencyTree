@@ -292,7 +292,8 @@
                 "required": [
                     "id",
                     "name",
-                    "description"
+                    "description",
+                    "parameters"
                 ],
                 "properties": {
                     "id": {
@@ -303,6 +304,27 @@
                     },
                     "description": {
                         "type": "string"
+                    },
+                    "parameters": {
+                        "type": "object",
+                        "required": [
+                            "customerFilter",
+                            "workItemFilter",
+                            "releasedFilter",
+                            "minTcvFilter",
+                            "minScoreFilter",
+                            "teamFilter",
+                            "epicFilter"
+                        ],
+                        "properties": {
+                            "customerFilter": { "type": "string" },
+                            "workItemFilter": { "type": "string" },
+                            "releasedFilter": { "type": "string", "enum": ["all", "released", "unreleased"] },
+                            "minTcvFilter": { "type": "string" },
+                            "minScoreFilter": { "type": "string" },
+                            "teamFilter": { "type": "string" },
+                            "epicFilter": { "type": "string" }
+                        }
                     }
                 }
             }
