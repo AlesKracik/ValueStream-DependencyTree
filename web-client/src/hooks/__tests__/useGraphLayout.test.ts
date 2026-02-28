@@ -84,4 +84,22 @@ describe('useGraphLayout Math Engine', () => {
 
         expect(f2Score).toBeGreaterThan(f1Score);
     });
+
+    it('maintains consistent team capacity usage regardless of filters', () => {
+        // Unfiltered
+        const { result: resultUnfiltered } = renderHook(() => useGraphLayout(MOCK_DATA));
+        const unfilteredCapNode = resultUnfiltered.current.nodes.find(n => n.id === 'sprint-cap-t1-s1');
+        // e1 (8 MD) + e2 (5 MD) = 13 MD used in s1 for Team t1
+        expect((unfilteredCapNode?.data as any).usedMds).toBe(13);
+
+        // With filter that hides workitem f2 (and thus epic e2)
+        const { result: resultFiltered } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', 'Low RICE Feat'));
+        
+        // Confirm f2 is hidden
+        expect(resultFiltered.current.nodes.find(n => n.id === 'workitem-f2')).toBeUndefined();
+        
+        const filteredCapNode = resultFiltered.current.nodes.find(n => n.id === 'sprint-cap-t1-s1');
+        // Capacity usage should STILL be 13, not 8
+        expect((filteredCapNode?.data as any).usedMds).toBe(13);
+    });
 });
