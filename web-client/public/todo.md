@@ -4,7 +4,6 @@
   * customer integration with salesforce and support system
   * TCV History Logic Enhancement: Currently, when a Customer's Actual TCV is updated (archived to history), Work Items linked to "Latest Actual" remain linked to the new "Latest Actual". Consider if some Work Items should be automatically re-linked to the archived historical entry to preserve their context.
   * archive old sprints
-  * currently when mongo database does not exist, its created. thats good for jump starts but can be typo-prone. propose solution
 * code readabilty and architecture
   * find parts copy&pasted (or very simmilar) on multiple places and refactor them to be reusable
     * **List Pages Duplication:** `CustomerListPage.tsx`, `WorkItemListPage.tsx`, `DashboardListPage.tsx`, and `TeamListPage.tsx` share near-identical structural boilerplate for rendering filtered lists. They should be refactored into a single generic `<GenericListPage />` or `<EntityList />` component that accepts a title, a list of items, an item render prop, and an action button prop.

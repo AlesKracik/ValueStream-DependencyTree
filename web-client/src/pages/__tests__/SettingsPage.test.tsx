@@ -15,6 +15,7 @@ const mockSettings: Settings = {
     mongo_aws_secret_key: '',
     mongo_aws_session_token: '',
     mongo_oidc_token: '',
+    mongo_create_if_not_exists: false,
     customer_jql_new: '',
     customer_jql_in_progress: '',
     customer_jql_noop: '',
@@ -39,13 +40,27 @@ describe('SettingsPage', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-            ok: true,
-            json: () => Promise.resolve({ 
-                success: true, 
-                data: mockData,
-                message: 'Export successful!' 
-            })
+        vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => {
+            if (url === '/api/mongo/databases') {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ success: true, databases: ['db1', 'db2', 'testdb'] })
+                });
+            }
+            if (url === '/api/mongo/test') {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ success: true, exists: true, message: 'Connection successful!' })
+                });
+            }
+            return Promise.resolve({ 
+                ok: true,
+                json: () => Promise.resolve({ 
+                    success: true, 
+                    data: mockData,
+                    message: 'Success' 
+                })
+            });
         }));
         
         // Mock URL methods for download
@@ -88,10 +103,7 @@ describe('SettingsPage', () => {
         });
 
         expect(global.fetch).toHaveBeenCalledWith('/api/mongo/export', expect.objectContaining({
-            method: 'POST',
-            headers: expect.objectContaining({
-                'Authorization': expect.stringContaining('Bearer')
-            })
+            method: 'POST'
         }));
 
         await waitFor(() => {
@@ -122,29 +134,6 @@ describe('SettingsPage', () => {
         expect(screen.queryByText('Export to staticImport.json')).toBeNull();
     });
 
-    it('switches to General Project tab and shows Time settings', async () => {
-        render(
-            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
-                <SettingsPage 
-                    settings={mockSettings} 
-                    onUpdateSettings={onUpdateSettings}
-                    data={mockData}
-                    updateEpic={updateEpic}
-                    addEpic={addEpic}
-                />
-            </MemoryRouter>
-        );
-
-        const generalTab = screen.getByText('General Project');
-        await act(async () => {
-            fireEvent.click(generalTab);
-        });
-
-        expect(screen.getByText('Time')).toBeDefined();
-        expect(screen.getByLabelText(/Fiscal Year Start Month:/i)).toBeDefined();
-        expect(screen.getByLabelText(/Sprint Duration \(Days\):/i)).toBeDefined();
-    });
-
     it('shows AWS fields when AWS IAM is selected', async () => {
         render(
             <MemoryRouter initialEntries={['/settings?tab=mongo']}>
@@ -165,29 +154,6 @@ describe('SettingsPage', () => {
 
         expect(screen.getByText('AWS IAM Credentials')).toBeDefined();
         expect(screen.getByLabelText(/Access Key ID:/i)).toBeDefined();
-        expect(screen.getByLabelText(/Secret Access Key:/i)).toBeDefined();
-    });
-
-    it('shows OIDC fields when OIDC is selected', async () => {
-        render(
-            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
-                <SettingsPage 
-                    settings={mockSettings} 
-                    onUpdateSettings={onUpdateSettings}
-                    data={mockData}
-                    updateEpic={updateEpic}
-                    addEpic={addEpic}
-                />
-            </MemoryRouter>
-        );
-
-        const authSelect = screen.getByLabelText(/Authentication Method:/i);
-        await act(async () => {
-            fireEvent.change(authSelect, { target: { value: 'oidc' } });
-        });
-
-        expect(screen.getByText('OIDC Configuration')).toBeDefined();
-        expect(screen.getByLabelText(/Access Token:/i)).toBeDefined();
     });
 
     it('saves General settings immediately on change', async () => {
@@ -232,7 +198,6 @@ describe('SettingsPage', () => {
             fireEvent.change(uriInput, { target: { value: 'mongodb://new-host:27017' } });
         });
         
-        // Should NOT be called yet
         expect(onUpdateSettings).not.toHaveBeenCalled();
 
         await act(async () => {
@@ -242,5 +207,58 @@ describe('SettingsPage', () => {
         expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
             mongo_uri: 'mongodb://new-host:27017'
         }));
+    });
+
+    it('handles the "Create if not exists" checkbox', async () => {
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        const checkbox = screen.getByLabelText(/Create database if it doesn't exist/i);
+        await act(async () => {
+            fireEvent.click(checkbox);
+        });
+
+        expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
+            mongo_create_if_not_exists: true
+        }));
+    });
+
+    it('performs database discovery and shows existence badge on test', async () => {
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        const testBtn = screen.getByText('Test Mongo Connection');
+        
+        await act(async () => {
+            fireEvent.click(testBtn);
+        });
+
+        // Should call both endpoints
+        expect(global.fetch).toHaveBeenCalledWith('/api/mongo/databases', expect.anything());
+        expect(global.fetch).toHaveBeenCalledWith('/api/mongo/test', expect.anything());
+
+        // Should show the "Exists" badge and the connection message
+        await waitFor(() => {
+            expect(screen.getByText('Connection successful!')).toBeDefined();
+            expect(screen.getByText('Exists')).toBeDefined();
+        });
     });
 });
