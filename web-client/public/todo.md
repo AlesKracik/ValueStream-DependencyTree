@@ -3,6 +3,7 @@
   * workitem  integration with Aha
   * customer integration with salesforce and support system
   * TCV History Logic Enhancement: Currently, when a Customer's Actual TCV is updated (archived to history), Work Items linked to "Latest Actual" remain linked to the new "Latest Actual". Consider if some Work Items should be automatically re-linked to the archived historical entry to preserve their context.
+  * archive old sprints
 * security:
   * Information Disclosure: `settings.json` is saved in the `public/` folder, which exposes highly sensitive credentials (MongoDB URIs, AWS Secret Keys, Jira API Tokens, OIDC tokens) to any user who visits `/settings.json`.
   * Lack of Authentication and Authorization: The API endpoints (under `/api/`) lack any access controls. An unauthenticated attacker can arbitrarily read, export (`/api/mongo/export`), overwrite (`/api/settings`), or delete data (`/api/entity`).
