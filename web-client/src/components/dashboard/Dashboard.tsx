@@ -313,20 +313,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
                         <h1>Value Stream Dashboard</h1>
-                        <div style={{ display: 'flex', gap: '12px' }}>
-                            <button
-                                onClick={() => onNavigateToCustomer('new')}
-                                className="btn-primary"
-                            >
-                                + Add Customer
-                            </button>
-                            <button
-                                onClick={() => onNavigateToWorkItem('new')}
-                                className="btn-primary"
-                            >
-                                + Add Work Item
-                            </button>
-                        </div>
                     </div>
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                         <div style={{ display: 'flex', gap: '4px' }}>
