@@ -4,20 +4,6 @@
   * customer integration with salesforce and support system
   * TCV History Logic Enhancement: Currently, when a Customer's Actual TCV is updated (archived to history), Work Items linked to "Latest Actual" remain linked to the new "Latest Actual". Consider if some Work Items should be automatically re-linked to the archived historical entry to preserve their context.
   * archive old sprints
-* security:
-  * Information Disclosure (FIXED): `settings.json` has been moved out of the `public/` folder to the project root and added to `.gitignore`. It is no longer accessible via static web requests.
-  * Lack of Authentication and Authorization (FIXED): A middleware layer has been added to the Vite dev server plugin that requires a Bearer token matching the `ADMIN_SECRET` environment variable. The frontend has been updated with a `LoginPage` and `authorizedFetch` utility to handle the authentication flow.
-  * Server-Side Request Forgery (SSRF) (FIXED): Jira API URLs and MongoDB URIs are now validated against a whitelist of public protocols and checked to ensure they do not point to internal or private IP ranges (while allowing localhost for local development).
-  * NoSQL Injection / ReDoS (FIXED): All user-provided filter strings are now escaped before being used in MongoDB `$regex` queries.
-  * Secrets in Frontend Storage (FIXED): Sensitive API keys and tokens are now masked with `********` when sent to the frontend. The backend securely merges these back with actual values when settings are updated.
-  * Mass Assignment & Arbitrary Collection Access (FIXED): The `/api/entity/` endpoint now uses a strict whitelist of allowed collections and ensures IDs are cast to strings.
-  * Stored Cross-Site Scripting (XSS) (FIXED): The `jira_base_url` is now sanitized before being used in anchor tags to prevent `javascript:` and other malicious URI schemes.
-  * Weak PRNG for Entity IDs (FIXED): The application now uses `crypto.randomUUID()` (or cryptographically strong random values) for all entity ID generation.
-  * Unbounded Payload Size (DoS) (FIXED): The Node.js server now enforces a 5MB payload limit on all incoming requests and handles oversized bodies gracefully.
-  * Blind SSRF via MongoDB Driver (FIXED): The MongoDB connection URI is now validated through the SSRF protection layer before attempting connection.
-  * Permissive CORS / Local Dev Takeover (FIXED): The Vite middleware now enforces a strict whitelist of allowed Origins (`localhost:5173`) and methods.
-  * MongoDB Object Injection (NoSQLi) in Entity Operations (FIXED): Input `id` is now explicitly cast to a string to prevent query object injection.
-  * Call Stack Overflow (DoS) via Spread Operator (FIXED): All potentially massive spread operations in `Math.max` and `Math.min` have been replaced with safe `reduce` calls in both backend and frontend logic.
 * code readabilty and architecture
   * find parts copy&pasted (or very simmilar) on multiple places and refactor them to be reusable
     * **List Pages Duplication:** `CustomerListPage.tsx`, `WorkItemListPage.tsx`, `DashboardListPage.tsx`, and `TeamListPage.tsx` share near-identical structural boilerplate for rendering filtered lists. They should be refactored into a single generic `<GenericListPage />` or `<EntityList />` component that accepts a title, a list of items, an item render prop, and an action button prop.
