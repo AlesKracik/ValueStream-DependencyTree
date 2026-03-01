@@ -210,17 +210,21 @@ describe('useDashboardData', () => {
         );
     });
 
-    it('reloads page when MongoDB connection settings change', async () => {
-        const reloadSpy = vi.fn();
-        vi.stubGlobal('location', { reload: reloadSpy });
-
+    it('refreshes data when MongoDB connection settings change', async () => {
         const { result } = renderHook(() => useDashboardData());
         await waitFor(() => expect(result.current.loading).toBe(false));
+
+        // Reset mock to track new calls
+        vi.mocked(fetch).mockClear();
 
         await act(async () => {
             result.current.updateSettings({ mongo_uri: 'mongodb://new-host:27017' });
         });
 
-        expect(reloadSpy).toHaveBeenCalled();
+        // Should call persist settings then refresh data (loadData)
+        expect(fetch).toHaveBeenCalledWith('/api/settings', expect.objectContaining({ method: 'POST' }));
+        await waitFor(() => {
+            expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/loadData'), expect.anything());
+        });
     });
 });

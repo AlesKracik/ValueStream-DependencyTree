@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import type { Settings, DashboardData, Epic } from "../types/models";
 import styles from './List.module.css';
 import { authorizedFetch } from "../utils/api";
@@ -19,7 +20,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   updateEpic,
   addEpic,
 }) => {
-  const [formData, setFormData] = useState<Partial<Settings>>({});
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = (searchParams.get("tab") as "general" | "mongo" | "jira") || "general";
+
+  const [localFormData, setFormData] = useState<Partial<Settings>>({});
   const [isTesting, setIsTesting] = useState(false);
   const [mongoTestResult, setMongoTestResult] = useState<{ success: boolean; message: string; } | null>(null);
   const [jiraTestResult, setJiraTestResult] = useState<{ success: boolean; message: string; } | null>(null);
@@ -29,8 +33,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [importJql, setImportJql] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<string>("");
-
-  const [activeTab, setActiveTab] = useState<"general" | "mongo" | "jira">("general");
 
   useEffect(() => {
     if (settings) {
@@ -54,8 +56,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
   }, [settings]);
 
+  const setActiveTab = (tab: string) => {
+    setSearchParams({ tab });
+    setMongoTestResult(null);
+    setJiraTestResult(null);
+    setImportSyncResult(null);
+  };
+
   const handleTestConnection = async () => {
-    if (!formData.jira_base_url || !formData.jira_api_token) {
+    const jira_base_url = localFormData.jira_base_url || settings.jira_base_url;
+    const jira_api_token = localFormData.jira_api_token || settings.jira_api_token;
+    const jira_api_version = localFormData.jira_api_version || settings.jira_api_version || "3";
+
+    if (!jira_base_url || !jira_api_token) {
       setJiraTestResult({ success: false, message: "Base URL and PAT are required to test." });
       return;
     }
@@ -66,9 +79,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          jira_base_url: formData.jira_base_url,
-          jira_api_token: formData.jira_api_token,
-          jira_api_version: formData.jira_api_version || "3",
+          jira_base_url,
+          jira_api_token,
+          jira_api_version,
         }),
       });
       const resData = await response.json();
@@ -122,7 +135,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       setImportSyncResult({ success: true, message: "No epics with Jira keys found to sync." });
       return;
     }
-    if (!formData.jira_base_url || !formData.jira_api_token) {
+    const jira_base_url = localFormData.jira_base_url || settings.jira_base_url;
+    const jira_api_token = localFormData.jira_api_token || settings.jira_api_token;
+
+    if (!jira_base_url || !jira_api_token) {
       setImportSyncResult({ success: false, message: "Base URL and PAT are required to sync." });
       return;
     }
@@ -140,9 +156,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             jira_key: epic.jira_key,
-            jira_base_url: formData.jira_base_url,
-            jira_api_version: formData.jira_api_version || "3",
-            jira_api_token: formData.jira_api_token,
+            jira_base_url,
+            jira_api_version: localFormData.jira_api_version || settings.jira_api_version || "3",
+            jira_api_token,
           }),
         });
         const resData = await response.json();
@@ -192,7 +208,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
   const handleImportFromJira = async () => {
     if (!data) return;
-    if (!formData.jira_base_url || !formData.jira_api_token) {
+    const jira_base_url = localFormData.jira_base_url || settings.jira_base_url;
+    const jira_api_token = localFormData.jira_api_token || settings.jira_api_token;
+
+    if (!jira_base_url || !jira_api_token) {
       setImportSyncResult({ success: false, message: "Base URL and PAT are required to import." });
       return;
     }
@@ -216,9 +235,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           jql: finalJql,
-          jira_base_url: formData.jira_base_url,
-          jira_api_version: formData.jira_api_version || "3",
-          jira_api_token: formData.jira_api_token,
+          jira_base_url,
+          jira_api_version: localFormData.jira_api_version || settings.jira_api_version || "3",
+          jira_api_token,
         }),
       });
       const resData = await response.json();
@@ -303,26 +322,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
   };
 
-  const handleSave = () => {
-    onUpdateSettings({
-      jira_base_url: formData.jira_base_url,
-      jira_api_version: formData.jira_api_version as "2" | "3",
-      jira_api_token: formData.jira_api_token,
-      mongo_uri: formData.mongo_uri,
-      mongo_db: formData.mongo_db,
-      mongo_auth_method: formData.mongo_auth_method,
-      mongo_aws_access_key: formData.mongo_aws_access_key,
-      mongo_aws_secret_key: formData.mongo_aws_secret_key,
-      mongo_aws_session_token: formData.mongo_aws_session_token,
-      mongo_oidc_token: formData.mongo_oidc_token,
-      customer_jql_new: formData.customer_jql_new,
-      customer_jql_in_progress: formData.customer_jql_in_progress,
-      customer_jql_noop: formData.customer_jql_noop,
-      fiscal_year_start_month: formData.fiscal_year_start_month,
-      sprint_duration_days: formData.sprint_duration_days,
-    });
-  };
-
   if (!data) return <div className={styles.pageContainer}>Loading...</div>;
 
   return (
@@ -333,7 +332,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
       <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #374151', marginBottom: '24px' }}>
         <button
-          onClick={() => { setActiveTab("general"); setMongoTestResult(null); setJiraTestResult(null); setImportSyncResult(null); }}
+          onClick={() => setActiveTab("general")}
           style={{
             background: 'none',
             border: 'none',
@@ -348,7 +347,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           General Project
         </button>
         <button
-          onClick={() => { setActiveTab("mongo"); setMongoTestResult(null); setJiraTestResult(null); setImportSyncResult(null); }}
+          onClick={() => setActiveTab("mongo")}
           style={{
             background: 'none',
             border: 'none',
@@ -363,7 +362,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           MongoDB Persistence
         </button>
         <button
-          onClick={() => { setActiveTab("jira"); setMongoTestResult(null); setJiraTestResult(null); setImportSyncResult(null); }}
+          onClick={() => setActiveTab("jira")}
           style={{
             background: 'none',
             border: 'none',
@@ -385,8 +384,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
               Authentication Method:
               <select
-                value={formData.mongo_auth_method || "scram"}
-                onChange={(e) => setFormData({ ...formData, mongo_auth_method: e.target.value as any })}
+                value={localFormData.mongo_auth_method || "scram"}
+                onChange={(e) => {
+                    const val = e.target.value as any;
+                    setFormData({ ...localFormData, mongo_auth_method: val });
+                    onUpdateSettings({ mongo_auth_method: val });
+                }}
               >
                 <option value="scram">SCRAM (URI-based)</option>
                 <option value="aws">AWS IAM</option>
@@ -398,9 +401,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               MongoDB URI:
               <input
                 type="text"
-                placeholder={formData.mongo_auth_method === 'scram' ? "mongodb://username:password@localhost:27017" : "mongodb://localhost:27017"}
-                value={formData.mongo_uri || ""}
-                onChange={(e) => setFormData({ ...formData, mongo_uri: e.target.value })}
+                placeholder={localFormData.mongo_auth_method === 'scram' ? "mongodb://username:password@localhost:27017" : "mongodb://localhost:27017"}
+                value={localFormData.mongo_uri || ""}
+                onChange={(e) => setFormData({ ...localFormData, mongo_uri: e.target.value })}
+                onBlur={() => onUpdateSettings({ mongo_uri: localFormData.mongo_uri })}
               />
             </label>
 
@@ -409,42 +413,46 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               <input
                 type="text"
                 placeholder="valuestream"
-                value={formData.mongo_db || ""}
-                onChange={(e) => setFormData({ ...formData, mongo_db: e.target.value })}
+                value={localFormData.mongo_db || ""}
+                onChange={(e) => setFormData({ ...localFormData, mongo_db: e.target.value })}
+                onBlur={() => onUpdateSettings({ mongo_db: localFormData.mongo_db })}
               />
             </label>
 
-            {formData.mongo_auth_method === 'aws' && (
+            {localFormData.mongo_auth_method === 'aws' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
                 <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>AWS IAM Credentials</div>
                 <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
                   Access Key ID:
                   <input
                     type="text"
-                    value={formData.mongo_aws_access_key || ""}
-                    onChange={(e) => setFormData({ ...formData, mongo_aws_access_key: e.target.value })}
+                    value={localFormData.mongo_aws_access_key || ""}
+                    onChange={(e) => setFormData({ ...localFormData, mongo_aws_access_key: e.target.value })}
+                    onBlur={() => onUpdateSettings({ mongo_aws_access_key: localFormData.mongo_aws_access_key })}
                   />
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
                   Secret Access Key:
                   <input
                     type="password"
-                    value={formData.mongo_aws_secret_key || ""}
-                    onChange={(e) => setFormData({ ...formData, mongo_aws_secret_key: e.target.value })}
+                    value={localFormData.mongo_aws_secret_key || ""}
+                    onChange={(e) => setFormData({ ...localFormData, mongo_aws_secret_key: e.target.value })}
+                    onBlur={() => onUpdateSettings({ mongo_aws_secret_key: localFormData.mongo_aws_secret_key })}
                   />
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
                   Session Token (Optional):
                   <input
                     type="password"
-                    value={formData.mongo_aws_session_token || ""}
-                    onChange={(e) => setFormData({ ...formData, mongo_aws_session_token: e.target.value })}
+                    value={localFormData.mongo_aws_session_token || ""}
+                    onChange={(e) => setFormData({ ...localFormData, mongo_aws_session_token: e.target.value })}
+                    onBlur={() => onUpdateSettings({ mongo_aws_session_token: localFormData.mongo_aws_session_token })}
                   />
                 </label>
               </div>
             )}
 
-            {formData.mongo_auth_method === 'oidc' && (
+            {localFormData.mongo_auth_method === 'oidc' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
                 <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>OIDC Configuration</div>
                 <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
@@ -452,63 +460,56 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   <input
                     type="password"
                     placeholder="eyJhbG..."
-                    value={formData.mongo_oidc_token || ""}
-                    onChange={(e) => setFormData({ ...formData, mongo_oidc_token: e.target.value })}
+                    value={localFormData.mongo_oidc_token || ""}
+                    onChange={(e) => setFormData({ ...localFormData, mongo_oidc_token: e.target.value })}
+                    onBlur={() => onUpdateSettings({ mongo_oidc_token: localFormData.mongo_oidc_token })}
                   />
                 </label>
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={async () => {
-                    if (!formData.mongo_uri) {
-                        setMongoTestResult({ success: false, message: "MongoDB URI is required to test." });
-                        return;
-                    }
-                    setIsTesting(true);
-                    setMongoTestResult(null);
-                    try {
-                        const response = await authorizedFetch("/api/mongo/test", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ 
-                              mongo_uri: formData.mongo_uri, 
-                              mongo_db: formData.mongo_db,
-                              mongo_auth_method: formData.mongo_auth_method,
-                              mongo_aws_access_key: formData.mongo_aws_access_key,
-                              mongo_aws_secret_key: formData.mongo_aws_secret_key,
-                              mongo_aws_session_token: formData.mongo_aws_session_token,
-                              mongo_oidc_token: formData.mongo_oidc_token
-                            }),
-                        });
-                        const resData = await response.json();
-                        if (response.ok && resData.success) {
-                            setMongoTestResult({ success: true, message: resData.message || "MongoDB connection successful!" });
-                        } else {
-                            setMongoTestResult({ success: false, message: resData.error || "MongoDB connection failed" });
-                        }
-                    } catch (e: any) {
-                        setMongoTestResult({ success: false, message: e.message || "Network error occurred testing MongoDB connection." });
-                    } finally {
-                        setIsTesting(false);
-                    }
-                }}
-                disabled={isTesting || !formData.mongo_uri}
-              >
-                {isTesting ? "Testing Mongo..." : "Test Mongo Connection"}
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={handleSave}
-                style={{ backgroundColor: '#10b981' }}
-              >
-                Save & Reconnect
-              </button>
-            </div>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={async () => {
+                  const mongo_uri = localFormData.mongo_uri || settings.mongo_uri;
+                  if (!mongo_uri) {
+                      setMongoTestResult({ success: false, message: "MongoDB URI is required to test." });
+                      return;
+                  }
+                  setIsTesting(true);
+                  setMongoTestResult(null);
+                  try {
+                      const response = await authorizedFetch("/api/mongo/test", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ 
+                            mongo_uri, 
+                            mongo_db: localFormData.mongo_db || settings.mongo_db,
+                            mongo_auth_method: localFormData.mongo_auth_method || settings.mongo_auth_method,
+                            mongo_aws_access_key: localFormData.mongo_aws_access_key || settings.mongo_aws_access_key,
+                            mongo_aws_secret_key: localFormData.mongo_aws_secret_key || settings.mongo_aws_secret_key,
+                            mongo_aws_session_token: localFormData.mongo_aws_session_token || settings.mongo_aws_session_token,
+                            mongo_oidc_token: localFormData.mongo_oidc_token || settings.mongo_oidc_token
+                          }),
+                      });
+                      const resData = await response.json();
+                      if (response.ok && resData.success) {
+                          setMongoTestResult({ success: true, message: resData.message || "MongoDB connection successful!" });
+                      } else {
+                          setMongoTestResult({ success: false, message: resData.error || "MongoDB connection failed" });
+                      }
+                  } catch (e: any) {
+                      setMongoTestResult({ success: false, message: e.message || "Network error occurred testing MongoDB connection." });
+                  } finally {
+                      setIsTesting(false);
+                  }
+              }}
+              style={{ alignSelf: "flex-start", marginTop: "4px" }}
+              disabled={isTesting || (!localFormData.mongo_uri && !settings.mongo_uri)}
+            >
+              {isTesting ? "Testing Mongo..." : "Test Mongo Connection"}
+            </button>
 
             {mongoTestResult && (
               <div
@@ -539,7 +540,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               className="btn-primary"
               onClick={handleExportMongo}
               style={{ alignSelf: "flex-start" }}
-              disabled={isTesting || !formData.mongo_uri}
+              disabled={isTesting || (!localFormData.mongo_uri && !settings.mongo_uri)}
             >
               {isTesting ? "Exporting..." : "Export to staticImport.json"}
             </button>
@@ -553,17 +554,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               <input
                 type="url"
                 placeholder="https://yourdomain.atlassian.net"
-                value={formData.jira_base_url || ""}
-                onChange={(e) => setFormData({ ...formData, jira_base_url: e.target.value })}
+                value={localFormData.jira_base_url || ""}
+                onChange={(e) => setFormData({ ...localFormData, jira_base_url: e.target.value })}
+                onBlur={() => onUpdateSettings({ jira_base_url: localFormData.jira_base_url })}
               />
             </label>
 
             <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
               Jira API Version:
               <select
-                value={formData.jira_api_version || "3"}
+                value={localFormData.jira_api_version || "3"}
                 onChange={(e) => {
-                    setFormData({ ...formData, jira_api_version: e.target.value as "2" | "3" });
+                    const val = e.target.value as "2" | "3";
+                    setFormData({ ...localFormData, jira_api_version: val });
+                    onUpdateSettings({ jira_api_version: val });
                 }}
               >
                 <option value="2">2</option>
@@ -576,8 +580,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               <input
                 type="password"
                 placeholder="Your Jira PAT"
-                value={formData.jira_api_token || ""}
-                onChange={(e) => setFormData({ ...formData, jira_api_token: e.target.value })}
+                value={localFormData.jira_api_token || ""}
+                onChange={(e) => setFormData({ ...localFormData, jira_api_token: e.target.value })}
+                onBlur={() => onUpdateSettings({ jira_api_token: localFormData.jira_api_token })}
               />
             </label>
 
@@ -586,17 +591,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 type="button"
                 className="btn-primary"
                 onClick={handleTestConnection}
-                disabled={isTesting || isSyncing || isImporting || (!formData.jira_base_url && !formData.jira_api_token)}
+                disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira_base_url && !settings.jira_base_url) && (!localFormData.jira_api_token && !settings.jira_api_token))}
               >
                 {isTesting ? "Testing..." : "Test Connection"}
-              </button>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={handleSave}
-                style={{ backgroundColor: '#10b981' }}
-              >
-                Save Settings
               </button>
             </div>
 
@@ -636,7 +633,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 className="btn-primary"
                 onClick={handleImportFromJira}
                 style={{ alignSelf: "flex-start" }}
-                disabled={isTesting || isSyncing || isImporting || (!formData.jira_base_url && !formData.jira_api_token) || !importJql.trim()}
+                disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira_base_url && !settings.jira_base_url) && (!localFormData.jira_api_token && !settings.jira_api_token)) || !importJql.trim()}
               >
                 {isImporting ? importProgress : "Import from Jira"}
               </button>
@@ -645,7 +642,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 className="btn-primary"
                 onClick={handleSyncAllFromJira}
                 style={{ alignSelf: "flex-start" }}
-                disabled={isTesting || isSyncing || isImporting || (!formData.jira_base_url && !formData.jira_api_token)}
+                disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira_base_url && !settings.jira_base_url) && (!localFormData.jira_api_token && !settings.jira_api_token))}
               >
                 {isSyncing ? syncProgress : "Sync Epics from Jira"}
               </button>
@@ -677,8 +674,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               <input
                 type="text"
                 placeholder="status = 'New'"
-                value={formData.customer_jql_new || ""}
-                onChange={(e) => setFormData({ ...formData, customer_jql_new: e.target.value })}
+                value={localFormData.customer_jql_new || ""}
+                onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({ ...localFormData, customer_jql_new: val });
+                    onUpdateSettings({ customer_jql_new: val });
+                }}
               />
             </label>
             <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
@@ -686,8 +687,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               <input
                 type="text"
                 placeholder="status = 'In Progress'"
-                value={formData.customer_jql_in_progress || ""}
-                onChange={(e) => setFormData({ ...formData, customer_jql_in_progress: e.target.value })}
+                value={localFormData.customer_jql_in_progress || ""}
+                onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({ ...localFormData, customer_jql_in_progress: val });
+                    onUpdateSettings({ customer_jql_in_progress: val });
+                }}
               />
             </label>
             <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
@@ -695,8 +700,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               <input
                 type="text"
                 placeholder="status = 'Closed'"
-                value={formData.customer_jql_noop || ""}
-                onChange={(e) => setFormData({ ...formData, customer_jql_noop: e.target.value })}
+                value={localFormData.customer_jql_noop || ""}
+                onChange={(e) => {
+                    const val = e.target.value;
+                    setFormData({ ...localFormData, customer_jql_noop: val });
+                    onUpdateSettings({ customer_jql_noop: val });
+                }}
               />
             </label>
           </>
@@ -710,8 +719,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
               Fiscal Year Start Month:
               <select
-                value={formData.fiscal_year_start_month || 1}
-                onChange={(e) => setFormData({ ...formData, fiscal_year_start_month: parseInt(e.target.value) })}
+                value={localFormData.fiscal_year_start_month || 1}
+                onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setFormData({ ...localFormData, fiscal_year_start_month: val });
+                    onUpdateSettings({ fiscal_year_start_month: val });
+                }}
               >
                 <option value={1}>January (Calendar Year)</option>
                 <option value={2}>February</option>
@@ -737,19 +750,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 type="number"
                 min="1"
                 max="365"
-                value={formData.sprint_duration_days || 14}
-                onChange={(e) => setFormData({ ...formData, sprint_duration_days: parseInt(e.target.value) })}
+                value={localFormData.sprint_duration_days || 14}
+                onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setFormData({ ...localFormData, sprint_duration_days: val });
+                    onUpdateSettings({ sprint_duration_days: val });
+                }}
               />
             </label>
-            
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={handleSave}
-              style={{ backgroundColor: '#10b981', marginTop: '8px', alignSelf: 'flex-start' }}
-            >
-              Save Settings
-            </button>
           </>
         )}
       </div>

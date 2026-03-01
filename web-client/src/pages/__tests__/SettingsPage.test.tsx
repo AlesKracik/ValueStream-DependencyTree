@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { SettingsPage } from '../SettingsPage';
 import type { DashboardData, Settings } from '../../types/models';
+import { MemoryRouter } from 'react-router-dom';
 
 const mockSettings: Settings = {
     jira_base_url: 'https://jira.com',
@@ -54,34 +55,32 @@ describe('SettingsPage', () => {
 
     it('renders and shows Export button in MongoDB tab', () => {
         render(
-            <SettingsPage 
-                settings={mockSettings} 
-                onUpdateSettings={onUpdateSettings}
-                data={mockData}
-                updateEpic={updateEpic}
-                addEpic={addEpic}
-            />
+            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
         );
-
-        const mongoTab = screen.getByText('MongoDB Persistence');
-        fireEvent.click(mongoTab);
 
         expect(screen.getByText('Export to staticImport.json')).toBeDefined();
     });
 
     it('calls export API and triggers download when Export button is clicked', async () => {
         render(
-            <SettingsPage 
-                settings={mockSettings} 
-                onUpdateSettings={onUpdateSettings}
-                data={mockData}
-                updateEpic={updateEpic}
-                addEpic={addEpic}
-            />
+            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
         );
-
-        const mongoTab = screen.getByText('MongoDB Persistence');
-        fireEvent.click(mongoTab);
 
         const exportBtn = screen.getByText('Export to staticImport.json');
         fireEvent.click(exportBtn);
@@ -101,13 +100,15 @@ describe('SettingsPage', () => {
 
     it('switches to Jira tab and shows Jira settings', () => {
         render(
-            <SettingsPage 
-                settings={mockSettings} 
-                onUpdateSettings={onUpdateSettings}
-                data={mockData}
-                updateEpic={updateEpic}
-                addEpic={addEpic}
-            />
+            <MemoryRouter initialEntries={['/settings?tab=general']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
         );
 
         const jiraTab = screen.getByText('Jira Integration');
@@ -119,13 +120,15 @@ describe('SettingsPage', () => {
 
     it('switches to General Project tab and shows Time settings', () => {
         render(
-            <SettingsPage 
-                settings={mockSettings} 
-                onUpdateSettings={onUpdateSettings}
-                data={mockData}
-                updateEpic={updateEpic}
-                addEpic={addEpic}
-            />
+            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
         );
 
         const generalTab = screen.getByText('General Project');
@@ -138,17 +141,16 @@ describe('SettingsPage', () => {
 
     it('shows AWS fields when AWS IAM is selected', () => {
         render(
-            <SettingsPage 
-                settings={mockSettings} 
-                onUpdateSettings={onUpdateSettings}
-                data={mockData}
-                updateEpic={updateEpic}
-                addEpic={addEpic}
-            />
+            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
         );
-
-        const mongoTab = screen.getByText('MongoDB Persistence');
-        fireEvent.click(mongoTab);
 
         const authSelect = screen.getByLabelText(/Authentication Method:/i);
         fireEvent.change(authSelect, { target: { value: 'aws' } });
@@ -160,17 +162,16 @@ describe('SettingsPage', () => {
 
     it('shows OIDC fields when OIDC is selected', () => {
         render(
-            <SettingsPage 
-                settings={mockSettings} 
-                onUpdateSettings={onUpdateSettings}
-                data={mockData}
-                updateEpic={updateEpic}
-                addEpic={addEpic}
-            />
+            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
         );
-
-        const mongoTab = screen.getByText('MongoDB Persistence');
-        fireEvent.click(mongoTab);
 
         const authSelect = screen.getByLabelText(/Authentication Method:/i);
         fireEvent.change(authSelect, { target: { value: 'oidc' } });

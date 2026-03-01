@@ -50,35 +50,39 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<Error | null>(null);
 
-    useEffect(() => {
-        async function fetchData() {
-            try {
-                setLoading(true);
-                const params = new URLSearchParams();
-                if (dashboardId) params.append('dashboardId', dashboardId);
-                if (filters) {
-                    Object.entries(filters).forEach(([key, value]) => {
-                        if (value !== undefined && value !== null && value !== '') {
-                            params.append(key, String(value));
-                        }
-                    });
-                }
-                const queryString = params.toString();
-                const response = await authorizedFetch(`/api/loadData${queryString ? `?${queryString}` : ''}`);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch data');
-                }
-                const json = await response.json();
-                setData(json);
-            } catch (err) {
-                setError(err as Error);
-            } finally {
-                setLoading(false);
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            const params = new URLSearchParams();
+            if (dashboardId) params.append('dashboardId', dashboardId);
+            if (filters) {
+                Object.entries(filters).forEach(([key, value]) => {
+                    if (value !== undefined && value !== null && value !== '') {
+                        params.append(key, String(value));
+                    }
+                });
             }
+            const queryString = params.toString();
+            const response = await authorizedFetch(`/api/loadData${queryString ? `?${queryString}` : ''}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch data');
+            }
+            const json = await response.json();
+            setData(json);
+        } catch (err) {
+            setError(err as Error);
+        } finally {
+            setLoading(false);
         }
+    };
 
+    useEffect(() => {
         fetchData();
     }, [dashboardId, JSON.stringify(filters)]);
+
+    const refreshData = () => {
+        fetchData();
+    };
 
     // Note: Server now handles RICE score calculation and filtering.
     // Client-side automatic persistence of scores is removed to avoid unnecessary DB writes during view.
@@ -236,9 +240,10 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
             }
 
             persistSettings(newSettings).then(() => {
-                // If connection string changed, re-fetch everything from the new source
-                if (updates.mongo_uri !== undefined || updates.mongo_db !== undefined || updates.mongo_auth_method !== undefined) {
-                    window.location.reload(); // Simplest way to ensure all hooks and state reset correctly for new DB
+                // If connection string or integration keys changed, re-fetch everything from the new source
+                if (updates.mongo_uri !== undefined || updates.mongo_db !== undefined || updates.mongo_auth_method !== undefined ||
+                    updates.jira_base_url !== undefined || updates.jira_api_token !== undefined) {
+                    refreshData();
                 }
             });
 
@@ -327,6 +332,7 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
         data,
         loading,
         error,
+        refreshData,
         addCustomer,
         deleteCustomer,
         updateCustomer,
