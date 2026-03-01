@@ -444,3 +444,8 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                         </table>
                     </section>
                 )}
+
+            </div>
+        </div>
+    );
+};
