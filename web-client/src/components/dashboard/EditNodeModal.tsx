@@ -133,7 +133,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                         <input style={styles.input} type="text" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} required />
                     </label>
                     <label style={styles.label}>
-                        Existing TCV ($):
+                        Actual Existing TCV ($):
                         <input style={styles.input} type="number" value={formData.existing_tcv || 0} onChange={e => setFormData({ ...formData, existing_tcv: e.target.value })} required />
                     </label>
                     <label style={styles.label}>
@@ -185,19 +185,24 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
 
                         {formData.all_customers_target && (
                             <div style={{ display: 'flex', gap: '12px' }}>
+                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <select
+                                        style={{ width: '100%', padding: '6px', borderRadius: '4px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563' }}
+                                        value={formData.all_customers_target.tcv_type}
+                                        onChange={e => setFormData({ 
+                                            ...formData, 
+                                            all_customers_target: { ...formData.all_customers_target, tcv_type: e.target.value } 
+                                        })}
+                                    >
+                                        <option value="existing">Existing TCV</option>
+                                        <option value="potential">Potential TCV</option>
+                                    </select>
+                                    {formData.all_customers_target.tcv_type === 'existing' && (
+                                        <span style={{ fontSize: '10px', color: '#94a3b8' }}>Always uses latest actual TCV</span>
+                                    )}
+                                </div>
                                 <select
-                                    style={{ flex: 1, padding: '6px', borderRadius: '4px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563' }}
-                                    value={formData.all_customers_target.tcv_type}
-                                    onChange={e => setFormData({ 
-                                        ...formData, 
-                                        all_customers_target: { ...formData.all_customers_target, tcv_type: e.target.value } 
-                                    })}
-                                >
-                                    <option value="existing">Existing TCV</option>
-                                    <option value="potential">Potential TCV</option>
-                                </select>
-                                <select
-                                    style={{ flex: 1, padding: '6px', borderRadius: '4px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563' }}
+                                    style={{ flex: 1, height: 'fit-content', padding: '6px', borderRadius: '4px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563' }}
                                     value={formData.all_customers_target.priority || 'Must-have'}
                                     onChange={e => setFormData({ 
                                         ...formData, 
@@ -218,23 +223,44 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                             {(formData.customer_targets || []).map((target: any, idx: number) => {
                                 const cst = data.customers.find(c => c.id === target.customer_id);
                                 return (
-                                    <div key={`${target.customer_id}-${target.tcv_type}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', fontSize: '13px', color: '#cbd5e1' }}>
-                                        <span style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {cst?.name || target.customer_id} ({target.tcv_type})
-                                        </span>
-                                        <select
-                                            style={{ padding: '4px 8px', borderRadius: '4px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', cursor: 'pointer' }}
-                                            value={target.priority || 'Must-have'}
-                                            onChange={e => {
-                                                const newTargets = [...formData.customer_targets];
-                                                newTargets[idx].priority = e.target.value;
-                                                setFormData({ ...formData, customer_targets: newTargets });
-                                            }}
-                                        >
-                                            <option value="Must-have">Must-have</option>
-                                            <option value="Should-have">Should-have</option>
-                                            <option value="Nice-to-have">Nice-to-have</option>
-                                        </select>
+                                    <div key={`${target.customer_id}-${target.tcv_type}`} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px', padding: '8px', backgroundColor: '#1e293b', borderRadius: '4px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: '#cbd5e1' }}>
+                                            <span style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 'bold' }}>
+                                                {cst?.name || target.customer_id} ({target.tcv_type})
+                                            </span>
+                                            <select
+                                                style={{ padding: '4px 8px', borderRadius: '4px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', cursor: 'pointer' }}
+                                                value={target.priority || 'Must-have'}
+                                                onChange={e => {
+                                                    const newTargets = [...formData.customer_targets];
+                                                    newTargets[idx].priority = e.target.value;
+                                                    setFormData({ ...formData, customer_targets: newTargets });
+                                                }}
+                                            >
+                                                <option value="Must-have">Must-have</option>
+                                                <option value="Should-have">Should-have</option>
+                                                <option value="Nice-to-have">Nice-to-have</option>
+                                            </select>
+                                        </div>
+                                        {target.tcv_type === 'existing' && cst?.tcv_history && cst.tcv_history.length > 0 && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ fontSize: '11px', color: '#94a3b8' }}>History:</span>
+                                                <select
+                                                    style={{ flex: 1, padding: '4px 8px', borderRadius: '4px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', cursor: 'pointer', fontSize: '11px' }}
+                                                    value={target.tcv_history_id || 'latest'}
+                                                    onChange={e => {
+                                                        const newTargets = [...formData.customer_targets];
+                                                        newTargets[idx].tcv_history_id = e.target.value === 'latest' ? undefined : e.target.value;
+                                                        setFormData({ ...formData, customer_targets: newTargets });
+                                                    }}
+                                                >
+                                                    <option value="latest">Latest Actual (${cst.existing_tcv.toLocaleString()})</option>
+                                                    {cst.tcv_history.map((h: any) => (
+                                                        <option key={h.id} value={h.id}>{h.valid_from}: ${h.value.toLocaleString()}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}

@@ -79,6 +79,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
             if (f.all_customers_target) {
                 const type = f.all_customers_target.tcv_type;
                 const priority = f.all_customers_target.priority || 'Must-have';
+                // Global workitems are always bound to latest actual existing TCV
                 let totalRelevantTcv = allCustomers.reduce((sum, c) => sum + Number(type === 'existing' ? (c.existing_tcv || 0) : (c.potential_tcv || 0)), 0);
                 if (priority === 'Must-have') {
                     impact = totalRelevantTcv;
@@ -90,7 +91,19 @@ const MockDataPersistencePlugin = (): Plugin => ({
                 (f.customer_targets || []).forEach((target: any) => {
                     const customer = allCustomers.find(c => c.id === target.customer_id);
                     if (!customer) return;
-                    const targetTcv = Number(target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv);
+                    
+                    let targetTcv = 0;
+                    if (target.tcv_type === 'existing') {
+                        if (target.tcv_history_id && customer.tcv_history) {
+                            const historyEntry = customer.tcv_history.find((h: any) => h.id === target.tcv_history_id);
+                            targetTcv = Number(historyEntry ? historyEntry.value : customer.existing_tcv);
+                        } else {
+                            targetTcv = Number(customer.existing_tcv);
+                        }
+                    } else {
+                        targetTcv = Number(customer.potential_tcv);
+                    }
+
                     if (target.priority === 'Must-have' || !target.priority) {
                         impact += targetTcv;
                     } else if (target.priority === 'Should-have') {

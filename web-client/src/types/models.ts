@@ -1,8 +1,15 @@
+export interface TcvHistoryEntry {
+  id: string;
+  value: number;
+  valid_from: string; // ISO date
+}
+
 export interface Customer {
   id: string;
   name: string;
   existing_tcv: number;
   potential_tcv: number;
+  tcv_history?: TcvHistoryEntry[];
 }
 
 export interface WorkItem {
@@ -19,6 +26,7 @@ export interface WorkItem {
     customer_id: string;
     tcv_type: 'existing' | 'potential';
     priority?: 'Must-have' | 'Should-have' | 'Nice-to-have';
+    tcv_history_id?: string; // Reference to a historical Existing TCV value
   }[];
 }
 

@@ -154,7 +154,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                             />
                         </label>
                         <label>
-                            Existing TCV ($):
+                            Actual Existing TCV ($):
                             <input 
                                 type="number" 
                                 min="0" 
@@ -181,6 +181,75 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                         </label>
                     </div>
                 </section>
+
+                {!isNew && (
+                    <section className={styles.card}>
+                        <h2>Existing TCV History</h2>
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th>Valid From</th>
+                                    <th>Value ($)</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {customer.tcv_history?.map(entry => (
+                                    <tr key={entry.id}>
+                                        <td>{entry.valid_from}</td>
+                                        <td>{entry.value.toLocaleString()}</td>
+                                        <td>
+                                            <button 
+                                                className="btn-danger" 
+                                                onClick={() => {
+                                                    const newHistory = customer.tcv_history?.filter(h => h.id !== entry.id);
+                                                    updateCustomer(customer.id, { tcv_history: newHistory });
+                                                }}
+                                            >
+                                                Delete
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {(!customer.tcv_history || customer.tcv_history.length === 0) && (
+                                    <tr>
+                                        <td colSpan={3} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No historical entries.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                        <div className={styles.formGrid} style={{ marginTop: '16px', gridTemplateColumns: '1fr 1fr auto', alignItems: 'flex-end' }}>
+                            <label>
+                                Valid From:
+                                <input type="date" id="new-history-date" />
+                            </label>
+                            <label>
+                                Value ($):
+                                <input type="number" id="new-history-value" min="0" />
+                            </label>
+                            <button 
+                                className="btn-primary"
+                                onClick={() => {
+                                    const dateInput = document.getElementById('new-history-date') as HTMLInputElement;
+                                    const valueInput = document.getElementById('new-history-value') as HTMLInputElement;
+                                    if (dateInput.value && valueInput.value) {
+                                        const newEntry = {
+                                            id: `h${Date.now()}`,
+                                            valid_from: dateInput.value,
+                                            value: parseInt(valueInput.value)
+                                        };
+                                        const newHistory = [...(customer.tcv_history || []), newEntry].sort((a, b) => b.valid_from.localeCompare(a.valid_from));
+                                        updateCustomer(customer.id, { tcv_history: newHistory });
+                                        dateInput.value = '';
+                                        valueInput.value = '';
+                                    }
+                                }}
+                            >
+                                Add Entry
+                            </button>
+                        </div>
+                    </section>
+                )}
 
                 <section className={styles.card}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>

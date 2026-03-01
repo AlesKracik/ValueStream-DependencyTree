@@ -36,7 +36,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
 
     // Draft states for new workItem creation
     const [newWorkItemDraft, setNewWorkItemDraft] = useState<Partial<WorkItem>>({ name: 'New Work Item', total_effort_mds: 0, customer_targets: [] });
-    const [newWorkItemCustomers, setNewWorkItemCustomers] = useState<{ customerId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have' }[]>([]);
+    const [newWorkItemCustomers, setNewWorkItemCustomers] = useState<{ customerId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have', tcv_history_id?: string }[]>([]);
     const [newWorkItemEpics, setNewWorkItemEpics] = useState<Epic[]>([]);
     const [syncingId, setSyncingId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'customers' | 'epics'>('customers');
@@ -64,7 +64,8 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     customer_targets: newWorkItemCustomers.map(c => ({
                         customer_id: c.customerId,
                         tcv_type: c.tcv_type,
-                        priority: c.priority
+                        priority: c.priority,
+                        tcv_history_id: c.tcv_history_id
                     }))
                 };
 
@@ -370,20 +371,25 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                     </td>
                                     <td>
                                         {(isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target) && (
-                                            <select
-                                                value={isNew ? newWorkItemDraft.all_customers_target?.tcv_type : workItem.all_customers_target?.tcv_type}
-                                                onChange={e => {
-                                                    const type = e.target.value as 'existing' | 'potential';
-                                                    if (isNew) {
-                                                        setNewWorkItemDraft(prev => ({ ...prev, all_customers_target: { ...prev.all_customers_target!, tcv_type: type } }));
-                                                    } else {
-                                                        updateWorkItem(workItem.id, { all_customers_target: { ...workItem.all_customers_target!, tcv_type: type } });
-                                                    }
-                                                }}
-                                            >
-                                                <option value="existing">Existing TCV</option>
-                                                <option value="potential">Potential TCV</option>
-                                            </select>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                <select
+                                                    value={isNew ? newWorkItemDraft.all_customers_target?.tcv_type : workItem.all_customers_target?.tcv_type}
+                                                    onChange={e => {
+                                                        const type = e.target.value as 'existing' | 'potential';
+                                                        if (isNew) {
+                                                            setNewWorkItemDraft(prev => ({ ...prev, all_customers_target: { ...prev.all_customers_target!, tcv_type: type } }));
+                                                        } else {
+                                                            updateWorkItem(workItem.id, { all_customers_target: { ...workItem.all_customers_target!, tcv_type: type } });
+                                                        }
+                                                    }}
+                                                >
+                                                    <option value="existing">Existing TCV</option>
+                                                    <option value="potential">Potential TCV</option>
+                                                </select>
+                                                {(isNew ? newWorkItemDraft.all_customers_target?.tcv_type === 'existing' : workItem.all_customers_target?.tcv_type === 'existing') && (
+                                                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>Always uses latest actual TCV</span>
+                                                )}
+                                            </div>
                                         )}
                                     </td>
                                     <td>
@@ -439,13 +445,30 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                         <tr key={customer.id}>
                                             <td>{customer.name}</td>
                                             <td>
-                                                <select
-                                                    value={targetDef.tcv_type}
-                                                    onChange={e => updateTarget({ tcv_type: e.target.value as 'existing' | 'potential' })}
-                                                >
-                                                    <option value="existing">Existing</option>
-                                                    <option value="potential">Potential</option>
-                                                </select>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                    <select
+                                                        value={targetDef.tcv_type}
+                                                        onChange={e => updateTarget({ tcv_type: e.target.value as 'existing' | 'potential', tcv_history_id: undefined })}
+                                                    >
+                                                        <option value="existing">Existing</option>
+                                                        <option value="potential">Potential</option>
+                                                    </select>
+                                                    
+                                                    {targetDef.tcv_type === 'existing' && customer.tcv_history && customer.tcv_history.length > 0 && (
+                                                        <select
+                                                            value={targetDef.tcv_history_id || 'latest'}
+                                                            onChange={e => updateTarget({ tcv_history_id: e.target.value === 'latest' ? undefined : e.target.value })}
+                                                            style={{ fontSize: '12px', marginTop: '4px', backgroundColor: '#1e293b', color: '#fff', border: '1px solid #334155' }}
+                                                        >
+                                                            <option value="latest">Latest Actual (${customer.existing_tcv.toLocaleString()})</option>
+                                                            {customer.tcv_history.map(h => (
+                                                                <option key={h.id} value={h.id}>
+                                                                    {h.valid_from}: ${h.value.toLocaleString()}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td>
                                                 <select
