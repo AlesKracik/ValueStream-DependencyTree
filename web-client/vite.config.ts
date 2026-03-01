@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
 import { MongoClient } from 'mongodb'
-import { dns } from 'node:dns'
+import dns from 'node:dns'
 import { promisify } from 'node:util'
 
 const lookup = promisify(dns.lookup);
