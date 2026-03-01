@@ -1,7 +1,9 @@
 # 📖 User Guide & Value Stream Concepts
 
 ### 1. The Interactive Dashboard
+
 <img src="./images/dashboard.png" alt="Dashboard View" width="800" />
+
 The main view provides a high-level map of value flow from Customers to Teams.
 - **Column Structure:** The dashboard is organized into three primary columns: **Customers**, **Work Items**, and **Teams**, followed by the **Gantt Timeline**.
 - **Unified Visual Identity:** All buttons and input fields across the application share a consistent visual style. Primary actions are blue, while destructive actions (Delete/Remove) are red.
@@ -30,7 +32,9 @@ Customers are represented by dual-layer additive circles:
 Both Customers and Work Items feature tabbed detail pages for better organization:
 
 #### Customer Detail Page
+
 <img src="./images/customer-detail.png" alt="Customer Detail" width="800" />
+
 - **Customer Details Section:** Displays basic info like Name, Actual TCV, and Potential TCV.
 - **Updating Actual TCV:** The "Actual Existing TCV" value is protected. To change it, click **"Update TCV"**. This triggers a lifecycle process:
     1. The current value and its "Valid From" date are moved into the history.
@@ -40,7 +44,9 @@ Both Customers and Work Items feature tabbed detail pages for better organizatio
     - **TCV History:** A chronological audit trail of the customer's contract evolution. Historical entries are created automatically whenever you perform an "Update TCV" action.
 
 #### Work Item Detail Page
+
 <img src="./images/workitem-detail.png" alt="Work Item Detail" width="800" />
+
 - **Work Item Details Section:** Edit the name, total man-day estimates, and release target.
 - **Tabs:**
     - **Targeted Customers:** Define which customers this initiative benefits. You can target either the **"Latest Actual"** TCV or a specific **historical record** from the customer's timeline.
