@@ -5,3 +5,4 @@ propose visual solution. also propose if you can somehow integrate with LLM mode
 * workitem  integration with Aha
 * customer integration with salesforce and support system
 * security
+* TCV History Logic Enhancement: Currently, when a Customer's Actual TCV is updated (archived to history), Work Items linked to "Latest Actual" remain linked to the new "Latest Actual". Consider if some Work Items should be automatically re-linked to the archived historical entry to preserve their context.
