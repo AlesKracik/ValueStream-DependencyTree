@@ -17,17 +17,18 @@ const mockData: DashboardData = {
         {
             id: 'f1',
             name: 'Work Item 1',
-            total_effort_mds: 1, score: 0,
+            total_effort_mds: 1, score: 10,
             customer_targets: [
                 { customer_id: 'c1', tcv_type: 'potential', priority: 'Must-have' }
             ]
         }
     ],
     epics: [
-        { id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', remaining_md: 1, target_start: '2026-01-01', target_end: '2026-01-14' }
+        { id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', effort_md: 1, target_start: '2026-01-01', target_end: '2026-01-14' }
     ],
     teams: [{ id: 't1', name: 'T1', total_capacity_mds: 10 }],
     sprints: [{ id: 's1', name: 'S1', start_date: '2026-01-01', end_date: '2026-01-14' }],
+    metrics: { maxScore: 100, maxRoi: 10 }
 };
 
 describe('useGraphLayout - Customer Filters', () => {

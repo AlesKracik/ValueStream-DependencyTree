@@ -106,53 +106,23 @@ export function useGraphLayout(
         const validCustomers = new Set(
             data.customers.filter(c => {
                 const transientTextMatch = !cf || c.name.toLowerCase().includes(cf);
-                const baseTextMatch = !bcf || c.name.toLowerCase().includes(bcf);
-                const numMatch = (c.existing_tcv + c.potential_tcv) >= combinedMinTcv;
-                return transientTextMatch && baseTextMatch && numMatch;
+                // Trust server-filtered data for baseParams, but still apply transient filters for live-typing feel
+                // if we are doing hybrid. But here, viewState already includes the transient filter.
+                return transientTextMatch;
             }).map(c => c.id)
         );
 
-        // For workitems, we need their calculated score.
+        // For workitems, use the pre-calculated score from the server
         const validWorkItems = new Set(
             data.workItems.filter(f => {
                 const transientTextMatch = !ff || f.name.toLowerCase().includes(ff);
-                const baseTextMatch = !bff || f.name.toLowerCase().includes(bff);
-                if (!transientTextMatch || !baseTextMatch) return false;
+                if (!transientTextMatch) return false;
 
                 if (!passRelease(!!f.released_in_sprint_id)) return false;
 
-                const epicsForWorkItem = data.epics.filter(e => e.work_item_id === f.id);
-                const epicMdsSum = epicsForWorkItem.reduce((sum, e) => sum + e.effort_md, 0);
-                const displayEffort = Math.max(f.total_effort_mds || 0, epicMdsSum) || 1;
-
-                let maxImpact = 0;
-                f.customer_targets.forEach(target => {
-                    const customer = data.customers.find(c => c.id === target.customer_id);
-                    if (!customer) return;
-
-                    const priority = target.priority || 'Must-have';
-                    const targetTcv = target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv;
-
-                    if (priority === 'Must-have') {
-                        maxImpact += targetTcv;
-                    } else if (priority === 'Should-have') {
-                        let shouldHaveCount = 0;
-                        data.workItems.forEach(globalF => {
-                            const hasShould = globalF.customer_targets.find(ct =>
-                                ct.customer_id === target.customer_id &&
-                                ct.priority === 'Should-have' &&
-                                ct.tcv_type === target.tcv_type
-                            );
-                            if (hasShould) shouldHaveCount++;
-                        });
-                        if (shouldHaveCount > 0) {
-                            maxImpact += (targetTcv / shouldHaveCount);
-                        }
-                    }
-                });
-
-                const maxPossibleScore = maxImpact / displayEffort;
-                return maxPossibleScore >= combinedMinScore;
+                // Use pre-calculated score if available, otherwise fallback to 0
+                const score = f.score !== undefined ? f.score : 0;
+                return score >= combinedMinScore;
             }).map(f => f.id)
         );
 
@@ -160,18 +130,16 @@ export function useGraphLayout(
             data.epics.filter(e => {
                 const team = data.teams.find(t => t.id === e.team_id);
                 const transientTeamMatch = !tf || (team && team.name.toLowerCase().includes(tf));
-                const baseTeamMatch = !btf || (team && team.name.toLowerCase().includes(btf));
                 
                 const workItem = data.workItems.find(f => f.id === e.work_item_id);
                 const epicName = e.name || workItem?.name || 'Task';
                 const transientEpicMatch = !ef || epicName.toLowerCase().includes(ef);
-                const baseEpicMatch = !bef || epicName.toLowerCase().includes(bef);
 
                 // Sprint Range Filter
                 let rangeMatch = true;
                 if (rangeStartDate || rangeEndDate) {
                     if (!e.target_start || !e.target_end) {
-                        rangeMatch = false; // Epics without dates fail if range is set
+                        rangeMatch = false; 
                     } else {
                         const start = parseISO(e.target_start);
                         const end = parseISO(e.target_end);
@@ -188,7 +156,7 @@ export function useGraphLayout(
                     }
                 }
 
-                return transientTeamMatch && baseTeamMatch && transientEpicMatch && baseEpicMatch && rangeMatch;
+                return transientTeamMatch && transientEpicMatch && rangeMatch;
             }).map(e => e.id)
         );
 
@@ -256,6 +224,18 @@ export function useGraphLayout(
                     if ((!e.work_item_id || e.work_item_id === 'UNASSIGNED') && validEpics.has(e.id)) {
                         visibleEpics.add(e.id);
                         visibleTeams.add(e.team_id);
+                    }
+                });
+            }
+
+            // Special case: Standalone Teams
+            // If a team filter is active, ensure matching teams are visible even if they have no epics or workitems
+            if (tf || btf) {
+                data.teams.forEach(t => {
+                    const transientTeamMatch = !tf || t.name.toLowerCase().includes(tf);
+                    const baseTeamMatch = !btf || t.name.toLowerCase().includes(btf);
+                    if (transientTeamMatch && baseTeamMatch) {
+                        visibleTeams.add(t.id);
                     }
                 });
             }
@@ -410,112 +390,40 @@ export function useGraphLayout(
         });
 
         // 2. Process WorkItems (Column 2)
-        // Implement RICE WorkItem Prioritization
-        const workItemsWithScores = [...data.workItems]
+        // Implement RICE WorkItem Prioritization using server-provided scores
+        const workItemsToProcess = [...data.workItems]
             .filter(f => visibleWorkItems.has(f.id))
             .map(f => {
                 const epicsForWorkItem = data.epics.filter(e => e.work_item_id === f.id && visibleEpics.has(e.id));
                 const epicMdsSum = epicsForWorkItem.reduce((sum, e) => sum + e.effort_md, 0);
-                const displayEffort = Math.max(f.total_effort_mds || 0, epicMdsSum) || 1; // Prevent div by 0
-
                 const hasDatelessEpics = epicsForWorkItem.some(e => !e.target_start || !e.target_end);
-
-                let impact = 0;
-
-                if (f.all_customers_target) {
-                    const type = f.all_customers_target.tcv_type;
-                    const priority = f.all_customers_target.priority || 'Must-have';
-                    
-                    // Sum up relevant TCV for ALL customers
-                    let totalRelevantTcv = data.customers.reduce((sum, c) => {
-                        const val = type === 'existing' ? (c.existing_tcv || 0) : (c.potential_tcv || 0);
-                        return sum + val;
-                    }, 0);
-
-                    if (priority === 'Must-have') {
-                        impact = totalRelevantTcv;
-                    } else if (priority === 'Should-have') {
-                        // For global "Should-haves", we also divide by global count of Should-haves if we want consistency,
-                        // but usually global maintenance is a single item. For now, let's treat it as total/1 for simplicity
-                        // or find all global items with should-have.
-                        let globalShouldCount = data.workItems.filter(wf => wf.all_customers_target?.priority === 'Should-have' && wf.all_customers_target?.tcv_type === type).length;
-                        impact = totalRelevantTcv / (globalShouldCount || 1);
-                    }
-                } else {
-                    f.customer_targets.forEach(target => {
-                        const customer = data.customers.find(c => c.id === target.customer_id);
-                        if (!customer) return;
-
-                        const priority = target.priority || 'Must-have';
-                        const targetTcv = target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv;
-
-                        if (priority === 'Must-have') {
-                            impact += targetTcv;
-                        } else if (priority === 'Should-have') {
-                            // Find how many Should-haves this customer has across ALL workitems globally
-                            let shouldHaveCount = 0;
-                            data.workItems.forEach(globalF => {
-                                const hasShould = globalF.customer_targets.find(ct =>
-                                    ct.customer_id === target.customer_id &&
-                                    ct.priority === 'Should-have' &&
-                                    ct.tcv_type === target.tcv_type
-                                );
-                                if (hasShould) shouldHaveCount++;
-                            });
-                            if (shouldHaveCount > 0) {
-                                impact += (targetTcv / shouldHaveCount);
-                            }
-                        } else if (priority === 'Nice-to-have') {
-                            impact += 0;
-                        }
-                    });
-                }
-
-                const score = impact / displayEffort;
 
                 return {
                     ...f,
                     epicMdsSum,
-                    displayEffort,
-                    impact,
-                    score,
                     hasDatelessEpics
                 };
             });
 
-        // Apply Min Score filter
-        const filteredWorkItemsByScore = workItemsWithScores.filter(f => f.score >= minScore);
-        const maxScore = Math.max(...filteredWorkItemsByScore.map(f => f.score), 1);
-        const sortedWorkItems = filteredWorkItemsByScore.sort((a, b) => b.score - a.score); // Descending by Score
-
-        let maxRoi = 0.0001; // Avoid division by zero
-        sortedWorkItems.forEach((workItem) => {
-            workItem.customer_targets.forEach((target) => {
-                if (!visibleCustomers.has(target.customer_id)) return;
-                const customer = data.customers.find(c => c.id === target.customer_id);
-                if (customer) {
-                    const targetTcv = target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv;
-                    const roi = targetTcv / workItem.total_effort_mds;
-                    if (roi > maxRoi) maxRoi = roi;
-                }
-            });
-        });
-
-        // Add WorkItem node removed from canvas
+        // Use global metrics from server for consistent scaling across filters
+        const maxScore = data.metrics?.maxScore || 1;
+        const maxRoi = data.metrics?.maxRoi || 0.0001;
+        const sortedWorkItems = workItemsToProcess.sort((a, b) => (b.score || 0) - (a.score || 0)); // Descending by Score
 
         sortedWorkItems.forEach((workItem, index) => {
-            const sizeRatio = maxScore > 0 ? workItem.score / maxScore : 0.5;
+            const score = workItem.score || 0;
+            const sizeRatio = maxScore > 0 ? score / maxScore : 0.5;
             const nodeSize = 100 * 0.6 + (100 * 0.8 * sizeRatio);
 
             nodes.push({
                 id: `workitem-${workItem.id}`,
                 type: 'workItemNode',
-                position: { x: COL_WORKITEM_X - (nodeSize / 2), y: index * 180 + START_Y - (nodeSize / 2) }, // Adjusted starting Y
+                position: { x: COL_WORKITEM_X - (nodeSize / 2), y: index * 180 + START_Y - (nodeSize / 2) },
                 data: {
                     label: workItem.name,
                     effortMds: workItem.total_effort_mds,
                     epicMds: workItem.epicMdsSum,
-                    score: workItem.score,
+                    score: score,
                     maxScore: maxScore,
                     baseSize: 100,
                     isGlobal: !!workItem.all_customers_target,
@@ -525,22 +433,19 @@ export function useGraphLayout(
             });
 
             // 3. Create Edges (Customer -> WorkItem)
-            // Skip visual edges for items that relate to all existing customers to avoid clutter
             if (!workItem.all_customers_target) {
-                // Thickness proportional to ROI: Potential_TCV / Total_Effort_MDs
                 workItem.customer_targets.forEach((target) => {
                     if (!visibleCustomers.has(target.customer_id)) return;
                     const customer = data.customers.find(c => c.id === target.customer_id);
                     if (customer) {
                         const targetTcv = target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv;
-                        const roi = targetTcv / workItem.total_effort_mds;
-                        // Scale width based on ROI, keeping min 2px and max 10px
+                        const roi = targetTcv / (workItem.total_effort_mds || 1);
                         const normalizedStrokeWidth = Math.min(10, Math.max(2, (roi / maxRoi) * 10));
 
                         edges.push({
                             id: `edge-${target.customer_id}-${workItem.id}-${target.tcv_type}`,
                             source: `customer-${target.customer_id}`,
-                            sourceHandle: target.tcv_type, // 'existing' or 'potential'
+                            sourceHandle: target.tcv_type,
                             target: `workitem-${workItem.id}`,
                             type: 'default',
                             style: {

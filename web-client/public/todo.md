@@ -6,5 +6,4 @@ provide some nice summary
 • dont do anything, just think: now the TCV is either exisitng or potential. but as time goes on, the potential will gradually get to existing. so we need to introduce timeseries to the existing. propose a solution how to do that
 * workitem  integration with Aha
 * customer integration with salesforce and support system
-* move part of the filtration  logic to db
 * security

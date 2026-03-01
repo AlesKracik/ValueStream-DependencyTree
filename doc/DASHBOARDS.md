@@ -27,60 +27,35 @@ export interface DashboardParameters {
 
 ## Filtration Architecture
 
-The dashboard employs a multi-layered filtering system that combines **Transient Filters** (user's current view state) and **Persistent Filters** (defined in the dashboard parameters).
+The dashboard employs a multi-layered filtering system that combines **Server-Side Enforcement** (for persistent and heavy filters) and **Client-Side Transient Filters** (for live feedback).
 
-### 1. Filter Combination Logic
-When a dashboard is active, the engine merges the two sets of parameters as follows:
+### 1. The Hydration Phase (Server-Side)
+When a dashboard is loaded, the client requests data using the `dashboardId`. The backend (MongoDB or the Vite proxy) applies the **Persistent Filters** directly to the database query:
+- **Optimization:** Only the relevant subset of customers, work items, and epics is transmitted over the network.
+- **Scoring:** RICE scores are calculated on the full dataset before filtering to ensure accuracy.
+- **Global Metrics:** The server returns global max values (e.g., `maxScore`) so the UI remains consistently scaled even when only a few items are visible.
 
-| Filter Type | Combining Logic | Resulting Behavior |
+### 2. The Interaction Phase (Client-Side)
+As users type in the filter bar, the `useGraphLayout` hook applies **Transient Filters** to the already-filtered dataset provided by the server:
+- **Responsiveness:** Instant updates without additional network calls.
+- **Combining Logic:** Transient filters are combined with server-side base parameters using Logical AND (strictest threshold wins).
+
+### 3. Visibility Pipeline Summary
+
+| Step | Enforcement | Logic |
 | :--- | :--- | :--- |
-| **Text Filters** (Name/Jira Key) | `Transient OR Persistent` | Nodes matching *either* string are considered valid for that layer. |
-| **Numeric Filters** (TCV / Score) | `Math.max(Transient, Persistent)` | The stricter (higher) threshold always takes precedence. |
-| **Release Filter** | Stricter match | If either filter is set to "Released" or "Unreleased", that status is enforced. |
-| **Sprint Range** | Persistent Only | This is a structural constraint defined at the dashboard level. |
-
-### 2. The Visibility Pipeline
-The `useGraphLayout` hook processes data through a specific pipeline to determine which nodes and edges appear:
-
-#### Step A: Layer-Level Validation
-Each entity type is first checked against its own specific filters:
-- **Valid Customers:** Must pass combined TCV and Name filters.
-- **Valid Work Items:** Must pass combined Score, Name, and Release status filters.
-- **Valid Epics:** Must pass combined Team, Name, and **Sprint Range** filters. 
-    - *Sprint Range Logic:* An epic is valid only if its `target_start` or `target_end` falls within the boundary dates of the selected `startSprintId` and `endSprintId`.
-
-#### Step B: Strict Intersection (The Connection Tree)
-The system iterates through all Work Items to find "Viable Paths". A Work Item and its connected nodes are only visible if they satisfy the following "Must-Have" rules:
-
-1.  **If any Customer Filter is active:** The Work Item **must** be connected to at least one **Valid Customer**.
-2.  **If any Team/Epic/Range Filter is active:** The Work Item **must** be connected to at least one **Valid Epic**.
-3.  **Path Visibility:** If a path survives these checks, the Work Item, its connected Valid Customers, and its connected Valid Epics are all marked as **Visible**.
-
-#### Step C: Special Case Logic (Standalone Items)
-To prevent the dashboard from appearing empty when only partial data exists, certain nodes can appear without a full connection tree:
-- **Standalone Customers:** Appear only if **NO** Work Item filters, Team filters, or Sprint Range filters are active.
-- **Standalone Epics:** Appear only if **NO** Customer filters or Work Item filters are active.
-
-### 3. Summary of Filter Combinations
-
-| Combination | Visibility Result |
-| :--- | :--- |
-| **No Filters** | All nodes in the database are visible. |
-| **Customer TCV Only** | Shows all customers above TCV, and ONLY the work items and epics connected to them. |
-| **Sprint Range Only** | Shows only Epics in that range, and ONLY the Work Items and Customers connected to those epics. Standalone customers are hidden. |
-| **TCV + Sprint Range** | Shows the intersection: Customers > TCV who have work connected to Epics in that Range. |
-| **Team + Release Status** | Shows only "Released" Work Items that have child Epics assigned to that specific Team. |
+| **Initial Load** | Database | Fetches items matching Persistent Dashboard Parameters. |
+| **Numeric Thresholds** | Server & Client | `Math.max(Transient, Persistent)` - stricter wins. |
+| **Text Searches** | Server & Client | Logical AND - must match persistent criteria AND transient search string. |
+| **Intersection** | Client | Hides items that don't form a complete path (Customer -> WorkItem -> Epic). |
 
 ```mermaid
 graph TD
-    Data[Full Project Data] --> Validation[Layer-Level Validation]
-    Validation --> Intersection{Intersection Logic}
-    Intersection -->|Path Valid| Show[Display Connection Tree]
-    Intersection -->|Path Invalid| Standalone{Special Case Check}
-    Standalone -->|Allowed| ShowNode[Display Standalone Node]
-    Standalone -->|Blocked| Hide[Discard Node]
+    DB[(MongoDB)] -->|Persistent Filters| API[API /loadData]
+    API -->|Metrics + Data Subset| UI[Web Client]
+    UI -->|Transient Filters| Layout[Layout Engine]
+    Layout --> Render[Visible Graph]
 ```
-
 
 ## Configuration
 - Dashboards are managed via the **Dashboard List** page.

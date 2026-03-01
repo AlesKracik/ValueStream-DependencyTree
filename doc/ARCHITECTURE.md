@@ -25,15 +25,18 @@ graph TD
 - **Layout Engine:** `useGraphLayout.ts` - a deterministic engine that calculates X/Y coordinates based on logical relationships rather than force-directed algorithms.
 
 ### 2. Backend & Persistence
-- **Mock Persistence Plugin:** A Vite server-side plugin (`vite.config.ts`) that intercepts `/api` calls.
-- **Database:** MongoDB for persistent storage of all entities.
+- **Mock Persistence Plugin:** A Vite server-side plugin (`vite.config.ts`) that intercepts `/api` calls. It includes a True Backend engine that performs complex data joins and numeric calculations.
+- **Database:** MongoDB for persistent storage of all entities. It utilizes MongoDB Aggregation Pipelines for high-performance score calculation.
 - **Schema Validation:** Draft-07 JSON schema at `public/schema.json`.
 - **Seeding:** Automatically seeds from `public/staticImport.json` if the database is empty.
 
-### 3. Data Flow
-1. **Hydration:** On load, the client calls `/api/loadData`. The Vite proxy fetches from Mongo, applies any migrations (like sprint quarter recomputation), and returns the full `DashboardData` object.
-2. **Reactivity:** User actions (updates, deletes, adds) trigger local state changes via hooks, which are then asynchronously persisted via `/api/entity` endpoints.
-3. **Prioritization:** The RICE score for Work Items is calculated on-the-fly in the client whenever Customer TCV or Work Item Effort changes.
+### 3. Data Flow & Hybrid Filtering
+1. **Hydration:** On load or filter change, the client calls `/api/loadData` with optional query parameters (`dashboardId`, `minScore`, etc.).
+2. **Server-Side Processing:** The backend fetches data, joins Work Items with Epics to calculate effort, and joins with Customers to calculate RICE scores. It also returns a `metrics` object with global maximums (e.g., `maxScore`) to ensure consistent visual scaling across all filtered views.
+3. **Hybrid Filtering:**
+    - **Base Filters:** Heavy searches and persistent dashboard parameters are applied at the database level to minimize network payload.
+    - **Transient Filters:** Live-typing search in the UI is applied client-side for instantaneous feedback on the already-filtered dataset.
+4. **Reactivity:** User actions (updates, deletes, adds) trigger local state changes via hooks, which are then asynchronously persisted via `/api/entity` endpoints.
 
 ## Deployment Modes
 

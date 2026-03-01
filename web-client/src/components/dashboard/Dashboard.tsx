@@ -303,9 +303,45 @@ export const Dashboard: React.FC<DashboardProps> = ({
         [setViewState]
     );
 
-    if (loading) return <div>Loading dashboard...</div>;
+    const [localFilters, setLocalFilters] = React.useState({
+        customerFilter: viewState.customerFilter,
+        workItemFilter: viewState.workItemFilter,
+        teamFilter: viewState.teamFilter,
+        epicFilter: viewState.epicFilter,
+        minTcvFilter: viewState.minTcvFilter,
+        minScoreFilter: viewState.minScoreFilter
+    });
+
+    // Update local filters when viewState changes (e.g. on initial load or dashboard switch)
+    React.useEffect(() => {
+        setLocalFilters({
+            customerFilter: viewState.customerFilter,
+            workItemFilter: viewState.workItemFilter,
+            teamFilter: viewState.teamFilter,
+            epicFilter: viewState.epicFilter,
+            minTcvFilter: viewState.minTcvFilter,
+            minScoreFilter: viewState.minScoreFilter
+        });
+    }, [viewState.customerFilter, viewState.workItemFilter, viewState.teamFilter, viewState.epicFilter, viewState.minTcvFilter, viewState.minScoreFilter]);
+
+    // Debounce effect to update global viewState
+    React.useEffect(() => {
+        const timer = setTimeout(() => {
+            setViewState(s => ({
+                ...s,
+                ...localFilters
+            }));
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [localFilters, setViewState]);
+
+    const handleFilterChange = (key: string, value: string) => {
+        setLocalFilters(prev => ({ ...prev, [key]: value }));
+    };
+
+    if (loading && !data) return <div>Loading dashboard...</div>;
     if (error) return <div>Error loading data: {error.message}</div>;
-    if (!data) return <div>No data available</div>;
+    if (!data && !loading) return <div>No data available</div>;
 
     return (
         <div className={styles.dashboardContainer}>
@@ -313,6 +349,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
                         <h1>Value Stream Dashboard</h1>
+                        {loading && (
+                            <div className={styles.loadingSpinner} title="Updating data..." />
+                        )}
                     </div>
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                         <div style={{ display: 'flex', gap: '4px' }}>
@@ -361,29 +400,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <input
                                 type="text"
                                 placeholder="Customers..."
-                                value={viewState.customerFilter}
-                                onChange={e => setViewState((s: DashboardViewState) => ({ ...s, customerFilter: e.target.value }))}
+                                value={localFilters.customerFilter}
+                                onChange={e => handleFilterChange('customerFilter', e.target.value)}
                                 style={{ width: '140px' }}
                             />
                             <input
                                 type="text"
                                 placeholder="Work Items..."
-                                value={viewState.workItemFilter}
-                                onChange={e => setViewState((s: DashboardViewState) => ({ ...s, workItemFilter: e.target.value }))}
+                                value={localFilters.workItemFilter}
+                                onChange={e => handleFilterChange('workItemFilter', e.target.value)}
                                 style={{ width: '140px' }}
                             />
                             <input
                                 type="text"
                                 placeholder="Teams..."
-                                value={viewState.teamFilter}
-                                onChange={e => setViewState((s: DashboardViewState) => ({ ...s, teamFilter: e.target.value }))}
+                                value={localFilters.teamFilter}
+                                onChange={e => handleFilterChange('teamFilter', e.target.value)}
                                 style={{ width: '120px' }}
                             />
                             <input
                                 type="text"
                                 placeholder="Epics..."
-                                value={viewState.epicFilter}
-                                onChange={e => setViewState((s: DashboardViewState) => ({ ...s, epicFilter: e.target.value }))}
+                                value={localFilters.epicFilter}
+                                onChange={e => handleFilterChange('epicFilter', e.target.value)}
                                 style={{ width: '120px' }}
                             />
                         </div>

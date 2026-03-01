@@ -13,13 +13,13 @@ const MOCK_DATA: DashboardData = {
         {
             id: 'f1',
             name: 'Low RICE Feat',
-            total_effort_mds: 10, score: 0,
+            total_effort_mds: 10, score: 5,
             customer_targets: [{ customer_id: 'c1', tcv_type: 'existing', priority: 'Nice-to-have' }]
         },
         {
             id: 'f2',
             name: 'High RICE Feat',
-            total_effort_mds: 5, score: 0,
+            total_effort_mds: 5, score: 50,
             customer_targets: [{ customer_id: 'c2', tcv_type: 'existing', priority: 'Must-have' }]
         }
     ],
@@ -34,6 +34,10 @@ const MOCK_DATA: DashboardData = {
     sprints: [
         { id: 's1', name: 'Sprint 1', start_date: '2026-02-12', end_date: '2026-02-26' }
     ],
+    metrics: {
+        maxScore: 100,
+        maxRoi: 10
+    }
 };
 
 describe('useGraphLayout Math Engine', () => {
@@ -70,7 +74,7 @@ describe('useGraphLayout Math Engine', () => {
         expect(result.current.edges).toEqual([]);
     });
 
-    it('calculates proper RICE visualization scaling', () => {
+    it('uses server-provided RICE scores for visualization', () => {
         const { result } = renderHook(() => useGraphLayout(MOCK_DATA));
 
         const f1Node = result.current.nodes.find(n => n.id === 'workitem-f1');
@@ -79,10 +83,8 @@ describe('useGraphLayout Math Engine', () => {
         expect(f1Node).toBeDefined();
         expect(f2Node).toBeDefined();
 
-        const f1Score = (f1Node?.data as any).score || 0;
-        const f2Score = (f2Node?.data as any).score || 0;
-
-        expect(f2Score).toBeGreaterThan(f1Score);
+        expect((f1Node?.data as any).score).toBe(5);
+        expect((f2Node?.data as any).score).toBe(50);
     });
 
     it('maintains consistent team capacity usage regardless of filters', () => {

@@ -17,7 +17,7 @@ const mockData: DashboardData = {
         {
             id: 'f1',
             name: 'High Score Work Item',
-            total_effort_mds: 1, score: 0,
+            total_effort_mds: 1, score: 500,
             customer_targets: [
                 { customer_id: 'c1', tcv_type: 'potential', priority: 'Must-have' }
             ]
@@ -25,18 +25,19 @@ const mockData: DashboardData = {
         {
             id: 'f2',
             name: 'Low Score Work Item',
-            total_effort_mds: 10, score: 0,
+            total_effort_mds: 10, score: 2,
             customer_targets: [
                 { customer_id: 'c2', tcv_type: 'potential', priority: 'Must-have' }
             ]
         }
     ],
     epics: [
-        { id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', remaining_md: 1, target_start: '2026-01-01', target_end: '2026-01-14' },
-        { id: 'e2', jira_key: 'E2', work_item_id: 'f2', team_id: 't1', remaining_md: 1, target_start: '2026-01-01', target_end: '2026-01-14' },
+        { id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', effort_md: 1, target_start: '2026-01-01', target_end: '2026-01-14' },
+        { id: 'e2', jira_key: 'E2', work_item_id: 'f2', team_id: 't1', effort_md: 1, target_start: '2026-01-01', target_end: '2026-01-14' },
     ],
     teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }],
     sprints: [{ id: 's1', name: 'S1', start_date: '2026-01-01', end_date: '2026-01-14' }],
+    metrics: { maxScore: 500, maxRoi: 500 }
 };
 
 describe('useGraphLayout - Numeric Filters', () => {
@@ -60,39 +61,6 @@ describe('useGraphLayout - Numeric Filters', () => {
 
         expect(hasF1).toBe(true);
         expect(hasF2).toBe(false);
-    });
-
-    it('should correctly divide Score across multiple Should-have work items', () => {
-        const sharedCustomer = { id: 'c-shared', name: 'Shared', existing_tcv: 0, potential_tcv: 1000 };
-        const shouldHaveData: DashboardData = {
-            ...mockData,
-            customers: [sharedCustomer],
-            workItems: [
-                {
-                    id: 'f-should-1',
-                    name: 'Should Have 1',
-                    total_effort_mds: 1, score: 0,
-                    customer_targets: [{ customer_id: 'c-shared', tcv_type: 'potential', priority: 'Should-have' }]
-                },
-                {
-                    id: 'f-should-2',
-                    name: 'Should Have 2',
-                    total_effort_mds: 1, score: 0,
-                    customer_targets: [{ customer_id: 'c-shared', tcv_type: 'potential', priority: 'Should-have' }]
-                }
-            ],
-            epics: [
-                { id: 'e-s1', jira_key: 'E-S1', work_item_id: 'f-should-1', team_id: 't1', remaining_md: 1, target_start: '2026-01-01', target_end: '2026-01-14' },
-                { id: 'e-s2', jira_key: 'E-S2', work_item_id: 'f-should-2', team_id: 't1', remaining_md: 1, target_start: '2026-01-01', target_end: '2026-01-14' },
-            ]
-        };
-
-        const { result: filteredOut } = renderHook(() => useGraphLayout(shouldHaveData, null, 0, '', '', 'all', '', '', true, 0, 600));
-        expect(filteredOut.current.nodes.some(n => n.id.startsWith('workitem-f-should'))).toBe(false);
-
-        const { result: passed } = renderHook(() => useGraphLayout(shouldHaveData, null, 0, '', '', 'all', '', '', true, 0, 400));
-        expect(passed.current.nodes.some(n => n.id === 'workitem-f-should-1')).toBe(true);
-        expect(passed.current.nodes.some(n => n.id === 'workitem-f-should-2')).toBe(true);
     });
 
     it('should apply both minTcv and minScore simultaneously', () => {

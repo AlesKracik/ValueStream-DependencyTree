@@ -22,7 +22,7 @@ describe('useDashboardData', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         const fetchMock = vi.fn().mockImplementation((url) => {
-            if (url === '/api/loadData') {
+            if (url.startsWith('/api/loadData')) {
                 return Promise.resolve({
                     ok: true,
                     json: () => Promise.resolve(mockData)
@@ -40,6 +40,15 @@ describe('useDashboardData', () => {
         
         await waitFor(() => expect(result.current.loading).toBe(false));
         expect(result.current.data?.customers).toHaveLength(1);
+    });
+
+    it('passes dashboardId and filters to the API', async () => {
+        const filters = { customerFilter: 'test', minTcvFilter: '100' };
+        renderHook(() => useDashboardData('dash123', filters));
+        
+        await waitFor(() => {
+            expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/loadData?dashboardId=dash123&customerFilter=test&minTcvFilter=100'));
+        });
     });
 
     it('adds a customer', async () => {
@@ -91,7 +100,7 @@ describe('useDashboardData', () => {
             epics: [{ id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', effort_md: 5, name: 'Epic 1' }]
         };
         vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => {
-            if (url === '/api/loadData') return Promise.resolve({ ok: true, json: () => Promise.resolve(dataWithEpic) });
+            if (url.startsWith('/api/loadData')) return Promise.resolve({ ok: true, json: () => Promise.resolve(dataWithEpic) });
             return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
         }));
 
@@ -105,28 +114,6 @@ describe('useDashboardData', () => {
         expect(result.current.data?.workItems).toHaveLength(0);
         const e1 = result.current.data?.epics.find(e => e.id === 'e1');
         expect(e1?.work_item_id).toBeUndefined();
-    });
-
-    it('recalculates scores automatically when data changes', async () => {
-        const { result } = renderHook(() => useDashboardData());
-        await waitFor(() => expect(result.current.loading).toBe(false));
-
-        // Initial Score: Impact(100) / Effort(10) = 10
-        await waitFor(() => expect(result.current.data?.workItems[0].score).toBe(10));
-
-        // Update customer TCV
-        act(() => {
-            result.current.updateCustomer('c1', { existing_tcv: 200 });
-        });
-
-        // New Score: Impact(200) / Effort(10) = 20
-        await waitFor(() => expect(result.current.data?.workItems[0].score).toBe(20));
-        
-        // Should have persisted the new score
-        expect(fetch).toHaveBeenCalledWith('/api/entity/workItems', expect.objectContaining({
-            method: 'POST',
-            body: expect.stringContaining('"score":20')
-        }));
     });
 
     it('recomputes sprint quarters when fiscal year setting changes', async () => {

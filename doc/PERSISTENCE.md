@@ -9,11 +9,33 @@ The application uses a dual-mode persistence strategy to balance ease of local d
 
 ## The Vite Persistence Plugin
 The "backend" logic resides in `web-client/vite.config.ts`. It utilizes `server.middlewares` to provide API endpoints:
-- **`GET /api/loadData`:** Fetches the entire project state and executes migrations.
-- **`POST /api/entity/{collection}`:** Handles Upsert operations.
-- **`DELETE /api/entity/{collection}`:** Handles record removal.
+
+### 1. `GET /api/loadData`
+Fetches the project state, executes migrations, and performs server-side calculations.
+
+**Supported Query Parameters:**
+- `dashboardId`: (String) UUID of a persistent dashboard to load parameters from.
+- `customerFilter`: (String) Text-based search for customer names.
+- `workItemFilter`: (String) Text-based search for work item names.
+- `teamFilter`: (String) Text-based search for team names.
+- `epicFilter`: (String) Text-based search for epic names.
+- `releasedFilter`: (`all` | `released` | `unreleased`) Filter by work item status.
+- `minTcv`: (Number) Minimum total TCV for customers.
+- `minScore`: (Number) Minimum RICE score for work items.
+
+**Response Structure:**
+The response includes standard entities plus a **`metrics`** object used for consistent frontend rendering:
+- `metrics.maxScore`: The global maximum RICE score across the *entire* dataset.
+- `metrics.maxRoi`: The global maximum Return on Investment (TCV/Effort) for edge scaling.
+
+### 2. `POST /api/entity/{collection}`
+Handles Upsert operations. When a Work Item or Customer is updated, the backend automatically recalculates all affected RICE scores on the next `loadData` call.
+
+### 3. `DELETE /api/entity/{collection}`
+Handles record removal.
 
 ## Authentication & AAA
+... (rest of section unchanged)
 
 The application supports three primary authentication methods for MongoDB, configurable via the **Settings** (⚙️) menu.
 

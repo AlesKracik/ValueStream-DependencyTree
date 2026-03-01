@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { parseISO } from 'date-fns';
-import type { DashboardData, Customer, WorkItem, Team, Epic, Settings, Sprint, DashboardEntity } from '../types/models';
-import { calculateWorkItemScores } from './scoreCalculator';
+import type { DashboardData, Customer, WorkItem, Team, Epic, Settings, Sprint, DashboardEntity, DashboardParameters } from '../types/models';
 
 const calculateQuarter = (dateStr: string, fiscalStartMonth: number) => {
     const date = parseISO(dateStr);
@@ -45,7 +44,7 @@ const persistSettings = async (settings: any) => {
     }
 };
 
-export function useDashboardData() {
+export function useDashboardData(dashboardId?: string, filters?: Partial<DashboardParameters>) {
     const [data, setData] = useState<DashboardData | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<Error | null>(null);
@@ -53,7 +52,18 @@ export function useDashboardData() {
     useEffect(() => {
         async function fetchData() {
             try {
-                const response = await fetch('/api/loadData');
+                setLoading(true);
+                const params = new URLSearchParams();
+                if (dashboardId) params.append('dashboardId', dashboardId);
+                if (filters) {
+                    Object.entries(filters).forEach(([key, value]) => {
+                        if (value !== undefined && value !== null && value !== '') {
+                            params.append(key, String(value));
+                        }
+                    });
+                }
+                const queryString = params.toString();
+                const response = await fetch(`/api/loadData${queryString ? `?${queryString}` : ''}`);
                 if (!response.ok) {
                     throw new Error('Failed to fetch data');
                 }
@@ -67,47 +77,10 @@ export function useDashboardData() {
         }
 
         fetchData();
-    }, []);
+    }, [dashboardId, JSON.stringify(filters)]);
 
-    // Automatic score recalculation and persistence
-    useEffect(() => {
-        if (!data || loading) return;
-
-        const workItemsWithNewScores = calculateWorkItemScores(data);
-        
-        // Find which work items actually had their score changed
-        const updatesToPersist: WorkItem[] = [];
-        let localStateNeedsUpdate = false;
-
-        workItemsWithNewScores.forEach((newItem) => {
-            const oldItem = data.workItems.find(w => w.id === newItem.id);
-            if (!oldItem || oldItem.score !== newItem.score) {
-                updatesToPersist.push(newItem);
-                localStateNeedsUpdate = true;
-            }
-        });
-
-        if (localStateNeedsUpdate) {
-            // Update local state once
-            setData(prev => {
-                if (!prev) return prev;
-                
-                // Avoid infinite loops by checking if update is still needed against latest prev
-                const stillNeedsUpdate = workItemsWithNewScores.some((newItem) => {
-                    const currentItem = prev.workItems.find(w => w.id === newItem.id);
-                    return !currentItem || currentItem.score !== newItem.score;
-                });
-                if (!stillNeedsUpdate) return prev;
-
-                return { ...prev, workItems: workItemsWithNewScores };
-            });
-
-            // Persist changes to DB
-            updatesToPersist.forEach(item => {
-                persistEntity('workItems', 'POST', item);
-            });
-        }
-    }, [data?.customers, data?.workItems, data?.epics, loading]);
+    // Note: Server now handles RICE score calculation and filtering.
+    // Client-side automatic persistence of scores is removed to avoid unnecessary DB writes during view.
 
     const addCustomer = (customer: Customer) => {
         setData(prev => {

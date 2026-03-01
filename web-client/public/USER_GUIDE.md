@@ -4,10 +4,11 @@
 The main view provides a high-level map of value flow from Customers to Teams.
 - **Column Structure:** The dashboard is organized into three primary columns: **Customers**, **Work Items**, and **Teams**, followed by the **Gantt Timeline**.
 - **Unified Visual Identity:** All buttons and input fields across the application share a consistent visual style. Primary actions are blue, while destructive actions (Delete/Remove) are red.
-- **Unified Filtering:** The header contains a streamlined filter bar organized into logic groups:
+- **High-Performance Filtering:** The header contains a streamlined filter bar organized into logic groups. Filtering is now integrated with the database, allowing for lightning-fast searches even on large datasets.
     - **Search:** Quickly filter any column by typing names or partial strings.
     - **Status & Metrics:** Toggle visibility based on **Release Status** or set thresholds for **Min TCV** and **Min Score**.
-    - **Visualization:** Toggle visual aids like dependency lines and hover effects.
+    - **Background Updates:** When you change a filter, the dashboard stays visible while it fetches updated data. A small circular spinner appears in the top header during these background updates.
+    - **Debounced Input:** Text fields wait briefly after you stop typing before refreshing, making it easy to enter long names without the screen jumping.
 - **Persistent Custom Dashboards:** You can create multiple named dashboards with specific filter parameters.
     - **Edit Parameters:** Click the **"Edit Parameters"** button in the top-right corner of any dashboard to adjust its permanent filters, including **name**, **description**, and **structural filters**.
     - **Sprint Range Filter:** Dashboards can be limited to a specific range of sprints. Only items connected to epics that fall within this time range will be displayed.
@@ -17,6 +18,8 @@ The main view provides a high-level map of value flow from Customers to Teams.
 - **Reset View:** Clicking **"Reset View"** in the bottom-right corner perfectly frames the dashboard, top-aligning the column headers and centering the Gantt chart on the **Active Sprint**.
 
 ### 2. Customer TCV Visualization
+... (rest of section unchanged)
+
 Customers are represented by dual-layer additive circles:
 - **Inner Circle (Solid Blue):** Represents **Existing TCV** (realized value).
 - **Outer Ring (Dashed Blue):** Represents **Total TCV** (Existing + Potential). 
@@ -25,6 +28,8 @@ Customers are represented by dual-layer additive circles:
 - **Focus Effects:** All input fields provide a subtle blue glow when focused, ensuring you always know which field you are currently editing.
 
 ### 3. Work Item & Team Management
+... (rest of guide unchanged)
+
 - **Labels:** To maximize legibility, all node names are placed **below the circles** in a large, bold font. Circles are reserved for core numerical metrics (TCV, RICE Score, or Capacity).
 - **Searchable Assignments:** All dropdown menus for linking entities (e.g., adding a Customer Target to a Work Item) are **Searchable**. Simply type a few letters to filter the options.
 - **Node Status Icons:** Work Items display status indicators in the top-right of their circle:
