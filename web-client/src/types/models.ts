@@ -82,6 +82,7 @@ export interface Settings {
   customer_jql_noop?: string;
   fiscal_year_start_month?: number; // 1-12, default 1
   sprint_duration_days?: number; // default 14
+  mongo_create_if_not_exists?: boolean;
 }
 
 export interface DashboardParameters {

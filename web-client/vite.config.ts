@@ -126,7 +126,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
       }
 
       // helper to connect to Mongo
-      async function getDb(settings: any) {
+      async function getDb(settings: any, checkExists = false) {
         const uri = settings.mongo_uri;
         if (!await isSafeUrl(uri)) {
           throw new Error("Invalid or unsafe MongoDB URI");
@@ -166,6 +166,16 @@ const MockDataPersistencePlugin = (): Plugin => ({
 
         const client = new MongoClient(uri, options);
         await client.connect();
+
+        if (checkExists && !settings.mongo_create_if_not_exists) {
+          const dbs = await client.db().admin().listDatabases();
+          const exists = dbs.databases.some((d: any) => d.name === (dbName || 'valuestream'));
+          if (!exists) {
+            await client.close();
+            throw new Error(`Database '${dbName || 'valuestream'}' does not exist and 'Create if not exists' is disabled.`);
+          }
+        }
+
         return client.db(dbName || 'valuestream');
       }
 
@@ -276,7 +286,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
 
           if (mongoUri) {
             try {
-              const db = await getDb(settings);
+              const db = await getDb(settings, true);
               
               const dashboards = await db.collection('dashboards').find({}).toArray();
               dbData.dashboards = dashboards.map(({ _id, ...rest }) => rest);
@@ -478,7 +488,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
               throw new Error("No MongoDB URI configured.");
           }
           
-          const db = await getDb(settings);
+          const db = await getDb(settings, true);
 
           if (req.method === 'POST') {
               if (!id) throw new Error("Missing entity id");
@@ -497,6 +507,33 @@ const MockDataPersistencePlugin = (): Plugin => ({
           res.statusCode = e.message === 'Payload Too Large' ? 413 : 500;
           res.end(JSON.stringify({ success: false, error: e.message }));
         }
+      } else if (req.url === '/api/mongo/databases' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const rawConfig = JSON.parse(body);
+          
+          const settingsPath = path.resolve(__dirname, 'settings.json');
+          const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+          const config = unmaskSettings(rawConfig, existingSettings);
+
+          if (!config.mongo_uri) {
+            throw new Error('Missing mongo_uri');
+          }
+          
+          const client = new MongoClient(config.mongo_uri);
+          await client.connect();
+          const dbs = await client.db().admin().listDatabases();
+          await client.close();
+          
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, databases: dbs.databases.map((d: any) => d.name) }));
+        } catch (e: any) {
+          console.error('Error listing mongo databases:', e);
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 200; 
+          res.end(JSON.stringify({ success: false, error: e.message }));
+        }
       } else if (req.url === '/api/mongo/test' && req.method === 'POST') {
         try {
           const body = await readBody(req);
@@ -509,11 +546,23 @@ const MockDataPersistencePlugin = (): Plugin => ({
           if (!config.mongo_uri) {
             throw new Error('Missing mongo_uri');
           }
-          const db = await getDb(config);
-          await db.command({ ping: 1 });
+          
+          // Test connection and check existence
+          const client = new MongoClient(config.mongo_uri);
+          await client.connect();
+          const dbs = await client.db().admin().listDatabases();
+          const exists = dbs.databases.some((d: any) => d.name === (config.mongo_db || 'valuestream'));
+          await client.close();
+
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
-          res.end(JSON.stringify({ success: true, message: 'MongoDB connection successful!' }));
+          res.end(JSON.stringify({ 
+            success: true, 
+            exists,
+            message: exists 
+              ? `Connection successful! Database '${config.mongo_db || 'valuestream'}' exists.` 
+              : `Connection successful, but database '${config.mongo_db || 'valuestream'}' does not exist yet.` 
+          }));
         } catch (e: any) {
           console.error('Error testing mongo connection:', e);
           res.setHeader('Content-Type', 'application/json');
@@ -527,7 +576,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
           const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
           if (!settings.mongo_uri) throw new Error("MongoDB URI not configured.");
 
-          const db = await getDb(settings);
+          const db = await getDb(settings, true);
           
           const customers = await db.collection('customers').find({}).toArray();
           const workItems = await db.collection('workItems').find({}).toArray();

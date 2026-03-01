@@ -25,7 +25,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
   const [localFormData, setFormData] = useState<Partial<Settings>>({});
   const [isTesting, setIsTesting] = useState(false);
-  const [mongoTestResult, setMongoTestResult] = useState<{ success: boolean; message: string; } | null>(null);
+  const [availableDbs, setAvailableDbs] = useState<string[]>([]);
+  const [mongoTestResult, setMongoTestResult] = useState<{ success: boolean; message: string; exists?: boolean } | null>(null);
   const [jiraTestResult, setJiraTestResult] = useState<{ success: boolean; message: string; } | null>(null);
   const [importSyncResult, setImportSyncResult] = useState<{ success: boolean; message: string; } | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -47,6 +48,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         mongo_aws_secret_key: settings.mongo_aws_secret_key || "",
         mongo_aws_session_token: settings.mongo_aws_session_token || "",
         mongo_oidc_token: settings.mongo_oidc_token || "",
+        mongo_create_if_not_exists: settings.mongo_create_if_not_exists ?? false,
         customer_jql_new: settings.customer_jql_new || "",
         customer_jql_in_progress: settings.customer_jql_in_progress || "",
         customer_jql_noop: settings.customer_jql_noop || "",
@@ -64,6 +66,71 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   const handleTestConnection = async () => {
+    const mongo_uri = localFormData.mongo_uri || settings.mongo_uri;
+    const mongo_db = localFormData.mongo_db || settings.mongo_db;
+    const mongo_auth_method = localFormData.mongo_auth_method || settings.mongo_auth_method;
+    const mongo_aws_access_key = localFormData.mongo_aws_access_key || settings.mongo_aws_access_key;
+    const mongo_aws_secret_key = localFormData.mongo_aws_secret_key || settings.mongo_aws_secret_key;
+    const mongo_aws_session_token = localFormData.mongo_aws_session_token || settings.mongo_aws_session_token;
+    const mongo_oidc_token = localFormData.mongo_oidc_token || settings.mongo_oidc_token;
+
+    if (!mongo_uri) {
+      setMongoTestResult({ success: false, message: "MongoDB URI is required to test." });
+      return;
+    }
+    setIsTesting(true);
+    setMongoTestResult(null);
+    try {
+      // Fetch available databases
+      const dbRes = await authorizedFetch("/api/mongo/databases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          mongo_uri, 
+          mongo_auth_method,
+          mongo_aws_access_key,
+          mongo_aws_secret_key,
+          mongo_aws_session_token,
+          mongo_oidc_token
+        }),
+      });
+      const dbData = await dbRes.json();
+      if (dbRes.ok && dbData.success) {
+        setAvailableDbs(dbData.databases || []);
+      }
+
+      // Test specific database
+      const response = await authorizedFetch("/api/mongo/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          mongo_uri, 
+          mongo_db,
+          mongo_auth_method,
+          mongo_aws_access_key,
+          mongo_aws_secret_key,
+          mongo_aws_session_token,
+          mongo_oidc_token
+        }),
+      });
+      const resData = await response.json();
+      if (response.ok && resData.success) {
+        setMongoTestResult({ 
+          success: true, 
+          exists: resData.exists,
+          message: resData.message || "MongoDB connection successful!" 
+        });
+      } else {
+        setMongoTestResult({ success: false, message: resData.error || "MongoDB connection failed" });
+      }
+    } catch (e: any) {
+      setMongoTestResult({ success: false, message: e.message || "Network error occurred testing MongoDB connection." });
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  const handleJiraTestConnection = async () => {
     const jira_base_url = localFormData.jira_base_url || settings.jira_base_url;
     const jira_api_token = localFormData.jira_api_token || settings.jira_api_token;
     const jira_api_version = localFormData.jira_api_version || settings.jira_api_version || "3";
@@ -410,13 +477,50 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
             <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
               MongoDB Database Name:
+              <div style={{ position: 'relative', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div style={{ flex: 1, position: 'relative' }}>
+                  <input
+                    type="text"
+                    placeholder="valuestream"
+                    list="mongo-dbs"
+                    value={localFormData.mongo_db || ""}
+                    onChange={(e) => setFormData({ ...localFormData, mongo_db: e.target.value })}
+                    onBlur={() => onUpdateSettings({ mongo_db: localFormData.mongo_db })}
+                    style={{
+                      borderColor: mongoTestResult?.success && !mongoTestResult.exists && !localFormData.mongo_create_if_not_exists ? '#f59e0b' : undefined
+                    }}
+                  />
+                  <datalist id="mongo-dbs">
+                    {availableDbs.map(db => <option key={db} value={db} />)}
+                  </datalist>
+                </div>
+                {mongoTestResult?.success && (
+                  <span style={{ 
+                    fontSize: '11px', 
+                    padding: '2px 6px', 
+                    borderRadius: '4px', 
+                    backgroundColor: mongoTestResult.exists ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                    color: mongoTestResult.exists ? '#10b981' : '#f59e0b',
+                    border: `1px solid ${mongoTestResult.exists ? '#10b981' : '#f59e0b'}`,
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {mongoTestResult.exists ? 'Exists' : 'New'}
+                  </span>
+                )}
+              </div>
+            </label>
+
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db", cursor: 'pointer' }}>
               <input
-                type="text"
-                placeholder="valuestream"
-                value={localFormData.mongo_db || ""}
-                onChange={(e) => setFormData({ ...localFormData, mongo_db: e.target.value })}
-                onBlur={() => onUpdateSettings({ mongo_db: localFormData.mongo_db })}
+                type="checkbox"
+                checked={localFormData.mongo_create_if_not_exists || false}
+                onChange={(e) => {
+                  const val = e.target.checked;
+                  setFormData({ ...localFormData, mongo_create_if_not_exists: val });
+                  onUpdateSettings({ mongo_create_if_not_exists: val });
+                }}
               />
+              Create database if it doesn't exist
             </label>
 
             {localFormData.mongo_auth_method === 'aws' && (
@@ -471,40 +575,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             <button
               type="button"
               className="btn-primary"
-              onClick={async () => {
-                  const mongo_uri = localFormData.mongo_uri || settings.mongo_uri;
-                  if (!mongo_uri) {
-                      setMongoTestResult({ success: false, message: "MongoDB URI is required to test." });
-                      return;
-                  }
-                  setIsTesting(true);
-                  setMongoTestResult(null);
-                  try {
-                      const response = await authorizedFetch("/api/mongo/test", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ 
-                            mongo_uri, 
-                            mongo_db: localFormData.mongo_db || settings.mongo_db,
-                            mongo_auth_method: localFormData.mongo_auth_method || settings.mongo_auth_method,
-                            mongo_aws_access_key: localFormData.mongo_aws_access_key || settings.mongo_aws_access_key,
-                            mongo_aws_secret_key: localFormData.mongo_aws_secret_key || settings.mongo_aws_secret_key,
-                            mongo_aws_session_token: localFormData.mongo_aws_session_token || settings.mongo_aws_session_token,
-                            mongo_oidc_token: localFormData.mongo_oidc_token || settings.mongo_oidc_token
-                          }),
-                      });
-                      const resData = await response.json();
-                      if (response.ok && resData.success) {
-                          setMongoTestResult({ success: true, message: resData.message || "MongoDB connection successful!" });
-                      } else {
-                          setMongoTestResult({ success: false, message: resData.error || "MongoDB connection failed" });
-                      }
-                  } catch (e: any) {
-                      setMongoTestResult({ success: false, message: e.message || "Network error occurred testing MongoDB connection." });
-                  } finally {
-                      setIsTesting(false);
-                  }
-              }}
+              onClick={handleTestConnection}
               style={{ alignSelf: "flex-start", marginTop: "4px" }}
               disabled={isTesting || (!localFormData.mongo_uri && !settings.mongo_uri)}
             >
@@ -590,7 +661,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               <button
                 type="button"
                 className="btn-primary"
-                onClick={handleTestConnection}
+                onClick={handleJiraTestConnection}
                 disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira_base_url && !settings.jira_base_url) && (!localFormData.jira_api_token && !settings.jira_api_token))}
               >
                 {isTesting ? "Testing..." : "Test Connection"}
