@@ -19,7 +19,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 }) => {
   const [formData, setFormData] = useState<Partial<Settings>>({});
   const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string; } | null>(null);
+  const [mongoTestResult, setMongoTestResult] = useState<{ success: boolean; message: string; } | null>(null);
+  const [jiraTestResult, setJiraTestResult] = useState<{ success: boolean; message: string; } | null>(null);
+  const [importSyncResult, setImportSyncResult] = useState<{ success: boolean; message: string; } | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState<string>("");
   const [importJql, setImportJql] = useState("");
@@ -47,11 +49,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
   const handleTestConnection = async () => {
     if (!formData.jira_base_url || !formData.jira_api_token) {
-      setTestResult({ success: false, message: "Base URL and PAT are required to test." });
+      setJiraTestResult({ success: false, message: "Base URL and PAT are required to test." });
       return;
     }
     setIsTesting(true);
-    setTestResult(null);
+    setJiraTestResult(null);
     try {
       const response = await fetch("/api/jira/test", {
         method: "POST",
@@ -64,12 +66,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       });
       const resData = await response.json();
       if (response.ok && resData.success) {
-        setTestResult({ success: true, message: resData.message || "Connection successful!" });
+        setJiraTestResult({ success: true, message: resData.message || "Connection successful!" });
       } else {
-        setTestResult({ success: false, message: resData.error || "Connection failed" });
+        setJiraTestResult({ success: false, message: resData.error || "Connection failed" });
       }
     } catch (e: any) {
-      setTestResult({ success: false, message: e.message || "Network error occurred testing connection." });
+      setJiraTestResult({ success: false, message: e.message || "Network error occurred testing connection." });
     } finally {
       setIsTesting(false);
     }
@@ -77,7 +79,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
   const handleExportMongo = async () => {
     setIsTesting(true);
-    setTestResult(null);
+    setMongoTestResult(null);
     try {
       const response = await fetch("/api/mongo/export", {
         method: "POST",
@@ -96,12 +98,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
         
-        setTestResult({ success: true, message: "Export successful! staticImport.json download started." });
+        setMongoTestResult({ success: true, message: "Export successful! staticImport.json download started." });
       } else {
-        setTestResult({ success: false, message: resData.error || "Export failed" });
+        setMongoTestResult({ success: false, message: resData.error || "Export failed" });
       }
     } catch (e: any) {
-      setTestResult({ success: false, message: e.message || "Network error occurred during export." });
+      setMongoTestResult({ success: false, message: e.message || "Network error occurred during export." });
     } finally {
       setIsTesting(false);
     }
@@ -111,15 +113,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     if (!data) return;
     const epicsWithKeys = data.epics.filter(e => e.jira_key && e.jira_key !== "TBD");
     if (epicsWithKeys.length === 0) {
-      setTestResult({ success: true, message: "No epics with Jira keys found to sync." });
+      setImportSyncResult({ success: true, message: "No epics with Jira keys found to sync." });
       return;
     }
     if (!formData.jira_base_url || !formData.jira_api_token) {
-      setTestResult({ success: false, message: "Base URL and PAT are required to sync." });
+      setImportSyncResult({ success: false, message: "Base URL and PAT are required to sync." });
       return;
     }
     setIsSyncing(true);
-    setTestResult(null);
+    setImportSyncResult(null);
     let successCount = 0;
     let failCount = 0;
 
@@ -179,22 +181,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
     setIsSyncing(false);
     setSyncProgress("");
-    setTestResult({ success: failCount === 0, message: `Sync complete. ${successCount} succeeded, ${failCount} failed.` });
+    setImportSyncResult({ success: failCount === 0, message: `Sync complete. ${successCount} succeeded, ${failCount} failed.` });
   };
 
   const handleImportFromJira = async () => {
     if (!data) return;
     if (!formData.jira_base_url || !formData.jira_api_token) {
-      setTestResult({ success: false, message: "Base URL and PAT are required to import." });
+      setImportSyncResult({ success: false, message: "Base URL and PAT are required to import." });
       return;
     }
     if (!importJql.trim()) {
-      setTestResult({ success: false, message: "JQL query is required to import." });
+      setImportSyncResult({ success: false, message: "JQL query is required to import." });
       return;
     }
 
     setIsImporting(true);
-    setTestResult(null);
+    setImportSyncResult(null);
     let successCount = 0;
     let failCount = 0;
     let createCount = 0;
@@ -218,7 +220,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
       const issues = resData.data.issues || [];
       if (issues.length === 0) {
-        setTestResult({ success: true, message: "No issues found for the provided JQL." });
+        setImportSyncResult({ success: true, message: "No issues found for the provided JQL." });
         setIsImporting(false);
         setImportProgress("");
         return;
@@ -285,10 +287,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           failCount++;
         }
       }
-      setTestResult({ success: failCount === 0, message: `Import complete. Created ${createCount}, Updated ${updateCount}, Failed ${failCount}.` });
+      setImportSyncResult({ success: failCount === 0, message: `Import complete. Created ${createCount}, Updated ${updateCount}, Failed ${failCount}.` });
     } catch (err: any) {
       console.error("Import error:", err);
-      setTestResult({ success: false, message: err.message || "Import failed." });
+      setImportSyncResult({ success: false, message: err.message || "Import failed." });
     } finally {
       setIsImporting(false);
       setImportProgress("");
@@ -321,7 +323,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
       <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #374151', marginBottom: '24px' }}>
         <button
-          onClick={() => { setActiveTab("mongo"); setTestResult(null); }}
+          onClick={() => { setActiveTab("mongo"); setMongoTestResult(null); setJiraTestResult(null); setImportSyncResult(null); }}
           style={{
             background: 'none',
             border: 'none',
@@ -336,7 +338,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           MongoDB Persistence
         </button>
         <button
-          onClick={() => { setActiveTab("jira"); setTestResult(null); }}
+          onClick={() => { setActiveTab("jira"); setMongoTestResult(null); setJiraTestResult(null); setImportSyncResult(null); }}
           style={{
             background: 'none',
             border: 'none',
@@ -351,7 +353,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           Jira Integration
         </button>
         <button
-          onClick={() => { setActiveTab("general"); setTestResult(null); }}
+          onClick={() => { setActiveTab("general"); setMongoTestResult(null); setJiraTestResult(null); setImportSyncResult(null); }}
           style={{
             background: 'none',
             border: 'none',
@@ -398,11 +400,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               className="btn-primary"
               onClick={async () => {
                   if (!formData.mongo_uri) {
-                      setTestResult({ success: false, message: "MongoDB URI is required to test." });
+                      setMongoTestResult({ success: false, message: "MongoDB URI is required to test." });
                       return;
                   }
                   setIsTesting(true);
-                  setTestResult(null);
+                  setMongoTestResult(null);
                   try {
                       const response = await fetch("/api/mongo/test", {
                           method: "POST",
@@ -411,12 +413,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       });
                       const resData = await response.json();
                       if (response.ok && resData.success) {
-                          setTestResult({ success: true, message: resData.message || "MongoDB connection successful!" });
+                          setMongoTestResult({ success: true, message: resData.message || "MongoDB connection successful!" });
                       } else {
-                          setTestResult({ success: false, message: resData.error || "MongoDB connection failed" });
+                          setMongoTestResult({ success: false, message: resData.error || "MongoDB connection failed" });
                       }
                   } catch (e: any) {
-                      setTestResult({ success: false, message: e.message || "Network error occurred testing MongoDB connection." });
+                      setMongoTestResult({ success: false, message: e.message || "Network error occurred testing MongoDB connection." });
                   } finally {
                       setIsTesting(false);
                   }
@@ -426,6 +428,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             >
               {isTesting ? "Testing Mongo..." : "Test Mongo Connection"}
             </button>
+
+            {mongoTestResult && (
+              <div
+                style={{
+                  padding: "10px",
+                  borderRadius: "4px",
+                  fontSize: "14px",
+                  backgroundColor: mongoTestResult.success ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
+                  color: mongoTestResult.success ? "#34d399" : "#f87171",
+                  border: `1px solid ${mongoTestResult.success ? "#059669" : "#b91c1c"}`,
+                  marginTop: "8px",
+                }}
+              >
+                {mongoTestResult.message}
+              </div>
+            )}
 
             <hr style={{ borderColor: "#374151", width: "100%", margin: "16px 0 8px 0" }} />
             
@@ -499,6 +517,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               </button>
             </div>
 
+            {jiraTestResult && (
+              <div
+                style={{
+                  padding: "10px",
+                  borderRadius: "4px",
+                  fontSize: "14px",
+                  backgroundColor: jiraTestResult.success ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
+                  color: jiraTestResult.success ? "#34d399" : "#f87171",
+                  border: `1px solid ${jiraTestResult.success ? "#059669" : "#b91c1c"}`,
+                  marginTop: "8px",
+                }}
+              >
+                {jiraTestResult.message}
+              </div>
+            )}
+
             <hr style={{ borderColor: "#374151", width: "100%", margin: "16px 0 8px 0" }} />
             
             <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#e5e7eb" }}>
@@ -534,6 +568,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 {isSyncing ? syncProgress : "Sync Epics from Jira"}
               </button>
             </div>
+
+            {importSyncResult && (
+              <div
+                style={{
+                  padding: "10px",
+                  borderRadius: "4px",
+                  fontSize: "14px",
+                  backgroundColor: importSyncResult.success ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
+                  color: importSyncResult.success ? "#34d399" : "#f87171",
+                  border: `1px solid ${importSyncResult.success ? "#059669" : "#b91c1c"}`,
+                  marginTop: "8px",
+                }}
+              >
+                {importSyncResult.message}
+              </div>
+            )}
 
             <hr style={{ borderColor: "#374151", width: "100%", margin: "16px 0 8px 0" }} />
             
@@ -605,6 +655,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
             <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
               Sprint Duration (Days):
+              <span style={{ fontSize: "12px", color: "#9ca3af", marginTop: "-2px", marginBottom: "4px" }}>
+                Defines the default end date when creating new sprints. Does not affect existing sprints.
+              </span>
               <input
                 type="number"
                 min="1"
@@ -613,27 +666,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 onChange={(e) => setFormData({ ...formData, sprint_duration_days: parseInt(e.target.value) })}
                 onBlur={handleSave}
               />
-              <span style={{ fontSize: "12px", color: "#9ca3af", marginTop: "2px" }}>
-                Defines the default end date when creating new sprints. Does not affect existing sprints.
-              </span>
             </label>
           </>
-        )}
-
-        {testResult && (
-          <div
-            style={{
-              padding: "10px",
-              borderRadius: "4px",
-              fontSize: "14px",
-              backgroundColor: testResult.success ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
-              color: testResult.success ? "#34d399" : "#f87171",
-              border: `1px solid ${testResult.success ? "#059669" : "#b91c1c"}`,
-              marginTop: "16px",
-            }}
-          >
-            {testResult.message}
-          </div>
         )}
       </div>
     </div>

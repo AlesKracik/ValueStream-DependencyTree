@@ -20,10 +20,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   const [formData, setFormData] = useState<Partial<Settings>>({});
   const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{
-    success: boolean;
-    message: string;
-  } | null>(null);
+  const [mongoTestResult, setMongoTestResult] = useState<{ success: boolean; message: string; } | null>(null);
+  const [jiraTestResult, setJiraTestResult] = useState<{ success: boolean; message: string; } | null>(null);
+  const [importSyncResult, setImportSyncResult] = useState<{ success: boolean; message: string; } | null>(null);
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState<string>("");
@@ -53,7 +52,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleTestConnection = async () => {
     if (!formData.jira_base_url || !formData.jira_api_token) {
-      setTestResult({
+      setJiraTestResult({
         success: false,
         message: "Base URL and PAT are required to test.",
       });
@@ -61,7 +60,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
 
     setIsTesting(true);
-    setTestResult(null);
+    setJiraTestResult(null);
 
     try {
       const response = await fetch("/api/jira/test", {
@@ -76,18 +75,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
       const data = await response.json();
       if (response.ok && data.success) {
-        setTestResult({
+        setJiraTestResult({
           success: true,
           message: data.message || "Connection successful!",
         });
       } else {
-        setTestResult({
+        setJiraTestResult({
           success: false,
           message: data.error || "Connection failed",
         });
       }
     } catch (e: any) {
-      setTestResult({
+      setJiraTestResult({
         success: false,
         message: e.message || "Network error occurred testing connection.",
       });
@@ -102,14 +101,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     );
 
     if (epicsWithKeys.length === 0) {
-      setTestResult({
+      setImportSyncResult({
         success: true,
         message: "No epics with Jira keys found to sync.",
       });
       return;
     }
     if (!formData.jira_base_url || !formData.jira_api_token) {
-      setTestResult({
+      setImportSyncResult({
         success: false,
         message: "Base URL and PAT are required to sync.",
       });
@@ -117,7 +116,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     }
 
     setIsSyncing(true);
-    setTestResult(null);
+    setImportSyncResult(null);
     let successCount = 0;
     let failCount = 0;
 
@@ -199,7 +198,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
     setIsSyncing(false);
     setSyncProgress("");
-    setTestResult({
+    setImportSyncResult({
       success: failCount === 0,
       message: `Sync complete. ${successCount} succeeded, ${failCount} failed.`,
     });
@@ -252,7 +251,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
       const issues = resData.data.issues || [];
       if (issues.length === 0) {
-        setTestResult({
+        setImportSyncResult({
           success: true,
           message: "No issues found for the provided JQL.",
         });
@@ -339,13 +338,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         }
       }
 
-      setTestResult({
+      setImportSyncResult({
         success: failCount === 0,
         message: `Import complete. Created ${createCount}, Updated ${updateCount}, Failed ${failCount}.`,
       });
     } catch (err: any) {
       console.error("Import error:", err);
-      setTestResult({
+      setImportSyncResult({
         success: false,
         message: err.message || "Import failed.",
       });
@@ -381,7 +380,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #374151', marginBottom: '16px' }}>
             <button
               type="button"
-              onClick={() => setActiveTab("mongo")}
+              onClick={() => { setActiveTab("mongo"); setMongoTestResult(null); setJiraTestResult(null); setImportSyncResult(null); }}
               style={{
                 background: 'none',
                 border: 'none',
@@ -397,7 +396,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("jira")}
+              onClick={() => { setActiveTab("jira"); setMongoTestResult(null); setJiraTestResult(null); setImportSyncResult(null); }}
               style={{
                 background: 'none',
                 border: 'none',
@@ -413,7 +412,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("general")}
+              onClick={() => { setActiveTab("general"); setMongoTestResult(null); setJiraTestResult(null); setImportSyncResult(null); }}
               style={{
                 background: 'none',
                 border: 'none',
@@ -494,6 +493,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
           </div>
 
+          {jiraTestResult && (
+            <div
+              style={{
+                padding: "10px",
+                borderRadius: "4px",
+                fontSize: "14px",
+                backgroundColor: jiraTestResult.success
+                  ? "rgba(16, 185, 129, 0.2)"
+                  : "rgba(239, 68, 68, 0.2)",
+                color: jiraTestResult.success ? "#34d399" : "#f87171",
+                border: `1px solid ${jiraTestResult.success ? "#059669" : "#b91c1c"}`,
+                marginTop: "8px",
+              }}
+            >
+              {jiraTestResult.message}
+            </div>
+          )}
+
           <hr
             style={{ borderColor: "#374151", width: "100%", margin: "16px 0 8px 0" }}
           />
@@ -547,6 +564,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {isSyncing ? syncProgress : "Sync Epics from Jira"}
             </button>
           </div>
+
+          {importSyncResult && (
+            <div
+              style={{
+                padding: "10px",
+                borderRadius: "4px",
+                fontSize: "14px",
+                backgroundColor: importSyncResult.success
+                  ? "rgba(16, 185, 129, 0.2)"
+                  : "rgba(239, 68, 68, 0.2)",
+                color: importSyncResult.success ? "#34d399" : "#f87171",
+                border: `1px solid ${importSyncResult.success ? "#059669" : "#b91c1c"}`,
+                marginTop: "8px",
+              }}
+            >
+              {importSyncResult.message}
+            </div>
+          )}
 
           <hr
             style={{ borderColor: "#374151", width: "100%", margin: "16px 0 8px 0" }}
@@ -623,6 +658,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
               <label style={styles.label}>
                 Sprint Duration (Days):
+                <span style={{ fontSize: "12px", color: "#9ca3af", marginTop: "-2px", marginBottom: "4px" }}>
+                  Defines the default end date when creating new sprints. Does not affect existing sprints.
+                </span>
                 <input
                   type="number"
                   min="1"
@@ -632,9 +670,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     setFormData({ ...formData, sprint_duration_days: parseInt(e.target.value) })
                   }
                 />
-                <span style={{ fontSize: "12px", color: "#9ca3af", marginTop: "2px" }}>
-                  Defines the default end date when creating new sprints. Does not affect existing sprints.
-                </span>
               </label>
             </>
           )}
@@ -673,14 +708,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             type="button"
             onClick={async () => {
                 if (!formData.mongo_uri) {
-                    setTestResult({
+                    setMongoTestResult({
                         success: false,
                         message: "MongoDB URI is required to test.",
                     });
                     return;
                 }
                 setIsTesting(true);
-                setTestResult(null);
+                setMongoTestResult(null);
                 try {
                     const response = await fetch("/api/mongo/test", {
                         method: "POST",
@@ -692,18 +727,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     });
                     const data = await response.json();
                     if (response.ok && data.success) {
-                        setTestResult({
+                        setMongoTestResult({
                             success: true,
                             message: data.message || "MongoDB connection successful!",
                         });
                     } else {
-                        setTestResult({
+                        setMongoTestResult({
                             success: false,
                             message: data.error || "MongoDB connection failed",
                         });
                     }
                 } catch (e: any) {
-                    setTestResult({
+                    setMongoTestResult({
                         success: false,
                         message: e.message || "Network error occurred testing MongoDB connection.",
                     });
@@ -720,25 +755,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           >
             {isTesting ? "Testing Mongo..." : "Test Mongo Connection"}
           </button>
-          </>
-          )}
 
-          {testResult && (
+          {mongoTestResult && (
             <div
               style={{
                 padding: "10px",
                 borderRadius: "4px",
                 fontSize: "14px",
-                backgroundColor: testResult.success
+                backgroundColor: mongoTestResult.success
                   ? "rgba(16, 185, 129, 0.2)"
                   : "rgba(239, 68, 68, 0.2)",
-                color: testResult.success ? "#34d399" : "#f87171",
-                border: `1px solid ${testResult.success ? "#059669" : "#b91c1c"}`,
-                marginTop: "16px",
+                color: mongoTestResult.success ? "#34d399" : "#f87171",
+                border: `1px solid ${mongoTestResult.success ? "#059669" : "#b91c1c"}`,
+                marginTop: "8px",
               }}
             >
-              {testResult.message}
+              {mongoTestResult.message}
             </div>
+          )}
+          </>
           )}
 
           <div
