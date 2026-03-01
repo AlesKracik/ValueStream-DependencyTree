@@ -1,6 +1,7 @@
 # 📖 User Guide & Value Stream Concepts
 
 ### 1. The Interactive Dashboard
+![Dashboard View](./images/dashboard.png)
 ... (rest of section unchanged)
 
 ### 2. Customer TCV Visualization
@@ -15,6 +16,7 @@ Customers are represented by dual-layer additive circles:
 Both Customers and Work Items feature tabbed detail pages for better organization:
 
 #### Customer Detail Page
+![Customer Detail](./images/customer-detail.png)
 - **Customer Details Section:** Displays basic info like Name, Actual TCV, and Potential TCV.
 - **Updating Actual TCV:** The "Actual Existing TCV" value is protected. To change it, click **"Update TCV"**. This triggers a lifecycle process:
     1. The current value and its "Valid From" date are moved into the history.
@@ -24,6 +26,7 @@ Both Customers and Work Items feature tabbed detail pages for better organizatio
     - **TCV History:** A chronological audit trail of the customer's contract evolution. Historical entries are created automatically whenever you perform an "Update TCV" action.
 
 #### Work Item Detail Page
+![Work Item Detail](./images/workitem-detail.png)
 - **Work Item Details Section:** Edit the name, total man-day estimates, and release target.
 - **Tabs:**
     - **Targeted Customers:** Define which customers this initiative benefits. You can target either the **"Latest Actual"** TCV or a specific **historical record** from the customer's timeline.
