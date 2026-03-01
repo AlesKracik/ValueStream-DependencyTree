@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { SettingsPage } from '../SettingsPage';
 import type { DashboardData, Settings } from '../../types/models';
 import { MemoryRouter } from 'react-router-dom';
@@ -83,7 +83,9 @@ describe('SettingsPage', () => {
         );
 
         const exportBtn = screen.getByText('Export to staticImport.json');
-        fireEvent.click(exportBtn);
+        await act(async () => {
+            fireEvent.click(exportBtn);
+        });
 
         expect(global.fetch).toHaveBeenCalledWith('/api/mongo/export', expect.objectContaining({
             method: 'POST',
@@ -92,13 +94,13 @@ describe('SettingsPage', () => {
             })
         }));
 
-        await vi.waitFor(() => {
+        await waitFor(() => {
             expect(global.URL.createObjectURL).toHaveBeenCalled();
             expect(screen.getByText(/Export successful! staticImport.json download started/i)).toBeDefined();
         });
     });
 
-    it('switches to Jira tab and shows Jira settings', () => {
+    it('switches to Jira tab and shows Jira settings', async () => {
         render(
             <MemoryRouter initialEntries={['/settings?tab=general']}>
                 <SettingsPage 
@@ -112,13 +114,15 @@ describe('SettingsPage', () => {
         );
 
         const jiraTab = screen.getByText('Jira Integration');
-        fireEvent.click(jiraTab);
+        await act(async () => {
+            fireEvent.click(jiraTab);
+        });
 
         expect(screen.getByLabelText(/Jira Base URL:/i)).toBeDefined();
         expect(screen.queryByText('Export to staticImport.json')).toBeNull();
     });
 
-    it('switches to General Project tab and shows Time settings', () => {
+    it('switches to General Project tab and shows Time settings', async () => {
         render(
             <MemoryRouter initialEntries={['/settings?tab=mongo']}>
                 <SettingsPage 
@@ -132,14 +136,16 @@ describe('SettingsPage', () => {
         );
 
         const generalTab = screen.getByText('General Project');
-        fireEvent.click(generalTab);
+        await act(async () => {
+            fireEvent.click(generalTab);
+        });
 
         expect(screen.getByText('Time')).toBeDefined();
         expect(screen.getByLabelText(/Fiscal Year Start Month:/i)).toBeDefined();
         expect(screen.getByLabelText(/Sprint Duration \(Days\):/i)).toBeDefined();
     });
 
-    it('shows AWS fields when AWS IAM is selected', () => {
+    it('shows AWS fields when AWS IAM is selected', async () => {
         render(
             <MemoryRouter initialEntries={['/settings?tab=mongo']}>
                 <SettingsPage 
@@ -153,14 +159,16 @@ describe('SettingsPage', () => {
         );
 
         const authSelect = screen.getByLabelText(/Authentication Method:/i);
-        fireEvent.change(authSelect, { target: { value: 'aws' } });
+        await act(async () => {
+            fireEvent.change(authSelect, { target: { value: 'aws' } });
+        });
 
         expect(screen.getByText('AWS IAM Credentials')).toBeDefined();
         expect(screen.getByLabelText(/Access Key ID:/i)).toBeDefined();
         expect(screen.getByLabelText(/Secret Access Key:/i)).toBeDefined();
     });
 
-    it('shows OIDC fields when OIDC is selected', () => {
+    it('shows OIDC fields when OIDC is selected', async () => {
         render(
             <MemoryRouter initialEntries={['/settings?tab=mongo']}>
                 <SettingsPage 
@@ -174,9 +182,65 @@ describe('SettingsPage', () => {
         );
 
         const authSelect = screen.getByLabelText(/Authentication Method:/i);
-        fireEvent.change(authSelect, { target: { value: 'oidc' } });
+        await act(async () => {
+            fireEvent.change(authSelect, { target: { value: 'oidc' } });
+        });
 
         expect(screen.getByText('OIDC Configuration')).toBeDefined();
         expect(screen.getByLabelText(/Access Token:/i)).toBeDefined();
+    });
+
+    it('saves General settings immediately on change', async () => {
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=general']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        const sprintInput = screen.getByLabelText(/Sprint Duration \(Days\):/i);
+        await act(async () => {
+            fireEvent.change(sprintInput, { target: { value: '21' } });
+        });
+
+        expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
+            sprint_duration_days: 21
+        }));
+    });
+
+    it('saves connection settings on blur', async () => {
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        const uriInput = screen.getByLabelText(/MongoDB URI:/i);
+        
+        await act(async () => {
+            fireEvent.change(uriInput, { target: { value: 'mongodb://new-host:27017' } });
+        });
+        
+        // Should NOT be called yet
+        expect(onUpdateSettings).not.toHaveBeenCalled();
+
+        await act(async () => {
+            fireEvent.blur(uriInput);
+        });
+
+        expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
+            mongo_uri: 'mongodb://new-host:27017'
+        }));
     });
 });
