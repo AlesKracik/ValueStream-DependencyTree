@@ -92,7 +92,7 @@ function SprintPageRouteWrapper({ dashboardState }: any) {
 }
 
 function SettingsPageRouteWrapper({ dashboardState }: any) {
-  if (dashboardState.loading) return <div style={{ color: 'white', padding: '24px' }}>Loading settings...</div>;
+  if (dashboardState.loading && !dashboardState.data) return <div style={{ color: 'white', padding: '24px' }}>Loading settings...</div>;
   return (
     <SettingsPage 
       settings={dashboardState.data?.settings || {}} 
