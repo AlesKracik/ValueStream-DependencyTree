@@ -16,7 +16,10 @@
       "id": "c1",
       "name": "Customer Alpha",
       "existing_tcv": 15000,
-      "potential_tcv": 42000
+      "potential_tcv": 42000,
+      "tcv_history": [
+        { "id": "h1_c1", "value": 10000, "valid_from": "2025-01-01" }
+      ]
     },
     {
       "id": "c2",
@@ -88,7 +91,11 @@
       "id": "c13",
       "name": "Customer Nur",
       "existing_tcv": 2000000,
-      "potential_tcv": 5100000
+      "potential_tcv": 5100000,
+      "tcv_history": [
+        { "id": "h1_c13", "value": 1500000, "valid_from": "2025-06-01" },
+        { "id": "h2_c13", "value": 800000, "valid_from": "2024-01-01" }
+      ]
     },
     {
       "id": "c15",
@@ -243,9 +250,10 @@
           "tcv_type": "potential"
         },
         {
-          "customer_id": "c11",
-          "tcv_type": "potential",
-          "priority": "Must-have"
+          "customer_id": "c13",
+          "tcv_type": "existing",
+          "priority": "Must-have",
+          "tcv_history_id": "h1_c13"
         }
       ],
       "score": 7090.909090909091
