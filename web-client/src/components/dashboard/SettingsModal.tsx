@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import type { Settings, DashboardData, Epic } from "../../types/models";
+import { authorizedFetch } from "../../utils/api";
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -68,7 +69,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setJiraTestResult(null);
 
     try {
-      const response = await fetch("/api/jira/test", {
+      const response = await authorizedFetch("/api/jira/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -132,7 +133,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       );
 
       try {
-        const response = await fetch("/api/jira/issue", {
+        const response = await authorizedFetch("/api/jira/issue", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -238,7 +239,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         : `(${importJql}) AND issuetype = Epic`;
 
       setImportProgress("Fetching issues...");
-      const response = await fetch("/api/jira/search", {
+      const response = await authorizedFetch("/api/jira/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -782,7 +783,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 setIsTesting(true);
                 setMongoTestResult(null);
                 try {
-                    const response = await fetch("/api/mongo/test", {
+                    const response = await authorizedFetch("/api/mongo/test", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({

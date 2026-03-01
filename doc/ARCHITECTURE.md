@@ -34,22 +34,28 @@ graph TD
 
 The application utilizes a hybrid state management strategy that combines server-side aggregation with client-side optimistic updates, primarily orchestrated via the `useDashboardData.ts` hook.
 
-### 1. Hydration & Hybrid Filtering
+### 1. Authentication & Authorization
+The system supports an optional security layer via the `ADMIN_SECRET` environment variable.
+- **Middleware:** If `ADMIN_SECRET` is set, the Vite middleware requires a `Bearer` token in the `Authorization` header for all `/api/*` requests (except `/api/auth/status`).
+- **Frontend Flow:** The `App.tsx` component checks the auth status on load. If required and not authenticated, it presents a `LoginPage`.
+- **Authorized Fetch:** A custom `authorizedFetch` utility centrally manages the injection of the secret and handles session expiration (401 errors).
+
+### 2. Hydration & Hybrid Filtering
 1.  **Global Hydration:** The top-level `App.tsx` calls `useDashboardData()` without filters to hydrate the entire system and injects the resulting `data` and mutation functions into the `DashboardProvider`.
 2.  **Scoped Re-fetching:** Visual components (like the Dashboard) call `useDashboardData(id, filters)` to trigger a server-side filtered re-fetch scoped to specific dashboard parameters.
 3.  **Hybrid Filter Logic:**
     -   **Base Filters:** Heavy searches and persistent dashboard parameters are applied at the database level to minimize network payload.
     -   **Transient Filters:** Live-typing search in the UI is applied client-side for instantaneous feedback on the already-filtered dataset.
 
-### 2. Server-Side Processing
+### 3. Server-Side Processing
 The backend fetches raw entities and performs the "heavy lifting":
 -   **Joins:** It joins Work Items with Epics to calculate effort and with Customers to calculate RICE scores.
 -   **Metrics:** It returns a `metrics` object with global maximums (e.g., `maxScore`) to ensure consistent visual scaling across all filtered views.
 
-### 3. Mutations & Reactivity
+### 4. Mutations & Reactivity
 User actions (updates, deletes, adds) trigger local state changes via mutation functions (`addEpic`, `updateWorkItem`, etc.) which:
 -   **Optimistic Updates:** Immediately execute a local update on the React state array for zero-latency UI feedback.
--   **Asynchronous Persistence:** Fire off background `fetch` requests to the `/api/entity` endpoints.
+-   **Asynchronous Persistence:** Fire off background background `fetch` requests (via `authorizedFetch`) to the `/api/entity` endpoints.
 -   **Non-Blocking:** These operations do not block the UI thread waiting for server confirmation.
 
 ```mermaid
@@ -184,26 +190,35 @@ const newEpicId = `e${Date.now()}`; // e for Epic
 
 ## Deployment Modes
 
+The application can be deployed in various environments. Security is enforced via the `ADMIN_SECRET` environment variable; if set, the application will require authentication before granting access to data or settings.
+
 ### 1. Standalone (Local Development)
 Ideal for individual developers or small teams running everything on a single machine.    
 - **Requirements:** Node.js 22+, MongoDB (local or remote).
 - **How-to:**
   1. Navigate to the client: `cd web-client`
   2. Install dependencies: `npm install`
-  3. Start the server: `npm run dev`
-- **Configuration:** Update App Settings to `mongodb://localhost:27017`.
+  3. Set authentication (Optional): `$env:ADMIN_SECRET="your-secure-password"`
+  4. Start the server: `npm run dev`
+- **Configuration:** 
+    - Application settings are stored in `web-client/settings.json` (git-ignored).
+    - Update App Settings to `mongodb://localhost:27017` via the UI after login.
 
 ### 2. Docker (Containerized Environment)
 Recommended for consistent environments and simplified setup using pre-configured containers.
 - **Requirements:** Docker and Docker Compose.
 - **How-to:**
-  1. From the project root, run: `docker-compose up --build`
-  2. Access the app at `http://localhost:5173`.
+  1. Define your secrets in `docker-compose.yml` or a `.env` file (e.g., `ADMIN_SECRET=prod-secret`).
+  2. From the project root, run: `docker-compose up --build`
+  3. Access the app at `http://localhost:5173`.
 - **Configuration:** Update App Settings to `mongodb://mongodb:27017` (this utilizes the internal Docker bridge network).
 
 ### 3. Kubernetes (Cluster Deployment)
 Best for production-grade scaling, high availability, and multi-user environments.        
 - **Architecture:** Decoupled Pods for the Web App and MongoDB with automated orchestration.
+- **Secrets Management:** 
+    - Store the `ADMIN_SECRET` in a Kubernetes Secret object and inject it as an environment variable into the app container.
+    - Persist the `settings.json` file using a PersistentVolumeClaim (PVC) mounted at the app root to ensure configuration survives pod restarts.
 - **Workflow:**
   1. Build and push the image to a container registry.
   2. Deploy storage and database manifests first.

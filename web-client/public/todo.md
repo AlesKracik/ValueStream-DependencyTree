@@ -6,7 +6,7 @@
   * archive old sprints
 * security:
   * Information Disclosure (FIXED): `settings.json` has been moved out of the `public/` folder to the project root and added to `.gitignore`. It is no longer accessible via static web requests.
-  * Lack of Authentication and Authorization: The API endpoints (under `/api/`) lack any access controls. An unauthenticated attacker can arbitrarily read, export (`/api/mongo/export`), overwrite (`/api/settings`), or delete data (`/api/entity`).
+  * Lack of Authentication and Authorization (FIXED): A middleware layer has been added to the Vite dev server plugin that requires a Bearer token matching the `ADMIN_SECRET` environment variable. The frontend has been updated with a `LoginPage` and `authorizedFetch` utility to handle the authentication flow.
   * Server-Side Request Forgery (SSRF): The Jira API endpoints (`/api/jira/*`) accept `jira_base_url` from the client and perform a `fetch` directly to that URL without validation. This allows an attacker to make the server scan internal networks or access metadata services (e.g., AWS IMDS).
   * NoSQL Injection / ReDoS: Query parameters like `teamFilter` and `customerFilter` are passed unescaped directly into MongoDB `$regex` operations, potentially allowing Regular Expression Denial of Service (ReDoS) or unauthorized data querying.
   * Secrets in Frontend Storage: Sensitive API keys and tokens are loaded into the React application's state and sent back-and-forth in plaintext via API payloads, exposing them to anyone with browser developer tools access.

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useParams, Navigate } from 'react-router-dom';
 import { ReactFlowProvider } from '@xyflow/react';
 
@@ -19,9 +19,11 @@ import { WorkItemListPage } from './pages/WorkItemListPage';
 import { TeamListPage } from './pages/TeamListPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { DocumentationPage } from './pages/DocumentationPage';
+import { LoginPage } from './pages/LoginPage';
 
 import { useDashboardData } from './hooks/useDashboardData';
 import { DashboardProvider } from './contexts/DashboardContext';
+import { getAdminSecret } from './utils/api';
 import type { DashboardViewState } from './types/models';
 import './App.css';
 
@@ -102,7 +104,7 @@ function SettingsPageRouteWrapper({ dashboardState }: any) {
   );
 }
 
-function App() {
+function MainAppContent() {
   const globalState = useDashboardData(); // Fetch everything for global context/list pages
   const [dashboardViewState, setDashboardViewState] = useState<DashboardViewState>({
     sprintOffset: 0,
@@ -153,6 +155,50 @@ function App() {
       </BrowserRouter>
     </DashboardProvider>
   );
+}
+
+function App() {
+  const [authStatus, setAuthStatus] = useState<{ loading: boolean; required: boolean; authenticated: boolean }>({
+    loading: true,
+    required: false,
+    authenticated: false
+  });
+
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/auth/status');
+        const json = await res.json();
+        const required = json.required;
+        const secret = getAdminSecret();
+        
+        // If required, we also need to check if the current secret is valid
+        let authenticated = !required;
+        if (required && secret) {
+          const verifyRes = await fetch('/api/auth/status', {
+            headers: { 'Authorization': `Bearer ${secret}` }
+          });
+          authenticated = verifyRes.ok;
+        }
+
+        setAuthStatus({ loading: false, required, authenticated });
+      } catch (err) {
+        console.error('Auth check failed', err);
+        setAuthStatus({ loading: false, required: false, authenticated: true }); // Fallback to allow dev
+      }
+    }
+    checkAuth();
+  }, []);
+
+  if (authStatus.loading) {
+    return <div style={{ backgroundColor: '#111827', height: '100vh', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>;
+  }
+
+  if (authStatus.required && !authStatus.authenticated) {
+    return <LoginPage onLogin={() => setAuthStatus(prev => ({ ...prev, authenticated: true }))} />;
+  }
+
+  return <MainAppContent />;
 }
 
 export default App;

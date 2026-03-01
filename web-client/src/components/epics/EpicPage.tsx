@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { parseISO, differenceInDays, min, max } from 'date-fns';
 import type { DashboardData, Epic } from '../../types/models';
+import { authorizedFetch } from "../../utils/api";
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
 
@@ -110,7 +111,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({
         }
         setSyncing(true);
         try {
-            const response = await fetch('/api/jira/issue', {
+            const response = await authorizedFetch('/api/jira/issue', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

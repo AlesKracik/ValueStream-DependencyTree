@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { parseISO } from 'date-fns';
 import type { DashboardData, Customer, WorkItem, Team, Epic, Settings, Sprint, DashboardEntity, DashboardParameters } from '../types/models';
+import { authorizedFetch } from '../utils/api';
 
 const calculateQuarter = (dateStr: string, fiscalStartMonth: number) => {
     const date = parseISO(dateStr);
@@ -22,7 +23,7 @@ const calculateQuarter = (dateStr: string, fiscalStartMonth: number) => {
 
 const persistEntity = async (collection: string, method: 'POST' | 'DELETE', entity: any) => {
     try {
-        await fetch(`/api/entity/${collection}`, {
+        await authorizedFetch(`/api/entity/${collection}`, {
             method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(entity)
@@ -34,7 +35,7 @@ const persistEntity = async (collection: string, method: 'POST' | 'DELETE', enti
 
 const persistSettings = async (settings: any) => {
     try {
-        await fetch('/api/settings', {
+        await authorizedFetch('/api/settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(settings)
@@ -63,7 +64,7 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
                     });
                 }
                 const queryString = params.toString();
-                const response = await fetch(`/api/loadData${queryString ? `?${queryString}` : ''}`);
+                const response = await authorizedFetch(`/api/loadData${queryString ? `?${queryString}` : ''}`);
                 if (!response.ok) {
                     throw new Error('Failed to fetch data');
                 }

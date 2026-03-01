@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import type { Settings, DashboardData, Epic } from "../types/models";
 import styles from './List.module.css';
+import { authorizedFetch } from "../utils/api";
 
 interface SettingsPageProps {
   settings: Settings;
@@ -60,7 +61,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     setIsTesting(true);
     setJiraTestResult(null);
     try {
-      const response = await fetch("/api/jira/test", {
+      const response = await authorizedFetch("/api/jira/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -86,7 +87,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     setIsTesting(true);
     setMongoTestResult(null);
     try {
-      const response = await fetch("/api/mongo/export", {
+      const response = await authorizedFetch("/api/mongo/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
@@ -134,7 +135,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       const epic = epicsWithKeys[i];
       setSyncProgress(`Syncing ${i + 1}/${epicsWithKeys.length}: ${epic.jira_key}`);
       try {
-        const response = await fetch("/api/jira/issue", {
+        const response = await authorizedFetch("/api/jira/issue", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -210,7 +211,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     try {
       const finalJql = importJql.toLowerCase().includes("issuetype") ? importJql : `(${importJql}) AND issuetype = Epic`;
       setImportProgress("Fetching issues...");
-      const response = await fetch("/api/jira/search", {
+      const response = await authorizedFetch("/api/jira/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -477,7 +478,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   setIsTesting(true);
                   setMongoTestResult(null);
                   try {
-                      const response = await fetch("/api/mongo/test", {
+                      const response = await authorizedFetch("/api/mongo/test", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ 

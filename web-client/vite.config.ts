@@ -10,6 +10,23 @@ const MockDataPersistencePlugin = (): Plugin => ({
   name: 'mock-data-persistence',
   configureServer(server: any) {
     server.middlewares.use(async (req: any, res: any, next: any) => {
+      // Simple Authentication Check
+      const adminSecret = process.env.ADMIN_SECRET;
+      if (req.url === '/api/auth/status' && req.method === 'GET') {
+        res.statusCode = 200;
+        res.setHeader('Content-Type', 'application/json');
+        return res.end(JSON.stringify({ required: !!adminSecret }));
+      }
+
+      if (adminSecret && req.url.startsWith('/api/')) {
+        const authHeader = req.headers['authorization'];
+        if (authHeader !== `Bearer ${adminSecret}`) {
+          res.statusCode = 401;
+          res.setHeader('Content-Type', 'application/json');
+          return res.end(JSON.stringify({ success: false, error: 'Unauthorized' }));
+        }
+      }
+
       // helper to connect to Mongo
       async function getDb(settings: any) {
         const uri = settings.mongo_uri;

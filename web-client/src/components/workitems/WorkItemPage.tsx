@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { parseISO } from 'date-fns';
 import type { DashboardData, WorkItem, Epic } from '../../types/models';
+import { authorizedFetch } from "../../utils/api";
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
@@ -154,7 +155,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
         }
         setSyncingId(epicId);
         try {
-            const response = await fetch('/api/jira/issue', {
+            const response = await authorizedFetch('/api/jira/issue', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

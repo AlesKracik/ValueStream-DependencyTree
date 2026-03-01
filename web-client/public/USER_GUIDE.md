@@ -98,3 +98,17 @@ Use the ⚙️ **Settings** modal or the dedicated **Settings** page to configur
 - **Auto-Snapshot:** When a sprint ends, the system automatically snapshots the calculated effort into permanent overrides, preserving your delivery history.
 - **Save Changes:** Click the blue **"Save Changes"** button in the header to write all layout adjustments and node edits back to the central data store.
 - **Data Export:** On the Settings page, you can export your entire current project state as a `staticImport.json` file for local backup or sharing with other team members.
+
+### 9. Security & Access Control
+The application includes a simple but effective security layer to protect your strategic data and integration tokens.
+
+- **Admin Authentication:**
+    - If the application is configured with an `ADMIN_SECRET` environment variable on the server, a login page will appear.
+    - Users must enter the correct secret to access any part of the application or its data.
+    - Your session is maintained in the browser for the duration of your work.
+- **Protected Configuration:**
+    - All sensitive settings (MongoDB connection strings, Jira API tokens) are stored in a non-public `settings.json` file on the server.
+    - This configuration is inaccessible to unauthenticated users and cannot be reached via direct URL requests.
+- **API Security:**
+    - Every request to the backend is validated against the active session. 
+    - Attempting to access the API without a valid secret will result in an immediate session expiration and redirection to the login page.
