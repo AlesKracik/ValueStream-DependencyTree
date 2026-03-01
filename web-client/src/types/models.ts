@@ -78,6 +78,8 @@ export interface DashboardParameters {
   minScoreFilter: string;
   teamFilter: string;
   epicFilter: string;
+  startSprintId?: string;
+  endSprintId?: string;
 }
 
 export interface DashboardEntity {

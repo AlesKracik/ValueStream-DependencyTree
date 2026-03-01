@@ -132,6 +132,7 @@ export interface DashboardProps {
     onNavigateToTeam: (id: string) => void;
     onNavigateToEpic: (id: string) => void;
     onNavigateToSprint: (id: string) => void;
+    onNavigateToDashboardEdit: (id: string) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -142,7 +143,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     onNavigateToWorkItem,
     onNavigateToEpic,
     onNavigateToTeam,
-    onNavigateToSprint
+    onNavigateToSprint,
+    onNavigateToDashboardEdit
 }) => {
     const { setViewport } = useReactFlow();
     const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
@@ -157,7 +159,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
         minTcvFilter: currentDashboard?.parameters?.minTcvFilter || '',
         minScoreFilter: currentDashboard?.parameters?.minScoreFilter || '',
         teamFilter: currentDashboard?.parameters?.teamFilter || '',
-        epicFilter: currentDashboard?.parameters?.epicFilter || ''
+        epicFilter: currentDashboard?.parameters?.epicFilter || '',
+        startSprintId: currentDashboard?.parameters?.startSprintId || '',
+        endSprintId: currentDashboard?.parameters?.endSprintId || ''
     };
 
     const { nodes, edges } = useGraphLayout(
@@ -352,6 +356,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 &gt;
                             </button>
                         </div>
+                        {currentDashboardId && (
+                            <button
+                                onClick={() => onNavigateToDashboardEdit(currentDashboardId)}
+                                className="btn-primary"
+                                style={{ height: '37px', padding: '0 12px', fontSize: '13px' }}
+                            >
+                                Edit Parameters
+                            </button>
+                        )}
                     </div>
                 </div>
                 <div className={styles.filterBar}>

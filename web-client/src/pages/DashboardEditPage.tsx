@@ -37,7 +37,9 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
             minTcvFilter: '',
             minScoreFilter: '',
             teamFilter: '',
-            epicFilter: ''
+            epicFilter: '',
+            startSprintId: '',
+            endSprintId: ''
         }
     });
 
@@ -61,7 +63,9 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
                 minTcvFilter: '',
                 minScoreFilter: '',
                 teamFilter: '',
-                epicFilter: ''
+                epicFilter: '',
+                startSprintId: '',
+                endSprintId: ''
             }
         };
         addDashboard(newDashboard);
@@ -239,6 +243,37 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
                                     
                                 />
                             </label>
+                        </div>
+
+                        {/* Time Range Group */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
+                            <div style={sectionTitleStyle}>Time Range (Sprint Scope)</div>
+                            <div style={{ display: 'flex', gap: '20px' }}>
+                                <label style={{ ...labelStyle, flex: 1 }}>
+                                    Start Sprint:
+                                    <select
+                                        value={getParam('startSprintId') || ''}
+                                        onChange={e => updateParam('startSprintId', e.target.value)}
+                                    >
+                                        <option value="">No Start Limit</option>
+                                        {data.sprints.map(s => (
+                                            <option key={s.id} value={s.id}>{s.name} ({s.start_date})</option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <label style={{ ...labelStyle, flex: 1 }}>
+                                    End Sprint:
+                                    <select
+                                        value={getParam('endSprintId') || ''}
+                                        onChange={e => updateParam('endSprintId', e.target.value)}
+                                    >
+                                        <option value="">No End Limit</option>
+                                        {data.sprints.map(s => (
+                                            <option key={s.id} value={s.id}>{s.name} ({s.end_date})</option>
+                                        ))}
+                                    </select>
+                                </label>
+                            </div>
                         </div>
 
                     </div>

@@ -128,4 +128,27 @@ describe('useDashboardData', () => {
             body: expect.stringContaining('"score":20')
         }));
     });
+
+    it('recomputes sprint quarters when fiscal year setting changes', async () => {
+        const { result } = renderHook(() => useDashboardData());
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        // Initial: FY starts in January (default). 2026-01-01 is FY2026 Q1
+        act(() => {
+            result.current.updateSettings({ fiscal_year_start_month: 1 });
+        });
+        expect(result.current.data?.sprints[0].quarter).toBe('FY2026 Q1');
+
+        // Update: FY starts in April (4). 2026-01-01 is now FY2025 Q4
+        act(() => {
+            result.current.updateSettings({ fiscal_year_start_month: 4 });
+        });
+        expect(result.current.data?.sprints[0].quarter).toBe('FY2025 Q4');
+        
+        // Should have persisted the updated sprint
+        expect(fetch).toHaveBeenCalledWith('/api/entity/sprints', expect.objectContaining({
+            method: 'POST',
+            body: expect.stringContaining('"quarter":"FY2025 Q4"')
+        }));
+    });
 });

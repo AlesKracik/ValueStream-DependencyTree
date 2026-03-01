@@ -76,6 +76,12 @@ export function useGraphLayout(
 
         const bRel = baseParams?.releasedFilter || 'all';
 
+        // Sprint Range persistent filter logic
+        const rangeStartSprint = baseParams?.startSprintId ? data.sprints.find(s => s.id === baseParams.startSprintId) : null;
+        const rangeEndSprint = baseParams?.endSprintId ? data.sprints.find(s => s.id === baseParams.endSprintId) : null;
+        const rangeStartDate = rangeStartSprint ? parseISO(rangeStartSprint.start_date) : null;
+        const rangeEndDate = rangeEndSprint ? parseISO(rangeEndSprint.end_date) : null;
+
         const passRelease = (isR: boolean) => {
             if (releasedFilter === 'released' && !isR) return false;
             if (releasedFilter === 'unreleased' && isR) return false;
@@ -86,12 +92,15 @@ export function useGraphLayout(
 
         const isFilterActive = cf || bcf || ff || bff || tf || btf || ef || bef || 
                              releasedFilter !== 'all' || bRel !== 'all' ||
-                             minTcv > 0 || bMinTcv > 0 || minScore > 0 || bMinScore > 0;
+                             minTcv > 0 || bMinTcv > 0 || minScore > 0 || bMinScore > 0 ||
+                             !!baseParams?.startSprintId || !!baseParams?.endSprintId;
 
         const visibleCustomers = new Set<string>();
         const visibleWorkItems = new Set<string>();
         const visibleTeams = new Set<string>();
         const visibleEpics = new Set<string>();
+
+        const hasRangeFilter = !!rangeStartDate || !!rangeEndDate;
 
         // Identify intrinsically valid items based on text + number filters
         const validCustomers = new Set(
@@ -158,9 +167,34 @@ export function useGraphLayout(
                 const transientEpicMatch = !ef || epicName.toLowerCase().includes(ef);
                 const baseEpicMatch = !bef || epicName.toLowerCase().includes(bef);
 
-                return transientTeamMatch && baseTeamMatch && transientEpicMatch && baseEpicMatch;
+                // Sprint Range Filter
+                let rangeMatch = true;
+                if (rangeStartDate || rangeEndDate) {
+                    if (!e.target_start || !e.target_end) {
+                        rangeMatch = false; // Epics without dates fail if range is set
+                    } else {
+                        const start = parseISO(e.target_start);
+                        const end = parseISO(e.target_end);
+                        
+                        const startInRange = rangeStartDate && rangeEndDate 
+                            ? (start >= rangeStartDate && start <= rangeEndDate)
+                            : (rangeStartDate ? start >= rangeStartDate : true) && (rangeEndDate ? start <= rangeEndDate : true);
+                        
+                        const endInRange = rangeStartDate && rangeEndDate
+                            ? (end >= rangeStartDate && end <= rangeEndDate)
+                            : (rangeStartDate ? end >= rangeStartDate : true) && (rangeEndDate ? end <= rangeEndDate : true);
+
+                        rangeMatch = startInRange || endInRange;
+                    }
+                }
+
+                return transientTeamMatch && baseTeamMatch && transientEpicMatch && baseEpicMatch && rangeMatch;
             }).map(e => e.id)
         );
+
+        const hasCustomerFilter = cf !== '' || bcf !== '' || minTcv > 0 || bMinTcv > 0;
+        const hasWorkItemFilter = ff !== '' || bff !== '' || minScore > 0 || bMinScore > 0 || releasedFilter !== 'all' || bRel !== 'all';
+        const hasTeamEpicFilter = tf !== '' || btf !== '' || ef !== '' || bef !== '' || hasRangeFilter;
 
         if (!isFilterActive && !selectedNodeId) {
             data.customers.forEach(c => visibleCustomers.add(c.id));
@@ -192,11 +226,9 @@ export function useGraphLayout(
 
                 // Strict intersection rules:
                 // If a customer filter is active (transient or base), we MUST have a valid connected customer.
-                const hasCustomerFilter = cf !== '' || bcf !== '' || minTcv > 0 || bMinTcv > 0;
                 if (hasCustomerFilter && connectedValidCustomers.length === 0) return;
 
                 // If a team/epic filter is active (transient or base), we MUST have a valid connected epic.
-                const hasTeamEpicFilter = tf !== '' || btf !== '' || ef !== '' || bef !== '';
                 if (hasTeamEpicFilter && connectedValidEpics.length === 0) return;
 
                 // If it survives to here, this workitem path is fully viable!
@@ -210,10 +242,8 @@ export function useGraphLayout(
 
             // Special case: WorkItemless Customers
             // If ONLY customer filters are applied, standalone valid customers should appear.
-            const hasTeamEpicFilter = tf !== '' || btf !== '' || ef !== '' || bef !== '';
-            const hasWorkItemFilter = ff !== '' || bff !== '' || minScore > 0 || bMinScore > 0 || releasedFilter !== 'all' || bRel !== 'all';
-            const hasCustomerFilter = cf !== '' || bcf !== '' || minTcv > 0 || bMinTcv > 0;
-            if (!hasTeamEpicFilter && !hasWorkItemFilter) {
+            // If a range filter is active, we don't show standalone customers (they must be in a connection tree of an in-range epic)
+            if (!hasTeamEpicFilter && !hasWorkItemFilter && !hasRangeFilter) {
                 validCustomers.forEach(cId => {
                     visibleCustomers.add(cId);
                 });

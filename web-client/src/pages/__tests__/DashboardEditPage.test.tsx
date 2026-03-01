@@ -6,14 +6,17 @@ import type { DashboardData } from '../../types/models';
 
 const mockData: DashboardData = {
     dashboards: [
-        { id: 'd1', name: 'Existing Dashboard', description: 'Desc', parameters: { customerFilter: '', workItemFilter: '', releasedFilter: 'all', minTcvFilter: '', minScoreFilter: '', teamFilter: '', epicFilter: '' } }
+        { id: 'd1', name: 'Existing Dashboard', description: 'Desc', parameters: { customerFilter: '', workItemFilter: '', releasedFilter: 'all', minTcvFilter: '', minScoreFilter: '', teamFilter: '', epicFilter: '', startSprintId: '', endSprintId: '' } }
     ],
     settings: { jira_base_url: '', jira_api_version: '3' },
     customers: [],
     workItems: [],
     teams: [],
     epics: [],
-    sprints: []
+    sprints: [
+        { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' },
+        { id: 's2', name: 'Sprint 2', start_date: '2026-01-15', end_date: '2026-01-28' }
+    ]
 };
 
 describe('DashboardEditPage', () => {
@@ -80,5 +83,22 @@ describe('DashboardEditPage', () => {
         );
 
         expect(screen.getByText('Dashboard not found.')).toBeDefined();
+    });
+
+    it('renders Time Range sprint selects', () => {
+        render(
+            <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <DashboardEditPage {...defaultProps} dashboardId="new" />
+            </DashboardProvider>
+        );
+
+        expect(screen.getByText('Time Range (Sprint Scope)')).toBeDefined();
+        expect(screen.getByLabelText(/Start Sprint:/i)).toBeDefined();
+        expect(screen.getByLabelText(/End Sprint:/i)).toBeDefined();
+        
+        // Check options
+        const startSelect = screen.getByLabelText(/Start Sprint:/i);
+        expect(screen.getByText('Sprint 1 (2026-01-01)')).toBeDefined();
+        expect(screen.getByText('Sprint 2 (2026-01-15)')).toBeDefined();
     });
 });

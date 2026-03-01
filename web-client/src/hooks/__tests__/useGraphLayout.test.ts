@@ -102,4 +102,36 @@ describe('useGraphLayout Math Engine', () => {
         // Capacity usage should STILL be 13, not 8
         expect((filteredCapNode?.data as any).usedMds).toBe(13);
     });
+
+    it('filters nodes based on persistent sprint range', () => {
+        const DATA_WITH_TIME: DashboardData = {
+            ...MOCK_DATA,
+            sprints: [
+                { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' },
+                { id: 's2', name: 'Sprint 2', start_date: '2026-01-15', end_date: '2026-01-28' }
+            ],
+            epics: [
+                { id: 'e1', jira_key: 'J-1', work_item_id: 'f1', team_id: 't1', effort_md: 5, target_start: '2026-01-01', target_end: '2026-01-10' }, // s1
+                { id: 'e2', jira_key: 'J-2', work_item_id: 'f2', team_id: 't1', effort_md: 5, target_start: '2026-01-15', target_end: '2026-01-20' }  // s2
+            ]
+        };
+
+        // Filter for s1 ONLY
+        const baseParams = {
+            customerFilter: '', workItemFilter: '', releasedFilter: 'all' as const,
+            minTcvFilter: '', minScoreFilter: '', teamFilter: '', epicFilter: '',
+            startSprintId: 's1', endSprintId: 's1'
+        };
+
+        const { result } = renderHook(() => useGraphLayout(DATA_WITH_TIME, null, 0, '', '', 'all', '', '', true, 0, 0, null, baseParams));
+
+        // f1 should be visible (e1 is in range)
+        expect(result.current.nodes.find(n => n.id === 'workitem-f1')).toBeDefined();
+        // f2 should NOT be visible (e2 is in s2, out of range)
+        expect(result.current.nodes.find(n => n.id === 'workitem-f2')).toBeUndefined();
+        
+        // e1 visible, e2 hidden
+        expect(result.current.nodes.find(n => n.id === 'gantt-e1')).toBeDefined();
+        expect(result.current.nodes.find(n => n.id === 'gantt-e2')).toBeUndefined();
+    });
 });

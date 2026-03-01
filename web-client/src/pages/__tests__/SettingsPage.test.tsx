@@ -11,7 +11,9 @@ const mockSettings: Settings = {
     mongo_db: 'testdb',
     customer_jql_new: '',
     customer_jql_in_progress: '',
-    customer_jql_noop: ''
+    customer_jql_noop: '',
+    fiscal_year_start_month: 1,
+    sprint_duration_days: 14
 };
 
 const mockData: DashboardData = {
@@ -100,5 +102,24 @@ describe('SettingsPage', () => {
 
         expect(screen.getByLabelText(/Jira Base URL:/i)).toBeDefined();
         expect(screen.queryByText('Export to staticImport.json')).toBeNull();
+    });
+
+    it('switches to General Project tab and shows Time settings', () => {
+        render(
+            <SettingsPage 
+                settings={mockSettings} 
+                onUpdateSettings={onUpdateSettings}
+                data={mockData}
+                updateEpic={updateEpic}
+                addEpic={addEpic}
+            />
+        );
+
+        const generalTab = screen.getByText('General Project');
+        fireEvent.click(generalTab);
+
+        expect(screen.getByText('Time')).toBeDefined();
+        expect(screen.getByLabelText(/Fiscal Year Start Month:/i)).toBeDefined();
+        expect(screen.getByLabelText(/Sprint Duration \(Days\):/i)).toBeDefined();
     });
 });

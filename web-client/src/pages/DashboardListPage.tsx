@@ -42,16 +42,6 @@ export const DashboardListPage: React.FC<Props> = ({ data, loading }) => {
                                 {d.description}
                             </div>
                         </div>
-                        <button 
-                            className="btn-primary" 
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/dashboard/edit/${d.id}`);
-                            }}
-                            style={{ padding: '6px 12px', fontSize: '12px' }}
-                        >
-                            Edit Parameters
-                        </button>
                     </div>
                 ))}
                 {filtered.length === 0 && <div className={styles.empty}>No dashboards found.</div>}

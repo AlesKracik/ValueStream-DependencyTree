@@ -39,10 +39,10 @@ function DashboardRouteWrapper({ dashboardState, dashboardViewState, setDashboar
       onNavigateToEpic={(id) => navigate(`/epic/${id}`)}
       onNavigateToTeam={(id) => navigate(`/team/${id}`)}
       onNavigateToSprint={(id) => id === 'list' ? navigate('/sprints') : navigate(`/sprint/${id}`)}
-    />
-  );
-}
-
+      onNavigateToDashboardEdit={(id) => navigate(`/dashboard/edit/${id}`)}
+      />
+      );
+      }
 function CustomerPageRouteWrapper({ dashboardState }: any) {
   const { id } = useParams();
   const navigate = useNavigate();

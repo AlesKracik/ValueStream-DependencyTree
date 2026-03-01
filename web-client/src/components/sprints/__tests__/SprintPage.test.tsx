@@ -10,7 +10,7 @@ const mockData: DashboardData = {
     workItems: [],
     teams: [],
     sprints: [
-        { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' }
+        { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY2026 Q1' }
     ],
     epics: []
 };
@@ -93,5 +93,10 @@ describe('SprintPage', () => {
 
         expect(showConfirmSpy).toHaveBeenCalled();
         expect(deleteSprintSpy).toHaveBeenCalledWith('s1');
+    });
+
+    it('renders quarter grouping labels', () => {
+        render(<SprintPage {...defaultProps} />);
+        expect(screen.getByText('FY2026 Q1')).toBeDefined();
     });
 });

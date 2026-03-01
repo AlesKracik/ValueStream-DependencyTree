@@ -19,7 +19,7 @@ const mockData: DashboardData = {
     workItems: [{ id: 'w1', name: 'Work Item 1', total_effort_mds: 10, score: 0, customer_targets: [] }],
     teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 100 }],
     epics: [{ id: 'e1', jira_key: 'E1', work_item_id: 'w1', team_id: 't1', effort_md: 5, target_start: '2026-01-01', target_end: '2026-01-14' }],
-    sprints: [{ id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' }]
+    sprints: [{ id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY2026 Q1' }]
 };
 
 const mockViewState: DashboardViewState = {
@@ -53,7 +53,8 @@ describe('Dashboard', () => {
         onNavigateToWorkItem: vi.fn(),
         onNavigateToTeam: vi.fn(),
         onNavigateToEpic: vi.fn(),
-        onNavigateToSprint
+        onNavigateToSprint,
+        onNavigateToDashboardEdit: vi.fn()
     };
 
     beforeEach(() => {
