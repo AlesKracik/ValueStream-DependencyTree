@@ -5,7 +5,7 @@
   * TCV History Logic Enhancement: Currently, when a Customer's Actual TCV is updated (archived to history), Work Items linked to "Latest Actual" remain linked to the new "Latest Actual". Consider if some Work Items should be automatically re-linked to the archived historical entry to preserve their context.
   * archive old sprints
 * security:
-  * Information Disclosure: `settings.json` is saved in the `public/` folder, which exposes highly sensitive credentials (MongoDB URIs, AWS Secret Keys, Jira API Tokens, OIDC tokens) to any user who visits `/settings.json`.
+  * Information Disclosure (FIXED): `settings.json` has been moved out of the `public/` folder to the project root and added to `.gitignore`. It is no longer accessible via static web requests.
   * Lack of Authentication and Authorization: The API endpoints (under `/api/`) lack any access controls. An unauthenticated attacker can arbitrarily read, export (`/api/mongo/export`), overwrite (`/api/settings`), or delete data (`/api/entity`).
   * Server-Side Request Forgery (SSRF): The Jira API endpoints (`/api/jira/*`) accept `jira_base_url` from the client and perform a `fetch` directly to that URL without validation. This allows an attacker to make the server scan internal networks or access metadata services (e.g., AWS IMDS).
   * NoSQL Injection / ReDoS: Query parameters like `teamFilter` and `customerFilter` are passed unescaped directly into MongoDB `$regex` operations, potentially allowing Regular Expression Denial of Service (ReDoS) or unauthorized data querying.

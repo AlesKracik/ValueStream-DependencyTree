@@ -131,7 +131,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
           const qMinTcv = Number(url.searchParams.get('minTcv')) || 0;
           const qMinScore = Number(url.searchParams.get('minScore')) || 0;
 
-          const settingsPath = path.resolve(__dirname, 'public/settings.json');
+          const settingsPath = path.resolve(__dirname, 'settings.json');
           const mockDataPath = path.resolve(__dirname, 'public/staticImport.json');
 
           let settings: any = {};
@@ -319,7 +319,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
         req.on('end', () => {
           try {
             const data = JSON.parse(body);
-            const settingsPath = path.resolve(__dirname, 'public/settings.json');
+            const settingsPath = path.resolve(__dirname, 'settings.json');
             fs.writeFileSync(settingsPath, JSON.stringify(data, null, 2));
 
             res.setHeader('Content-Type', 'application/json');
@@ -344,7 +344,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
             const data = body ? JSON.parse(body) : {};
             const id = data.id || entityId;
 
-            const settingsPath = path.resolve(__dirname, 'public/settings.json');
+            const settingsPath = path.resolve(__dirname, 'settings.json');
             const settings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
 
             if (!settings.mongo_uri) {
@@ -394,7 +394,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
         });
       } else if (req.url === '/api/mongo/export' && req.method === 'POST') {
         try {
-          const settingsPath = path.resolve(__dirname, 'public/settings.json');
+          const settingsPath = path.resolve(__dirname, 'settings.json');
           if (!fs.existsSync(settingsPath)) throw new Error("Settings file not found.");
           const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
           if (!settings.mongo_uri) throw new Error("MongoDB URI not configured.");
