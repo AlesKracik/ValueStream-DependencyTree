@@ -82,7 +82,7 @@ The dashboard ensures a continuous, unbroken timeline through strict schedule ma
 - **Timeline Expansion:** Click **"+ Create Next Sprint"** at the bottom of the table to add a new 14-day block. The system automatically calculates the next logical dates and name.
 
 ### 7. Settings & Integration
-Use the ⚙️ **Settings** modal or the dedicated **Settings** page to configure the application behavior.
+Use the dedicated **Settings** page to configure the application behavior. Changes are saved automatically as you edit.
 
 - **Time & Fiscal Calendar:**
     - **Fiscal Year Start:** Define which month your fiscal year begins (e.g., April). The application will automatically group and label sprints into fiscal quarters (FY2026 Q1, etc.) on the Sprint Management page.
@@ -92,11 +92,15 @@ Use the ⚙️ **Settings** modal or the dedicated **Settings** page to configur
     - **Customer Issue Tracking:** Define custom JQL queries to automatically identify and track specific issue types linked to customers.
     - **Bulk Import/Sync:** The settings page provides unified tools to **Sync All Epics from Jira** or **Import Epics via JQL** to quickly hydrate your dashboard from Atlassian data.
     - **Epic Proxy Sync:** Inside any individual Epic's detail page, the **"Sync from Jira"** button pulls the latest Summary, Estimates, Dates, and Team assignments.
+- **MongoDB Persistence Safety:**
+    - **Database Discovery:** After entering a URI and clicking **"Test Mongo Connection"**, the application automatically fetches a list of existing databases on your cluster.
+    - **Safety Rail:** To prevent accidental database creation due to typos, the **"Create database if it doesn't exist"** checkbox must be explicitly enabled if you want to initialize a new database.
+    - **Existence Badges:** A green **"Exists"** or orange **"New"** badge appears next to the database name after testing, providing immediate feedback on your connection state.
 
 ### 8. Persistence & Collaboration
+- **Automatic Saving:** The application features a robust auto-save system. Edits to node parameters, settings, and structural relationships are written back to the server instantly (or when you click away from a field), ensuring your work is never lost.
 - **Storage:** The application uses MongoDB for persistence, with a fallback to `staticImport.json` for lightweight or portable environments.
 - **Auto-Snapshot:** When a sprint ends, the system automatically snapshots the calculated effort into permanent overrides, preserving your delivery history.
-- **Save Changes:** Click the blue **"Save Changes"** button in the header to write all layout adjustments and node edits back to the central data store.
 - **Data Export:** On the Settings page, you can export your entire current project state as a `staticImport.json` file for local backup or sharing with other team members.
 
 ### 9. Security & Access Control
@@ -106,9 +110,12 @@ The application includes a simple but effective security layer to protect your s
     - If the application is configured with an `ADMIN_SECRET` environment variable on the server, a login page will appear.
     - Users must enter the correct secret to access any part of the application or its data.
     - Your session is maintained in the browser for the duration of your work.
+- **Sensitive Field Masking:**
+    - Critical configuration fields (MongoDB URIs, Jira API Tokens, AWS Keys) are masked with `********` in the UI to prevent accidental disclosure.
+    - Masked fields remain functional; the server securely unmasks them using the stored configuration during connection tests or synchronization tasks.
 - **Protected Configuration:**
-    - All sensitive settings (MongoDB connection strings, Jira API tokens) are stored in a non-public `settings.json` file on the server.
+    - All sensitive settings are stored in a non-public `settings.json` file on the server.
     - This configuration is inaccessible to unauthenticated users and cannot be reached via direct URL requests.
 - **API Security:**
-    - Every request to the backend is validated against the active session. 
+    - Every request to the backend is validated against the active session using a Bearer token. 
     - Attempting to access the API without a valid secret will result in an immediate session expiration and redirection to the login page.

@@ -31,15 +31,27 @@ The response includes standard entities plus a **`metrics`** object used for con
 ### 2. `POST /api/entity/{collection}`
 Handles Upsert operations. When a Work Item or Customer is updated, the backend automatically recalculates all affected RICE scores on the next `loadData` call.
 
-### 3. `DELETE /api/entity/{collection}`
+### 3. DELETE /api/entity/{collection}
 Handles record removal.
 
-## Authentication & AAA
-... (rest of section unchanged)
+### 4. POST /api/mongo/databases
+Fetches a list of all databases available on the configured MongoDB cluster. Used for the Database Discovery feature in the UI.
 
-The application supports three primary authentication methods for MongoDB, configurable via the **Settings** (⚙️) menu.
+### 5. POST /api/mongo/test
+Tests connection to a specific URI and Database. Returns an `exists` boolean flag to indicate if the targeted database is already initialized on the server.
+
+## MongoDB Authentication & Safety
+
+The application supports three primary authentication methods for MongoDB, configurable via the **Settings** (⚙️) menu. It also includes a "Safety Rail" to prevent accidental database creation due to typos.
+
+### Connection Safety Features
+To ensure data integrity and prevent "ghost" databases:
+1.  **Database Discovery:** After entering a URI and clicking "Test Connection", the UI provides a searchable dropdown of all existing databases on that cluster.
+2.  **Explicit Creation Consent:** A **"Create database if it doesn't exist"** checkbox must be enabled to target a new database name.
+3.  **Strict Enforcement:** If this safety checkbox is disabled, the backend will refuse to connect or perform any operations (Load, Save, Export) if the specified database does not already exist.
 
 ### 1. SCRAM (Standard)
+... (rest of the file)
 The default authentication method using URI-based credentials.
 - **Config:** Provide a full URI including username and password.
 - **Example:** `mongodb://user:pass@localhost:27017`
