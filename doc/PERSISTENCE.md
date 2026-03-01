@@ -32,5 +32,21 @@ graph TD
     Check -->|Valid| Return
 ```
 
+## Dockerized Persistence
+
+The application includes a `docker-compose.yml` file to quickly spin up a fully connected environment.
+
+### Deployment
+1.  **Start Services:** Run `docker-compose up --build` from the root directory.
+2.  **Configuration:** Inside the application's **Settings** (⚙️), update the **MongoDB URI** to:
+    - `mongodb://mongodb:27017`
+3.  **Persistence:** Data is stored in a named Docker volume (`mongo-data`), ensuring it persists even if containers are stopped or removed.
+
+```mermaid
+graph LR
+    App[App Container] -->|Internal Network| Mongo[Mongo Container]
+    Mongo -->|Mount| Volume[(Docker Volume: mongo-data)]
+```
+
 ## Seeding
 If the MongoDB database is empty on load, the plugin automatically reads `web-client/public/staticImport.json` and inserts the data into the corresponding collections.
