@@ -363,7 +363,7 @@ export function useGraphLayout(
 
         // 1. Process Customers (Column 1)
         // Sort Highest Total TCV to Lowest, apply Min TCV filter
-        const maxTcv = Math.max(...data.customers.map(c => c.existing_tcv + c.potential_tcv), 1);
+        const maxTcv = data.customers.reduce((max, c) => Math.max(max, c.existing_tcv + c.potential_tcv), 1);
         const sortedCustomers = [...data.customers]
             .filter(c => visibleCustomers.has(c.id) && (c.existing_tcv + c.potential_tcv) >= minTcv)
             .sort((a, b) => (b.existing_tcv + b.potential_tcv) - (a.existing_tcv + a.potential_tcv));
@@ -462,7 +462,7 @@ export function useGraphLayout(
 
         // 4. Pre-process Gantt Lanes and Sprints to calculate Team Y positions
         // Compute capacities over ALL teams
-        const maxCapacity = Math.max(...data.teams.map(t => t.total_capacity_mds), 1);
+        const maxCapacity = data.teams.reduce((max, t) => Math.max(max, t.total_capacity_mds), 1);
         const sprints = data.sprints || [];
         const visibleSprints = sprints.slice(sprintOffset, sprintOffset + 6);
 

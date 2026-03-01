@@ -71,8 +71,8 @@ const DashboardControls: React.FC<DashboardControlsProps> = ({ data, nodes, setV
 
         if (nodesToFit.length > 0) {
             // Calculate horizontal bounds
-            const minX = Math.min(...nodesToFit.map(n => n.position.x));
-            const maxX = Math.max(...nodesToFit.map(n => n.position.x + (n.measured?.width || 220)));
+            const minX = nodesToFit.reduce((acc, n) => Math.min(acc, n.position.x), nodesToFit[0].position.x);
+            const maxX = nodesToFit.reduce((acc, n) => Math.max(acc, n.position.x + (n.measured?.width || 220)), nodesToFit[0].position.x);
             const contentWidth = maxX - minX;
 
             const containerWidth = document.querySelector(`.${styles.flowWrapper}`)?.clientWidth || window.innerWidth;

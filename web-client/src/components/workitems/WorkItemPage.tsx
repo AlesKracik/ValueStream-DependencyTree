@@ -5,6 +5,7 @@ import { authorizedFetch } from "../../utils/api";
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
+import { generateId } from '../../utils/security';
 
 export interface WorkItemPageProps {
     workItemId: string;
@@ -56,7 +57,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     const handleSave = async () => {
         try {
             if (isNew) {
-                const newId = `f${Date.now()}`;
+                const newId = generateId('f');
                 const newFeat: WorkItem = {
                     id: newId,
                     name: newWorkItemDraft.name || 'New Work Item',
@@ -72,7 +73,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
 
                 const epicsToAdd = newWorkItemEpics.map(e => ({
                     ...e,
-                    id: `e${Math.random().toString(36).substr(2, 9)}`,
+                    id: generateId('e'),
                     work_item_id: newId
                 }));
 
@@ -102,7 +103,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     const epics = isNew ? newWorkItemEpics : data.epics.filter(e => e.work_item_id === workItemId);
 
     const handleAddEpic = () => {
-        const tempId = `e-temp-${Date.now()}`;
+        const tempId = generateId('e-temp-');
         const draftEpic: Epic = {
             id: tempId,
             jira_key: 'TBD',

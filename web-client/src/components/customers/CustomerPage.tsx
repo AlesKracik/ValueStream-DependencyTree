@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import type { DashboardData, Customer, WorkItem } from '../../types/models';
+import type { DashboardData, Customer, WorkItem, TcvHistoryEntry } from '../../types/models';
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from './CustomerPage.module.css';
+import { generateId } from '../../utils/security';
 
 export interface CustomerPageProps {
     customerId: string;
@@ -61,7 +62,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     const handleSave = async () => {
         try {
             if (isNew) {
-                const newId = `c${Date.now()}`;
+                const newId = generateId('c');
                 const newCust: Customer = {
                     id: newId,
                     name: newCustDraft.name || 'New Customer',
@@ -115,7 +116,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
 
         // 1. Create history entry from current "Actual"
         const historyEntry: TcvHistoryEntry = {
-            id: `h${Date.now()}`,
+            id: generateId('h'),
             value: customer.existing_tcv,
             valid_from: customer.existing_tcv_valid_from || '2000-01-01'
         };

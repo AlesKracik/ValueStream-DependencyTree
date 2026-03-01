@@ -180,12 +180,12 @@ export const MyEntityPage: React.FC<Props> = ({ data, loading, error }) => {
 *Note: The duplication of this boilerplate across pages is a known technical debt item.*
 
 ### 4. ID Generation
-When creating new entities (Work Items, Customers, Epics, Sprints), the frontend relies heavily on timestamp-based ID generation concatenated with a prefix character.
+When creating new entities (Work Items, Customers, Epics, Sprints), the frontend utilizes a secure `generateId` utility (`src/utils/security.ts`). This ensures IDs are globally unique and cryptographically strong, preventing collisions and predictable ID attacks.
 
 **Example Pattern:**
 ```typescript
-const newId = `f${Date.now()}`; // f for Feature/WorkItem
-const newEpicId = `e${Date.now()}`; // e for Epic
+const newId = generateId('f'); // f for Feature/WorkItem
+const newEpicId = generateId('e'); // e for Epic
 ```
 
 ## Deployment Modes

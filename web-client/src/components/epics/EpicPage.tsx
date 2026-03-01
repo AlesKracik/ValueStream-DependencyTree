@@ -4,6 +4,7 @@ import type { DashboardData, Epic } from '../../types/models';
 import { authorizedFetch } from "../../utils/api";
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
+import { sanitizeUrl } from '../../utils/security';
 
 export interface EpicPageProps {
     epicId: string;
@@ -291,7 +292,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                                 <span>Jira Key:</span>
                                 {epic.jira_key && epic.jira_key !== 'TBD' && data?.settings?.jira_base_url && (
                                     <a
-                                        href={`${data.settings.jira_base_url}/browse/${epic.jira_key}`}
+                                        href={sanitizeUrl(`${data.settings.jira_base_url}/browse/${epic.jira_key}`)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         style={{ fontSize: '12px', color: '#60a5fa', textDecoration: 'none' }}

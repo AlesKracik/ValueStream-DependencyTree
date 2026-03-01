@@ -2,6 +2,7 @@ import { memo, useState, useRef, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { addDays, format, parseISO, min, max, differenceInDays } from 'date-fns';
 import { useDashboardContext } from '../../contexts/DashboardContext';
+import { sanitizeUrl } from '../../utils/security';
 
 export interface GanttBarNodeData {
     label: string;
@@ -284,7 +285,7 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
             <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', pointerEvents: 'none', zIndex: 5 }}>
                 {data.jiraKey && data.jiraBaseUrl ? (
                     <a
-                        href={`${data.jiraBaseUrl}/browse/${data.jiraKey}`}
+                        href={sanitizeUrl(`${data.jiraBaseUrl}/browse/${data.jiraKey}`)}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{ color: 'white', textDecoration: 'underline', width: '100%', pointerEvents: 'auto' }}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import type { Settings, DashboardData, Epic } from "../types/models";
 import styles from './List.module.css';
 import { authorizedFetch } from "../utils/api";
+import { generateId } from '../utils/security';
 
 interface SettingsPageProps {
   settings: Settings;

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { DashboardData, DashboardEntity } from '../types/models';
 import { useDashboardContext } from '../contexts/DashboardContext';
 import styles from '../components/customers/CustomerPage.module.css';
+import { generateId } from '../utils/security';
 
 export interface DashboardEditPageProps {
     dashboardId: string;

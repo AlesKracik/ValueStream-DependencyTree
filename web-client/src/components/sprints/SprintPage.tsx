@@ -3,6 +3,7 @@ import { parseISO, addDays, format } from 'date-fns';
 import type { DashboardData, Sprint } from '../../types/models';
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../../pages/List.module.css';
+import { generateId } from '../../utils/security';
 
 export interface SprintPageProps {
     data: DashboardData | null;
@@ -50,7 +51,7 @@ export const SprintPage: React.FC<SprintPageProps> = ({
         if (!newSprintDraft.name || !newSprintDraft.start_date || !newSprintDraft.end_date) return;
         
         const newSprint: Sprint = {
-            id: `s${Date.now()}`,
+            id: generateId('s'),
             name: newSprintDraft.name,
             start_date: newSprintDraft.start_date,
             end_date: newSprintDraft.end_date

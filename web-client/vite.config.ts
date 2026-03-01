@@ -21,6 +21,24 @@ const MockDataPersistencePlugin = (): Plugin => ({
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       }
 
+      // Simple CORS check
+      const origin = req.headers['origin'];
+      const allowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
+      if (origin && !allowedOrigins.includes(origin)) {
+        res.statusCode = 403;
+        res.setHeader('Content-Type', 'application/json');
+        return res.end(JSON.stringify({ success: false, error: 'CORS policy violation' }));
+      }
+      if (origin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      }
+      if (req.method === 'OPTIONS') {
+        res.statusCode = 204;
+        return res.end();
+      }
+
       // Simple Authentication Check
       const adminSecret = process.env.ADMIN_SECRET;
       if (req.url === '/api/auth/status' && req.method === 'GET') {
@@ -61,9 +79,10 @@ const MockDataPersistencePlugin = (): Plugin => ({
       async function isSafeUrl(urlStr: string) {
         try {
           const url = new URL(urlStr);
-          if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
+          if (url.protocol !== 'http:' && url.protocol !== 'https:' && url.protocol !== 'mongodb:' && url.protocol !== 'mongodb+srv:') return false;
           
           const hostname = url.hostname;
+          if (!hostname) return true; // Could be a local path or similar for non-URL protocols
           if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return false;
 
           const { address } = await lookup(hostname);
@@ -84,6 +103,9 @@ const MockDataPersistencePlugin = (): Plugin => ({
       // helper to connect to Mongo
       async function getDb(settings: any) {
         const uri = settings.mongo_uri;
+        if (!await isSafeUrl(uri)) {
+          throw new Error("Invalid or unsafe MongoDB URI");
+        }
         const dbName = settings.mongo_db;
         const authMethod = settings.mongo_auth_method || 'scram';
 
@@ -307,7 +329,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
 
               // Calculate scores for ALL work items to find global max and consistent scores
               const allWorkItemsWithScores = applyScores(fullWorkItems, fullWorkItems, fullCustomers);
-              dbData.metrics.maxScore = Math.max(...allWorkItemsWithScores.map(f => f.score || 0), 1);
+              dbData.metrics.maxScore = allWorkItemsWithScores.reduce((max, f) => Math.max(max, f.score || 0), 1);
 
               // Calculate ROI for edge thickness scaling
               let maxRoi = 0.0001;
