@@ -109,15 +109,14 @@ const MockDataPersistencePlugin = (): Plugin => ({
           if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return true;
 
           const { address } = await lookup(hostname);
-          const parts = address.split('.').map(Number);
-
+          
           // Allow loopback address from DNS resolution too
           if (address === '127.0.0.1' || address === '::1') return true;
 
-          // Private IP ranges
-          if (parts[0] === 10) return false;
-          if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return false;
-          if (parts[0] === 192 && parts[1] === 168) return false;
+          const parts = address.split('.').map(Number);
+
+          // SSRF protection for this tool should primarily block cloud metadata services
+          // blocking 10.x, 172.x, 192.x is too aggressive for self-hosted integration tools
           if (parts[0] === 169 && parts[1] === 254) return false; // Link-local / Metadata service
 
           return true;
@@ -501,7 +500,12 @@ const MockDataPersistencePlugin = (): Plugin => ({
       } else if (req.url === '/api/mongo/test' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const config = JSON.parse(body);
+          const rawConfig = JSON.parse(body);
+          
+          const settingsPath = path.resolve(__dirname, 'settings.json');
+          const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+          const config = unmaskSettings(rawConfig, existingSettings);
+
           if (!config.mongo_uri) {
             throw new Error('Missing mongo_uri');
           }
@@ -560,7 +564,11 @@ const MockDataPersistencePlugin = (): Plugin => ({
       } else if (req.url === '/api/jira/test' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const { jira_base_url, jira_api_version, jira_api_token } = JSON.parse(body);
+          const rawConfig = JSON.parse(body);
+
+          const settingsPath = path.resolve(__dirname, 'settings.json');
+          const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+          const { jira_base_url, jira_api_version, jira_api_token } = unmaskSettings(rawConfig, existingSettings);
           
           if (!await isSafeUrl(jira_base_url)) {
             throw new Error('Invalid or unsafe Jira URL');
@@ -582,7 +590,11 @@ const MockDataPersistencePlugin = (): Plugin => ({
       } else if (req.url === '/api/jira/issue' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const { jira_key, jira_base_url, jira_api_version, jira_api_token } = JSON.parse(body);
+          const rawConfig = JSON.parse(body);
+
+          const settingsPath = path.resolve(__dirname, 'settings.json');
+          const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+          const { jira_key, jira_base_url, jira_api_version, jira_api_token } = unmaskSettings(rawConfig, existingSettings);
 
           if (!await isSafeUrl(jira_base_url)) {
             throw new Error('Invalid or unsafe Jira URL');
@@ -605,7 +617,11 @@ const MockDataPersistencePlugin = (): Plugin => ({
       } else if (req.url === '/api/jira/search' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const { jql, jira_base_url, jira_api_version, jira_api_token } = JSON.parse(body);
+          const rawConfig = JSON.parse(body);
+
+          const settingsPath = path.resolve(__dirname, 'settings.json');
+          const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+          const { jql, jira_base_url, jira_api_version, jira_api_token } = unmaskSettings(rawConfig, existingSettings);
 
           if (!await isSafeUrl(jira_base_url)) {
             throw new Error('Invalid or unsafe Jira URL');
