@@ -21,7 +21,7 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
         <div className={styles.pageContainer}>
             <div className={styles.header}>
                 <h1>Work Items</h1>
-                <button onClick={() => navigate('/workitem/new')} className={styles.createBtn}>+ New Work Item</button>
+                <button onClick={() => navigate('/workitem/new')} className="btn-primary">+ New Work Item</button>
             </div>
             <div className={styles.controls}>
                 <input 

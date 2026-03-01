@@ -115,7 +115,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         <div className={styles.pageContainer}>
             <div className={styles.header}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <button className={styles.backBtn} onClick={onBack}>
+                    <button className="btn-secondary" onClick={onBack}>
                         ← Back
                     </button>
                     <h1>{isNew ? 'New Customer' : customer.name}</h1>
@@ -123,18 +123,15 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                 <div style={{ display: 'flex', gap: '16px' }}>
                     {!isNew && (
                         <button 
-                            className={styles.dangerBtn} 
-                            style={{ padding: '10px 20px', fontWeight: '600', fontSize: '14px', borderRadius: '6px' }}
+                            className="btn-danger" 
                             onClick={handleDelete}
                         >
                             Delete Customer
                         </button>
                     )}
                     {isNew ? (<button 
-                        className={styles.saveBtn} 
-                        style={{ backgroundColor: '#2563eb', borderColor: '#1d4ed8' }}
+                        className="btn-primary" 
                         onClick={handleSave}
-                        
                     >
                         Create
                     </button>) : null}
@@ -250,7 +247,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                             </select>
                                         </td>
                                         <td>
-                                            <button onClick={removeTarget} className={styles.dangerBtn}>Remove</button>
+                                            <button onClick={removeTarget} className="btn-danger">Remove</button>
                                         </td>
                                     </tr>
                                 );

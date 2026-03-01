@@ -89,24 +89,22 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
     };
 
     const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '8px' };
-    const inputStyle: React.CSSProperties = { padding: '10px 14px', borderRadius: '6px', border: '1px solid #4b5563', backgroundColor: '#374151', color: '#fff' };
     const sectionTitleStyle: React.CSSProperties = { fontSize: '14px', fontWeight: 'bold', color: '#60a5fa', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' };
 
     return (
         <div className={styles.pageContainer} style={{ maxWidth: '1000px', margin: '0 auto' }}>
             <div className={styles.header}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <button className={styles.backBtn} onClick={onBack}>← Back</button>
+                    <button className="btn-secondary" onClick={onBack}>← Back</button>
                     <h1>{isNew ? 'Create Dashboard' : `Edit: ${dashboard.name}`}</h1>
                 </div>
                 <div style={{ display: 'flex', gap: '16px' }}>
                     {!isNew && (
-                        <button className={styles.dangerBtn} onClick={handleDelete}>Delete Dashboard</button>
+                        <button className="btn-danger" onClick={handleDelete}>Delete Dashboard</button>
                     )}
                     {isNew && (
                         <button 
-                            className={styles.saveBtn} 
-                            style={{ backgroundColor: '#2563eb', borderColor: '#1d4ed8' }}
+                            className="btn-primary" 
                             onClick={handleCreate}
                         >
                             Create
@@ -128,7 +126,7 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
                                     if (isNew) setDraft(prev => ({ ...prev, name: e.target.value }));
                                     else updateDashboard(dashboard.id, { name: e.target.value });
                                 }}
-                                style={inputStyle}
+                                
                             />
                         </label>
                         <label style={labelStyle}>
@@ -140,7 +138,7 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
                                     if (isNew) setDraft(prev => ({ ...prev, description: e.target.value }));
                                     else updateDashboard(dashboard.id, { description: e.target.value });
                                 }}
-                                style={inputStyle}
+                                
                             />
                         </label>
                     </div>
@@ -160,7 +158,7 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
                                         type="text"
                                         value={getParam('customerFilter')}
                                         onChange={e => updateParam('customerFilter', e.target.value)}
-                                        style={inputStyle}
+                                        
                                     />
                                 </label>
                                 <label style={{ ...labelStyle, flex: 1 }}>
@@ -170,7 +168,7 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
                                         min="0"
                                         value={getParam('minTcvFilter')}
                                         onChange={e => updateParam('minTcvFilter', e.target.value)}
-                                        style={inputStyle}
+                                        
                                     />
                                 </label>
                             </div>
@@ -186,7 +184,7 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
                                         type="text"
                                         value={getParam('workItemFilter')}
                                         onChange={e => updateParam('workItemFilter', e.target.value)}
-                                        style={inputStyle}
+                                        
                                     />
                                 </label>
                                 <label style={{ ...labelStyle, flex: 1 }}>
@@ -197,7 +195,7 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
                                         step="0.1"
                                         value={getParam('minScoreFilter')}
                                         onChange={e => updateParam('minScoreFilter', e.target.value)}
-                                        style={inputStyle}
+                                        
                                     />
                                 </label>
                             </div>
@@ -206,7 +204,7 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
                                 <select
                                     value={getParam('releasedFilter')}
                                     onChange={e => updateParam('releasedFilter', e.target.value)}
-                                    style={inputStyle}
+                                    
                                 >
                                     <option value="all">All</option>
                                     <option value="released">Released Only</option>
@@ -224,7 +222,7 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
                                     type="text"
                                     value={getParam('teamFilter')}
                                     onChange={e => updateParam('teamFilter', e.target.value)}
-                                    style={inputStyle}
+                                    
                                 />
                             </label>
                         </div>
@@ -238,7 +236,7 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
                                     type="text"
                                     value={getParam('epicFilter')}
                                     onChange={e => updateParam('epicFilter', e.target.value)}
-                                    style={inputStyle}
+                                    
                                 />
                             </label>
                         </div>

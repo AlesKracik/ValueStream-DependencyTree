@@ -18,6 +18,22 @@ const MockDataPersistencePlugin = (): Plugin => ({
         return client.db(dbName || 'valuestream');
       }
 
+      function calculateQuarter(dateStr: string, fiscalStartMonth: number) {
+        const date = new Date(dateStr);
+        const month = date.getMonth() + 1; // 1-12
+        const year = date.getFullYear();
+
+        let shiftedMonth = month - fiscalStartMonth + 1;
+        let fiscalYear = year;
+        if (shiftedMonth <= 0) {
+            shiftedMonth += 12;
+            fiscalYear -= 1;
+        }
+
+        const quarter = Math.ceil(shiftedMonth / 3);
+        return `FY${fiscalYear} Q${quarter}`;
+      }
+
       if (req.url === '/api/loadData' && req.method === 'GET') {
         try {
           const settingsPath = path.resolve(__dirname, 'public/settings.json');
@@ -80,6 +96,17 @@ const MockDataPersistencePlugin = (): Plugin => ({
                 sprints: stripId(sprints),
                 dashboards: stripId(dashboards),
               };
+
+              // Migration: Ensure all sprints have a quarter attribute
+              const sprintsToUpdate = dbData.sprints.filter(s => !s.quarter);
+              if (sprintsToUpdate.length > 0) {
+                console.log(`[Migration] Updating ${sprintsToUpdate.length} sprints with quarter info...`);
+                for (const sprint of sprintsToUpdate) {
+                  const quarter = calculateQuarter(sprint.start_date, settings.fiscal_year_start_month || 1);
+                  await db.collection('sprints').updateOne({ id: sprint.id }, { $set: { quarter } });
+                  sprint.quarter = quarter; // Update local copy for current response
+                }
+              }
 
               // If database is empty, seed it with staticImport.json
               if (dbData.customers.length === 0 && fs.existsSync(mockDataPath)) {

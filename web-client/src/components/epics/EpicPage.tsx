@@ -249,25 +249,21 @@ export const EpicPage: React.FC<EpicPageProps> = ({
         <div className={styles.pageContainer}>
             <div className={styles.header}>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                    <button onClick={onBack} className={styles.backBtn}>← Back</button>
+                    <button onClick={onBack} className="btn-secondary">← Back</button>
                     <h1>Epic: {epicId}</h1>
                 </div>
                 <div style={{ display: 'flex', gap: '12px' }}>
                     <button
                         onClick={handleDelete}
-                        className={styles.dangerBtn}
-                        style={{ padding: '8px 16px' }}
+                        className="btn-danger"
                     >
                         Delete Epic
                     </button>
                     <button
                         onClick={handleSyncJira}
                         disabled={!epic?.jira_key || epic.jira_key === 'TBD' || syncing}
-                        className={styles.saveBtn}
+                        className="btn-secondary"
                         style={{
-                            backgroundColor: '#374151',
-                            borderColor: '#4b5563',
-                            color: '#fff',
                             opacity: (!epic?.jira_key || epic.jira_key === 'TBD' || syncing) ? 0.5 : 1
                         }}
                     >
@@ -314,7 +310,6 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                             <input
                                 type="number"
                                 step="0.1"
-                                style={{ width: '50px' }}
                                 value={epic.effort_md === undefined ? '' : epic.effort_md}
                                 onChange={e => updateEpic(epicId, { effort_md: Number(e.target.value) })}
                             />
@@ -323,7 +318,6 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                             Target Start:
                             <input
                                 type="date"
-                                style={{ width: '110px' }}
                                 value={epic.target_start || ''}
                                 onChange={e => updateEpicWithOverlapCheck(epicId, { target_start: e.target.value })}
                             />
@@ -332,7 +326,6 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                             Target End:
                             <input
                                 type="date"
-                                style={{ width: '110px' }}
                                 value={epic.target_end || ''}
                                 onChange={e => updateEpicWithOverlapCheck(epicId, { target_end: e.target.value })}
                             />
@@ -368,13 +361,6 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                                             value={epic.sprint_effort_overrides?.[sprint.id] ?? ''}
                                             onChange={e => handleOverrideChange(sprint.id, e.target.value)}
                                             style={{
-                                                width: '100%',
-                                                padding: '6px 8px',
-                                                backgroundColor: '#111827',
-                                                border: '1px solid #4b5563',
-                                                borderRadius: '4px',
-                                                color: '#fff',
-                                                fontSize: '13px',
                                                 textAlign: 'right'
                                             }}
                                         />

@@ -220,7 +220,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
         <div className={styles.pageContainer}>
             <div className={styles.header}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <button className={styles.backBtn} onClick={onBack}>
+                    <button className="btn-secondary" onClick={onBack}>
                         ← Back
                     </button>
                     <h1>{isNew ? 'New Work Item' : workItem.name}</h1>
@@ -228,8 +228,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                 <div style={{ display: 'flex', gap: '16px' }}>
                     {!isNew && (
                         <button
-                            className={styles.dangerBtn}
-                            style={{ padding: '10px 20px', fontWeight: '600', fontSize: '14px', borderRadius: '6px' }}
+                            className="btn-danger"
                             onClick={handleDelete}
                         >
                             Delete Work Item
@@ -237,8 +236,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     )}
                     {isNew ? (
                         <button
-                            className={styles.saveBtn}
-                            style={{ backgroundColor: '#2563eb', borderColor: '#1d4ed8' }}
+                            className="btn-primary"
                             onClick={handleSave}
                         >
                             Create
@@ -460,7 +458,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                 </select>
                                             </td>
                                             <td>
-                                                <button onClick={removeTarget} className={styles.dangerBtn}>Remove</button>
+                                                <button onClick={removeTarget} className="btn-danger">Remove</button>
                                             </td>
                                         </tr>
                                     );
@@ -508,7 +506,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     <section className={styles.card}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                             <h2>Epics</h2>
-                            <button className={styles.primaryBtn} onClick={handleAddEpic}>+ Create New Epic</button>
+                            <button className="btn-primary" onClick={handleAddEpic}>+ Create New Epic</button>
                         </div>
 
                         <table className={styles.table}>
@@ -561,12 +559,12 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                 <button
                                                     onClick={() => handleSyncJira(epic.id, epic.jira_key)}
                                                     disabled={!epic.jira_key || epic.jira_key === 'TBD' || syncingId === epic.id}
-                                                    className={styles.saveBtn}
-                                                    style={{ backgroundColor: '#3b82f6', borderColor: '#2563eb', padding: '6px 12px', whiteSpace: 'nowrap' }}
+                                                    className="btn-secondary"
+                                                    style={{ padding: '6px 12px', whiteSpace: 'nowrap' }}
                                                 >
                                                     {syncingId === epic.id ? 'Syncing...' : 'Sync from Jira'}
                                                 </button>
-                                                <button onClick={() => handleRemoveEpic(epic.id)} className={styles.dangerBtn} style={{ padding: '6px 12px' }}>Remove</button>
+                                                <button onClick={() => handleRemoveEpic(epic.id)} className="btn-danger" style={{ padding: '6px 12px' }}>Remove</button>
                                             </div>
                                         </td>
                                     </tr>

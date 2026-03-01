@@ -4,7 +4,12 @@
     "jira_api_version": "2",
     "jira_api_token": "",
     "mongo_uri": "mongodb://localhost:27017",
-    "mongo_db": "valueStream"
+    "mongo_db": "valueStream",
+    "customer_jql_new": "",
+    "customer_jql_in_progress": "",
+    "customer_jql_noop": "",
+    "fiscal_year_start_month": 1,
+    "sprint_duration_days": 14
   },
   "customers": [
     {
@@ -1417,97 +1422,113 @@
       "id": "s0",
       "name": "Sprint 0",
       "start_date": "2026-01-28",
-      "end_date": "2026-02-11"
+      "end_date": "2026-02-11",
+      "quarter": "FY2026 Q1"
     },
     {
       "id": "s1",
       "name": "Sprint 1",
       "start_date": "2026-02-12",
-      "end_date": "2026-02-25"
+      "end_date": "2026-02-25",
+      "quarter": "FY2026 Q1"
     },
     {
       "id": "s2",
       "name": "Sprint 2",
       "start_date": "2026-02-26",
-      "end_date": "2026-03-11"
+      "end_date": "2026-03-11",
+      "quarter": "FY2026 Q1"
     },
     {
       "id": "s3",
       "name": "Sprint 3",
       "start_date": "2026-03-12",
-      "end_date": "2026-03-25"
+      "end_date": "2026-03-25",
+      "quarter": "FY2026 Q1"
     },
     {
       "id": "s4",
       "name": "Sprint 4",
       "start_date": "2026-03-26",
-      "end_date": "2026-04-08"
+      "end_date": "2026-04-08",
+      "quarter": "FY2026 Q1"
     },
     {
       "id": "s5",
       "name": "Sprint 5",
       "start_date": "2026-04-09",
-      "end_date": "2026-04-22"
+      "end_date": "2026-04-22",
+      "quarter": "FY2026 Q2"
     },
     {
       "id": "s6",
       "name": "Sprint 6",
       "start_date": "2026-04-23",
-      "end_date": "2026-05-06"
+      "end_date": "2026-05-06",
+      "quarter": "FY2026 Q2"
     },
     {
       "id": "s7",
       "name": "Sprint 7",
       "start_date": "2026-05-07",
-      "end_date": "2026-05-20"
+      "end_date": "2026-05-20",
+      "quarter": "FY2026 Q2"
     },
     {
       "id": "s8",
       "name": "Sprint 8",
       "start_date": "2026-05-21",
-      "end_date": "2026-06-03"
+      "end_date": "2026-06-03",
+      "quarter": "FY2026 Q2"
     },
     {
       "id": "s9",
       "name": "Sprint 9",
       "start_date": "2026-06-04",
-      "end_date": "2026-06-17"
+      "end_date": "2026-06-17",
+      "quarter": "FY2026 Q2"
     },
     {
       "id": "s10",
       "name": "Sprint 10",
       "start_date": "2026-06-18",
-      "end_date": "2026-07-01"
+      "end_date": "2026-07-01",
+      "quarter": "FY2026 Q2"
     },
     {
       "id": "s11",
       "name": "Sprint 11",
       "start_date": "2026-07-02",
-      "end_date": "2026-07-15"
+      "end_date": "2026-07-15",
+      "quarter": "FY2026 Q3"
     },
     {
       "id": "s12",
       "name": "Sprint 12",
       "start_date": "2026-07-16",
-      "end_date": "2026-07-29"
+      "end_date": "2026-07-29",
+      "quarter": "FY2026 Q3"
     },
     {
       "id": "s13",
       "name": "Sprint 13",
       "start_date": "2026-07-30",
-      "end_date": "2026-08-12"
+      "end_date": "2026-08-12",
+      "quarter": "FY2026 Q3"
     },
     {
       "id": "s14",
       "name": "Sprint 14",
       "start_date": "2026-08-13",
-      "end_date": "2026-08-26"
+      "end_date": "2026-08-26",
+      "quarter": "FY2026 Q3"
     },
     {
       "id": "s15",
       "name": "Sprint 15",
       "start_date": "2026-08-27",
-      "end_date": "2026-09-09"
+      "end_date": "2026-09-09",
+      "quarter": "FY2026 Q3"
     }
   ],
   "dashboards": [

@@ -21,7 +21,7 @@ export const CustomerListPage: React.FC<Props> = ({ data, loading }) => {
         <div className={styles.pageContainer}>
             <div className={styles.header}>
                 <h1>Customers</h1>
-                <button onClick={() => navigate('/customer/new')} className={styles.createBtn}>+ New Customer</button>
+                <button onClick={() => navigate('/customer/new')} className="btn-primary">+ New Customer</button>
             </div>
             <div className={styles.controls}>
                 <input 

@@ -8,7 +8,10 @@ const mockSettings: Settings = {
     jira_api_version: '3',
     jira_api_token: 'token',
     mongo_uri: 'mongodb://localhost:27017',
-    mongo_db: 'testdb'
+    mongo_db: 'testdb',
+    customer_jql_new: '',
+    customer_jql_in_progress: '',
+    customer_jql_noop: ''
 };
 
 const mockData: DashboardData = {

@@ -90,21 +90,24 @@ const DashboardControls: React.FC<DashboardControlsProps> = ({ data, nodes, setV
         <Panel position="bottom-right" style={{ display: 'flex', gap: '8px', padding: '12px', zIndex: 5 }}>
             <button 
                 onClick={() => zoomIn()}
-                style={{ width: '32px', height: '32px', borderRadius: '4px', backgroundColor: '#374151', color: '#e5e7eb', border: '1px solid #4b5563', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 'bold' }}
+                className="btn-secondary"
+                style={{ width: '32px', height: '32px', padding: 0, fontSize: '18px' }}
                 title="Zoom In"
             >
                 +
             </button>
             <button 
                 onClick={() => zoomOut()}
-                style={{ width: '32px', height: '32px', borderRadius: '4px', backgroundColor: '#374151', color: '#e5e7eb', border: '1px solid #4b5563', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 'bold' }}
+                className="btn-secondary"
+                style={{ width: '32px', height: '32px', padding: 0, fontSize: '18px' }}
                 title="Zoom Out"
             >
                 -
             </button>
             <button 
                 onClick={handleFitView}
-                style={{ padding: '0 12px', height: '32px', borderRadius: '4px', backgroundColor: '#374151', color: '#e5e7eb', border: '1px solid #4b5563', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}
+                className="btn-secondary"
+                style={{ height: '32px' }}
                 title="Reset View to Top & Active Sprint"
             >
                 Reset View
@@ -309,31 +312,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <button
                                 onClick={() => onNavigateToCustomer('new')}
-                                style={{
-                                    padding: '8px 16px',
-                                    backgroundColor: '#3b82f6',
-                                    border: '1px solid #2563eb',
-                                    color: '#ffffff',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    fontSize: '14px',
-                                    fontWeight: 'bold'
-                                }}
+                                className="btn-primary"
                             >
                                 + Add Customer
                             </button>
                             <button
                                 onClick={() => onNavigateToWorkItem('new')}
-                                style={{
-                                    padding: '8px 16px',
-                                    backgroundColor: '#3b82f6',
-                                    border: '1px solid #2563eb',
-                                    color: '#ffffff',
-                                    borderRadius: '4px',
-                                    cursor: 'pointer',
-                                    fontSize: '14px',
-                                    fontWeight: 'bold'
-                                }}
+                                className="btn-primary"
                             >
                                 + Add Work Item
                             </button>
@@ -344,14 +329,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <button
                                 onClick={() => setViewState(s => ({ ...s, sprintOffset: Math.max(0, s.sprintOffset - 1) }))}
                                 disabled={viewState.sprintOffset === 0}
+                                className="btn-secondary"
                                 style={{
                                     padding: '8px 12px',
-                                    backgroundColor: viewState.sprintOffset === 0 ? '#1f2937' : '#374151',
-                                    border: '1px solid #4b5563',
-                                    color: viewState.sprintOffset === 0 ? '#6b7280' : '#e5e7eb',
-                                    borderRadius: '4px',
-                                    cursor: viewState.sprintOffset === 0 ? 'not-allowed' : 'pointer',
-                                    fontSize: '14px'
+                                    height: '37px'
                                 }}
                             >
                                 &lt;
@@ -362,14 +343,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <button
                                 onClick={() => setViewState(s => ({ ...s, sprintOffset: s.sprintOffset + 1 }))}
                                 disabled={!data || viewState.sprintOffset + 6 >= data.sprints.length}
+                                className="btn-secondary"
                                 style={{
                                     padding: '8px 12px',
-                                    backgroundColor: (!data || viewState.sprintOffset + 6 >= data.sprints.length) ? '#1f2937' : '#374151',
-                                    border: '1px solid #4b5563',
-                                    color: (!data || viewState.sprintOffset + 6 >= data.sprints.length) ? '#6b7280' : '#e5e7eb',
-                                    borderRadius: '4px',
-                                    cursor: (!data || viewState.sprintOffset + 6 >= data.sprints.length) ? 'not-allowed' : 'pointer',
-                                    fontSize: '14px'
+                                    height: '37px'
                                 }}
                             >
                                 &gt;
@@ -387,7 +364,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 placeholder="Customers..."
                                 value={viewState.customerFilter}
                                 onChange={e => setViewState((s: DashboardViewState) => ({ ...s, customerFilter: e.target.value }))}
-                                className={styles.filterInput}
                                 style={{ width: '140px' }}
                             />
                             <input
@@ -395,7 +371,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 placeholder="Work Items..."
                                 value={viewState.workItemFilter}
                                 onChange={e => setViewState((s: DashboardViewState) => ({ ...s, workItemFilter: e.target.value }))}
-                                className={styles.filterInput}
                                 style={{ width: '140px' }}
                             />
                             <input
@@ -403,7 +378,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 placeholder="Teams..."
                                 value={viewState.teamFilter}
                                 onChange={e => setViewState((s: DashboardViewState) => ({ ...s, teamFilter: e.target.value }))}
-                                className={styles.filterInput}
                                 style={{ width: '120px' }}
                             />
                             <input
@@ -411,7 +385,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 placeholder="Epics..."
                                 value={viewState.epicFilter}
                                 onChange={e => setViewState((s: DashboardViewState) => ({ ...s, epicFilter: e.target.value }))}
-                                className={styles.filterInput}
                                 style={{ width: '120px' }}
                             />
                         </div>
@@ -424,34 +397,31 @@ export const Dashboard: React.FC<DashboardProps> = ({
                             <select
                                 value={viewState.releasedFilter}
                                 onChange={e => setViewState((s: DashboardViewState) => ({ ...s, releasedFilter: e.target.value as any }))}
-                                className={styles.filterSelect}
                                 style={{ width: '150px' }}
                             >
                                 <option value="all">Release: All</option>
                                 <option value="released">Release: Yes</option>
                                 <option value="unreleased">Release: No</option>
                             </select>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#374151', padding: '0 12px', borderRadius: '6px', border: '1px solid #4b5563', height: '37px', boxSizing: 'border-box' }}>
-                                <span style={{ color: '#9ca3af', fontSize: '11px', fontWeight: 'bold' }}>MIN TCV</span>
-                                <input
-                                    type="number"
-                                    value={viewState.minTcvFilter}
-                                    onChange={e => setViewState(s => ({ ...s, minTcvFilter: e.target.value }))}
-                                    style={{ background: 'none', border: 'none', color: '#fff', fontSize: '13px', width: '60px', outline: 'none' }}
-                                    min="0"
-                                />
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#374151', padding: '0 12px', borderRadius: '6px', border: '1px solid #4b5563', height: '37px', boxSizing: 'border-box' }}>
-                                <span style={{ color: '#9ca3af', fontSize: '11px', fontWeight: 'bold' }}>MIN SCORE</span>
-                                <input
-                                    type="number"
-                                    value={viewState.minScoreFilter}
-                                    onChange={e => setViewState(s => ({ ...s, minScoreFilter: e.target.value }))}
-                                    style={{ background: 'none', border: 'none', color: '#fff', fontSize: '13px', width: '45px', outline: 'none' }}
-                                    min="0"
-                                    step="0.1"
-                                />
-                            </div>
+                            
+                            <input
+                                type="number"
+                                placeholder="Min TCV"
+                                value={viewState.minTcvFilter}
+                                onChange={e => setViewState(s => ({ ...s, minTcvFilter: e.target.value }))}
+                                style={{ width: '100px' }}
+                                min="0"
+                            />
+                            
+                            <input
+                                type="number"
+                                placeholder="Min Score"
+                                value={viewState.minScoreFilter}
+                                onChange={e => setViewState(s => ({ ...s, minScoreFilter: e.target.value }))}
+                                style={{ width: '100px' }}
+                                min="0"
+                                step="0.1"
+                            />
                         </div>
                     </div>
 

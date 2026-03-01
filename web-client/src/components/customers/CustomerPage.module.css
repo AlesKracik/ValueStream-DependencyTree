@@ -21,33 +21,6 @@
     color: #e2e8f0;
 }
 
-.backBtn {
-    background-color: #374151;
-    border: 1px solid #4b5563;
-    color: white;
-    padding: 10px 20px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 600;
-    transition: all 0.2s;
-}
-
-.backBtn:hover {
-    background-color: #4b5563;
-    border-color: #6b7280;
-}
-
-.saveBtn {
-    padding: 10px 20px;
-    border-radius: 6px;
-    color: white;
-    font-weight: 600;
-    cursor: pointer;
-    border: 1px solid;
-    transition: all 0.2s;
-}
-
 .content {
     display: flex;
     flex-direction: column;
@@ -87,20 +60,6 @@
     flex: 1;
 }
 
-.formGrid input, .formGrid select {
-    padding: 10px 14px;
-    border-radius: 6px;
-    border: 1px solid #4b5563;
-    background-color: #374151;
-    color: #f9fafb;
-    font-size: 15px;
-}
-
-.formGrid input:focus, .formGrid select:focus {
-    outline: 2px solid #3b82f6;
-    outline-offset: -1px;
-}
-
 .table {
     width: 100%;
     border-collapse: collapse;
@@ -121,47 +80,6 @@
     padding: 16px;
     border-bottom: 1px solid #374151;
     vertical-align: middle;
-}
-
-.table select {
-    padding: 8px;
-    border-radius: 4px;
-    border: 1px solid #4b5563;
-    background-color: #374151;
-    color: #fff;
-    width: 100%;
-    cursor: pointer;
-}
-
-.dangerBtn {
-    background-color: #7f1d1d;
-    color: #fca5a5;
-    border: 1px solid #991b1b;
-    padding: 6px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 13px;
-    transition: all 0.2s;
-}
-
-.dangerBtn:hover {
-    background-color: #991b1b;
-    color: #fff;
-}
-
-.primaryBtn {
-    background-color: #2563eb;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: 500;
-    transition: background-color 0.2s;
-}
-
-.primaryBtn:hover {
-    background-color: #1d4ed8;
 }
 
 .addWorkItemBox {

@@ -54,6 +54,7 @@ export interface Sprint {
   name: string;
   start_date: string;
   end_date: string;
+  quarter?: string; // e.g. "FY2026 Q1"
 }
 
 export interface Settings {
@@ -62,6 +63,11 @@ export interface Settings {
   jira_api_token?: string;
   mongo_uri?: string;
   mongo_db?: string;
+  customer_jql_new?: string;
+  customer_jql_in_progress?: string;
+  customer_jql_noop?: string;
+  fiscal_year_start_month?: number; // 1-12, default 1
+  sprint_duration_days?: number; // default 14
 }
 
 export interface DashboardParameters {

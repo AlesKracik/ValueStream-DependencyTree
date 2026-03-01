@@ -3,5 +3,10 @@
   "jira_api_version": "2",
   "jira_api_token": "",
   "mongo_uri": "mongodb://localhost:27017",
-  "mongo_db": "valueStream"
+  "mongo_db": "valueStream",
+  "customer_jql_new": "",
+  "customer_jql_in_progress": "",
+  "customer_jql_noop": "",
+  "fiscal_year_start_month": 2,
+  "sprint_duration_days": 14
 }

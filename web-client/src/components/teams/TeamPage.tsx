@@ -57,7 +57,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({
         <div className={styles.pageContainer}>
             <div className={styles.header}>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                    <button onClick={onBack} className={styles.backBtn}>← Back</button>
+                    <button onClick={onBack} className="btn-secondary">← Back</button>
                     <h1>Team: {team.name}</h1>
                 </div>
             </div>

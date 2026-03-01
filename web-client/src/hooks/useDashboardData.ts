@@ -1,6 +1,25 @@
 import { useState, useEffect } from 'react';
+import { parseISO } from 'date-fns';
 import type { DashboardData, Customer, WorkItem, Team, Epic, Settings, Sprint, DashboardEntity } from '../types/models';
 import { calculateWorkItemScores } from './scoreCalculator';
+
+const calculateQuarter = (dateStr: string, fiscalStartMonth: number) => {
+    const date = parseISO(dateStr);
+    const month = date.getMonth() + 1; // 1-12
+    const year = date.getFullYear();
+
+    // Shift month based on fiscal start
+    // e.g. if fiscal start is April (4), then April becomes month 1
+    let shiftedMonth = month - fiscalStartMonth + 1;
+    let fiscalYear = year;
+    if (shiftedMonth <= 0) {
+        shiftedMonth += 12;
+        fiscalYear -= 1;
+    }
+
+    const quarter = Math.ceil(shiftedMonth / 3);
+    return `FY${fiscalYear} Q${quarter}`;
+};
 
 const persistEntity = async (collection: string, method: 'POST' | 'DELETE', entity: any) => {
     try {
@@ -230,18 +249,34 @@ export function useDashboardData() {
         setData(prev => {
             if (!prev) return prev;
             const newSettings = { ...prev.settings, ...updates };
+            
+            let newSprints = prev.sprints;
+            // If fiscal start month changed, recompute all sprint quarters
+            if (updates.fiscal_year_start_month !== undefined && updates.fiscal_year_start_month !== prev.settings.fiscal_year_start_month) {
+                newSprints = prev.sprints.map(s => ({
+                    ...s,
+                    quarter: calculateQuarter(s.start_date, updates.fiscal_year_start_month!)
+                }));
+                // Persist all updated sprints
+                newSprints.forEach(s => persistEntity('sprints', 'POST', s));
+            }
+
             persistSettings(newSettings);
-            return { ...prev, settings: newSettings };
+            return { ...prev, settings: newSettings, sprints: newSprints };
         });
     };
 
     const addSprint = (sprint: Sprint) => {
         setData(prev => {
             if (!prev) return prev;
-            persistEntity('sprints', 'POST', sprint);
+            const newSprint = {
+                ...sprint,
+                quarter: calculateQuarter(sprint.start_date, prev.settings.fiscal_year_start_month || 1)
+            };
+            persistEntity('sprints', 'POST', newSprint);
             return {
                 ...prev,
-                sprints: [...prev.sprints, sprint].sort((a, b) => a.start_date.localeCompare(b.start_date))
+                sprints: [...prev.sprints, newSprint].sort((a, b) => a.start_date.localeCompare(b.start_date))
             };
         });
     };
@@ -250,12 +285,19 @@ export function useDashboardData() {
         setData(prev => {
             if (!prev) return prev;
             const existing = prev.sprints.find(s => s.id === id);
-            if (existing) {
-                persistEntity('sprints', 'POST', { ...existing, ...updates });
+            if (!existing) return prev;
+
+            const updatedSprint = { ...existing, ...updates };
+            // If start date changed, recompute quarter
+            if (updates.start_date && updates.start_date !== existing.start_date) {
+                updatedSprint.quarter = calculateQuarter(updates.start_date, prev.settings.fiscal_year_start_month || 1);
             }
+
+            persistEntity('sprints', 'POST', updatedSprint);
+            
             return {
                 ...prev,
-                sprints: prev.sprints.map(s => s.id === id ? { ...s, ...updates } : s).sort((a, b) => a.start_date.localeCompare(b.start_date))
+                sprints: prev.sprints.map(s => s.id === id ? updatedSprint : s).sort((a, b) => a.start_date.localeCompare(b.start_date))
             };
         });
     };

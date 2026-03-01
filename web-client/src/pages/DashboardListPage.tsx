@@ -22,7 +22,7 @@ export const DashboardListPage: React.FC<Props> = ({ data, loading }) => {
         <div className={styles.pageContainer}>
             <div className={styles.header}>
                 <h1>Dashboards</h1>
-                <button onClick={() => navigate('/dashboard/new')} className={styles.createBtn}>+ New Dashboard</button>
+                <button onClick={() => navigate('/dashboard/new')} className="btn-primary">+ New Dashboard</button>
             </div>
             <div className={styles.controls}>
                 <input 
@@ -43,7 +43,7 @@ export const DashboardListPage: React.FC<Props> = ({ data, loading }) => {
                             </div>
                         </div>
                         <button 
-                            className={styles.createBtn} 
+                            className="btn-primary" 
                             onClick={(e) => {
                                 e.stopPropagation();
                                 navigate(`/dashboard/edit/${d.id}`);

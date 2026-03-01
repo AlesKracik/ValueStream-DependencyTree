@@ -32,6 +32,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<string>("");
 
+  const [activeTab, setActiveTab] = useState<"mongo" | "jira" | "general">("jira");
+
   useEffect(() => {
     if (settings) {
       setFormData({
@@ -40,6 +42,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         jira_api_token: settings.jira_api_token || "",
         mongo_uri: settings.mongo_uri || "",
         mongo_db: settings.mongo_db || "",
+        customer_jql_new: settings.customer_jql_new || "",
+        customer_jql_in_progress: settings.customer_jql_in_progress || "",
+        customer_jql_noop: settings.customer_jql_noop || "",
+        fiscal_year_start_month: settings.fiscal_year_start_month || 1,
+        sprint_duration_days: settings.sprint_duration_days || 14,
       });
     }
   }, [settings]);
@@ -356,6 +363,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       jira_api_token: formData.jira_api_token,
       mongo_uri: formData.mongo_uri,
       mongo_db: formData.mongo_db,
+      customer_jql_new: formData.customer_jql_new,
+      customer_jql_in_progress: formData.customer_jql_in_progress,
+      customer_jql_noop: formData.customer_jql_noop,
+      fiscal_year_start_month: formData.fiscal_year_start_month,
+      sprint_duration_days: formData.sprint_duration_days,
     });
     onClose();
   };
@@ -366,13 +378,66 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <form onSubmit={handleSubmit} style={styles.formContainer}>
           <h2 style={styles.title}>Global Settings</h2>
 
-          <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#e5e7eb", borderBottom: "1px solid #374151", paddingBottom: "4px" }}>
-            Jira Integration
-          </h3>
-          <label style={styles.label}>
-            Jira Base URL:
+          <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #374151', marginBottom: '16px' }}>
+            <button
+              type="button"
+              onClick={() => setActiveTab("mongo")}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '8px 12px',
+                color: activeTab === "mongo" ? '#60a5fa' : '#9ca3af',
+                borderBottom: activeTab === "mongo" ? '2px solid #60a5fa' : '2px solid transparent',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: activeTab === "mongo" ? 'bold' : 'normal',
+              }}
+            >
+              Mongo
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("jira")}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '8px 12px',
+                color: activeTab === "jira" ? '#60a5fa' : '#9ca3af',
+                borderBottom: activeTab === "jira" ? '2px solid #60a5fa' : '2px solid transparent',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: activeTab === "jira" ? 'bold' : 'normal',
+              }}
+            >
+              Jira
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("general")}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '8px 12px',
+                color: activeTab === "general" ? '#60a5fa' : '#9ca3af',
+                borderBottom: activeTab === "general" ? '2px solid #60a5fa' : '2px solid transparent',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: activeTab === "general" ? 'bold' : 'normal',
+              }}
+            >
+              General
+            </button>
+          </div>
+
+          {activeTab === "jira" && (
+            <>
+              <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#e5e7eb", borderBottom: "1px solid #374151", paddingBottom: "4px" }}>
+                Jira Integration
+              </h3>
+              <label style={styles.label}>
+                Jira Base URL:
             <input
-              style={styles.input}
+              
               type="url"
               placeholder="https://yourdomain.atlassian.net"
               value={formData.jira_base_url || ""}
@@ -386,7 +451,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <label style={styles.label}>
             Jira API Version:
             <select
-              style={styles.input}
+              
               value={formData.jira_api_version || "3"}
               onChange={(e) =>
                 setFormData({
@@ -403,7 +468,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <label style={styles.label}>
             Jira Personal Access Token (PAT):
             <input
-              style={styles.input}
+              
               type="password"
               placeholder="Your Jira PAT"
               value={formData.jira_api_token || ""}
@@ -416,8 +481,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
             <button
               type="button"
+              className="btn-primary"
               onClick={handleTestConnection}
-              style={styles.testBtn}
               disabled={
                 isTesting ||
                 isSyncing ||
@@ -427,14 +492,50 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             >
               {isTesting ? "Testing..." : "Test Connection"}
             </button>
+          </div>
+
+          <hr
+            style={{ borderColor: "#374151", width: "100%", margin: "16px 0 8px 0" }}
+          />
+          <h3
+            style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#e5e7eb" }}
+          >
+            Import & Sync Epics
+          </h3>
+          <label style={styles.label}>
+            Import JQL Query:
+            <input
+              
+              type="text"
+              placeholder="project = PROJ AND issuetype = Epic"
+              value={importJql}
+              onChange={(e) => setImportJql(e.target.value)}
+            />
+          </label>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
             <button
               type="button"
+              className="btn-primary"
+              onClick={handleImportFromJira}
+              style={{
+                alignSelf: "flex-start",
+              }}
+              disabled={
+                isTesting ||
+                isSyncing ||
+                isImporting ||
+                (!formData.jira_base_url && !formData.jira_api_token) ||
+                !importJql.trim()
+              }
+            >
+              {isImporting ? importProgress : "Import from Jira"}
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
               onClick={handleSyncAllFromJira}
               style={{
-                ...styles.testBtn,
-                backgroundColor: "#3b82f6",
-                color: "#fff",
-                borderColor: "#2563eb",
+                alignSelf: "flex-start",
               }}
               disabled={
                 isTesting ||
@@ -450,50 +551,103 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <hr
             style={{ borderColor: "#374151", width: "100%", margin: "16px 0 8px 0" }}
           />
-          <h3
-            style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#e5e7eb" }}
-          >
-            Import Epics via JQL
+          <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#e5e7eb" }}>
+            Customer Issue Tracking
           </h3>
           <label style={styles.label}>
-            JQL Query:
+            New JQL:
             <input
-              style={styles.input}
+              
               type="text"
-              placeholder="project = PROJ AND issuetype = Epic"
-              value={importJql}
-              onChange={(e) => setImportJql(e.target.value)}
+              placeholder="status = 'New'"
+              value={formData.customer_jql_new || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, customer_jql_new: e.target.value })
+              }
             />
           </label>
-          <button
-            type="button"
-            onClick={handleImportFromJira}
-            style={{
-              ...styles.testBtn,
-              backgroundColor: "#10b981",
-              color: "#fff",
-              borderColor: "#059669",
-              alignSelf: "flex-start",
-              marginTop: "4px",
-            }}
-            disabled={
-              isTesting ||
-              isSyncing ||
-              isImporting ||
-              (!formData.jira_base_url && !formData.jira_api_token) ||
-              !importJql.trim()
-            }
-          >
-            {isImporting ? importProgress : "Import from Jira"}
-          </button>
+          <label style={styles.label}>
+            In-Progress JQL:
+            <input
+              
+              type="text"
+              placeholder="status = 'In Progress'"
+              value={formData.customer_jql_in_progress || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, customer_jql_in_progress: e.target.value })
+              }
+            />
+          </label>
+          <label style={styles.label}>
+            Noop JQL:
+            <input
+              
+              type="text"
+              placeholder="status = 'Closed'"
+              value={formData.customer_jql_noop || ""}
+              onChange={(e) =>
+                setFormData({ ...formData, customer_jql_noop: e.target.value })
+              }
+            />
+          </label>
+          </>
+          )}
 
+          {activeTab === "general" && (
+            <>
+              <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#e5e7eb", borderBottom: "1px solid #374151", paddingBottom: "4px" }}>
+                Time
+              </h3>
+              <label style={styles.label}>
+                Fiscal Year Start Month:
+                <select
+                  value={formData.fiscal_year_start_month || 1}
+                  onChange={(e) =>
+                    setFormData({ ...formData, fiscal_year_start_month: parseInt(e.target.value) })
+                  }
+                >
+                  <option value={1}>January (Calendar Year)</option>
+                  <option value={2}>February</option>
+                  <option value={3}>March</option>
+                  <option value={4}>April</option>
+                  <option value={5}>May</option>
+                  <option value={6}>June</option>
+                  <option value={7}>July</option>
+                  <option value={8}>August</option>
+                  <option value={9}>September</option>
+                  <option value={10}>October</option>
+                  <option value={11}>November</option>
+                  <option value={12}>December</option>
+                </select>
+              </label>
+
+              <label style={styles.label}>
+                Sprint Duration (Days):
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={formData.sprint_duration_days || 14}
+                  onChange={(e) =>
+                    setFormData({ ...formData, sprint_duration_days: parseInt(e.target.value) })
+                  }
+                />
+                <span style={{ fontSize: "12px", color: "#9ca3af", marginTop: "2px" }}>
+                  Defines the default end date when creating new sprints. Does not affect existing sprints.
+                </span>
+              </label>
+            </>
+          )}
+
+          {activeTab === "mongo" && (
+            <>
           <h3 style={{ margin: "24px 0 4px 0", fontSize: "15px", color: "#e5e7eb", borderBottom: "1px solid #374151", paddingBottom: "4px" }}>
             MongoDB Persistence
           </h3>
           <label style={styles.label}>
             MongoDB URI (Local SCRAM):
             <input
-              style={styles.input}
+              
               type="text"
               placeholder="mongodb://username:password@localhost:27017"
               value={formData.mongo_uri || ""}
@@ -506,7 +660,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <label style={styles.label}>
             MongoDB Database Name:
             <input
-              style={styles.input}
+              
               type="text"
               placeholder="valuestream"
               value={formData.mongo_db || ""}
@@ -557,8 +711,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     setIsTesting(false);
                 }
             }}
+            className="btn-primary"
             style={{
-                ...styles.testBtn,
                 alignSelf: "flex-start",
                 marginTop: "4px"
             }}
@@ -566,6 +720,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           >
             {isTesting ? "Testing Mongo..." : "Test Mongo Connection"}
           </button>
+          </>
+          )}
 
           {testResult && (
             <div
@@ -593,10 +749,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               borderTop: "1px solid #374151",
             }}
           >
-            <button type="button" onClick={onClose} style={styles.cancelBtn}>
+            <button type="button" onClick={onClose} className="btn-secondary">
               Cancel
             </button>
-            <button type="submit" style={styles.saveBtn}>
+            <button type="submit" className="btn-primary">
               Save Settings
             </button>
           </div>
@@ -648,15 +804,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: "14px",
     color: "#d1d5db",
   },
-  input: {
-    padding: "8px 12px",
-    borderRadius: "4px",
-    border: "1px solid #4b5563",
-    backgroundColor: "#111827",
-    color: "#f9fafb",
-    fontSize: "14px",
-  },
-  buttonGroup: {
+  mainActionsGroup: {
     display: "flex",
     flexDirection: "column",
     gap: "12px",
@@ -668,33 +816,5 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     justifyContent: "flex-end",
     gap: "12px",
-  },
-  testBtn: {
-    padding: "8px 16px",
-    backgroundColor: "#374151",
-    border: "1px solid #4b5563",
-    color: "#f9fafb",
-    borderRadius: "4px",
-    cursor: "pointer",
-    alignSelf: "stretch",
-    fontWeight: 500,
-    transition: "background-color 0.2s",
-  },
-  cancelBtn: {
-    padding: "8px 16px",
-    backgroundColor: "transparent",
-    border: "1px solid #4b5563",
-    color: "#d1d5db",
-    borderRadius: "4px",
-    cursor: "pointer",
-  },
-  saveBtn: {
-    padding: "8px 16px",
-    backgroundColor: "#8b5cf6",
-    border: "none",
-    color: "white",
-    borderRadius: "4px",
-    cursor: "pointer",
-    fontWeight: 500,
   },
 };
