@@ -106,9 +106,8 @@ export function useGraphLayout(
         const validCustomers = new Set(
             data.customers.filter(c => {
                 const transientTextMatch = !cf || c.name.toLowerCase().includes(cf);
-                // Trust server-filtered data for baseParams, but still apply transient filters for live-typing feel
-                // if we are doing hybrid. But here, viewState already includes the transient filter.
-                return transientTextMatch;
+                const baseTextMatch = !bcf || c.name.toLowerCase().includes(bcf);
+                return transientTextMatch && baseTextMatch;
             }).map(c => c.id)
         );
 
@@ -116,7 +115,8 @@ export function useGraphLayout(
         const validWorkItems = new Set(
             data.workItems.filter(f => {
                 const transientTextMatch = !ff || f.name.toLowerCase().includes(ff);
-                if (!transientTextMatch) return false;
+                const baseTextMatch = !bff || f.name.toLowerCase().includes(bff);
+                if (!transientTextMatch || !baseTextMatch) return false;
 
                 if (!passRelease(!!f.released_in_sprint_id)) return false;
 
@@ -130,10 +130,12 @@ export function useGraphLayout(
             data.epics.filter(e => {
                 const team = data.teams.find(t => t.id === e.team_id);
                 const transientTeamMatch = !tf || (team && team.name.toLowerCase().includes(tf));
+                const baseTeamMatch = !btf || (team && team.name.toLowerCase().includes(btf));
                 
                 const workItem = data.workItems.find(f => f.id === e.work_item_id);
                 const epicName = e.name || workItem?.name || 'Task';
                 const transientEpicMatch = !ef || epicName.toLowerCase().includes(ef);
+                const baseEpicMatch = !bef || epicName.toLowerCase().includes(bef);
 
                 // Sprint Range Filter
                 let rangeMatch = true;
@@ -156,7 +158,7 @@ export function useGraphLayout(
                     }
                 }
 
-                return transientTeamMatch && transientEpicMatch && rangeMatch;
+                return transientTeamMatch && baseTeamMatch && transientEpicMatch && baseEpicMatch && rangeMatch;
             }).map(e => e.id)
         );
 

@@ -52,6 +52,24 @@ describe('useDashboardData', () => {
         });
     });
 
+    it('passes all possible filter parameters to the API', async () => {
+        const filters = { 
+            customerFilter: 'cust', 
+            workItemFilter: 'work', 
+            teamFilter: 'team', 
+            epicFilter: 'epic',
+            releasedFilter: 'released' as const,
+            minTcvFilter: '500',
+            minScoreFilter: '10'
+        };
+        renderHook(() => useDashboardData('dash789', filters));
+        
+        await waitFor(() => {
+            const expectedUrl = '/api/loadData?dashboardId=dash789&customerFilter=cust&workItemFilter=work&teamFilter=team&epicFilter=epic&releasedFilter=released&minTcvFilter=500&minScoreFilter=10';
+            expect(fetch).toHaveBeenCalledWith(expect.stringContaining(expectedUrl));
+        });
+    });
+
     it('adds a customer', async () => {
         const { result } = renderHook(() => useDashboardData());
         await waitFor(() => expect(result.current.loading).toBe(false));
