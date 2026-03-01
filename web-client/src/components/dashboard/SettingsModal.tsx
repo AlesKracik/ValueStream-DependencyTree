@@ -31,7 +31,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<string>("");
 
-  const [activeTab, setActiveTab] = useState<"mongo" | "jira" | "general">("jira");
+  const [activeTab, setActiveTab] = useState<"general" | "mongo" | "jira">("general");
 
   useEffect(() => {
     if (settings) {
@@ -390,6 +390,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #374151', marginBottom: '16px' }}>
             <button
               type="button"
+              onClick={() => { setActiveTab("general"); setMongoTestResult(null); setJiraTestResult(null); setImportSyncResult(null); }}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '8px 12px',
+                color: activeTab === "general" ? '#60a5fa' : '#9ca3af',
+                borderBottom: activeTab === "general" ? '2px solid #60a5fa' : '2px solid transparent',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: activeTab === "general" ? 'bold' : 'normal',
+              }}
+            >
+              General
+            </button>
+            <button
+              type="button"
               onClick={() => { setActiveTab("mongo"); setMongoTestResult(null); setJiraTestResult(null); setImportSyncResult(null); }}
               style={{
                 background: 'none',
@@ -419,22 +435,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               }}
             >
               Jira
-            </button>
-            <button
-              type="button"
-              onClick={() => { setActiveTab("general"); setMongoTestResult(null); setJiraTestResult(null); setImportSyncResult(null); }}
-              style={{
-                background: 'none',
-                border: 'none',
-                padding: '8px 12px',
-                color: activeTab === "general" ? '#60a5fa' : '#9ca3af',
-                borderBottom: activeTab === "general" ? '2px solid #60a5fa' : '2px solid transparent',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: activeTab === "general" ? 'bold' : 'normal',
-              }}
-            >
-              General
             </button>
           </div>
 

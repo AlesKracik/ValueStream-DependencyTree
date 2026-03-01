@@ -28,7 +28,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<string>("");
 
-  const [activeTab, setActiveTab] = useState<"mongo" | "jira" | "general">("mongo");
+  const [activeTab, setActiveTab] = useState<"general" | "mongo" | "jira">("general");
 
   useEffect(() => {
     if (settings) {
@@ -333,6 +333,21 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
       <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #374151', marginBottom: '24px' }}>
         <button
+          onClick={() => { setActiveTab("general"); setMongoTestResult(null); setJiraTestResult(null); setImportSyncResult(null); }}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: '8px 16px',
+            color: activeTab === "general" ? '#60a5fa' : '#9ca3af',
+            borderBottom: activeTab === "general" ? '2px solid #60a5fa' : '2px solid transparent',
+            cursor: 'pointer',
+            fontSize: '15px',
+            fontWeight: activeTab === "general" ? 'bold' : 'normal',
+          }}
+        >
+          General Project
+        </button>
+        <button
           onClick={() => { setActiveTab("mongo"); setMongoTestResult(null); setJiraTestResult(null); setImportSyncResult(null); }}
           style={{
             background: 'none',
@@ -361,21 +376,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           }}
         >
           Jira Integration
-        </button>
-        <button
-          onClick={() => { setActiveTab("general"); setMongoTestResult(null); setJiraTestResult(null); setImportSyncResult(null); }}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: '8px 16px',
-            color: activeTab === "general" ? '#60a5fa' : '#9ca3af',
-            borderBottom: activeTab === "general" ? '2px solid #60a5fa' : '2px solid transparent',
-            cursor: 'pointer',
-            fontSize: '15px',
-            fontWeight: activeTab === "general" ? 'bold' : 'normal',
-          }}
-        >
-          General Project
         </button>
       </div>
 
