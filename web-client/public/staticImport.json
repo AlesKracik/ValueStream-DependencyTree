@@ -16,6 +16,7 @@
       "id": "c1",
       "name": "Customer Alpha",
       "existing_tcv": 15000,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 42000,
       "tcv_history": [
         { "id": "h1_c1", "value": 10000, "valid_from": "2025-01-01" }
@@ -25,72 +26,84 @@
       "id": "c2",
       "name": "Customer Beta",
       "existing_tcv": 300000,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 850000
     },
     {
       "id": "c3",
       "name": "Customer Gamma",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 48000
     },
     {
       "id": "c4",
       "name": "Customer Delta",
       "existing_tcv": 50000,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 175000
     },
     {
       "id": "c5",
       "name": "Customer Epsilon",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 240000
     },
     {
       "id": "c6",
       "name": "Customer Zeta",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 380000
     },
     {
       "id": "c7",
       "name": "Customer Eta",
       "existing_tcv": 120000,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 155000
     },
     {
       "id": "c8",
       "name": "Customer Theta",
       "existing_tcv": 450000,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 920000
     },
     {
       "id": "c9",
       "name": "Customer Iota",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 75000
     },
     {
       "id": "c10",
       "name": "Customer Kappa",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 70000
     },
     {
       "id": "c11",
       "name": "Customer Lambda",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 450000
     },
     {
       "id": "c12",
       "name": "Customer Mu",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 520000
     },
     {
       "id": "c13",
       "name": "Customer Nur",
       "existing_tcv": 2000000,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 5100000,
       "tcv_history": [
         { "id": "h1_c13", "value": 1500000, "valid_from": "2025-06-01" },
@@ -101,120 +114,140 @@
       "id": "c15",
       "name": "Customer Omicron",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 125000
     },
     {
       "id": "c16",
       "name": "Customer Pi",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 220000
     },
     {
       "id": "c17",
       "name": "Customer Rho",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 130000
     },
     {
       "id": "c18",
       "name": "Customer Sigma",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 72000
     },
     {
       "id": "c19",
       "name": "Customer Tau",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 340000
     },
     {
       "id": "c20",
       "name": "Customer Upsilon",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 160000
     },
     {
       "id": "c21",
       "name": "Customer Phi",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 1250000
     },
     {
       "id": "c22",
       "name": "Customer Chi",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 52000
     },
     {
       "id": "c23",
       "name": "Customer Psi",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 47000
     },
     {
       "id": "c24",
       "name": "Customer Omega",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 44000
     },
     {
       "id": "c25",
       "name": "Customer Prime",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 65000
     },
     {
       "id": "c26",
       "name": "Customer Nexus",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 145000
     },
     {
       "id": "c27",
       "name": "Customer Vertex",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 260000
     },
     {
       "id": "c28",
       "name": "Customer Apex",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 0
     },
     {
       "id": "c29",
       "name": "Customer Zenith",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 550000
     },
     {
       "id": "c30",
       "name": "Customer Horizon",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 0
     },
     {
       "id": "c31",
       "name": "Customer Meridian",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 22000
     },
     {
       "id": "c1771841994567",
       "name": "Customer Quantum",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 175000
     },
     {
       "id": "c1771842267185",
       "name": "Customer Test",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 150
     },
     {
       "id": "c1772100453672",
       "name": "Customer Stellar",
       "existing_tcv": 0,
+      "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 48000
     }
   ],

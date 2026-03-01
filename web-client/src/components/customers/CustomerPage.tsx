@@ -28,12 +28,22 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     addCustomer,
     updateWorkItem
 }) => {
-    const { showConfirm } = useDashboardContext();
-        const isNew = customerId === 'new';
+    const { showConfirm, showAlert } = useDashboardContext();
+    const isNew = customerId === 'new';
 
     // Draft states for new customer creation
-    const [newCustDraft, setNewCustDraft] = useState<Partial<Customer>>({ name: 'New Customer', existing_tcv: 0, potential_tcv: 0 });
+    const [newCustDraft, setNewCustDraft] = useState<Partial<Customer>>({ 
+        name: 'New Customer', 
+        existing_tcv: 0, 
+        existing_tcv_valid_from: new Date().toISOString().split('T')[0],
+        potential_tcv: 0 
+    });
     const [newCustomerWorkItems, setNewCustomerWorkItems] = useState<{ workItemId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have' }[]>([]);
+
+    // State for the "Update Actual TCV" form
+    const [isUpdatingTcv, setIsUpdatingTcv] = useState(false);
+    const [newTcvValue, setNewTcvValue] = useState<number>(0);
+    const [newTcvDate, setNewTcvDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
     if (loading) return <div className={styles.pageContainer}>Loading customer details...</div>;
     if (error) return <div className={styles.pageContainer}>Error: {error.message}</div>;
@@ -47,13 +57,14 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         : data.workItems.filter(f => f.customer_targets.some(ct => ct.customer_id === customerId));
 
     const handleSave = async () => {
-                try {
+        try {
             if (isNew) {
                 const newId = `c${Date.now()}`;
                 const newCust: Customer = {
                     id: newId,
                     name: newCustDraft.name || 'New Customer',
                     existing_tcv: newCustDraft.existing_tcv || 0,
+                    existing_tcv_valid_from: newCustDraft.existing_tcv_valid_from,
                     potential_tcv: newCustDraft.potential_tcv || 0
                 };
 
@@ -76,10 +87,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                     return f;
                 });
 
-                // Actually add the customer using the hook (which also persists)
                 addCustomer(newCust);
-                
-                // Update affected work items
                 updatedWorkItems.forEach((f, i) => {
                     const oldF = data.workItems[i];
                     if (oldF.customer_targets.length !== f.customer_targets.length) {
@@ -87,28 +95,50 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                     }
                 });
 
-                                setTimeout(() => {
-                                        onBack();
-                }, 1000);
-            } else {
-                                            }
+                setTimeout(() => { onBack(); }, 1000);
+            }
         } catch (err) {
             console.error('Save failed', err);
-                                }
+        }
+    };
+
+    const handleArchiveAndSetNewTcv = async () => {
+        if (!newTcvDate || isNaN(newTcvValue)) {
+            await showAlert('Invalid Input', 'Please provide a valid date and value.');
+            return;
+        }
+
+        const confirmed = await showConfirm('Update Actual TCV', `This will move the current TCV ($${customer.existing_tcv.toLocaleString()}) to history and set the new actual TCV to $${newTcvValue.toLocaleString()} starting from ${newTcvDate}. Continue?`);
+        if (!confirmed) return;
+
+        // 1. Create history entry from current "Actual"
+        const historyEntry: TcvHistoryEntry = {
+            id: `h${Date.now()}`,
+            value: customer.existing_tcv,
+            valid_from: customer.existing_tcv_valid_from || '2000-01-01'
+        };
+
+        // 2. Update customer with new values and updated history
+        const newHistory = [...(customer.tcv_history || []), historyEntry].sort((a, b) => b.valid_from.localeCompare(a.valid_from));
+        
+        updateCustomer(customer.id, {
+            existing_tcv: newTcvValue,
+            existing_tcv_valid_from: newTcvDate,
+            tcv_history: newHistory
+        });
+
+        setIsUpdatingTcv(false);
     };
 
     const handleDelete = async () => {
         const confirmed = await showConfirm('Delete Customer', `Are you sure you want to delete ${customer.name}? This will remove all their work item impact.`);
         if (!confirmed) return;
-                try {
+        try {
             deleteCustomer(customerId);
-            // Also need to scrub workItems
-            
-            
             onBack();
         } catch (err) {
             console.error('Delete failed', err);
-                    }
+        }
     };
 
     return (
@@ -122,19 +152,15 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                 </div>
                 <div style={{ display: 'flex', gap: '16px' }}>
                     {!isNew && (
-                        <button 
-                            className="btn-danger" 
-                            onClick={handleDelete}
-                        >
+                        <button className="btn-danger" onClick={handleDelete}>
                             Delete Customer
                         </button>
                     )}
-                    {isNew ? (<button 
-                        className="btn-primary" 
-                        onClick={handleSave}
-                    >
-                        Create
-                    </button>) : null}
+                    {isNew ? (
+                        <button className="btn-primary" onClick={handleSave}>
+                            Create
+                        </button>
+                    ) : null}
                 </div>
             </div>
 
@@ -153,19 +179,34 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                 }}
                             />
                         </label>
-                        <label>
-                            Actual Existing TCV ($):
-                            <input 
-                                type="number" 
-                                min="0" 
-                                value={isNew ? newCustDraft.existing_tcv : customer.existing_tcv} 
-                                onChange={e => {
-                                    const val = parseInt(e.target.value) || 0;
-                                    if (isNew) setNewCustDraft(prev => ({ ...prev, existing_tcv: val }));
-                                    else updateCustomer(customer.id, { existing_tcv: val });
-                                }}
-                            />
-                        </label>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <label>
+                                Actual Existing TCV ($):
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <input 
+                                        type="number" 
+                                        readOnly={!isNew}
+                                        value={isNew ? newCustDraft.existing_tcv : customer.existing_tcv} 
+                                        onChange={e => {
+                                            const val = parseInt(e.target.value) || 0;
+                                            if (isNew) setNewCustDraft(prev => ({ ...prev, existing_tcv: val }));
+                                        }}
+                                        style={!isNew ? { backgroundColor: '#1e293b', border: 'none' } : {}}
+                                    />
+                                    {!isNew && !isUpdatingTcv && (
+                                        <button className="btn-primary" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={() => {
+                                            setNewTcvValue(customer.existing_tcv);
+                                            setIsUpdatingTcv(true);
+                                        }}>Update TCV</button>
+                                    )}
+                                </div>
+                            </label>
+                            {customer.existing_tcv_valid_from && (
+                                <span style={{ fontSize: '12px', color: '#94a3b8' }}>Valid from: {customer.existing_tcv_valid_from}</span>
+                            )}
+                        </div>
+
                         <label>
                             Potential TCV ($):
                             <input 
@@ -179,7 +220,38 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                 }}
                             />
                         </label>
+
+                        {isNew && (
+                            <label>
+                                Valid From (Initial):
+                                <input 
+                                    type="date" 
+                                    value={newCustDraft.existing_tcv_valid_from} 
+                                    onChange={e => setNewCustDraft(prev => ({ ...prev, existing_tcv_valid_from: e.target.value }))}
+                                />
+                            </label>
+                        )}
                     </div>
+
+                    {isUpdatingTcv && (
+                        <div style={{ marginTop: '24px', padding: '16px', border: '1px solid #3b82f6', borderRadius: '8px', backgroundColor: 'rgba(59, 130, 246, 0.05)' }}>
+                            <h3 style={{ marginTop: 0, fontSize: '16px', color: '#60a5fa' }}>Archive Current and Set New Actual TCV</h3>
+                            <div className={styles.formGrid} style={{ gridTemplateColumns: '1fr 1fr auto', alignItems: 'flex-end', marginTop: '12px' }}>
+                                <label>
+                                    New Valid From Date:
+                                    <input type="date" value={newTcvDate} onChange={e => setNewTcvDate(e.target.value)} />
+                                </label>
+                                <label>
+                                    New TCV Value ($):
+                                    <input type="number" value={newTcvValue} onChange={e => setNewTcvValue(parseInt(e.target.value) || 0)} min="0" />
+                                </label>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <button className="btn-secondary" onClick={() => setIsUpdatingTcv(false)}>Cancel</button>
+                                    <button className="btn-primary" onClick={handleArchiveAndSetNewTcv}>Confirm Update</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </section>
 
                 {!isNew && (
@@ -213,41 +285,11 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                 ))}
                                 {(!customer.tcv_history || customer.tcv_history.length === 0) && (
                                     <tr>
-                                        <td colSpan={3} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No historical entries.</td>
+                                        <td colSpan={3} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No historical entries. Update the Actual TCV to populate history.</td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
-                        <div className={styles.formGrid} style={{ marginTop: '16px', gridTemplateColumns: '1fr 1fr auto', alignItems: 'flex-end' }}>
-                            <label>
-                                Valid From:
-                                <input type="date" id="new-history-date" />
-                            </label>
-                            <label>
-                                Value ($):
-                                <input type="number" id="new-history-value" min="0" />
-                            </label>
-                            <button 
-                                className="btn-primary"
-                                onClick={() => {
-                                    const dateInput = document.getElementById('new-history-date') as HTMLInputElement;
-                                    const valueInput = document.getElementById('new-history-value') as HTMLInputElement;
-                                    if (dateInput.value && valueInput.value) {
-                                        const newEntry = {
-                                            id: `h${Date.now()}`,
-                                            valid_from: dateInput.value,
-                                            value: parseInt(valueInput.value)
-                                        };
-                                        const newHistory = [...(customer.tcv_history || []), newEntry].sort((a, b) => b.valid_from.localeCompare(a.valid_from));
-                                        updateCustomer(customer.id, { tcv_history: newHistory });
-                                        dateInput.value = '';
-                                        valueInput.value = '';
-                                    }
-                                }}
-                            >
-                                Add Entry
-                            </button>
-                        </div>
                     </section>
                 )}
 

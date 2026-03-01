@@ -8,6 +8,7 @@ export interface Customer {
   id: string;
   name: string;
   existing_tcv: number;
+  existing_tcv_valid_from?: string; // ISO date
   potential_tcv: number;
   tcv_history?: TcvHistoryEntry[];
 }
