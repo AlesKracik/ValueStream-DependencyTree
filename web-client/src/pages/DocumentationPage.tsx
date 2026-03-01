@@ -16,10 +16,7 @@ export const DocumentationPage: React.FC = () => {
     }, []);
 
     return (
-        <div className={styles.pageContainer} style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <div className={styles.header}>
-                <h1>Documentation</h1>
-            </div>
+        <div className={styles.pageContainer} style={{ maxWidth: '1000px', margin: '0 auto' }}>
             <div style={{ lineHeight: '1.6', color: '#e5e7eb', fontSize: '15px' }}>
                 <ReactMarkdown>{content}</ReactMarkdown>
             </div>
