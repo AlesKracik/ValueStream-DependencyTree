@@ -7,9 +7,9 @@
 * security:
   * Information Disclosure (FIXED): `settings.json` has been moved out of the `public/` folder to the project root and added to `.gitignore`. It is no longer accessible via static web requests.
   * Lack of Authentication and Authorization (FIXED): A middleware layer has been added to the Vite dev server plugin that requires a Bearer token matching the `ADMIN_SECRET` environment variable. The frontend has been updated with a `LoginPage` and `authorizedFetch` utility to handle the authentication flow.
-  * Server-Side Request Forgery (SSRF) (FIXED): Jira API URLs are now validated against a whitelist of public protocols and checked to ensure they do not point to internal or private IP ranges.
+  * Server-Side Request Forgery (SSRF) (FIXED): Jira API URLs and MongoDB URIs are now validated against a whitelist of public protocols and checked to ensure they do not point to internal or private IP ranges (while allowing localhost for local development).
   * NoSQL Injection / ReDoS (FIXED): All user-provided filter strings are now escaped before being used in MongoDB `$regex` queries.
-  * Secrets in Frontend Storage: Sensitive API keys and tokens are loaded into the React application's state and sent back-and-forth in plaintext via API payloads, exposing them to anyone with browser developer tools access.
+  * Secrets in Frontend Storage (FIXED): Sensitive API keys and tokens are now masked with `********` when sent to the frontend. The backend securely merges these back with actual values when settings are updated.
   * Mass Assignment & Arbitrary Collection Access (FIXED): The `/api/entity/` endpoint now uses a strict whitelist of allowed collections and ensures IDs are cast to strings.
   * Stored Cross-Site Scripting (XSS) (FIXED): The `jira_base_url` is now sanitized before being used in anchor tags to prevent `javascript:` and other malicious URI schemes.
   * Weak PRNG for Entity IDs (FIXED): The application now uses `crypto.randomUUID()` (or cryptographically strong random values) for all entity ID generation.

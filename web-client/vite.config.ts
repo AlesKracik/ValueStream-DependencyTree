@@ -39,6 +39,27 @@ const MockDataPersistencePlugin = (): Plugin => ({
         return res.end();
       }
 
+      const SENSITIVE_FIELDS = ['jira_api_token', 'mongo_uri', 'mongo_aws_access_key', 'mongo_aws_secret_key', 'mongo_aws_session_token', 'mongo_oidc_token'];
+      const MASK = '********';
+
+      function maskSettings(settings: any) {
+        const masked = { ...settings };
+        SENSITIVE_FIELDS.forEach(field => {
+          if (masked[field]) masked[field] = MASK;
+        });
+        return masked;
+      }
+
+      function unmaskSettings(newData: any, existingSettings: any) {
+        const unmasked = { ...newData };
+        SENSITIVE_FIELDS.forEach(field => {
+          if (unmasked[field] === MASK) {
+            unmasked[field] = existingSettings[field];
+          }
+        });
+        return unmasked;
+      }
+
       // Simple Authentication Check
       const adminSecret = process.env.ADMIN_SECRET;
       if (req.url === '/api/auth/status' && req.method === 'GET') {
@@ -244,7 +265,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
           const mongoUri = settings.mongo_uri;
 
           let dbData: any = {
-            settings,
+            settings: maskSettings(settings),
             customers: [],
             workItems: [],
             teams: [],
@@ -396,7 +417,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
              const fullW = applyScores(localData.workItems || [], localData.workItems || [], localData.customers || []);
              dbData = { 
                 ...localData, 
-                settings, 
+                settings: maskSettings(settings), 
                 workItems: fullW, 
                 metrics: { maxScore: Math.max(...fullW.map(f => f.score || 0), 1), maxRoi: 1 } 
              };
@@ -414,9 +435,16 @@ const MockDataPersistencePlugin = (): Plugin => ({
       } else if (req.url === '/api/settings' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const data = JSON.parse(body);
+          const newData = JSON.parse(body);
           const settingsPath = path.resolve(__dirname, 'settings.json');
-          fs.writeFileSync(settingsPath, JSON.stringify(data, null, 2));
+          
+          let existingSettings: any = {};
+          if (fs.existsSync(settingsPath)) {
+            existingSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+          }
+          
+          const finalSettings = unmaskSettings(newData, existingSettings);
+          fs.writeFileSync(settingsPath, JSON.stringify(finalSettings, null, 2));
 
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
@@ -514,7 +542,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
           res.end(JSON.stringify({ 
             success: true, 
             data: {
-                settings,
+                settings: maskSettings(settings),
                 customers: stripId(customers),
                 workItems: stripId(workItems),
                 teams: stripId(teams),
