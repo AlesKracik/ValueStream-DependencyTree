@@ -8,7 +8,9 @@ if (!fs.existsSync(imageDir)) {
 
 (async () => {
   const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+  // Set deviceScaleFactor to 0.75 to scale down the output resolution to 75%
+  // while maintaining the 1400x900 viewport layout
+  const context = await browser.newContext({ viewport: { width: 1400, height: 900 }, deviceScaleFactor: 0.75 });
   const page = await context.newPage();
 
   console.log('Taking screenshot of Dashboard...');
@@ -32,5 +34,5 @@ if (!fs.existsSync(imageDir)) {
   await page.screenshot({ path: `${imageDir}/workitem-detail.png` });
 
   await browser.close();
-  console.log('All screenshots taken successfully!');
+  console.log('All screenshots taken successfully at 75% scale!');
 })();

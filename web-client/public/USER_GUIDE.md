@@ -33,7 +33,7 @@ Both Customers and Work Items feature tabbed detail pages for better organizatio
 
 #### Customer Detail Page
 
-<img src="./images/customer-detail.png" alt="Customer Detail" width="800" />
+![Customer Detail](images/customer-detail.png)
 
 - **Customer Details Section:** Displays basic info like Name, Actual TCV, and Potential TCV.
 - **Updating Actual TCV:** The "Actual Existing TCV" value is protected. To change it, click **"Update TCV"**. This triggers a lifecycle process:
@@ -45,7 +45,7 @@ Both Customers and Work Items feature tabbed detail pages for better organizatio
 
 #### Work Item Detail Page
 
-<img src="./images/workitem-detail.png" alt="Work Item Detail" width="800" />
+![Work Item Detail](images/workitem-detail.png)
 
 - **Work Item Details Section:** Edit the name, total man-day estimates, and release target.
 - **Tabs:**
