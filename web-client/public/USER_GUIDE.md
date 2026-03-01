@@ -2,7 +2,7 @@
 
 ### 1. The Interactive Dashboard
 
-<img src="./images/dashboard.png" alt="Dashboard View" width="800" />
+![Dashboard View](images/dashboard.png)
 
 The main view provides a high-level map of value flow from Customers to Teams.
 - **Column Structure:** The dashboard is organized into three primary columns: **Customers**, **Work Items**, and **Teams**, followed by the **Gantt Timeline**.
