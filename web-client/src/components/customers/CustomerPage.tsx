@@ -45,6 +45,8 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     const [newTcvValue, setNewTcvValue] = useState<number>(0);
     const [newTcvDate, setNewTcvDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
+    const [activeTab, setActiveTab] = useState<'workItems' | 'history'>('workItems');
+
     if (loading) return <div className={styles.pageContainer}>Loading customer details...</div>;
     if (error) return <div className={styles.pageContainer}>Error: {error.message}</div>;
     if (!data) return <div className={styles.pageContainer}>No data available.</div>;
@@ -254,7 +256,157 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                     )}
                 </section>
 
-                {!isNew && (
+                <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #334155', marginBottom: '24px', marginTop: '24px' }}>
+                    <button
+                        onClick={() => setActiveTab('workItems')}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: '12px 16px',
+                            color: activeTab === 'workItems' ? '#60a5fa' : '#94a3b8',
+                            borderBottom: activeTab === 'workItems' ? '2px solid #60a5fa' : '2px solid transparent',
+                            cursor: 'pointer',
+                            fontSize: '15px',
+                            fontWeight: activeTab === 'workItems' ? 'bold' : '500',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        Targeted Work Items ({targetedWorkItems.length})
+                    </button>
+                    {!isNew && (
+                        <button
+                            onClick={() => setActiveTab('history')}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                padding: '12px 16px',
+                                color: activeTab === 'history' ? '#60a5fa' : '#94a3b8',
+                                borderBottom: activeTab === 'history' ? '2px solid #60a5fa' : '2px solid transparent',
+                                cursor: 'pointer',
+                                fontSize: '15px',
+                                fontWeight: activeTab === 'history' ? 'bold' : '500',
+                                transition: 'all 0.2s'
+                            }}
+                        >
+                            TCV History ({customer.tcv_history?.length || 0})
+                        </button>
+                    )}
+                </div>
+
+                {activeTab === 'workItems' && (
+                    <section className={styles.card}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <h2>Targeted Work Items</h2>
+                        </div>
+
+                        <table className={styles.table}>
+                            <thead>
+                                <tr>
+                                    <th>Work Item</th>
+                                    <th>TCV Target</th>
+                                    <th>Priority</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {targetedWorkItems.map(workItem => {
+                                    const targetDef = isNew
+                                        ? newCustomerWorkItems.find(ncf => ncf.workItemId === workItem.id)!
+                                        : workItem.customer_targets.find(ct => ct.customer_id === customerId)!;
+
+                                    const updateTarget = (updates: Partial<typeof targetDef>) => {
+                                        if (isNew) {
+                                            setNewCustomerWorkItems(prev => prev.map(ncf => 
+                                                ncf.workItemId === workItem.id ? { ...ncf, ...updates } : ncf
+                                            ));
+                                        } else {
+                                            const newTargets = workItem.customer_targets.map(ct => 
+                                                ct.customer_id === customerId ? { ...ct, ...updates } : ct
+                                            );
+                                            updateWorkItem(workItem.id, { customer_targets: newTargets as any });
+                                        }
+                                    };
+
+                                    const removeTarget = () => {
+                                        if (isNew) {
+                                            setNewCustomerWorkItems(prev => prev.filter(ncf => ncf.workItemId !== workItem.id));
+                                        } else {
+                                            const newTargets = workItem.customer_targets.filter(ct => ct.customer_id !== customerId);
+                                            updateWorkItem(workItem.id, { customer_targets: newTargets });
+                                        }
+                                    };
+
+                                    return (
+                                        <tr key={workItem.id}>
+                                            <td>{workItem.name}</td>
+                                            <td>
+                                                <select 
+                                                    value={targetDef.tcv_type}
+                                                    onChange={e => updateTarget({ tcv_type: e.target.value as 'existing' | 'potential' })}
+                                                >
+                                                    <option value="existing">Existing</option>
+                                                    <option value="potential">Potential</option>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <select 
+                                                    value={targetDef.priority || 'Must-have'}
+                                                    onChange={e => updateTarget({ priority: e.target.value as 'Must-have' | 'Should-have' | 'Nice-to-have' })}
+                                                >
+                                                    <option value="Must-have">Must-have</option>
+                                                    <option value="Should-have">Should-have</option>
+                                                    <option value="Nice-to-have">Nice-to-have</option>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <button onClick={removeTarget} className="btn-danger">Remove</button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                                {targetedWorkItems.length === 0 && (
+                                    <tr>
+                                        <td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No targeted work items found.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+
+                        <div className={styles.addWorkItemBox}>
+                            <h3>Add Work Item Target</h3>
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <SearchableDropdown
+                                    options={data.workItems
+                                        .filter(f => !targetedWorkItems.find(tf => tf.id === f.id))
+                                        .map(f => ({ id: f.id, label: f.name }))
+                                    }
+                                    onSelect={(workItemId) => {
+                                        if (isNew) {
+                                            setNewCustomerWorkItems(prev => [...prev, {
+                                                workItemId,
+                                                tcv_type: 'potential',
+                                                priority: 'Should-have'
+                                            }]);
+                                        } else {
+                                            const workItem = data.workItems.find(f => f.id === workItemId);
+                                            if (workItem) {
+                                                const newTargets = [...(workItem.customer_targets || []), {
+                                                    customer_id: customerId,
+                                                    tcv_type: 'potential',
+                                                    priority: 'Should-have'
+                                                }];
+                                                updateWorkItem(workItemId, { customer_targets: newTargets as any });
+                                            }
+                                        }
+                                    }}
+                                    placeholder="Search for a work item to add..."
+                                />
+                            </div>
+                        </div>
+                    </section>
+                )}
+
+                {activeTab === 'history' && !isNew && (
                     <section className={styles.card}>
                         <h2>Existing TCV History</h2>
                         <table className={styles.table}>
@@ -292,118 +444,3 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                         </table>
                     </section>
                 )}
-
-                <section className={styles.card}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                        <h2>Targeted Work Items</h2>
-                    </div>
-
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th>Work Item</th>
-                                <th>TCV Target</th>
-                                <th>Priority</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {targetedWorkItems.map(workItem => {
-                                const targetDef = isNew
-                                    ? newCustomerWorkItems.find(ncf => ncf.workItemId === workItem.id)!
-                                    : workItem.customer_targets.find(ct => ct.customer_id === customerId)!;
-
-                                const updateTarget = (updates: Partial<typeof targetDef>) => {
-                                    if (isNew) {
-                                        setNewCustomerWorkItems(prev => prev.map(ncf => 
-                                            ncf.workItemId === workItem.id ? { ...ncf, ...updates } : ncf
-                                        ));
-                                    } else {
-                                        const newTargets = workItem.customer_targets.map(ct => 
-                                            ct.customer_id === customerId ? { ...ct, ...updates } : ct
-                                        );
-                                        updateWorkItem(workItem.id, { customer_targets: newTargets as any });
-                                    }
-                                };
-
-                                const removeTarget = () => {
-                                    if (isNew) {
-                                        setNewCustomerWorkItems(prev => prev.filter(ncf => ncf.workItemId !== workItem.id));
-                                    } else {
-                                        const newTargets = workItem.customer_targets.filter(ct => ct.customer_id !== customerId);
-                                        updateWorkItem(workItem.id, { customer_targets: newTargets });
-                                    }
-                                };
-
-                                return (
-                                    <tr key={workItem.id}>
-                                        <td>{workItem.name}</td>
-                                        <td>
-                                            <select 
-                                                value={targetDef.tcv_type}
-                                                onChange={e => updateTarget({ tcv_type: e.target.value as 'existing' | 'potential' })}
-                                            >
-                                                <option value="existing">Existing</option>
-                                                <option value="potential">Potential</option>
-                                            </select>
-                                        </td>
-                                        <td>
-                                            <select 
-                                                value={targetDef.priority || 'Must-have'}
-                                                onChange={e => updateTarget({ priority: e.target.value as 'Must-have' | 'Should-have' | 'Nice-to-have' })}
-                                            >
-                                                <option value="Must-have">Must-have</option>
-                                                <option value="Should-have">Should-have</option>
-                                                <option value="Nice-to-have">Nice-to-have</option>
-                                            </select>
-                                        </td>
-                                        <td>
-                                            <button onClick={removeTarget} className="btn-danger">Remove</button>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                            {targetedWorkItems.length === 0 && (
-                                <tr>
-                                    <td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No targeted work items found.</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-
-                    <div className={styles.addWorkItemBox}>
-                        <h3>Add Work Item Target</h3>
-                        <div style={{ display: 'flex', gap: '12px' }}>
-                            <SearchableDropdown
-                                options={data.workItems
-                                    .filter(f => !targetedWorkItems.find(tf => tf.id === f.id))
-                                    .map(f => ({ id: f.id, label: f.name }))
-                                }
-                                onSelect={(workItemId) => {
-                                    if (isNew) {
-                                        setNewCustomerWorkItems(prev => [...prev, {
-                                            workItemId,
-                                            tcv_type: 'potential',
-                                            priority: 'Should-have'
-                                        }]);
-                                    } else {
-                                        const workItem = data.workItems.find(f => f.id === workItemId);
-                                        if (workItem) {
-                                            const newTargets = [...(workItem.customer_targets || []), {
-                                                customer_id: customerId,
-                                                tcv_type: 'potential',
-                                                priority: 'Should-have'
-                                            }];
-                                            updateWorkItem(workItemId, { customer_targets: newTargets as any });
-                                        }
-                                    }
-                                }}
-                                placeholder="Search for a work item to add..."
-                            />
-                        </div>
-                    </div>
-                </section>
-            </div>
-        </div>
-    );
-};
