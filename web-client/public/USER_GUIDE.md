@@ -18,8 +18,6 @@ The main view provides a high-level map of value flow from Customers to Teams.
 - **Reset View:** Clicking **"Reset View"** in the bottom-right corner perfectly frames the dashboard, top-aligning the column headers and centering the Gantt chart on the **Active Sprint**.
 
 ### 2. Customer TCV Visualization
-... (rest of section unchanged)
-
 Customers are represented by dual-layer additive circles:
 - **Inner Circle (Solid Blue):** Represents **Existing TCV** (realized value).
 - **Outer Ring (Dashed Blue):** Represents **Total TCV** (Existing + Potential). 
@@ -28,8 +26,6 @@ Customers are represented by dual-layer additive circles:
 - **Focus Effects:** All input fields provide a subtle blue glow when focused, ensuring you always know which field you are currently editing.
 
 ### 3. Work Item & Team Management
-... (rest of guide unchanged)
-
 - **Labels:** To maximize legibility, all node names are placed **below the circles** in a large, bold font. Circles are reserved for core numerical metrics (TCV, RICE Score, or Capacity).
 - **Searchable Assignments:** All dropdown menus for linking entities (e.g., adding a Customer Target to a Work Item) are **Searchable**. Simply type a few letters to filter the options.
 - **Node Status Icons:** Work Items display status indicators in the top-right of their circle:
