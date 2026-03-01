@@ -11,7 +11,15 @@ const mockData: DashboardData = {
         jira_api_version: '3'
     },
     customers: [
-        { id: 'c1', name: 'Customer A', existing_tcv: 100, potential_tcv: 0 }
+        { 
+            id: 'c1', 
+            name: 'Customer A', 
+            existing_tcv: 100, 
+            potential_tcv: 0,
+            tcv_history: [
+                { id: 'h1', value: 80, valid_from: '2025-01-01' }
+            ]
+        }
     ],
     workItems: [
         {
@@ -45,6 +53,27 @@ describe('WorkItemPage', () => {
         deleteEpic: vi.fn(),
         updateEpic: vi.fn()
     };
+
+    it('should show TCV history selection when targeting Existing TCV', () => {
+        render(
+            <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <WorkItemPage {...defaultProps} workItemId="f1" />
+            </DashboardProvider>
+        );
+
+        // History dropdown should be visible because f1 targets existing TCV of c1 which has history
+        const historySelect = screen.getByDisplayValue(/Latest Actual/i);
+        expect(historySelect).toBeDefined();
+
+        // Select the historical entry
+        fireEvent.change(historySelect, { target: { value: 'h1' } });
+
+        expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', expect.objectContaining({
+            customer_targets: expect.arrayContaining([
+                expect.objectContaining({ tcv_history_id: 'h1' })
+            ])
+        }));
+    });
 
     it('should have Nice-to-have option in the priority dropdown for existing targets', () => {
         render(
@@ -122,7 +151,6 @@ describe('WorkItemPage', () => {
         fireEvent.click(globalCheckbox);
 
         // Verify updateWorkItem was called (or state changed if local)
-        // Note: WorkItemPage uses updateWorkItem prop
         expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', expect.objectContaining({
             all_customers_target: expect.objectContaining({ tcv_type: 'existing' })
         }));

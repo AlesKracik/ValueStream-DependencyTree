@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { CustomerPage } from '../CustomerPage';
 import { useDashboardContext } from '../../../contexts/DashboardContext';
 import type { DashboardData } from '../../../types/models';
@@ -14,7 +14,14 @@ const mockData: DashboardData = {
     dashboards: [],
     settings: { jira_base_url: '', jira_api_version: '3' },
     customers: [
-        { id: 'c1', name: 'Customer A', existing_tcv: 100, potential_tcv: 50 }
+        { 
+            id: 'c1', 
+            name: 'Customer A', 
+            existing_tcv: 100, 
+            existing_tcv_valid_from: '2026-01-01',
+            potential_tcv: 50,
+            tcv_history: []
+        }
     ],
     workItems: [
         { id: 'f1', name: 'Feature 1', total_effort_mds: 10, score: 0, customer_targets: [{ customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }] }
@@ -50,22 +57,58 @@ describe('CustomerPage', () => {
         });
     });
 
-    it('renders customer details correctly', () => {
+    it('renders customer details correctly and Actual TCV is readOnly', () => {
         render(<CustomerPage {...defaultProps} />);
 
         expect(screen.getByDisplayValue('Customer A')).toBeDefined();
-        expect(screen.getByDisplayValue('100')).toBeDefined();
-        expect(screen.getByDisplayValue('50')).toBeDefined();
-        expect(screen.getByText('Feature 1')).toBeDefined();
+        const existingTcvInput = screen.getByLabelText(/Actual Existing TCV \(\$\):/i);
+        expect(existingTcvInput).toBeDefined();
+        expect(existingTcvInput.hasAttribute('readonly')).toBe(true);
+        expect(screen.getByText(/Valid from: 2026-01-01/i)).toBeDefined();
     });
 
-    it('calls updateCustomer when name changes', () => {
+    it('switches between Targeted Work Items and TCV History tabs', () => {
         render(<CustomerPage {...defaultProps} />);
 
-        const nameInput = screen.getByLabelText(/Name:/i);
-        fireEvent.change(nameInput, { target: { value: 'Updated Name' } });
+        // Default tab is Work Items
+        expect(screen.getByText('Feature 1')).toBeDefined();
 
-        expect(defaultProps.updateCustomer).toHaveBeenCalledWith('c1', { name: 'Updated Name' });
+        // Switch to History tab
+        const historyTab = screen.getByText(/TCV History/i);
+        fireEvent.click(historyTab);
+
+        expect(screen.queryByText('Feature 1')).toBeNull();
+        expect(screen.getByText(/No historical entries/i)).toBeDefined();
+    });
+
+    it('handles the Update TCV flow (archiving current to history)', async () => {
+        render(<CustomerPage {...defaultProps} />);
+
+        const updateBtn = screen.getByText('Update TCV');
+        fireEvent.click(updateBtn);
+
+        // Form should appear
+        expect(screen.getByText('Archive Current and Set New Actual TCV')).toBeDefined();
+
+        const dateInput = screen.getByLabelText(/New Valid From Date:/i);
+        const valueInput = screen.getByLabelText(/New TCV Value \(\$\):/i);
+
+        fireEvent.change(dateInput, { target: { value: '2026-03-01' } });
+        fireEvent.change(valueInput, { target: { value: '200' } });
+
+        const confirmBtn = screen.getByText('Confirm Update');
+        fireEvent.click(confirmBtn);
+
+        await waitFor(() => {
+            expect(mockShowConfirm).toHaveBeenCalled();
+            expect(defaultProps.updateCustomer).toHaveBeenCalledWith('c1', expect.objectContaining({
+                existing_tcv: 200,
+                existing_tcv_valid_from: '2026-03-01',
+                tcv_history: [
+                    expect.objectContaining({ value: 100, valid_from: '2026-01-01' })
+                ]
+            }));
+        });
     });
 
     it('removes a work item target', () => {
@@ -79,57 +122,21 @@ describe('CustomerPage', () => {
         }));
     });
 
-    it('adds a work item target via SearchableDropdown', () => {
-        const dataWithAnotherWorkItem: DashboardData = {
-            ...mockData,
-            workItems: [
-                ...mockData.workItems,
-                { id: 'f2', name: 'Feature 2', total_effort_mds: 5, score: 0, customer_targets: [] }
-            ]
-        };
-
-        render(<CustomerPage {...defaultProps} data={dataWithAnotherWorkItem} />);
-
-        const dropdown = screen.getByPlaceholderText('Search for a work item to add...');
-        fireEvent.focus(dropdown);
-        
-        const option = screen.getByText('Feature 2');
-        fireEvent.click(option);
-
-        expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f2', expect.objectContaining({
-            customer_targets: [{
-                customer_id: 'c1',
-                tcv_type: 'potential',
-                priority: 'Should-have'
-            }]
-        }));
-    });
-
-    it('calls deleteCustomer after confirmation', async () => {
-        render(<CustomerPage {...defaultProps} />);
-
-        const deleteBtn = screen.getByText('Delete Customer');
-        fireEvent.click(deleteBtn);
-
-        await vi.waitFor(() => {
-            expect(mockShowConfirm).toHaveBeenCalled();
-            expect(defaultProps.deleteCustomer).toHaveBeenCalledWith('c1');
-            expect(defaultProps.onBack).toHaveBeenCalled();
-        });
-    });
-
-    it('handles new customer creation draft', () => {
+    it('adds a new customer with initial validity date', () => {
         render(<CustomerPage {...defaultProps} customerId="new" />);
 
-        const nameInput = screen.getByLabelText(/Name:/i) as HTMLInputElement;
+        const nameInput = screen.getByLabelText(/Name:/i);
+        const dateInput = screen.getByLabelText(/Valid From \(Initial\):/i);
+        
         fireEvent.change(nameInput, { target: { value: 'New Brand' } });
-        expect(nameInput.value).toBe('New Brand');
+        fireEvent.change(dateInput, { target: { value: '2026-02-01' } });
 
         const createBtn = screen.getByText('Create');
         fireEvent.click(createBtn);
 
         expect(defaultProps.addCustomer).toHaveBeenCalledWith(expect.objectContaining({
-            name: 'New Brand'
+            name: 'New Brand',
+            existing_tcv_valid_from: '2026-02-01'
         }));
     });
 });

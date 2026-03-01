@@ -10,8 +10,8 @@ const mockData: DashboardData = {
         jira_api_version: '3'
     },
     customers: [
-        { id: 'c1', name: 'Matched Customer', existing_tcv: 50, potential_tcv: 500 },
-        { id: 'c2', name: 'Other Customer', existing_tcv: 0, potential_tcv: 20 },
+        { id: 'c1', name: 'Matched Customer', existing_tcv: 50, existing_tcv_valid_from: '2026-01-01', potential_tcv: 500 },
+        { id: 'c2', name: 'Other Customer', existing_tcv: 0, existing_tcv_valid_from: '2026-01-01', potential_tcv: 20 },
     ],
     workItems: [
         {

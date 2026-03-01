@@ -15,7 +15,8 @@ const mockData: DashboardData = {
     epics: [],
     sprints: [
         { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' }
-    ]
+    ],
+    metrics: { maxScore: 100, maxRoi: 10 }
 };
 
 describe('useDashboardData', () => {
