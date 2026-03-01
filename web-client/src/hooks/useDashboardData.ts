@@ -261,7 +261,13 @@ export function useDashboardData() {
                 newSprints.forEach(s => persistEntity('sprints', 'POST', s));
             }
 
-            persistSettings(newSettings);
+            persistSettings(newSettings).then(() => {
+                // If connection string changed, re-fetch everything from the new source
+                if (updates.mongo_uri !== undefined || updates.mongo_db !== undefined || updates.mongo_auth_method !== undefined) {
+                    window.location.reload(); // Simplest way to ensure all hooks and state reset correctly for new DB
+                }
+            });
+
             return { ...prev, settings: newSettings, sprints: newSprints };
         });
     };

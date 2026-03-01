@@ -92,7 +92,6 @@ describe('DashboardEditPage', () => {
             </DashboardProvider>
         );
 
-        expect(screen.getByText('Time Range (Sprint Scope)')).toBeDefined();
         expect(screen.getByLabelText(/Start Sprint:/i)).toBeDefined();
         expect(screen.getByLabelText(/End Sprint:/i)).toBeDefined();
         

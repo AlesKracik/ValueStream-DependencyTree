@@ -9,6 +9,11 @@ const mockSettings: Settings = {
     jira_api_token: 'token',
     mongo_uri: 'mongodb://localhost:27017',
     mongo_db: 'testdb',
+    mongo_auth_method: 'scram',
+    mongo_aws_access_key: '',
+    mongo_aws_secret_key: '',
+    mongo_aws_session_token: '',
+    mongo_oidc_token: '',
     customer_jql_new: '',
     customer_jql_in_progress: '',
     customer_jql_noop: '',
@@ -121,5 +126,42 @@ describe('SettingsPage', () => {
         expect(screen.getByText('Time')).toBeDefined();
         expect(screen.getByLabelText(/Fiscal Year Start Month:/i)).toBeDefined();
         expect(screen.getByLabelText(/Sprint Duration \(Days\):/i)).toBeDefined();
+    });
+
+    it('shows AWS fields when AWS IAM is selected', () => {
+        render(
+            <SettingsPage 
+                settings={mockSettings} 
+                onUpdateSettings={onUpdateSettings}
+                data={mockData}
+                updateEpic={updateEpic}
+                addEpic={addEpic}
+            />
+        );
+
+        const authSelect = screen.getByLabelText(/Authentication Method:/i);
+        fireEvent.change(authSelect, { target: { value: 'aws' } });
+
+        expect(screen.getByText('AWS IAM Credentials')).toBeDefined();
+        expect(screen.getByLabelText(/Access Key ID:/i)).toBeDefined();
+        expect(screen.getByLabelText(/Secret Access Key:/i)).toBeDefined();
+    });
+
+    it('shows OIDC fields when OIDC is selected', () => {
+        render(
+            <SettingsPage 
+                settings={mockSettings} 
+                onUpdateSettings={onUpdateSettings}
+                data={mockData}
+                updateEpic={updateEpic}
+                addEpic={addEpic}
+            />
+        );
+
+        const authSelect = screen.getByLabelText(/Authentication Method:/i);
+        fireEvent.change(authSelect, { target: { value: 'oidc' } });
+
+        expect(screen.getByText('OIDC Configuration')).toBeDefined();
+        expect(screen.getByLabelText(/Access Token:/i)).toBeDefined();
     });
 });

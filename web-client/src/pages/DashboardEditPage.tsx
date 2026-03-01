@@ -243,11 +243,7 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
                                     
                                 />
                             </label>
-                        </div>
-
-                        {/* Time Range Group */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-                            <div style={sectionTitleStyle}>Time Range (Sprint Scope)</div>
+                            
                             <div style={{ display: 'flex', gap: '20px' }}>
                                 <label style={{ ...labelStyle, flex: 1 }}>
                                     Start Sprint:

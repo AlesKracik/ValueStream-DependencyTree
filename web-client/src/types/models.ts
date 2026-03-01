@@ -63,6 +63,11 @@ export interface Settings {
   jira_api_token?: string;
   mongo_uri?: string;
   mongo_db?: string;
+  mongo_auth_method?: 'scram' | 'aws' | 'oidc';
+  mongo_aws_access_key?: string;
+  mongo_aws_secret_key?: string;
+  mongo_aws_session_token?: string;
+  mongo_oidc_token?: string;
   customer_jql_new?: string;
   customer_jql_in_progress?: string;
   customer_jql_noop?: string;

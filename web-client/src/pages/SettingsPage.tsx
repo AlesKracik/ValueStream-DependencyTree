@@ -38,6 +38,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         jira_api_token: settings.jira_api_token || "",
         mongo_uri: settings.mongo_uri || "",
         mongo_db: settings.mongo_db || "",
+        mongo_auth_method: settings.mongo_auth_method || "scram",
+        mongo_aws_access_key: settings.mongo_aws_access_key || "",
+        mongo_aws_secret_key: settings.mongo_aws_secret_key || "",
+        mongo_aws_session_token: settings.mongo_aws_session_token || "",
+        mongo_oidc_token: settings.mongo_oidc_token || "",
         customer_jql_new: settings.customer_jql_new || "",
         customer_jql_in_progress: settings.customer_jql_in_progress || "",
         customer_jql_noop: settings.customer_jql_noop || "",
@@ -304,6 +309,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       jira_api_token: formData.jira_api_token,
       mongo_uri: formData.mongo_uri,
       mongo_db: formData.mongo_db,
+      mongo_auth_method: formData.mongo_auth_method,
+      mongo_aws_access_key: formData.mongo_aws_access_key,
+      mongo_aws_secret_key: formData.mongo_aws_secret_key,
+      mongo_aws_session_token: formData.mongo_aws_session_token,
+      mongo_oidc_token: formData.mongo_oidc_token,
       customer_jql_new: formData.customer_jql_new,
       customer_jql_in_progress: formData.customer_jql_in_progress,
       customer_jql_noop: formData.customer_jql_noop,
@@ -373,11 +383,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         {activeTab === "mongo" && (
           <>
             <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-              MongoDB URI (Local SCRAM):
+              Authentication Method:
+              <select
+                value={formData.mongo_auth_method || "scram"}
+                onChange={(e) => setFormData({ ...formData, mongo_auth_method: e.target.value as any })}
+                onBlur={handleSave}
+              >
+                <option value="scram">SCRAM (URI-based)</option>
+                <option value="aws">AWS IAM</option>
+                <option value="oidc">OIDC (Azure/Okta)</option>
+              </select>
+            </label>
+
+            <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+              MongoDB URI:
               <input
-                
                 type="text"
-                placeholder="mongodb://username:password@localhost:27017"
+                placeholder={formData.mongo_auth_method === 'scram' ? "mongodb://username:password@localhost:27017" : "mongodb://localhost:27017"}
                 value={formData.mongo_uri || ""}
                 onChange={(e) => setFormData({ ...formData, mongo_uri: e.target.value })}
                 onBlur={handleSave}
@@ -387,7 +409,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
               MongoDB Database Name:
               <input
-                
                 type="text"
                 placeholder="valuestream"
                 value={formData.mongo_db || ""}
@@ -395,6 +416,56 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 onBlur={handleSave}
               />
             </label>
+
+            {formData.mongo_auth_method === 'aws' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>AWS IAM Credentials</div>
+                <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                  Access Key ID:
+                  <input
+                    type="text"
+                    value={formData.mongo_aws_access_key || ""}
+                    onChange={(e) => setFormData({ ...formData, mongo_aws_access_key: e.target.value })}
+                    onBlur={handleSave}
+                  />
+                </label>
+                <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                  Secret Access Key:
+                  <input
+                    type="password"
+                    value={formData.mongo_aws_secret_key || ""}
+                    onChange={(e) => setFormData({ ...formData, mongo_aws_secret_key: e.target.value })}
+                    onBlur={handleSave}
+                  />
+                </label>
+                <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                  Session Token (Optional):
+                  <input
+                    type="password"
+                    value={formData.mongo_aws_session_token || ""}
+                    onChange={(e) => setFormData({ ...formData, mongo_aws_session_token: e.target.value })}
+                    onBlur={handleSave}
+                  />
+                </label>
+              </div>
+            )}
+
+            {formData.mongo_auth_method === 'oidc' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>OIDC Configuration</div>
+                <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                  Access Token:
+                  <input
+                    type="password"
+                    placeholder="eyJhbG..."
+                    value={formData.mongo_oidc_token || ""}
+                    onChange={(e) => setFormData({ ...formData, mongo_oidc_token: e.target.value })}
+                    onBlur={handleSave}
+                  />
+                </label>
+              </div>
+            )}
+
             <button
               type="button"
               className="btn-primary"
@@ -409,7 +480,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       const response = await fetch("/api/mongo/test", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ mongo_uri: formData.mongo_uri, mongo_db: formData.mongo_db }),
+                          body: JSON.stringify({ 
+                            mongo_uri: formData.mongo_uri, 
+                            mongo_db: formData.mongo_db,
+                            mongo_auth_method: formData.mongo_auth_method,
+                            mongo_aws_access_key: formData.mongo_aws_access_key,
+                            mongo_aws_secret_key: formData.mongo_aws_secret_key,
+                            mongo_aws_session_token: formData.mongo_aws_session_token,
+                            mongo_oidc_token: formData.mongo_oidc_token
+                          }),
                       });
                       const resData = await response.json();
                       if (response.ok && resData.success) {

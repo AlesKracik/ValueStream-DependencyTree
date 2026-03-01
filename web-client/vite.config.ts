@@ -11,9 +11,42 @@ const MockDataPersistencePlugin = (): Plugin => ({
   configureServer(server: any) {
     server.middlewares.use(async (req: any, res: any, next: any) => {
       // helper to connect to Mongo
-      async function getDb(uri: string, dbName: string) {
+      async function getDb(settings: any) {
+        const uri = settings.mongo_uri;
+        const dbName = settings.mongo_db;
+        const authMethod = settings.mongo_auth_method || 'scram';
+
         if (!uri) throw new Error("Mongo URI not provided");
-        const client = new MongoClient(uri);
+
+        const options: any = {};
+
+        if (authMethod === 'aws') {
+          if (!settings.mongo_aws_access_key || !settings.mongo_aws_secret_key) {
+            throw new Error("AWS Access Key and Secret Key are required for AWS IAM authentication.");
+          }
+          options.authMechanism = 'MONGODB-AWS';
+          options.authMechanismProperties = {
+            AWS_ACCESS_KEY_ID: settings.mongo_aws_access_key,
+            AWS_SECRET_ACCESS_KEY: settings.mongo_aws_secret_key,
+            AWS_SESSION_TOKEN: settings.mongo_aws_session_token
+          };
+          // Explicitly prevent SCRAM fallback if URI has embedded user:pass
+          options.auth = { username: '', password: '' };
+        } else if (authMethod === 'oidc') {
+          if (!settings.mongo_oidc_token) {
+            throw new Error("Access Token is required for OIDC authentication.");
+          }
+          options.authMechanism = 'MONGODB-OIDC';
+          options.authMechanismProperties = {
+            ENVIRONMENT: 'test',
+          };
+          options.auth = {
+            username: settings.mongo_oidc_token,
+            password: ''
+          };
+        }
+
+        const client = new MongoClient(uri, options);
         await client.connect();
         return client.db(dbName || 'valuestream');
       }
@@ -43,14 +76,12 @@ const MockDataPersistencePlugin = (): Plugin => ({
           if (fs.existsSync(settingsPath)) {
             settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
           } else if (fs.existsSync(mockDataPath)) {
-            // Fallback to extract settings from mockData if settings.json doesn't exist yet
             const mockData = JSON.parse(fs.readFileSync(mockDataPath, 'utf-8'));
             settings = mockData.settings || {};
             fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
           }
 
           const mongoUri = settings.mongo_uri;
-          const mongoDbName = settings.mongo_db;
 
           let dbData: {
             settings: any;
@@ -72,7 +103,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
 
           if (mongoUri) {
             try {
-              const db = await getDb(mongoUri, mongoDbName);
+              const db = await getDb(settings);
               // Collections to read:
               const customers = await db.collection('customers').find({}).toArray();
               const workItems = await db.collection('workItems').find({}).toArray();
@@ -204,7 +235,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
                 throw new Error("No MongoDB URI configured.");
             }
             
-            const db = await getDb(settings.mongo_uri, settings.mongo_db);
+            const db = await getDb(settings);
 
             if (req.method === 'POST') {
                 if (!id) throw new Error("Missing entity id");
@@ -229,11 +260,11 @@ const MockDataPersistencePlugin = (): Plugin => ({
         req.on('data', (chunk: any) => { body += chunk.toString(); });
         req.on('end', async () => {
           try {
-            const { mongo_uri, mongo_db } = JSON.parse(body);
-            if (!mongo_uri) {
+            const config = JSON.parse(body);
+            if (!config.mongo_uri) {
               throw new Error('Missing mongo_uri');
             }
-            const db = await getDb(mongo_uri, mongo_db);
+            const db = await getDb(config);
             // Verify connection by fetching a ping command or simply listing collections
             await db.command({ ping: 1 });
             res.setHeader('Content-Type', 'application/json');
@@ -260,7 +291,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
             throw new Error("MongoDB URI not configured in settings.");
           }
 
-          const db = await getDb(settings.mongo_uri, settings.mongo_db);
+          const db = await getDb(settings);
           
           const customers = await db.collection('customers').find({}).toArray();
           const workItems = await db.collection('workItems').find({}).toArray();

@@ -151,4 +151,18 @@ describe('useDashboardData', () => {
             body: expect.stringContaining('"quarter":"FY2025 Q4"')
         }));
     });
+
+    it('reloads page when MongoDB connection settings change', async () => {
+        const reloadSpy = vi.fn();
+        vi.stubGlobal('location', { reload: reloadSpy });
+
+        const { result } = renderHook(() => useDashboardData());
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        await act(async () => {
+            result.current.updateSettings({ mongo_uri: 'mongodb://new-host:27017' });
+        });
+
+        expect(reloadSpy).toHaveBeenCalled();
+    });
 });

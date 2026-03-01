@@ -13,6 +13,41 @@ The "backend" logic resides in `web-client/vite.config.ts`. It utilizes `server.
 - **`POST /api/entity/{collection}`:** Handles Upsert operations.
 - **`DELETE /api/entity/{collection}`:** Handles record removal.
 
+## Authentication & AAA
+
+The application supports three primary authentication methods for MongoDB, configurable via the **Settings** (⚙️) menu.
+
+### 1. SCRAM (Standard)
+The default authentication method using URI-based credentials.
+- **Config:** Provide a full URI including username and password.
+- **Example:** `mongodb://user:pass@localhost:27017`
+
+### 2. AWS IAM
+Allows connection to Amazon DocumentDB or MongoDB Atlas using AWS Identity and Access Management.
+- **Config:** Set method to "AWS IAM" and provide:
+    - `Access Key ID`
+    - `Secret Access Key`
+    - `Session Token` (Optional)
+- **Driver Logic:** Uses `MONGODB-AWS` mechanism.
+
+### 3. OIDC (OpenID Connect)
+Enables authentication via external identity providers like Azure AD, Okta, or Ping.
+- **Config:** Set method to "OIDC" and provide:
+    - `Access Token`: The bearer token obtained from your identity provider.
+- **Driver Logic:** Uses `MONGODB-OIDC` mechanism.
+
+```mermaid
+graph TD
+    UI[Settings UI] -->|Select Method| Auth{Auth Logic}
+    Auth -->|SCRAM| SCRAM[URI + Options]
+    Auth -->|AWS| AWS[MONGODB-AWS + IAM Keys]
+    Auth -->|OIDC| OIDC[MONGODB-OIDC + Token]
+    SCRAM --> Driver[MongoClient]
+    AWS --> Driver
+    OIDC --> Driver
+    Driver --> DB[(MongoDB)]
+```
+
 ## Migration System
 The system includes an automatic migration handler inside the `/api/loadData` endpoint to ensure data consistency across versions.
 
