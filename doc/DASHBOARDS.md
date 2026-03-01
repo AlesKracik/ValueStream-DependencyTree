@@ -25,21 +25,62 @@ export interface DashboardParameters {
 }
 ```
 
-## Sprint Range Filtering
-The persistent dashboard settings include a "Time Range (Sprint Scope)".
+## Filtration Architecture
 
-### Logic
-- **Scope:** Defines the window of execution.
-- **Criteria:** A Work Item or Customer is displayed if it is part of a connection tree containing at least one Epic that falls within the selected sprint range.
-- **Epic Validity:** An epic is "in-range" if either its `target_start` or `target_end` falls between the start and end sprints of the dashboard.
+The dashboard employs a multi-layered filtering system that combines **Transient Filters** (user's current view state) and **Persistent Filters** (defined in the dashboard parameters).
+
+### 1. Filter Combination Logic
+When a dashboard is active, the engine merges the two sets of parameters as follows:
+
+| Filter Type | Combining Logic | Resulting Behavior |
+| :--- | :--- | :--- |
+| **Text Filters** (Name/Jira Key) | `Transient OR Persistent` | Nodes matching *either* string are considered valid for that layer. |
+| **Numeric Filters** (TCV / Score) | `Math.max(Transient, Persistent)` | The stricter (higher) threshold always takes precedence. |
+| **Release Filter** | Stricter match | If either filter is set to "Released" or "Unreleased", that status is enforced. |
+| **Sprint Range** | Persistent Only | This is a structural constraint defined at the dashboard level. |
+
+### 2. The Visibility Pipeline
+The `useGraphLayout` hook processes data through a specific pipeline to determine which nodes and edges appear:
+
+#### Step A: Layer-Level Validation
+Each entity type is first checked against its own specific filters:
+- **Valid Customers:** Must pass combined TCV and Name filters.
+- **Valid Work Items:** Must pass combined Score, Name, and Release status filters.
+- **Valid Epics:** Must pass combined Team, Name, and **Sprint Range** filters. 
+    - *Sprint Range Logic:* An epic is valid only if its `target_start` or `target_end` falls within the boundary dates of the selected `startSprintId` and `endSprintId`.
+
+#### Step B: Strict Intersection (The Connection Tree)
+The system iterates through all Work Items to find "Viable Paths". A Work Item and its connected nodes are only visible if they satisfy the following "Must-Have" rules:
+
+1.  **If any Customer Filter is active:** The Work Item **must** be connected to at least one **Valid Customer**.
+2.  **If any Team/Epic/Range Filter is active:** The Work Item **must** be connected to at least one **Valid Epic**.
+3.  **Path Visibility:** If a path survives these checks, the Work Item, its connected Valid Customers, and its connected Valid Epics are all marked as **Visible**.
+
+#### Step C: Special Case Logic (Standalone Items)
+To prevent the dashboard from appearing empty when only partial data exists, certain nodes can appear without a full connection tree:
+- **Standalone Customers:** Appear only if **NO** Work Item filters, Team filters, or Sprint Range filters are active.
+- **Standalone Epics:** Appear only if **NO** Customer filters or Work Item filters are active.
+
+### 3. Summary of Filter Combinations
+
+| Combination | Visibility Result |
+| :--- | :--- |
+| **No Filters** | All nodes in the database are visible. |
+| **Customer TCV Only** | Shows all customers above TCV, and ONLY the work items and epics connected to them. |
+| **Sprint Range Only** | Shows only Epics in that range, and ONLY the Work Items and Customers connected to those epics. Standalone customers are hidden. |
+| **TCV + Sprint Range** | Shows the intersection: Customers > TCV who have work connected to Epics in that Range. |
+| **Team + Release Status** | Shows only "Released" Work Items that have child Epics assigned to that specific Team. |
 
 ```mermaid
 graph TD
-    Range[Sprint Range Filter] --> EpicCheck{Epic in Range?}
-    EpicCheck -->|No| Hide[Hide Node & Subtree]
-    EpicCheck -->|Yes| Tree[Check Connection Tree]
-    Tree -->|Valid Path| Show[Show Customer/WI/Team/Epic]
+    Data[Full Project Data] --> Validation[Layer-Level Validation]
+    Validation --> Intersection{Intersection Logic}
+    Intersection -->|Path Valid| Show[Display Connection Tree]
+    Intersection -->|Path Invalid| Standalone{Special Case Check}
+    Standalone -->|Allowed| ShowNode[Display Standalone Node]
+    Standalone -->|Blocked| Hide[Discard Node]
 ```
+
 
 ## Configuration
 - Dashboards are managed via the **Dashboard List** page.
