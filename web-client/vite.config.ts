@@ -83,10 +83,15 @@ const MockDataPersistencePlugin = (): Plugin => ({
           
           const hostname = url.hostname;
           if (!hostname) return true; // Could be a local path or similar for non-URL protocols
-          if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return false;
+          
+          // Allow localhost/loopback for local development/integration
+          if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return true;
 
           const { address } = await lookup(hostname);
           const parts = address.split('.').map(Number);
+
+          // Allow loopback address from DNS resolution too
+          if (address === '127.0.0.1' || address === '::1') return true;
 
           // Private IP ranges
           if (parts[0] === 10) return false;
