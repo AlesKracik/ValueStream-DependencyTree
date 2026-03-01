@@ -3,10 +3,14 @@
 ### 1. The Interactive Dashboard
 The main view provides a high-level map of value flow from Customers to Teams.
 - **Column Structure:** The dashboard is organized into three primary columns: **Customers**, **Work Items**, and **Teams**, followed by the **Gantt Timeline**.
-- **Unified Filtering:** The header contains a streamlined filter bar organized into three logic groups:
+- **Unified Visual Identity:** All buttons and input fields across the application share a consistent visual style. Primary actions are blue, while destructive actions (Delete/Remove) are red.
+- **Unified Filtering:** The header contains a streamlined filter bar organized into logic groups:
     - **Search:** Quickly filter any column by typing names or partial strings.
     - **Status & Metrics:** Toggle visibility based on **Release Status** or set thresholds for **Min TCV** and **Min Score**.
     - **Visualization:** Toggle visual aids like dependency lines and hover effects.
+- **Persistent Custom Dashboards:** You can create multiple named dashboards with specific filter parameters.
+    - **Edit Parameters:** Click the **"Edit Parameters"** button in the top-right corner of any dashboard to adjust its permanent filters, including **name**, **description**, and **structural filters**.
+    - **Sprint Range Filter:** Dashboards can be limited to a specific range of sprints. Only items connected to epics that fall within this time range will be displayed.
 - **Enhanced Highlighting:** By default, hover-based highlighting is disabled to reduce visual noise. You can toggle this on/off using the **"Disable Hover Highlight"** checkbox.
 - **Dependency Tracing:** When highlighting is enabled (or via right-click), hovering over any node dims the rest of the graph and illuminates its direct upstream and downstream dependencies.
 - **Structural Filtering (Right-Click):** Right-click any node to **Filter and Reposition** the graph. This isolates just the dependency tree of that node and collapses empty space. Right-click again to clear the filter.
@@ -18,6 +22,7 @@ Customers are represented by dual-layer additive circles:
 - **Outer Ring (Dashed Blue):** Represents **Total TCV** (Existing + Potential). 
 - **The Gap:** The distance between the solid core and the dashed ring visually represents the "Potential Upside" still available for that customer.
 - **Proportional Scaling:** Circle diameters are strictly proportional to the global maximum TCV, making it easy to spot your most valuable accounts at a glance.
+- **Focus Effects:** All input fields provide a subtle blue glow when focused, ensuring you always know which field you are currently editing.
 
 ### 3. Work Item & Team Management
 - **Labels:** To maximize legibility, all node names are placed **below the circles** in a large, bold font. Circles are reserved for core numerical metrics (TCV, RICE Score, or Capacity).
@@ -48,11 +53,20 @@ The dashboard ensures a continuous, unbroken timeline through strict schedule ma
     - **Deletion Protection:** To prevent orphaning data, only the **last sprint** in the schedule can be deleted. Earlier sprints are "Locked" to preserve the historical sequence.
 - **Timeline Expansion:** Click **"+ Create Next Sprint"** at the bottom of the table to add a new 14-day block. The system automatically calculates the next logical dates and name.
 
-### 6. Native Jira Epic Synchronization
-- **Proxy Sync:** Inside an Epic's detail page, click the **"Sync from Jira"** button.
-- **Automated Mapping:** The system automatically pulls the latest Summary, Remaining Estimate, Dates, and Team assignments from Atlassian.
-- **Configuration:** Use the ⚙️ **Settings** modal to set your Jira Base URL and Personal Access Token (PAT).
+### 6. Settings & Integration
+Use the ⚙️ **Settings** modal or the dedicated **Settings** page to configure the application behavior.
+
+- **Time & Fiscal Calendar:**
+    - **Fiscal Year Start:** Define which month your fiscal year begins (e.g., April). The application will automatically group and label sprints into fiscal quarters (FY2026 Q1, etc.) on the Sprint Management page.
+    - **Default Sprint Duration:** Set the default number of days for new sprints. This ensures consistency when expanding your timeline.
+- **Native Jira Epic Synchronization:**
+    - **Configuration:** Set your **Jira Base URL** and **API Token** in the integration settings.
+    - **Customer Issue Tracking:** Define custom JQL queries to automatically identify and track specific issue types linked to customers.
+    - **Bulk Import/Sync:** The settings page provides unified tools to **Sync All Epics from Jira** or **Import Epics via JQL** to quickly hydrate your dashboard from Atlassian data.
+    - **Epic Proxy Sync:** Inside any individual Epic's detail page, the **"Sync from Jira"** button pulls the latest Summary, Estimates, Dates, and Team assignments.
 
 ### 7. Persistence & Collaboration
+- **Storage:** The application uses MongoDB for persistence, with a fallback to `staticImport.json` for lightweight or portable environments.
 - **Auto-Snapshot:** When a sprint ends, the system automatically snapshots the calculated effort into permanent overrides, preserving your delivery history.
 - **Save Changes:** Click the blue **"Save Changes"** button in the header to write all layout adjustments and node edits back to the central data store.
+- **Data Export:** On the Settings page, you can export your entire current project state as a `staticImport.json` file for local backup or sharing with other team members.

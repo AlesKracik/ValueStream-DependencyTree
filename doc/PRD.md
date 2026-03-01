@@ -44,14 +44,21 @@ The dashboard consists of a fixed **3-column bipartite-style graph** on the left
 
 ## 5. Interactive UI / UX Core
 
+- **Persistent Dashboards:** Users can create and save multiple dashboard views with specific filter parameters (`Customer`, `Work Item`, `Team`, `Epic` name filters, `TCV` and `Score` thresholds, and `Sprint Range`).
 - **End-to-End Highlighting (Hover):** Hovering over any node dynamically highlights the structural chain traversing in both directions up to the Root Customer and down to the Leaf Epic, dimming irrelevant nodes instantly.
 - **Global Text Filtering:** Fast indexing bar allowing users to omit unmatched Customers, Work Items, Teams, or Epics.
 - **Dedicated Strategy Pages:**
   - Left-clicking a **Customer** opens a dedicated page managing financial footprints and targeted Work Item impact tracking.
   - Left-clicking a **Work Item** opens a dedicated page managing Customer ROI targeting and child Epic assignments.
 
-## 6. Integrations (Jira Sync)
+## 6. Project & Integration Settings
 
-- **Native Settings Store:** Users can provide absolute credentials (`Jira Base URL`, `API Version`, `Email`, and `Token`) directly in the UI. 
-- **Local Dev Proxy:** To avoid browser Cross-Origin (CORS) security locks against Atlassian domains, the system routes requests through an inline HTTP Vite proxy.
-- **Epic Details Hydration:** Advanced Roadmaps custom fields (`Target start`, `Target end`, `Team`) and native fields (`Summary`, `Remaining Estimate`) are parsed automatically from Atlassian via `/api/jira/issue` during the "Sync from Jira" action.
+- **Time Configuration:**
+  - **Fiscal Year Support:** Define the starting month of the fiscal year (1-12) to automatically group and label sprints by fiscal quarter (e.g., FY2026 Q1).
+  - **Sprint Duration:** Configure the default duration for newly created sprints (e.g., 14 days).
+- **Jira Integration:**
+  - **Native Settings Store:** Users can provide absolute credentials (`Jira Base URL`, `API Version`, `Token`) directly in the UI. 
+  - **Customer JQL Tracking:** Define custom JQL queries to identify "New", "In-Progress", and "Noop" issues for customer tracking.
+  - **Local Dev Proxy:** To avoid browser Cross-Origin (CORS) security locks against Atlassian domains, the system routes requests through an inline HTTP Vite proxy.
+  - **Epic Details Hydration:** Advanced Roadmaps custom fields (`Target start`, `Target end`, `Team`) and native fields (`Summary`, `Remaining Estimate`) are parsed automatically from Atlassian via `/api/jira/issue` during the "Sync from Jira" action.
+  - **Sync & Import:** Global "Sync Epics" and "Import via JQL" capabilities are grouped within the settings for efficient data management.
