@@ -10,6 +10,12 @@ const MockDataPersistencePlugin = (): Plugin => ({
   name: 'mock-data-persistence',
   configureServer(server: any) {
     server.middlewares.use(async (req: any, res: any, next: any) => {
+      const ALLOWED_COLLECTIONS = ['customers', 'workItems', 'teams', 'epics', 'sprints', 'dashboards'];
+
+      function escapeRegex(string: string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      }
+
       // Simple Authentication Check
       const adminSecret = process.env.ADMIN_SECRET;
       if (req.url === '/api/auth/status' && req.method === 'GET') {
@@ -204,7 +210,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
 
               const teamQuery: any = {};
               if (teamFilter) {
-                teamQuery.name = { $regex: teamFilter, $options: 'i' };
+                teamQuery.name = { $regex: escapeRegex(teamFilter), $options: 'i' };
               }
               const teams = await db.collection('teams').find(teamQuery).toArray();
               dbData.teams = teams.map(({ _id, ...rest }) => rest);
@@ -212,7 +218,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
 
               const customerQuery: any = {};
               if (customerFilter) {
-                customerQuery.name = { $regex: customerFilter, $options: 'i' };
+                customerQuery.name = { $regex: escapeRegex(customerFilter), $options: 'i' };
               }
               const customers = await db.collection('customers').find(customerQuery).toArray();
               dbData.customers = customers.map(({ _id, ...rest }) => rest)
@@ -236,7 +242,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
 
               const workItemMatch: any = {};
               if (workItemFilter) {
-                workItemMatch.name = { $regex: workItemFilter, $options: 'i' };
+                workItemMatch.name = { $regex: escapeRegex(workItemFilter), $options: 'i' };
               }
               if (releasedFilter === 'released') {
                 workItemMatch.released_in_sprint_id = { $exists: true, $ne: null };
@@ -280,7 +286,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
 
               const epicQuery: any = {};
               if (epicFilter) {
-                epicQuery.name = { $regex: epicFilter, $options: 'i' };
+                epicQuery.name = { $regex: escapeRegex(epicFilter), $options: 'i' };
               }
               if (teamFilter) {
                 // If team filter is active, only show epics for visible teams
@@ -358,8 +364,15 @@ const MockDataPersistencePlugin = (): Plugin => ({
             const collectionName = parts[3];
             const entityId = parts[4]; 
 
+            if (!ALLOWED_COLLECTIONS.includes(collectionName)) {
+              res.statusCode = 403;
+              res.setHeader('Content-Type', 'application/json');
+              return res.end(JSON.stringify({ success: false, error: 'Forbidden collection' }));
+            }
+
             const data = body ? JSON.parse(body) : {};
-            const id = data.id || entityId;
+            const rawId = data.id || entityId;
+            const id = String(rawId);
 
             const settingsPath = path.resolve(__dirname, 'settings.json');
             const settings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
