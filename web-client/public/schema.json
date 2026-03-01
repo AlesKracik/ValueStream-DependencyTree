@@ -33,7 +33,12 @@
                 },
                 "jira_api_token": {
                     "type": "string"
-                }
+                },
+                "mongo_uri": { "type": "string" },
+                "mongo_db": { "type": "string" },
+                "mongo_auth_method": { "type": "string", "enum": ["scram", "aws", "oidc"] },
+                "fiscal_year_start_month": { "type": "integer", "minimum": 1, "maximum": 12 },
+                "sprint_duration_days": { "type": "integer", "minimum": 1 }
             }
         },
         "customers": {
@@ -57,9 +62,25 @@
                         "type": "number",
                         "minimum": 0
                     },
+                    "existing_tcv_valid_from": {
+                        "type": "string",
+                        "format": "date"
+                    },
                     "potential_tcv": {
                         "type": "number",
                         "minimum": 0
+                    },
+                    "tcv_history": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["id", "value", "valid_from"],
+                            "properties": {
+                                "id": { "type": "string" },
+                                "value": { "type": "number", "minimum": 0 },
+                                "valid_from": { "type": "string", "format": "date" }
+                            }
+                        }
                     }
                 }
             }
@@ -140,8 +161,10 @@
                                         "Must-have",
                                         "Should-have",
                                         "Nice-to-have"
-                                    ],
-                                    "description": "Defaults to Must-have if omitted."
+                                    ]
+                                },
+                                "tcv_history_id": {
+                                    "type": "string"
                                 }
                             }
                         }
@@ -170,8 +193,7 @@
                         "minimum": 0
                     },
                     "country": {
-                        "type": "string",
-                        "description": "ISO Country Code (e.g. US, CZ, GB) for holiday calculations."
+                        "type": "string"
                     },
                     "jira_team_id": {
                         "type": "string"
@@ -194,15 +216,14 @@
                     "id",
                     "jira_key",
                     "team_id",
-                    "remaining_md"
+                    "effort_md"
                 ],
                 "properties": {
                     "id": {
                         "type": "string"
                     },
                     "name": {
-                        "type": "string",
-                        "description": "Optional custom name for the epic. Falls back to parent Work Item name."
+                        "type": "string"
                     },
                     "jira_key": {
                         "type": "string"
@@ -213,19 +234,17 @@
                     "team_id": {
                         "type": "string"
                     },
-                    "remaining_md": {
+                    "effort_md": {
                         "type": "number",
                         "minimum": 0
                     },
                     "target_start": {
                         "type": "string",
-                        "format": "date",
-                        "description": "YYYY-MM-DD"
+                        "format": "date"
                     },
                     "target_end": {
                         "type": "string",
-                        "format": "date",
-                        "description": "YYYY-MM-DD"
+                        "format": "date"
                     },
                     "sprint_effort_overrides": {
                         "type": "object",
@@ -278,14 +297,13 @@
                     },
                     "start_date": {
                         "type": "string",
-                        "format": "date",
-                        "description": "YYYY-MM-DD"
+                        "format": "date"
                     },
                     "end_date": {
                         "type": "string",
-                        "format": "date",
-                        "description": "YYYY-MM-DD"
-                    }
+                        "format": "date"
+                    },
+                    "quarter": { "type": "string" }
                 }
             }
         },
@@ -327,7 +345,9 @@
                             "minTcvFilter": { "type": "string" },
                             "minScoreFilter": { "type": "string" },
                             "teamFilter": { "type": "string" },
-                            "epicFilter": { "type": "string" }
+                            "epicFilter": { "type": "string" },
+                            "startSprintId": { "type": "string" },
+                            "endSprintId": { "type": "string" }
                         }
                     }
                 }

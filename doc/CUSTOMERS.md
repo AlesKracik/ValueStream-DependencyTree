@@ -15,16 +15,23 @@ export interface Customer {
   id: string;
   name: string;
   existing_tcv: number;  // Latest "Actual" realized value
+  existing_tcv_valid_from?: string; // Date from which the current Actual value is valid
   potential_tcv: number; // Growth opportunity
   tcv_history?: TcvHistoryEntry[]; // Historical records of Existing TCV
 }
 ```
 
-## TCV History
-The system maintains a history of **Existing TCV** changes. 
-- **Actual TCV:** The `existing_tcv` field always represents the current, latest value.
-- **Historical Entries:** The `tcv_history` array stores past values and the date from which they became valid.
-- **Strategic Impact:** This allows the system to tie Work Items to specific points in time, showing how an initiative delivered value against a specific contract value rather than just the latest one.
+## TCV History & Lifecycle
+The system maintains a robust audit trail of **Existing TCV** evolution. 
+
+### 1. Actual TCV
+The `existing_tcv` and `existing_tcv_valid_from` fields represent the current state of the customer's contract. In the UI, these fields are protected to ensure data integrity.
+
+### 2. The "Archive-and-Set" Update Process
+To change a customer's Actual TCV, the system uses a lifecycle-aware update process:
+1. **Archive:** The current "Actual" value and its "Valid From" date are moved into the `tcv_history` array as a new historical entry.
+2. **Set:** The user provides a new Man-Day value and a new "Valid From" date, which become the new "Actual" state.
+3. **Strategic Impact:** This allows the system to tie Work Items to specific points in time, showing how an initiative delivered value against a specific contract value rather than just the latest one.
 
 ## Visual Representation
 In the dashboard, customers are rendered as `CustomerNode` types:
@@ -43,6 +50,7 @@ erDiagram
         string id
         string name
         number existing_tcv
+        string existing_tcv_valid_from
         number potential_tcv
     }
 ```
