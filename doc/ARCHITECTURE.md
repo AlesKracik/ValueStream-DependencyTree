@@ -30,13 +30,58 @@ graph TD
 - **Schema Validation:** Draft-07 JSON schema at `public/schema.json`.
 - **Seeding:** Automatically seeds from `public/staticImport.json` if the database is empty.
 
-### 3. Data Flow & Hybrid Filtering
-1. **Hydration:** On load or filter change, the client calls `/api/loadData` with optional query parameters (`dashboardId`, `minScore`, etc.).
-2. **Server-Side Processing:** The backend fetches data, joins Work Items with Epics to calculate effort, and joins with Customers to calculate RICE scores. It also returns a `metrics` object with global maximums (e.g., `maxScore`) to ensure consistent visual scaling across all filtered views.
-3. **Hybrid Filtering:**
-    - **Base Filters:** Heavy searches and persistent dashboard parameters are applied at the database level to minimize network payload.
-    - **Transient Filters:** Live-typing search in the UI is applied client-side for instantaneous feedback on the already-filtered dataset.
-4. **Reactivity:** User actions (updates, deletes, adds) trigger local state changes via hooks, which are then asynchronously persisted via `/api/entity` endpoints.
+## Data Flow & State Management
+
+The application utilizes a hybrid state management strategy that combines server-side aggregation with client-side optimistic updates, primarily orchestrated via the `useDashboardData.ts` hook.
+
+### 1. Hydration & Hybrid Filtering
+1.  **Global Hydration:** The top-level `App.tsx` calls `useDashboardData()` without filters to hydrate the entire system and injects the resulting `data` and mutation functions into the `DashboardProvider`.
+2.  **Scoped Re-fetching:** Visual components (like the Dashboard) call `useDashboardData(id, filters)` to trigger a server-side filtered re-fetch scoped to specific dashboard parameters.
+3.  **Hybrid Filter Logic:**
+    -   **Base Filters:** Heavy searches and persistent dashboard parameters are applied at the database level to minimize network payload.
+    -   **Transient Filters:** Live-typing search in the UI is applied client-side for instantaneous feedback on the already-filtered dataset.
+
+### 2. Server-Side Processing
+The backend fetches raw entities and performs the "heavy lifting":
+-   **Joins:** It joins Work Items with Epics to calculate effort and with Customers to calculate RICE scores.
+-   **Metrics:** It returns a `metrics` object with global maximums (e.g., `maxScore`) to ensure consistent visual scaling across all filtered views.
+
+### 3. Mutations & Reactivity
+User actions (updates, deletes, adds) trigger local state changes via mutation functions (`addEpic`, `updateWorkItem`, etc.) which:
+-   **Optimistic Updates:** Immediately execute a local update on the React state array for zero-latency UI feedback.
+-   **Asynchronous Persistence:** Fire off background `fetch` requests to the `/api/entity` endpoints.
+-   **Non-Blocking:** These operations do not block the UI thread waiting for server confirmation.
+
+```mermaid
+sequenceDiagram
+    participant UI as Browser (React App)
+    participant Vite as Vite Server Middleware (Plugin)
+    participant FS as File System (settings.json)
+    participant DB as MongoDB
+    participant Jira as Atlassian Jira API
+
+    Note over UI, Jira: Scenario 1: Initial Dashboard Load
+    UI->>Vite: GET /api/loadData?dashboardId=main
+    Vite->>FS: Read settings.json (Mongo URI)
+    Vite->>DB: Fetch Dashboards, Customers, WorkItems, Epics
+    DB-->>Vite: Raw Data
+    Note right of Vite: Calculate RICE Scores & Global Metrics
+    Vite-->>UI: JSON Data (Aggregated & Scored)
+
+    Note over UI, Jira: Scenario 2: Save Entity Change
+    UI->>Vite: POST /api/entity/customers (ID: c1, {name: "New Name"})
+    Vite->>FS: Read settings.json
+    Vite->>DB: updateOne({id: "c1"}, {$set: {name: "New Name"}})
+    DB-->>Vite: Ack
+    Vite-->>UI: { success: true }
+
+    Note over UI, Jira: Scenario 3: Jira Synchronization
+    UI->>Vite: POST /api/jira/issue { jira_key: "PROJ-123" }
+    Vite->>FS: Read settings.json (API Token)
+    Vite->>Jira: GET /rest/api/3/issue/PROJ-123
+    Jira-->>Vite: Jira Issue Data (Summary, Dates, Team)
+    Vite-->>UI: { success: true, data: JiraData }
+```
 
 ## Directory Structure
 
@@ -92,16 +137,7 @@ graph LR
     DOM --> Label[Absolute Bottom Label]
 ```
 
-### 3. Data Flow and Context (`useDashboardData.ts`)
-The application heavily utilizes `useDashboardData.ts` to manage the global state, fetching, and local optimistic updates.
-1.  **Global Provider:** The top-level `App.tsx` calls `useDashboardData()` without filters to hydrate the entire system and injects the resulting `data` and mutation functions into the `DashboardProvider`.
-2.  **Dashboard Route Wrapper:** The actual visual Dashboard component calls `useDashboardData(id, filters)` to trigger a server-side filtered re-fetch scoped to a specific dashboard parameter set.
-3.  **Local Mutations:** Functions like `addEpic`, `updateWorkItem`, or `deleteCustomer` provided by `useDashboardData` will:
-    - Immediately execute an optimistic update on the local React state array.
-    - Fire off an asynchronous `fetch` request to the backend `/api/entity/{collection}` endpoints.
-    - Not block the UI waiting for the server response (unless explicitly awaited via `.then`).
-
-### 4. Page Component Pattern
+### 3. Page Component Pattern
 Most route-level components in the `src/pages/` and `src/components/{entity}/` directories follow a consistent pattern for handling asynchronous data fetching, loading states, and layout containment.
 
 **Pattern Template:**
@@ -137,7 +173,7 @@ export const MyEntityPage: React.FC<Props> = ({ data, loading, error }) => {
 ```
 *Note: The duplication of this boilerplate across pages is a known technical debt item.*
 
-### 5. ID Generation
+### 4. ID Generation
 When creating new entities (Work Items, Customers, Epics, Sprints), the frontend relies heavily on timestamp-based ID generation concatenated with a prefix character.
 
 **Example Pattern:**
@@ -174,6 +210,58 @@ Best for production-grade scaling, high availability, and multi-user environment
   3. Deploy the application manifest, ensuring it points to the stable MongoDB service name.
 
 ## Logical Blocks
+
+The system is composed of several core entities. The following Entity Relationship Diagram (ERD) illustrates the data model structure, including key attributes and the cardinality of relationships.
+
+```mermaid
+erDiagram
+    CUSTOMER {
+        string id
+        string name
+        number existing_tcv
+        number potential_tcv
+    }
+    WORK-ITEM {
+        string id
+        string name
+        number total_effort_mds
+        number score
+    }
+    EPIC {
+        string id
+        string jira_key
+        number effort_md
+        date target_start
+        date target_end
+    }
+    TEAM {
+        string id
+        string name
+        number total_capacity_mds
+    }
+    SPRINT {
+        string id
+        string name
+        date start_date
+        date end_date
+    }
+    DASHBOARD {
+        string id
+        string name
+        object parameters
+    }
+
+    CUSTOMER ||--o{ WORK-ITEM : "targeted by"
+    WORK-ITEM ||--o{ EPIC : "fulfilled by"
+    TEAM ||--o{ EPIC : "assigned to"
+    SPRINT ||--o{ WORK-ITEM : "release target"
+    SPRINT ||--o{ EPIC : "contains"
+    EPIC ||--o{ EPIC : "depends on"
+    DASHBOARD ||--o{ CUSTOMER : "filters"
+    DASHBOARD ||--o{ WORK-ITEM : "filters"
+    DASHBOARD ||--o{ TEAM : "filters"
+```
+
 Detailed documentation for each system block:
 - [Customers](CUSTOMERS.md)
 - [Work Items](WORKITEMS.md)
