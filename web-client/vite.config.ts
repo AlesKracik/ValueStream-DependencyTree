@@ -167,6 +167,8 @@ const MockDataPersistencePlugin = (): Plugin => ({
               
               const customerFilter = qCustomerFilter || activeDashboard?.parameters?.customerFilter || '';
               const workItemFilter = qWorkItemFilter || activeDashboard?.parameters?.workItemFilter || '';
+              const teamFilter = qTeamFilter || activeDashboard?.parameters?.teamFilter || '';
+              const epicFilter = qEpicFilter || activeDashboard?.parameters?.epicFilter || '';
               const releasedFilter = qReleasedFilter !== 'all' ? qReleasedFilter : (activeDashboard?.parameters?.releasedFilter || 'all');
               const minTcv = Math.max(qMinTcv, Number(activeDashboard?.parameters?.minTcvFilter) || 0);
               const minScore = Math.max(qMinScore, Number(activeDashboard?.parameters?.minScoreFilter) || 0);
@@ -184,8 +186,8 @@ const MockDataPersistencePlugin = (): Plugin => ({
               }
 
               const teamQuery: any = {};
-              if (qTeamFilter) {
-                teamQuery.name = { $regex: qTeamFilter, $options: 'i' };
+              if (teamFilter) {
+                teamQuery.name = { $regex: teamFilter, $options: 'i' };
               }
               const teams = await db.collection('teams').find(teamQuery).toArray();
               dbData.teams = teams.map(({ _id, ...rest }) => rest);
@@ -260,10 +262,11 @@ const MockDataPersistencePlugin = (): Plugin => ({
                 .filter((f: any) => f.score >= minScore);
 
               const epicQuery: any = {};
-              if (qEpicFilter) {
-                epicQuery.name = { $regex: qEpicFilter, $options: 'i' };
+              if (epicFilter) {
+                epicQuery.name = { $regex: epicFilter, $options: 'i' };
               }
-              if (qTeamFilter) {
+              if (teamFilter) {
+                // If team filter is active, only show epics for visible teams
                 epicQuery.team_id = { $in: Array.from(visibleTeamIds) };
               }
               const epics = await db.collection('epics').find(epicQuery).toArray();
