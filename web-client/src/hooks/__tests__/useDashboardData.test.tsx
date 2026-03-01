@@ -48,7 +48,14 @@ describe('useDashboardData', () => {
         renderHook(() => useDashboardData('dash123', filters));
         
         await waitFor(() => {
-            expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/loadData?dashboardId=dash123&customerFilter=test&minTcvFilter=100'));
+            expect(fetch).toHaveBeenCalledWith(
+                expect.stringContaining('/api/loadData?dashboardId=dash123&customerFilter=test&minTcvFilter=100'),
+                expect.objectContaining({
+                    headers: expect.objectContaining({
+                        'Authorization': expect.stringContaining('Bearer')
+                    })
+                })
+            );
         });
     });
 
@@ -66,7 +73,14 @@ describe('useDashboardData', () => {
         
         await waitFor(() => {
             const expectedUrl = '/api/loadData?dashboardId=dash789&customerFilter=cust&workItemFilter=work&teamFilter=team&epicFilter=epic&releasedFilter=released&minTcvFilter=500&minScoreFilter=10';
-            expect(fetch).toHaveBeenCalledWith(expect.stringContaining(expectedUrl));
+            expect(fetch).toHaveBeenCalledWith(
+                expect.stringContaining(expectedUrl),
+                expect.objectContaining({
+                    headers: expect.objectContaining({
+                        'Authorization': expect.stringContaining('Bearer')
+                    })
+                })
+            );
         });
     });
 
@@ -81,7 +95,15 @@ describe('useDashboardData', () => {
         });
 
         expect(result.current.data?.customers).toHaveLength(2);
-        expect(fetch).toHaveBeenCalledWith('/api/entity/customers', expect.objectContaining({ method: 'POST' }));
+        expect(fetch).toHaveBeenCalledWith(
+            '/api/entity/customers',
+            expect.objectContaining({
+                method: 'POST',
+                headers: expect.objectContaining({
+                    'Authorization': expect.stringContaining('Bearer')
+                })
+            })
+        );
     });
 
     it('deletes a sprint', async () => {
@@ -93,6 +115,15 @@ describe('useDashboardData', () => {
         });
 
         expect(result.current.data?.sprints).toHaveLength(0);
+        expect(fetch).toHaveBeenCalledWith(
+            '/api/entity/sprints',
+            expect.objectContaining({
+                method: 'DELETE',
+                headers: expect.objectContaining({
+                    'Authorization': expect.stringContaining('Bearer')
+                })
+            })
+        );
     });
 
     it('cascades deleteCustomer to workItem targets', async () => {
@@ -107,10 +138,16 @@ describe('useDashboardData', () => {
         // f1 had c1 as target, it should be removed
         const f1 = result.current.data?.workItems.find(w => w.id === 'f1');
         expect(f1?.customer_targets).toHaveLength(0);
-        expect(fetch).toHaveBeenCalledWith('/api/entity/workItems', expect.objectContaining({ 
-            method: 'POST',
-            body: expect.stringContaining('"customer_targets":[]')
-        }));
+        expect(fetch).toHaveBeenCalledWith(
+            '/api/entity/workItems',
+            expect.objectContaining({ 
+                method: 'POST',
+                body: expect.stringContaining('"customer_targets":[]'),
+                headers: expect.objectContaining({
+                    'Authorization': expect.stringContaining('Bearer')
+                })
+            })
+        );
     });
 
     it('cascades deleteWorkItem to epics', async () => {
@@ -133,6 +170,15 @@ describe('useDashboardData', () => {
         expect(result.current.data?.workItems).toHaveLength(0);
         const e1 = result.current.data?.epics.find(e => e.id === 'e1');
         expect(e1?.work_item_id).toBeUndefined();
+        expect(fetch).toHaveBeenCalledWith(
+            '/api/entity/epics',
+            expect.objectContaining({
+                method: 'POST',
+                headers: expect.objectContaining({
+                    'Authorization': expect.stringContaining('Bearer')
+                })
+            })
+        );
     });
 
     it('recomputes sprint quarters when fiscal year setting changes', async () => {
@@ -152,10 +198,16 @@ describe('useDashboardData', () => {
         expect(result.current.data?.sprints[0].quarter).toBe('FY2025 Q4');
         
         // Should have persisted the updated sprint
-        expect(fetch).toHaveBeenCalledWith('/api/entity/sprints', expect.objectContaining({
-            method: 'POST',
-            body: expect.stringContaining('"quarter":"FY2025 Q4"')
-        }));
+        expect(fetch).toHaveBeenCalledWith(
+            '/api/entity/sprints',
+            expect.objectContaining({
+                method: 'POST',
+                body: expect.stringContaining('"quarter":"FY2025 Q4"'),
+                headers: expect.objectContaining({
+                    'Authorization': expect.stringContaining('Bearer')
+                })
+            })
+        );
     });
 
     it('reloads page when MongoDB connection settings change', async () => {

@@ -63,7 +63,9 @@ describe('SettingsPage', () => {
             />
         );
 
-        expect(screen.getByText('MongoDB Persistence')).toBeDefined();
+        const mongoTab = screen.getByText('MongoDB Persistence');
+        fireEvent.click(mongoTab);
+
         expect(screen.getByText('Export to staticImport.json')).toBeDefined();
     });
 
@@ -78,11 +80,17 @@ describe('SettingsPage', () => {
             />
         );
 
+        const mongoTab = screen.getByText('MongoDB Persistence');
+        fireEvent.click(mongoTab);
+
         const exportBtn = screen.getByText('Export to staticImport.json');
         fireEvent.click(exportBtn);
 
         expect(global.fetch).toHaveBeenCalledWith('/api/mongo/export', expect.objectContaining({
-            method: 'POST'
+            method: 'POST',
+            headers: expect.objectContaining({
+                'Authorization': expect.stringContaining('Bearer')
+            })
         }));
 
         await vi.waitFor(() => {
@@ -139,6 +147,9 @@ describe('SettingsPage', () => {
             />
         );
 
+        const mongoTab = screen.getByText('MongoDB Persistence');
+        fireEvent.click(mongoTab);
+
         const authSelect = screen.getByLabelText(/Authentication Method:/i);
         fireEvent.change(authSelect, { target: { value: 'aws' } });
 
@@ -157,6 +168,9 @@ describe('SettingsPage', () => {
                 addEpic={addEpic}
             />
         );
+
+        const mongoTab = screen.getByText('MongoDB Persistence');
+        fireEvent.click(mongoTab);
 
         const authSelect = screen.getByLabelText(/Authentication Method:/i);
         fireEvent.change(authSelect, { target: { value: 'oidc' } });

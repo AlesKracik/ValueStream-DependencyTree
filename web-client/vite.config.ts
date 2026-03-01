@@ -5,12 +5,17 @@ import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
 import { MongoClient } from 'mongodb'
+import { dns } from 'node:dns'
+import { promisify } from 'node:util'
+
+const lookup = promisify(dns.lookup);
 
 const MockDataPersistencePlugin = (): Plugin => ({
   name: 'mock-data-persistence',
   configureServer(server: any) {
     server.middlewares.use(async (req: any, res: any, next: any) => {
       const ALLOWED_COLLECTIONS = ['customers', 'workItems', 'teams', 'epics', 'sprints', 'dashboards'];
+      const MAX_PAYLOAD_SIZE = 5 * 1024 * 1024; // 5 MB limit
 
       function escapeRegex(string: string) {
         return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -30,6 +35,49 @@ const MockDataPersistencePlugin = (): Plugin => ({
           res.statusCode = 401;
           res.setHeader('Content-Type', 'application/json');
           return res.end(JSON.stringify({ success: false, error: 'Unauthorized' }));
+        }
+      }
+
+      // Helper to safely read stream body with size limit
+      const readBody = (request: any): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          let body = '';
+          let length = 0;
+          request.on('data', (chunk: any) => {
+            length += chunk.length;
+            if (length > MAX_PAYLOAD_SIZE) {
+              request.pause();
+              reject(new Error('Payload Too Large'));
+              return;
+            }
+            body += chunk.toString();
+          });
+          request.on('end', () => resolve(body));
+          request.on('error', reject);
+        });
+      };
+
+      // SSRF Protection: Check if URL is internal/private
+      async function isSafeUrl(urlStr: string) {
+        try {
+          const url = new URL(urlStr);
+          if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
+          
+          const hostname = url.hostname;
+          if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return false;
+
+          const { address } = await lookup(hostname);
+          const parts = address.split('.').map(Number);
+
+          // Private IP ranges
+          if (parts[0] === 10) return false;
+          if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return false;
+          if (parts[0] === 192 && parts[1] === 168) return false;
+          if (parts[0] === 169 && parts[1] === 254) return false; // Link-local / Metadata service
+
+          return true;
+        } catch {
+          return false;
         }
       }
 
@@ -107,7 +155,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
                 if (priority === 'Must-have') {
                     impact = totalRelevantTcv;
                 } else if (priority === 'Should-have') {
-                    let globalShouldCount = allWorkItems.filter(wf => wf.all_customers_target?.priority === 'Should-have' && wf.all_customers_target?.tcv_type === type).length;
+                    const globalShouldCount = allWorkItems.filter(wf => wf.all_customers_target?.priority === 'Should-have' && wf.all_customers_target?.tcv_type === type).length;
                     impact = totalRelevantTcv / (globalShouldCount || 1);
                 }
             } else {
@@ -130,7 +178,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
                     if (target.priority === 'Must-have' || !target.priority) {
                         impact += targetTcv;
                     } else if (target.priority === 'Should-have') {
-                        let shouldHaveCount = allWorkItems.filter(wf => wf.customer_targets?.some((ct: any) => ct.customer_id === target.customer_id && ct.priority === 'Should-have' && ct.tcv_type === target.tcv_type)).length;
+                        const shouldHaveCount = allWorkItems.filter(wf => wf.customer_targets?.some((ct: any) => ct.customer_id === target.customer_id && ct.priority === 'Should-have' && ct.tcv_type === target.tcv_type)).length;
                         impact += (targetTcv / (shouldHaveCount || 1));
                     }
                 });
@@ -186,7 +234,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
               const dashboards = await db.collection('dashboards').find({}).toArray();
               dbData.dashboards = dashboards.map(({ _id, ...rest }) => rest);
               
-              let activeDashboard = dashboardId ? dbData.dashboards.find((d: any) => d.id === dashboardId) : null;
+              const activeDashboard = dashboardId ? dbData.dashboards.find((d: any) => d.id === dashboardId) : null;
               
               const customerFilter = qCustomerFilter || activeDashboard?.parameters?.customerFilter || '';
               const workItemFilter = qWorkItemFilter || activeDashboard?.parameters?.workItemFilter || '';
@@ -337,91 +385,82 @@ const MockDataPersistencePlugin = (): Plugin => ({
           res.end(JSON.stringify({ success: false, error: e.message }));
         }
       } else if (req.url === '/api/settings' && req.method === 'POST') {
-        let body = '';
-        req.on('data', (chunk: any) => { body += chunk.toString(); });
-        req.on('end', () => {
-          try {
-            const data = JSON.parse(body);
-            const settingsPath = path.resolve(__dirname, 'settings.json');
-            fs.writeFileSync(settingsPath, JSON.stringify(data, null, 2));
+        try {
+          const body = await readBody(req);
+          const data = JSON.parse(body);
+          const settingsPath = path.resolve(__dirname, 'settings.json');
+          fs.writeFileSync(settingsPath, JSON.stringify(data, null, 2));
 
-            res.setHeader('Content-Type', 'application/json');
-            res.statusCode = 200;
-            res.end(JSON.stringify({ success: true }));
-          } catch (e: any) {
-            console.error('Error saving settings:', e);
-            res.setHeader('Content-Type', 'application/json');
-            res.statusCode = 500;
-            res.end(JSON.stringify({ success: false, error: e.message }));
-          }
-        });
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true }));
+        } catch (e: any) {
+          console.error('Error saving settings:', e);
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = e.message === 'Payload Too Large' ? 413 : 500;
+          res.end(JSON.stringify({ success: false, error: e.message }));
+        }
       } else if (req.url.startsWith('/api/entity/') && (req.method === 'POST' || req.method === 'DELETE')) {
-        let body = '';
-        req.on('data', (chunk: any) => { body += chunk.toString(); });
-        req.on('end', async () => {
-          try {
-            const parts = req.url.split('?')[0].split('/');
-            const collectionName = parts[3];
-            const entityId = parts[4]; 
+        try {
+          const body = await readBody(req);
+          const parts = req.url.split('?')[0].split('/');
+          const collectionName = parts[3];
+          const entityId = parts[4]; 
 
-            if (!ALLOWED_COLLECTIONS.includes(collectionName)) {
-              res.statusCode = 403;
-              res.setHeader('Content-Type', 'application/json');
-              return res.end(JSON.stringify({ success: false, error: 'Forbidden collection' }));
-            }
-
-            const data = body ? JSON.parse(body) : {};
-            const rawId = data.id || entityId;
-            const id = String(rawId);
-
-            const settingsPath = path.resolve(__dirname, 'settings.json');
-            const settings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
-
-            if (!settings.mongo_uri) {
-                throw new Error("No MongoDB URI configured.");
-            }
-            
-            const db = await getDb(settings);
-
-            if (req.method === 'POST') {
-                if (!id) throw new Error("Missing entity id");
-                await db.collection(collectionName).updateOne({ id }, { $set: data }, { upsert: true });
-            } else if (req.method === 'DELETE') {
-                if (!id) throw new Error("Missing entity id");
-                await db.collection(collectionName).deleteOne({ id });
-            }
-
+          if (!ALLOWED_COLLECTIONS.includes(collectionName)) {
+            res.statusCode = 403;
             res.setHeader('Content-Type', 'application/json');
-            res.statusCode = 200;
-            res.end(JSON.stringify({ success: true }));
-          } catch (e: any) {
-            console.error(`Error ${req.method} entity:`, e);
-            res.setHeader('Content-Type', 'application/json');
-            res.statusCode = 500;
-            res.end(JSON.stringify({ success: false, error: e.message }));
+            return res.end(JSON.stringify({ success: false, error: 'Forbidden collection' }));
           }
-        });
+
+          const data = body ? JSON.parse(body) : {};
+          const rawId = data.id || entityId;
+          const id = String(rawId);
+
+          const settingsPath = path.resolve(__dirname, 'settings.json');
+          const settings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+
+          if (!settings.mongo_uri) {
+              throw new Error("No MongoDB URI configured.");
+          }
+          
+          const db = await getDb(settings);
+
+          if (req.method === 'POST') {
+              if (!id) throw new Error("Missing entity id");
+              await db.collection(collectionName).updateOne({ id }, { $set: data }, { upsert: true });
+          } else if (req.method === 'DELETE') {
+              if (!id) throw new Error("Missing entity id");
+              await db.collection(collectionName).deleteOne({ id });
+          }
+
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true }));
+        } catch (e: any) {
+          console.error(`Error ${req.method} entity:`, e);
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = e.message === 'Payload Too Large' ? 413 : 500;
+          res.end(JSON.stringify({ success: false, error: e.message }));
+        }
       } else if (req.url === '/api/mongo/test' && req.method === 'POST') {
-        let body = '';
-        req.on('data', (chunk: any) => { body += chunk.toString(); });
-        req.on('end', async () => {
-          try {
-            const config = JSON.parse(body);
-            if (!config.mongo_uri) {
-              throw new Error('Missing mongo_uri');
-            }
-            const db = await getDb(config);
-            await db.command({ ping: 1 });
-            res.setHeader('Content-Type', 'application/json');
-            res.statusCode = 200;
-            res.end(JSON.stringify({ success: true, message: 'MongoDB connection successful!' }));
-          } catch (e: any) {
-            console.error('Error testing mongo connection:', e);
-            res.setHeader('Content-Type', 'application/json');
-            res.statusCode = 200; 
-            res.end(JSON.stringify({ success: false, error: e.message }));
+        try {
+          const body = await readBody(req);
+          const config = JSON.parse(body);
+          if (!config.mongo_uri) {
+            throw new Error('Missing mongo_uri');
           }
-        });
+          const db = await getDb(config);
+          await db.command({ ping: 1 });
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, message: 'MongoDB connection successful!' }));
+        } catch (e: any) {
+          console.error('Error testing mongo connection:', e);
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = e.message === 'Payload Too Large' ? 413 : 200; 
+          res.end(JSON.stringify({ success: false, error: e.message }));
+        }
       } else if (req.url === '/api/mongo/export' && req.method === 'POST') {
         try {
           const settingsPath = path.resolve(__dirname, 'settings.json');
@@ -464,67 +503,73 @@ const MockDataPersistencePlugin = (): Plugin => ({
           res.end(JSON.stringify({ success: false, error: e.message }));
         }
       } else if (req.url === '/api/jira/test' && req.method === 'POST') {
-        let body = '';
-        req.on('data', (chunk: any) => { body += chunk.toString(); });
-        req.on('end', async () => {
-          try {
-            const { jira_base_url, jira_api_version, jira_api_token } = JSON.parse(body);
-            const url = new URL(jira_base_url);
-            const apiUrl = `${url.origin}/rest/api/${jira_api_version || '3'}/myself`;
-            const headers = { 'Accept': 'application/json', 'Authorization': `Bearer ${jira_api_token}` };
-            const jiraRes = await fetch(apiUrl, { headers });
-            if (!jiraRes.ok) throw new Error(`Jira API returned ${jiraRes.status}`);
-            res.setHeader('Content-Type', 'application/json');
-            res.statusCode = 200;
-            res.end(JSON.stringify({ success: true, message: 'Connection successful!' }));
-          } catch (e: any) {
-            res.setHeader('Content-Type', 'application/json');
-            res.statusCode = 200; 
-            res.end(JSON.stringify({ success: false, error: e.message }));
+        try {
+          const body = await readBody(req);
+          const { jira_base_url, jira_api_version, jira_api_token } = JSON.parse(body);
+          
+          if (!await isSafeUrl(jira_base_url)) {
+            throw new Error('Invalid or unsafe Jira URL');
           }
-        });
+
+          const url = new URL(jira_base_url);
+          const apiUrl = `${url.origin}/rest/api/${jira_api_version || '3'}/myself`;
+          const headers = { 'Accept': 'application/json', 'Authorization': `Bearer ${jira_api_token}` };
+          const jiraRes = await fetch(apiUrl, { headers });
+          if (!jiraRes.ok) throw new Error(`Jira API returned ${jiraRes.status}`);
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, message: 'Connection successful!' }));
+        } catch (e: any) {
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = e.message === 'Payload Too Large' ? 413 : 200; 
+          res.end(JSON.stringify({ success: false, error: e.message }));
+        }
       } else if (req.url === '/api/jira/issue' && req.method === 'POST') {
-        let body = '';
-        req.on('data', (chunk: any) => { body += chunk.toString(); });
-        req.on('end', async () => {
-          try {
-            const { jira_key, jira_base_url, jira_api_version, jira_api_token } = JSON.parse(body);
-            const url = new URL(jira_base_url);
-            const apiUrl = `${url.origin}/rest/api/${jira_api_version || '3'}/issue/${jira_key}?expand=names`;
-            const headers: any = { 'Accept': 'application/json' };
-            if (jira_api_token) headers['Authorization'] = `Bearer ${jira_api_token}`;
-            const jiraRes = await fetch(apiUrl, { headers });
-            const jiraData = await jiraRes.json();
-            res.setHeader('Content-Type', 'application/json');
-            res.statusCode = 200;
-            res.end(JSON.stringify({ success: true, data: jiraData }));
-          } catch (e: any) {
-            res.setHeader('Content-Type', 'application/json');
-            res.statusCode = 500;
-            res.end(JSON.stringify({ success: false, error: e.message }));
+        try {
+          const body = await readBody(req);
+          const { jira_key, jira_base_url, jira_api_version, jira_api_token } = JSON.parse(body);
+
+          if (!await isSafeUrl(jira_base_url)) {
+            throw new Error('Invalid or unsafe Jira URL');
           }
-        });
+
+          const url = new URL(jira_base_url);
+          const apiUrl = `${url.origin}/rest/api/${jira_api_version || '3'}/issue/${jira_key}?expand=names`;
+          const headers: any = { 'Accept': 'application/json' };
+          if (jira_api_token) headers['Authorization'] = `Bearer ${jira_api_token}`;
+          const jiraRes = await fetch(apiUrl, { headers });
+          const jiraData = await jiraRes.json();
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, data: jiraData }));
+        } catch (e: any) {
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = e.message === 'Payload Too Large' ? 413 : 500;
+          res.end(JSON.stringify({ success: false, error: e.message }));
+        }
       } else if (req.url === '/api/jira/search' && req.method === 'POST') {
-        let body = '';
-        req.on('data', (chunk: any) => { body += chunk.toString(); });
-        req.on('end', async () => {
-          try {
-            const { jql, jira_base_url, jira_api_version, jira_api_token } = JSON.parse(body);
-            const url = new URL(jira_base_url);
-            const apiUrl = `${url.origin}/rest/api/${jira_api_version || '3'}/search`;
-            const headers: any = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
-            if (jira_api_token) headers['Authorization'] = `Bearer ${jira_api_token}`;
-            const jiraRes = await fetch(apiUrl, { method: 'POST', headers, body: JSON.stringify({ jql, expand: ['names'], maxResults: 100 }) });
-            const jiraData = await jiraRes.json();
-            res.setHeader('Content-Type', 'application/json');
-            res.statusCode = 200;
-            res.end(JSON.stringify({ success: true, data: jiraData }));
-          } catch (e: any) {
-            res.setHeader('Content-Type', 'application/json');
-            res.statusCode = 500;
-            res.end(JSON.stringify({ success: false, error: e.message }));
+        try {
+          const body = await readBody(req);
+          const { jql, jira_base_url, jira_api_version, jira_api_token } = JSON.parse(body);
+
+          if (!await isSafeUrl(jira_base_url)) {
+            throw new Error('Invalid or unsafe Jira URL');
           }
-        });
+
+          const url = new URL(jira_base_url);
+          const apiUrl = `${url.origin}/rest/api/${jira_api_version || '3'}/search`;
+          const headers: any = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
+          if (jira_api_token) headers['Authorization'] = `Bearer ${jira_api_token}`;
+          const jiraRes = await fetch(apiUrl, { method: 'POST', headers, body: JSON.stringify({ jql, expand: ['names'], maxResults: 100 }) });
+          const jiraData = await jiraRes.json();
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, data: jiraData }));
+        } catch (e: any) {
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = e.message === 'Payload Too Large' ? 413 : 500;
+          res.end(JSON.stringify({ success: false, error: e.message }));
+        }
       } else {
         next();
       }
