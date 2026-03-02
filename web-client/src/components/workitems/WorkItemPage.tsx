@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { parseISO } from 'date-fns';
 import type { DashboardData, WorkItem, Epic } from '../../types/models';
 import { authorizedFetch } from "../../utils/api";
 import { SearchableDropdown } from '../common/SearchableDropdown';
@@ -7,6 +6,7 @@ import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
 import { generateId } from '../../utils/security';
 import { calculateWorkItemEffort, calculateWorkItemTcv } from '../../utils/businessLogic';
+import { PageWrapper } from '../layout/PageWrapper';
 
 export interface WorkItemPageProps {
     workItemId: string;
@@ -44,18 +44,43 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     const [syncingId, setSyncingId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'customers' | 'epics'>('customers');
 
-    if (loading) return <div className={styles.pageContainer}>Loading work item details...</div>;
-    if (error) return <div className={styles.pageContainer}>Error: {error.message}</div>;
-    if (!data) return <div className={styles.pageContainer}>No data available.</div>;
+    const workItem = isNew ? newWorkItemDraft as WorkItem : data?.workItems.find(f => f.id === workItemId);
 
-    const workItem = isNew ? newWorkItemDraft as WorkItem : data.workItems.find(f => f.id === workItemId);
-    if (!workItem) return <div className={styles.pageContainer}>Work Item not found.</div>;
-
-    const targetedCustomers = isNew
+    const targetedCustomers = (isNew && data)
         ? newWorkItemCustomers.map(nfc => data.customers.find(c => c.id === nfc.customerId)!).filter(Boolean)
-        : data.customers.filter(c => workItem.customer_targets?.some(ct => ct.customer_id === c.id));
+        : data?.customers.filter(c => workItem?.customer_targets?.some(ct => ct.customer_id === c.id)) || [];
+
+    const epics = isNew ? newWorkItemEpics : data?.epics.filter(e => e.work_item_id === workItemId) || [];
+    const calculatedEffort = workItem && data ? calculateWorkItemEffort(workItem, epics) : 0;
+    const calculatedTcv = workItem && data ? calculateWorkItemTcv(workItem, data.customers) : 0;
+
+    const handleAddEpic = () => {
+        const newId = generateId('e');
+        const newEpic: Epic = {
+            id: newId,
+            jira_key: 'TBD',
+            name: 'New Epic',
+            effort_md: 0,
+            team_id: data?.teams[0]?.id || '',
+            work_item_id: workItemId
+        };
+        if (isNew) {
+            setNewWorkItemEpics(prev => [...prev, newEpic]);
+        } else {
+            addEpic(newEpic);
+        }
+    };
+
+    const handleRemoveEpic = (id: string) => {
+        if (isNew) {
+            setNewWorkItemEpics(prev => prev.filter(e => e.id !== id));
+        } else {
+            updateEpic(id, { work_item_id: undefined });
+        }
+    };
 
     const handleSave = async () => {
+        if (!data) return;
         try {
             if (isNew) {
                 const newId = generateId('f');
@@ -102,567 +127,470 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
         }
     };
 
-    const epics = isNew ? newWorkItemEpics : data.epics.filter(e => e.work_item_id === workItemId);
-    const calculatedEffort = calculateWorkItemEffort(workItem, epics);
-    const calculatedTcv = calculateWorkItemTcv(workItem, data.customers);
-
-    const handleAddEpic = () => {
-        const tempId = generateId('e-temp-');
-        const draftEpic: Epic = {
-            id: tempId,
-            jira_key: 'TBD',
-            work_item_id: isNew ? 'new' : workItemId,
-            team_id: data.teams[0]?.id || '',
-            effort_md: 0,
-            target_start: new Date().toISOString().split('T')[0],
-            target_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            name: 'New Epic'
-        };
-        if (isNew) {
-            setNewWorkItemEpics(prev => [...prev, draftEpic]);
-        } else {
-            addEpic(draftEpic);
-        }
-    };
-
-    const handleUpdateEpic = async (id: string, updates: Partial<Epic>) => {
-        const epic = isNew ? newWorkItemEpics.find(e => e.id === id) : data.epics.find(e => e.id === id);
-        if (!epic) return;
-
-        // Validation: Start Date must be before End Date
-        const newStart = updates.target_start || epic.target_start;
-        const newEnd = updates.target_end || epic.target_end;
-
-        if (newStart && newEnd && parseISO(newStart) >= parseISO(newEnd)) {
-            await showAlert('Invalid Dates', 'The Start Date must be before the End Date.');
+    const syncEpic = async (id: string, jiraKey: string) => {
+        if (jiraKey === 'TBD') {
+            await showAlert('Invalid Key', 'Please enter a valid Jira Key before syncing.');
             return;
         }
-
-        if (isNew) {
-            setNewWorkItemEpics(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
-        } else {
-            updateEpic(id, updates);
-        }
-    };
-
-    const handleRemoveEpic = (id: string) => {
-        if (isNew) {
-            setNewWorkItemEpics(prev => prev.filter(e => e.id !== id));
-        } else {
-            updateEpic(id, { work_item_id: undefined });
-        }
-    };
-
-    const handleSyncJira = async (epicId: string, jiraKey: string) => {
-        if (!data.settings.jira_base_url) {
-            await showAlert('Configuration Required', 'Please configure Jira Base URL in Settings first.');
-            return;
-        }
-        setSyncingId(epicId);
+        setSyncingId(id);
         try {
-            const response = await authorizedFetch('/api/jira/issue', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    jira_key: jiraKey,
-                    jira_base_url: data.settings.jira_base_url,
-                    jira_api_version: data.settings.jira_api_version || '3',
-                    jira_api_token: data.settings.jira_api_token
-                })
-            });
-
-            const resData = await response.json();
-            if (!response.ok || !resData.success) {
-                throw new Error(resData.error || 'Failed to fetch Jira data');
+            const res = await authorizedFetch(`/api/jira/issue?jira_key=${jiraKey}`);
+            const json = await res.ok ? await res.json() : null;
+            if (json && json.success) {
+                const updates = {
+                    name: json.data.summary,
+                    effort_md: json.data.effort_md,
+                    target_start: json.data.target_start,
+                    target_end: json.data.target_end,
+                    team_id: data?.teams.find(t => t.name.toLowerCase() === json.data.team?.toLowerCase())?.id || (isNew ? newWorkItemEpics.find(e => e.id === id)?.team_id : data?.epics.find(e => e.id === id)?.team_id)
+                };
+                if (isNew) {
+                    setNewWorkItemEpics(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+                } else {
+                    updateEpic(id, updates);
+                }
+            } else {
+                await showAlert('Sync Failed', json?.error || 'Failed to sync epic from Jira.');
             }
-
-            const issue = resData.data;
-            const fields = issue.fields;
-            const names = issue.names;
-
-            let targetStartKey = '';
-            let targetEndKey = '';
-            let teamKey = '';
-
-            Object.entries(names as Record<string, string>).forEach(([key, name]) => {
-                if (name === 'Target start') targetStartKey = key;
-                if (name === 'Target end') targetEndKey = key;
-                if (name === 'Team') teamKey = key;
-            });
-
-            const updates: Partial<Epic> = {};
-            if (fields.summary) updates.name = fields.summary;
-            if (fields.timeestimate !== undefined && fields.timeestimate !== null) {
-                updates.effort_md = Math.round(fields.timeestimate / 28800);
-            }
-
-            if (targetStartKey && fields[targetStartKey]) updates.target_start = fields[targetStartKey];
-            if (targetEndKey && fields[targetEndKey]) updates.target_end = fields[targetEndKey];
-
-            if (teamKey && fields[teamKey]) {
-                const teamField = fields[teamKey];
-                const jiraTeamId = (teamField.id || teamField.value || teamField.toString()).toString();
-                const jiraTeamName = teamField.name || '';
-
-                const matchedTeam = data.teams.find(t =>
-                    (t.jira_team_id && t.jira_team_id.toString() === jiraTeamId) ||
-                    (t.name === jiraTeamId) ||
-                    (jiraTeamName && t.name === jiraTeamName)
-                );
-                if (matchedTeam) updates.team_id = matchedTeam.id;
-            }
-
-            handleUpdateEpic(epicId, updates);
-        } catch (err: any) {
-            console.error('Jira sync error:', err);
-            await showAlert('Sync Error', `Error syncing from Jira: ${err.message}`);
+        } catch (err) {
+            console.error('Sync failed', err);
         } finally {
             setSyncingId(null);
         }
     };
 
-    const customersCount = (isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target) ? 'All' : targetedCustomers.length;
-
     return (
-        <div className={styles.pageContainer}>
-            <div className={styles.header}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <button className="btn-secondary" onClick={onBack}>
-                        ← Back
-                    </button>
-                    <h1>{isNew ? 'New Work Item' : workItem.name}</h1>
-                </div>
-                <div style={{ display: 'flex', gap: '16px' }}>
-                    {!isNew && (
-                        <button
-                            className="btn-danger"
-                            onClick={handleDelete}
-                        >
-                            Delete Work Item
-                        </button>
-                    )}
-                    {isNew ? (
-                        <button
-                            className="btn-primary"
-                            onClick={handleSave}
-                        >
-                            Create
-                        </button>
-                    ) : null}
-                </div>
-            </div>
-
-            <div className={styles.content}>
-                <section className={styles.card}>
-                    <h2>Work Item Details</h2>
-                    <div className={styles.formGrid}>
-                        <label>
-                            Name:
-                            <input
-                                type="text"
-                                value={isNew ? newWorkItemDraft.name : workItem.name}
-                                onChange={e => {
-                                    if (isNew) {
-                                        setNewWorkItemDraft(prev => ({ ...prev, name: e.target.value }));
-                                    } else {
-                                        updateWorkItem(workItem.id, { name: e.target.value });
-                                    }
-                                }}
-                            />
-                        </label>
-                        <label>
-                            Total Effort (MDs):
-                            <input
-                                type="number"
-                                min="0"
-                                value={isNew ? newWorkItemDraft.total_effort_mds : workItem.total_effort_mds}
-                                onChange={e => {
-                                    const val = parseInt(e.target.value) || 0;
-                                    if (isNew) {
-                                        setNewWorkItemDraft(prev => ({ ...prev, total_effort_mds: val }));
-                                    } else {
-                                        updateWorkItem(workItem.id, { total_effort_mds: val });
-                                    }
-                                }}
-                            />
-                        </label>
-                        <label>
-                            Released in Sprint:
-                            <SearchableDropdown
-                                options={data.sprints.map(s => ({ id: s.id, label: s.name }))}
-                                onSelect={(sprintId) => {
-                                    if (isNew) {
-                                        setNewWorkItemDraft(prev => ({ ...prev, released_in_sprint_id: sprintId }));
-                                    } else {
-                                        updateWorkItem(workItem.id, { released_in_sprint_id: sprintId });
-                                    }
-                                }}
-                                placeholder="Select release sprint..."
-                                initialValue={data.sprints.find(s => s.id === (isNew ? newWorkItemDraft.released_in_sprint_id : workItem.released_in_sprint_id))?.name || ''}
-                                clearOnSelect={false}
-                            />
-                        </label>
-                    </div>
-
-                    <div style={{ marginTop: '20px', padding: '12px', backgroundColor: 'rgba(96, 165, 250, 0.05)', borderRadius: '8px', border: '1px solid rgba(96, 165, 250, 0.2)', display: 'flex', gap: '24px' }}>
-                        <div style={{ fontSize: '14px', color: '#94a3b8' }}>
-                            <span style={{ fontWeight: 'bold', color: '#60a5fa', marginRight: '8px' }}>Total Calculated Effort:</span>
-                            <span style={{ color: '#f1f5f9' }}>{calculatedEffort} MDs</span>
+        <PageWrapper
+            loading={loading}
+            error={error}
+            data={data}
+            loadingMessage="Loading work item details..."
+            emptyMessage="No data available."
+        >
+            {!workItem ? (
+                <div className={styles.empty}>Work Item not found.</div>
+            ) : (
+                <>
+                    <header className={styles.header}>
+                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                            <button onClick={onBack} className="btn-secondary">← Back</button>
+                            <h1>{isNew ? 'New Work Item' : workItem.name}</h1>
                         </div>
-                        <div style={{ fontSize: '14px', color: '#94a3b8' }}>
-                            <span style={{ fontWeight: 'bold', color: '#10b981', marginRight: '8px' }}>Total TCV Impact:</span>
-                            <span style={{ color: '#f1f5f9' }}>${calculatedTcv.toLocaleString()}</span>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            {!isNew && <button onClick={handleDelete} className="btn-danger">Delete Work Item</button>}
+                            {isNew && <button onClick={handleSave} className="btn-primary">Create Work Item</button>}
                         </div>
-                        <div style={{ fontSize: '14px', color: '#94a3b8' }}>
-                            <span style={{ fontWeight: 'bold', color: '#f59e0b', marginRight: '8px' }}>Current RICE Score:</span>
-                            <span style={{ color: '#f1f5f9' }}>{Math.round(workItem.score || 0)}</span>
-                        </div>
-                    </div>
+                    </header>
 
-                    <div className={styles.formGrid} style={{ marginTop: '16px' }}>
-                        <label style={{ flex: 1 }}>
-                            Description:
-                            <textarea
-                                value={isNew ? newWorkItemDraft.description : (workItem.description || '')}
-                                onChange={e => {
-                                    if (isNew) {
-                                        setNewWorkItemDraft(prev => ({ ...prev, description: e.target.value }));
-                                    } else {
-                                        updateWorkItem(workItem.id, { description: e.target.value });
-                                    }
+                    <div className={styles.content}>
+                        <section className={styles.card}>
+                            <h2>Work Item Details</h2>
+                            <div className={styles.formGrid}>
+                                <label>
+                                    Name:
+                                    <input
+                                        type="text"
+                                        value={workItem.name}
+                                        onChange={e => {
+                                            if (isNew) {
+                                                setNewWorkItemDraft(prev => ({ ...prev, name: e.target.value }));
+                                            } else {
+                                                updateWorkItem(workItem.id, { name: e.target.value });
+                                            }
+                                        }}
+                                    />
+                                </label>
+                                <label>
+                                    Total Effort (MDs):
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={workItem.total_effort_mds}
+                                        onChange={e => {
+                                            const val = parseInt(e.target.value) || 0;
+                                            if (isNew) {
+                                                setNewWorkItemDraft(prev => ({ ...prev, total_effort_mds: val }));
+                                            } else {
+                                                updateWorkItem(workItem.id, { total_effort_mds: val });
+                                            }
+                                        }}
+                                    />
+                                </label>
+                                <label>
+                                    Released in Sprint:
+                                    <SearchableDropdown
+                                        options={data?.sprints.map(s => ({ id: s.id, label: s.name })) || []}
+                                        onSelect={(sprintId) => {
+                                            if (isNew) {
+                                                setNewWorkItemDraft(prev => ({ ...prev, released_in_sprint_id: sprintId }));
+                                            } else {
+                                                updateWorkItem(workItem.id, { released_in_sprint_id: sprintId });
+                                            }
+                                        }}
+                                        placeholder="Select release sprint..."
+                                        initialValue={data?.sprints.find(s => s.id === (workItem.released_in_sprint_id))?.name || ''}
+                                        clearOnSelect={false}
+                                    />
+                                </label>
+                            </div>
+
+                            <div style={{ marginTop: '20px', padding: '12px', backgroundColor: 'rgba(96, 165, 250, 0.05)', borderRadius: '8px', border: '1px solid rgba(96, 165, 250, 0.2)', display: 'flex', gap: '24px' }}>
+                                <div style={{ fontSize: '14px', color: '#94a3b8' }}>
+                                    <span style={{ fontWeight: 'bold', color: '#60a5fa', marginRight: '8px' }}>Total Calculated Effort:</span>
+                                    <span style={{ color: '#f1f5f9' }}>{calculatedEffort} MDs</span>
+                                </div>
+                                <div style={{ fontSize: '14px', color: '#94a3b8' }}>
+                                    <span style={{ fontWeight: 'bold', color: '#10b981', marginRight: '8px' }}>Total TCV Impact:</span>
+                                    <span style={{ color: '#f1f5f9' }}>${calculatedTcv.toLocaleString()}</span>
+                                </div>
+                                <div style={{ fontSize: '14px', color: '#94a3b8' }}>
+                                    <span style={{ fontWeight: 'bold', color: '#f59e0b', marginRight: '8px' }}>Current RICE Score:</span>
+                                    <span style={{ color: '#f1f5f9' }}>{Math.round(workItem.score || 0)}</span>
+                                </div>
+                            </div>
+
+                            <div className={styles.formGrid} style={{ marginTop: '16px' }}>
+                                <label style={{ flex: 1 }}>
+                                    Description:
+                                    <textarea
+                                        value={workItem.description || ''}
+                                        onChange={e => {
+                                            if (isNew) {
+                                                setNewWorkItemDraft(prev => ({ ...prev, description: e.target.value }));
+                                            } else {
+                                                updateWorkItem(workItem.id, { description: e.target.value });
+                                            }
+                                        }}
+                                        rows={4}
+                                        placeholder="Add a detailed description for this work item..."
+                                        style={{ resize: 'none', minHeight: '100px' }}
+                                    />
+                                </label>
+                            </div>
+                        </section>
+
+                        <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #334155', marginBottom: '24px', marginTop: '24px' }}>
+                            <button
+                                onClick={() => setActiveTab('customers')}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: '12px 16px',
+                                    color: activeTab === 'customers' ? '#60a5fa' : '#94a3b8',
+                                    borderBottom: activeTab === 'customers' ? '2px solid #60a5fa' : '2px solid transparent',
+                                    cursor: 'pointer',
+                                    fontSize: '15px',
+                                    fontWeight: activeTab === 'customers' ? 'bold' : '500',
+                                    transition: 'all 0.2s'
                                 }}
-                                rows={4}
-                                placeholder="Add a detailed description for this work item..."
-                                style={{ resize: 'none', minHeight: '100px' }}
-                            />
-                        </label>
-                    </div>
-                </section>
-
-                <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #334155', marginBottom: '24px', marginTop: '24px' }}>
-                    <button
-                        onClick={() => setActiveTab('customers')}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: '12px 16px',
-                            color: activeTab === 'customers' ? '#60a5fa' : '#94a3b8',
-                            borderBottom: activeTab === 'customers' ? '2px solid #60a5fa' : '2px solid transparent',
-                            cursor: 'pointer',
-                            fontSize: '15px',
-                            fontWeight: activeTab === 'customers' ? 'bold' : '500',
-                            transition: 'all 0.2s'
-                        }}
-                    >
-                        Targeted Customers ({customersCount})
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('epics')}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: '12px 16px',
-                            color: activeTab === 'epics' ? '#60a5fa' : '#94a3b8',
-                            borderBottom: activeTab === 'epics' ? '2px solid #60a5fa' : '2px solid transparent',
-                            cursor: 'pointer',
-                            fontSize: '15px',
-                            fontWeight: activeTab === 'epics' ? 'bold' : '500',
-                            transition: 'all 0.2s'
-                        }}
-                    >
-                        Epics ({epics.length})
-                    </button>
-                </div>
-
-                {activeTab === 'customers' && (
-                    <section className={styles.card}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                            <h2>Targeted Customers</h2>
+                            >
+                                Targeted Customers ({targetedCustomers.length})
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('epics')}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: '12px 16px',
+                                    color: activeTab === 'epics' ? '#60a5fa' : '#94a3b8',
+                                    borderBottom: activeTab === 'epics' ? '2px solid #60a5fa' : '2px solid transparent',
+                                    cursor: 'pointer',
+                                    fontSize: '15px',
+                                    fontWeight: activeTab === 'epics' ? 'bold' : '500',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                Epics ({epics.length})
+                            </button>
                         </div>
 
-                        <table className={styles.table}>
-                            <thead>
-                                <tr>
-                                    <th>Customer</th>
-                                    <th>TCV Target</th>
-                                    <th>Priority</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderLeft: '4px solid #3b82f6' }}>
-                                    <td style={{ fontWeight: 'bold' }}>
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                                            <input 
-                                                type="checkbox" 
-                                                checked={isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target}
-                                                onChange={e => {
-                                                    const checked = e.target.checked;
-                                                    const defaultTarget = { tcv_type: 'existing' as const, priority: 'Must-have' as const };
-                                                    if (isNew) {
-                                                        setNewWorkItemDraft(prev => ({ ...prev, all_customers_target: checked ? defaultTarget : undefined }));
-                                                    } else {
-                                                        updateWorkItem(workItem.id, { all_customers_target: checked ? defaultTarget : undefined });
-                                                    }
-                                                }}
-                                            />
-                                            ALL CUSTOMERS (Global)
-                                        </label>
-                                    </td>
-                                    <td>
-                                        {(isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target) && (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {activeTab === 'customers' && (
+                            <section className={styles.card}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                                    <input
+                                        type="checkbox"
+                                        id="global-checkbox"
+                                        checked={!!workItem.all_customers_target}
+                                        onChange={e => {
+                                            const val = e.target.checked ? { tcv_type: 'existing' as const, priority: 'Must-have' as const } : undefined;
+                                            if (isNew) {
+                                                setNewWorkItemDraft(prev => ({ ...prev, all_customers_target: val }));
+                                            } else {
+                                                updateWorkItem(workItem.id, { all_customers_target: val });
+                                            }
+                                        }}
+                                    />
+                                    <label htmlFor="global-checkbox" style={{ fontWeight: '600', color: '#60a5fa', cursor: 'pointer' }}>
+                                        ALL CUSTOMERS (Global)
+                                    </label>
+                                </div>
+
+                                {workItem.all_customers_target ? (
+                                    <div style={{ padding: '16px', backgroundColor: 'rgba(96, 165, 250, 0.05)', borderRadius: '8px', border: '1px solid rgba(96, 165, 250, 0.2)' }}>
+                                        <p style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#94a3b8' }}>
+                                            This initiative relates to all customers (e.g. core maintenance, tech debt).
+                                        </p>
+                                        <div className={styles.formGrid}>
+                                            <label>
+                                                TCV Basis:
                                                 <select
-                                                    value={isNew ? newWorkItemDraft.all_customers_target?.tcv_type : workItem.all_customers_target?.tcv_type}
+                                                    value={workItem.all_customers_target.tcv_type}
                                                     onChange={e => {
-                                                        const type = e.target.value as 'existing' | 'potential';
-                                                        if (isNew) {
-                                                            setNewWorkItemDraft(prev => ({ ...prev, all_customers_target: { ...prev.all_customers_target!, tcv_type: type } }));
-                                                        } else {
-                                                            updateWorkItem(workItem.id, { all_customers_target: { ...workItem.all_customers_target!, tcv_type: type } });
-                                                        }
+                                                        const val = { ...workItem.all_customers_target!, tcv_type: e.target.value as 'existing' | 'potential' };
+                                                        if (isNew) setNewWorkItemDraft(prev => ({ ...prev, all_customers_target: val }));
+                                                        else updateWorkItem(workItem.id, { all_customers_target: val });
                                                     }}
                                                 >
-                                                    <option value="existing">Existing TCV</option>
-                                                    <option value="potential">Potential TCV</option>
+                                                    <option value="existing">Total Existing TCV</option>
+                                                    <option value="potential">Total Potential TCV</option>
                                                 </select>
-                                                {(isNew ? newWorkItemDraft.all_customers_target?.tcv_type === 'existing' : workItem.all_customers_target?.tcv_type === 'existing') && (
-                                                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>Always uses latest actual TCV</span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </td>
-                                    <td>
-                                        {(isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target) && (
-                                            <select
-                                                value={isNew ? newWorkItemDraft.all_customers_target?.priority : workItem.all_customers_target?.priority}
-                                                onChange={e => {
-                                                    const prio = e.target.value as 'Must-have' | 'Should-have' | 'Nice-to-have';
-                                                    if (isNew) {
-                                                        setNewWorkItemDraft(prev => ({ ...prev, all_customers_target: { ...prev.all_customers_target!, priority: prio } }));
-                                                    } else {
-                                                        updateWorkItem(workItem.id, { all_customers_target: { ...workItem.all_customers_target!, priority: prio } });
-                                                    }
-                                                }}
-                                            >
-                                                <option value="Must-have">Must-have</option>
-                                                <option value="Should-have">Should-have</option>
-                                                <option value="Nice-to-have">Nice-to-have</option>
-                                            </select>
-                                        )}
-                                    </td>
-                                    <td></td>
-                                </tr>
-
-                                {!(isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target) && targetedCustomers.map(customer => {
-                                    const targetDef = isNew
-                                        ? newWorkItemCustomers.find(nfc => nfc.customerId === customer.id)!
-                                        : workItem.customer_targets?.find(ct => ct.customer_id === customer.id)!;
-
-                                    const updateTarget = (updates: Partial<typeof targetDef>) => {
-                                        if (isNew) {
-                                            setNewWorkItemCustomers(prev => prev.map(nfc =>
-                                                nfc.customerId === customer.id ? { ...nfc, ...updates } : nfc
-                                            ));
-                                        } else {
-                                            const newTargets = workItem.customer_targets!.map(ct =>
-                                                ct.customer_id === customer.id ? { ...ct, ...updates } : ct
-                                            );
-                                            updateWorkItem(workItem.id, { customer_targets: newTargets as any });
-                                        }
-                                    };
-
-                                    const removeTarget = () => {
-                                        if (isNew) {
-                                            setNewWorkItemCustomers(prev => prev.filter(nfc => nfc.customerId !== customer.id));
-                                        } else {
-                                            const newTargets = workItem.customer_targets!.filter(ct => ct.customer_id !== customer.id);
-                                            updateWorkItem(workItem.id, { customer_targets: newTargets });
-                                        }
-                                    };
-
-                                    return (
-                                        <tr key={customer.id}>
-                                            <td>{customer.name}</td>
-                                            <td>
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                    <select
-                                                        value={targetDef.tcv_type}
-                                                        onChange={e => updateTarget({ tcv_type: e.target.value as 'existing' | 'potential', tcv_history_id: undefined })}
-                                                    >
-                                                        <option value="existing">Existing</option>
-                                                        <option value="potential">Potential</option>
-                                                    </select>
-                                                    
-                                                    {targetDef.tcv_type === 'existing' && customer.tcv_history && customer.tcv_history.length > 0 && (
-                                                        <select
-                                                            value={targetDef.tcv_history_id || 'latest'}
-                                                            onChange={e => updateTarget({ tcv_history_id: e.target.value === 'latest' ? undefined : e.target.value })}
-                                                            style={{ fontSize: '12px', marginTop: '4px', backgroundColor: '#1e293b', color: '#fff', border: '1px solid #334155' }}
-                                                        >
-                                                            <option value="latest">Latest Actual (${customer.existing_tcv.toLocaleString()})</option>
-                                                            {customer.tcv_history.map(h => (
-                                                                <option key={h.id} value={h.id}>
-                                                                    {h.valid_from}: ${h.value.toLocaleString()}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td>
+                                            </label>
+                                            <label>
+                                                Priority:
                                                 <select
-                                                    value={targetDef.priority || 'Must-have'}
-                                                    onChange={e => updateTarget({ priority: e.target.value as 'Must-have' | 'Should-have' | 'Nice-to-have' })}
+                                                    value={workItem.all_customers_target.priority}
+                                                    onChange={e => {
+                                                        const val = { ...workItem.all_customers_target!, priority: e.target.value as any };
+                                                        if (isNew) setNewWorkItemDraft(prev => ({ ...prev, all_customers_target: val }));
+                                                        else updateWorkItem(workItem.id, { all_customers_target: val });
+                                                    }}
                                                 >
                                                     <option value="Must-have">Must-have</option>
                                                     <option value="Should-have">Should-have</option>
                                                     <option value="Nice-to-have">Nice-to-have</option>
                                                 </select>
-                                            </td>
-                                            <td>
-                                                <button onClick={removeTarget} className="btn-danger">Remove</button>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                                {targetedCustomers.length === 0 && !(isNew ? !!newWorkItemDraft.all_customers_target : !!workItem.all_customers_target) && (
-                                    <tr>
-                                        <td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No targeted customers found.</td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                            </label>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <table className={styles.table}>
+                                            <thead>
+                                                <tr>
+                                                    <th>Customer</th>
+                                                    <th>TCV Type</th>
+                                                    <th>TCV Selection</th>
+                                                    <th>Priority</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {targetedCustomers.map(customer => {
+                                                    const target = isNew 
+                                                        ? newWorkItemCustomers.find(c => c.customerId === customer.id)
+                                                        : workItem.customer_targets?.find(ct => ct.customer_id === customer.id);
+                                                    
+                                                    if (!target) return null;
 
-                        <div className={styles.addWorkItemBox}>
-                            <h3>Add Customer Target</h3>
-                            <div style={{ display: 'flex', gap: '12px' }}>
-                                <SearchableDropdown
-                                    options={data.customers
-                                        .filter(c => !targetedCustomers.find(tc => tc.id === c.id))
-                                        .map(c => ({ id: c.id, label: c.name }))
-                                    }
-                                    onSelect={(customerSelectId) => {
-                                        if (isNew) {
-                                            setNewWorkItemCustomers(prev => [...prev, {
-                                                customerId: customerSelectId,
-                                                tcv_type: 'potential',
-                                                priority: 'Should-have'
-                                            }]);
-                                        } else {
-                                            const newTargets = [...(workItem.customer_targets || []), {
-                                                customer_id: customerSelectId,
-                                                tcv_type: 'potential',
-                                                priority: 'Should-have'
-                                            }];
-                                            updateWorkItem(workItemId, { customer_targets: newTargets as any });
-                                        }
-                                    }}
-                                    placeholder="Search for a customer to target..."
-                                />
-                            </div>
-                        </div>
-                    </section>
-                )}
+                                                    const updateTarget = (updates: any) => {
+                                                        if (isNew) {
+                                                            setNewWorkItemCustomers(prev => prev.map(c => c.customerId === customer.id ? { ...c, ...updates } : c));
+                                                        } else {
+                                                            const newTargets = workItem.customer_targets?.map(ct => ct.customer_id === customer.id ? { ...ct, ...updates } : ct);
+                                                            updateWorkItem(workItem.id, { customer_targets: newTargets });
+                                                        }
+                                                    };
 
-                {activeTab === 'epics' && (
-                    <section className={styles.card}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                            <h2>Epics</h2>
-                            <button className="btn-primary" onClick={handleAddEpic}>+ Create New Epic</button>
-                        </div>
+                                                    return (
+                                                        <tr key={customer.id}>
+                                                            <td>{customer.name}</td>
+                                                            <td>
+                                                                <select value={target.tcv_type} onChange={e => updateTarget({ tcv_type: e.target.value })}>
+                                                                    <option value="existing">Existing</option>
+                                                                    <option value="potential">Potential</option>
+                                                                </select>
+                                                            </td>
+                                                            <td>
+                                                                {target.tcv_type === 'existing' ? (
+                                                                    <select
+                                                                        value={target.tcv_history_id || 'latest'}
+                                                                        onChange={e => updateTarget({ tcv_history_id: e.target.value === 'latest' ? undefined : e.target.value })}
+                                                                    >
+                                                                        <option value="latest">Latest Actual (${customer.existing_tcv.toLocaleString()})</option>
+                                                                        {customer.tcv_history?.map(h => (
+                                                                            <option key={h.id} value={h.id}>{h.valid_from} (${h.value.toLocaleString()})</option>
+                                                                        ))}
+                                                                    </select>
+                                                                ) : (
+                                                                    <span style={{ color: '#94a3b8' }}>N/A (${customer.potential_tcv.toLocaleString()})</span>
+                                                                )}
+                                                            </td>
+                                                            <td>
+                                                                <select value={target.priority} onChange={e => updateTarget({ priority: e.target.value })}>
+                                                                    <option value="Must-have">Must-have</option>
+                                                                    <option value="Should-have">Should-have</option>
+                                                                    <option value="Nice-to-have">Nice-to-have</option>
+                                                                </select>
+                                                            </td>
+                                                            <td>
+                                                                <button
+                                                                    className="btn-danger"
+                                                                    onClick={() => {
+                                                                        if (isNew) setNewWorkItemCustomers(prev => prev.filter(c => c.customerId !== customer.id));
+                                                                        else updateWorkItem(workItem.id, { customer_targets: workItem.customer_targets?.filter(ct => ct.customer_id !== customer.id) });
+                                                                    }}
+                                                                >
+                                                                    Remove
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                                {targetedCustomers.length === 0 && (
+                                                    <tr><td colSpan={5} style={{ textAlign: 'center', color: '#94a3b8', padding: '24px' }}>No customers targeted yet.</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
 
-                        <table className={styles.table}>
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Jira Key</th>
-                                    <th>Team</th>
-                                    <th>Effort MDs</th>
-                                    <th>Start Date</th>
-                                    <th>End Date</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {epics.map(epic => (
-                                    <tr key={epic.id}>
-                                        <td>
-                                            <input type="text" value={epic.name || ''} onChange={e => handleUpdateEpic(epic.id, { name: e.target.value })} style={{ width: '100%', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
-                                        </td>
-                                        <td>
-                                            <input type="text" value={epic.jira_key} onChange={e => handleUpdateEpic(epic.id, { jira_key: e.target.value })} style={{ width: '80px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
-                                        </td>
-                                        <td>
+                                        <div className={styles.addWorkItemBox}>
+                                            <h3>Target a Customer</h3>
                                             <SearchableDropdown
-                                                options={data.teams.map(t => ({ id: t.id, label: t.name }))}
-                                                onSelect={(teamId) => handleUpdateEpic(epic.id, { team_id: teamId })}
-                                                placeholder="Select Team"
-                                                initialValue={data.teams.find(t => t.id === epic.team_id)?.name || ''}
-                                                clearOnSelect={false}
+                                                options={data?.customers
+                                                    .filter(c => !targetedCustomers.find(tc => tc.id === c.id))
+                                                    .map(c => ({ id: c.id, label: c.name })) || []}
+                                                onSelect={(customerId) => {
+                                                    const newTarget = { customerId, tcv_type: 'existing' as const, priority: 'Should-have' as const };
+                                                    if (isNew) setNewWorkItemCustomers(prev => [...prev, newTarget]);
+                                                    else updateWorkItem(workItem.id, { customer_targets: [...(workItem.customer_targets || []), { customer_id: customerId, tcv_type: 'existing', priority: 'Should-have' }] });
+                                                }}
+                                                placeholder="Search for a customer to target..."
                                             />
-                                        </td>
-                                        <td>
-                                            <input type="number" min="0" value={epic.effort_md} onChange={e => handleUpdateEpic(epic.id, { effort_md: parseInt(e.target.value) || 0 })} style={{ width: '50px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
-                                        </td>
-                                        <td>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                <input type="date" value={epic.target_start || ''} onChange={e => handleUpdateEpic(epic.id, { target_start: e.target.value })} style={{ width: '110px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
-                                                {!epic.target_start && <span title="Missing start date" style={{ fontSize: '16px' }}>⚠️</span>}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                                <input type="date" value={epic.target_end || ''} onChange={e => handleUpdateEpic(epic.id, { target_end: e.target.value })} style={{ width: '110px', padding: '6px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', borderRadius: '4px' }} />
-                                                {!epic.target_end && <span title="Missing end date" style={{ fontSize: '16px' }}>⚠️</span>}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div style={{ display: 'flex', gap: '8px' }}>
-                                                <button
-                                                    onClick={() => handleSyncJira(epic.id, epic.jira_key)}
-                                                    disabled={!epic.jira_key || epic.jira_key === 'TBD' || syncingId === epic.id}
-                                                    className="btn-secondary"
-                                                    style={{ padding: '6px 12px', whiteSpace: 'nowrap' }}
-                                                >
-                                                    {syncingId === epic.id ? 'Syncing...' : 'Sync from Jira'}
-                                                </button>
-                                                <button onClick={() => handleRemoveEpic(epic.id)} className="btn-danger" style={{ padding: '6px 12px' }}>Remove</button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {epics.length === 0 && (
-                                    <tr>
-                                        <td colSpan={8} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No epics currently mapped to this work item.</td>
-                                    </tr>
+                                        </div>
+                                    </>
                                 )}
-                            </tbody>
-                        </table>
+                            </section>
+                        )}
 
-                        <div className={styles.addWorkItemBox}>
-                            <h3>Assign Existing Epic</h3>
-                            <div style={{ display: 'flex', gap: '12px' }}>
-                                <SearchableDropdown
-                                    options={data.epics
-                                        .filter(e => !e.work_item_id || e.work_item_id === 'UNASSIGNED')
-                                        .map(e => ({ id: e.id, label: `${e.jira_key !== 'TBD' ? e.jira_key : ''} ${e.name || 'Unnamed Epic'}` }))
-                                }
-                                onSelect={(epicId) => {
-                                    if (isNew) {
-                                        const epicToAssign = data.epics.find(e => e.id === epicId);
-                                        if (epicToAssign) setNewWorkItemEpics(prev => [...prev, epicToAssign]);
-                                    } else {
-                                        updateEpic(epicId, { work_item_id: workItemId });
-                                    }
-                                }}
-                                placeholder="Search for an unassigned epic to link..."
-                                />
-                            </div>
-                        </div>
-                    </section>
-                )}
-            </div>
-        </div>
+                        {activeTab === 'epics' && (
+                            <section className={styles.card}>
+                                <table className={styles.table}>
+                                    <thead>
+                                        <tr>
+                                            <th>Key</th>
+                                            <th>Name</th>
+                                            <th>Effort (MDs)</th>
+                                            <th>Start</th>
+                                            <th>End</th>
+                                            <th>Team</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {epics.map(epic => (
+                                            <tr key={epic.id}>
+                                                <td>
+                                                    <input
+                                                        type="text"
+                                                        value={epic.jira_key}
+                                                        onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, jira_key: e.target.value } : ev)) : updateEpic(epic.id, { jira_key: e.target.value })}
+                                                        style={{ width: '80px' }}
+                                                    />
+                                                </td>
+                                                <td>
+                                                    <input
+                                                        type="text"
+                                                        value={epic.name}
+                                                        onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, name: e.target.value } : ev)) : updateEpic(epic.id, { name: e.target.value })}
+                                                    />
+                                                </td>
+                                                <td>
+                                                    <input
+                                                        type="number"
+                                                        value={epic.effort_md}
+                                                        onChange={e => {
+                                                            const val = parseInt(e.target.value) || 0;
+                                                            isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, effort_md: val } : ev)) : updateEpic(epic.id, { effort_md: val });
+                                                        }}
+                                                        style={{ width: '60px' }}
+                                                    />
+                                                </td>
+                                                <td>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        <input
+                                                            type="date"
+                                                            value={epic.target_start || ''}
+                                                            onChange={async e => {
+                                                                const newStart = e.target.value;
+                                                                if (newStart && epic.target_end && newStart >= epic.target_end) {
+                                                                    await showAlert('Invalid Dates', 'The Start Date must be before the End Date.');
+                                                                    return;
+                                                                }
+                                                                if (isNew) setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, target_start: newStart } : ev));
+                                                                else updateEpic(epic.id, { target_start: newStart });
+                                                            }}
+                                                        />
+                                                        {!epic.target_start && <span title="Missing start date" style={{ cursor: 'help' }}>⚠️</span>}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        <input
+                                                            type="date"
+                                                            value={epic.target_end || ''}
+                                                            onChange={async e => {
+                                                                const newEnd = e.target.value;
+                                                                if (epic.target_start && newEnd && epic.target_start >= newEnd) {
+                                                                    await showAlert('Invalid Dates', 'The Start Date must be before the End Date.');
+                                                                    return;
+                                                                }
+                                                                if (isNew) setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, target_end: newEnd } : ev));
+                                                                else updateEpic(epic.id, { target_end: newEnd });
+                                                            }}
+                                                        />
+                                                        {!epic.target_end && <span title="Missing end date" style={{ cursor: 'help' }}>⚠️</span>}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <select
+                                                        value={epic.team_id}
+                                                        onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, team_id: e.target.value } : ev)) : updateEpic(epic.id, { team_id: e.target.value })}
+                                                    >
+                                                        {data?.teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                                    </select>
+                                                </td>
+                                                <td style={{ display: 'flex', gap: '8px' }}>
+                                                    <button className="btn-secondary" onClick={() => syncEpic(epic.id, epic.jira_key)} disabled={syncingId === epic.id}>
+                                                        {syncingId === epic.id ? 'Syncing...' : 'Sync Jira'}
+                                                    </button>
+                                                    <button className="btn-danger" onClick={() => handleRemoveEpic(epic.id)}>
+                                                        Unlink
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {epics.length === 0 && (
+                                            <tr><td colSpan={7} style={{ textAlign: 'center', color: '#94a3b8', padding: '24px' }}>No epics linked yet.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+
+                                <div className={styles.addWorkItemBox}>
+                                    <h3>Create & Link Epic</h3>
+                                    <button className="btn-secondary" onClick={handleAddEpic}>+ New Epic</button>
+
+                                    <div style={{ marginTop: '16px', borderTop: '1px solid #334155', paddingTop: '16px' }}>
+                                        <h3>Link Existing Epic</h3>
+                                        <SearchableDropdown
+                                            options={data?.epics
+                                                .filter(e => e.work_item_id !== workItemId)
+                                                .map(e => ({ id: e.id, label: `${e.jira_key !== 'TBD' ? e.jira_key : ''} ${e.name || 'Unnamed Epic'}` })) || []}
+                                            onSelect={(epicId) => {
+                                                if (isNew) {
+                                                    const epicToAssign = data?.epics.find(e => e.id === epicId);
+                                                    if (epicToAssign) setNewWorkItemEpics(prev => [...prev, { ...epicToAssign, work_item_id: 'new' }]);
+                                                } else {
+                                                    updateEpic(epicId, { work_item_id: workItemId });
+                                                }
+                                            }}
+                                            placeholder="Search for an unassigned epic to link..."
+                                        />
+                                    </div>
+                                </div>
+                            </section>
+                        )}
+                    </div>
+                </>
+            )}
+        </PageWrapper>
     );
 };

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import styles from '../../pages/List.module.css';
+import { PageWrapper } from '../layout/PageWrapper';
 
 export interface SortOption<T> {
     label: string;
@@ -11,6 +12,7 @@ interface GenericListPageProps<T> {
     title: string;
     items: T[];
     loading: boolean;
+    error?: Error | null;
     filterPlaceholder?: string;
     filterPredicate: (item: T, query: string) => boolean;
     sortOptions?: SortOption<T>[];
@@ -31,6 +33,7 @@ export function GenericListPage<T extends { id: string }>({
     title,
     items,
     loading,
+    error,
     filterPlaceholder = "Filter items...",
     filterPredicate,
     sortOptions = [],
@@ -57,7 +60,7 @@ export function GenericListPage<T extends { id: string }>({
     };
 
     const filteredAndSortedItems = useMemo(() => {
-        let result = items.filter(item => filterPredicate(item, filter));
+        let result = items ? items.filter(item => filterPredicate(item, filter)) : [];
 
         if (sortBy) {
             const option = sortOptions.find(o => o.key === sortBy);
@@ -81,11 +84,14 @@ export function GenericListPage<T extends { id: string }>({
         return result;
     }, [items, filter, filterPredicate, sortBy, sortOrder, sortOptions]);
 
-    if (loading) return <div className={styles.pageContainer}>{loadingMessage}</div>;
-    if (!items) return <div className={styles.pageContainer}>No data</div>;
-
     return (
-        <div className={styles.pageContainer}>
+        <PageWrapper 
+            loading={loading} 
+            error={error} 
+            data={items} 
+            loadingMessage={loadingMessage}
+            emptyMessage={emptyMessage}
+        >
             <div className={styles.header}>
                 <h1>{title}</h1>
                 {actionButton && (
@@ -139,6 +145,6 @@ export function GenericListPage<T extends { id: string }>({
                     <div className={styles.empty}>{emptyMessage}</div>
                 )}
             </div>
-        </div>
+        </PageWrapper>
     );
 }

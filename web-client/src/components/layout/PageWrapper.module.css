@@ -1,0 +1,24 @@
+.pageContainer {
+    padding: 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+    min-height: 100vh;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+
+.loading, .error, .empty {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    color: #94a3b8;
+    font-size: 16px;
+    text-align: center;
+    padding: 40px;
+}
+
+.error {
+    color: #f87171;
+}

@@ -105,8 +105,8 @@ describe('DashboardEditPage', () => {
         expect(screen.getByLabelText(/Start Sprint:/i)).toBeDefined();
         expect(screen.getByLabelText(/End Sprint:/i)).toBeDefined();
         
-        // Check options
-        expect(screen.getByText('Sprint 1 (2026-01-01)')).toBeDefined();
-        expect(screen.getByText('Sprint 2 (2026-01-15)')).toBeDefined();
+        // Check options (using getAllByText because they appear in both selects)
+        expect(screen.getAllByText('Sprint 1 (2026-01-01)').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('Sprint 2 (2026-01-15)').length).toBeGreaterThan(0);
     });
 });

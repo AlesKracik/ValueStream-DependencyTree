@@ -1,17 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { TeamPage } from '../TeamPage';
+import { DashboardProvider, NotificationProvider } from '../../../contexts/DashboardContext';
 import type { DashboardData } from '../../../types/models';
 
 // Mock date-holidays
-const mockGetHolidays = vi.fn().mockReturnValue([
-    { date: '2026-01-01 00:00:00', type: 'public', name: 'New Year' }
-]);
+const mockIsHoliday = vi.fn().mockImplementation((date: Date) => {
+    // Jan 1st 2026 is a holiday in our mock
+    return date.getFullYear() === 2026 && date.getMonth() === 0 && date.getDate() === 1;
+});
 
 vi.mock('date-holidays', () => {
     return {
         default: class {
-            getHolidays = mockGetHolidays;
+            isHoliday = mockIsHoliday;
         }
     };
 });
@@ -26,7 +28,7 @@ const mockData: DashboardData = {
     ],
     epics: [],
     sprints: [
-        { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' }
+        { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY2026 Q1' }
     ]
 };
 
@@ -45,35 +47,61 @@ describe('TeamPage', () => {
     });
 
     it('renders team details', () => {
-        render(<TeamPage {...defaultProps} />);
+        render(
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <TeamPage {...defaultProps} />
+                </DashboardProvider>
+            </NotificationProvider>
+        );
         expect(screen.getByDisplayValue('Team 1')).toBeDefined();
         expect(screen.getByDisplayValue('100')).toBeDefined();
-        expect(screen.getByDisplayValue('US')).toBeDefined();
+        expect(screen.getByDisplayValue('USA')).toBeDefined();
     });
 
     it('calls updateTeam when name changes', () => {
-        render(<TeamPage {...defaultProps} />);
-        const nameInput = screen.getByLabelText(/Name:/i);
+        render(
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <TeamPage {...defaultProps} />
+                </DashboardProvider>
+            </NotificationProvider>
+        );
+        const nameInput = screen.getByLabelText(/Team Name:/i);
         fireEvent.change(nameInput, { target: { value: 'Team Alpha' } });
         expect(defaultProps.updateTeam).toHaveBeenCalledWith('t1', { name: 'Team Alpha' });
     });
 
     it('calculates holiday impact and shows suggested capacity', () => {
-        render(<TeamPage {...defaultProps} />);
+        render(
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <TeamPage {...defaultProps} />
+                </DashboardProvider>
+            </NotificationProvider>
+        );
         
-        // Jan 1st 2026 is a Thursday (not weekend)
-        // Holiday count = 1
-        // Impact = (100 / 10) * 1 = 10
-        // Suggested = 100 - 10 = 90
+        // Sprint 1: 2026-01-01 to 2026-01-14
+        // Jan 1 (Thu) - Holiday
+        // Jan 2 (Fri) - Work
+        // Jan 3, 4 (Sat, Sun) - Weekend
+        // Jan 5-9 (Mon-Fri) - Work
+        // Jan 10, 11 (Sat, Sun) - Weekend
+        // Jan 12-14 (Mon-Wed) - Work
+        // Total work days = 1 (Jan 2) + 5 (Jan 5-9) + 3 (Jan 12-14) = 9 days
         
-        expect(screen.getByText('🏝️ -1d')).toBeDefined();
-        const input = screen.getByPlaceholderText('90');
-        expect(input).toBeDefined();
+        expect(screen.getByText('9 days')).toBeDefined();
     });
 
     it('handles capacity override change', () => {
-        render(<TeamPage {...defaultProps} />);
-        const input = screen.getByPlaceholderText('90');
+        render(
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <TeamPage {...defaultProps} />
+                </DashboardProvider>
+            </NotificationProvider>
+        );
+        const input = screen.getByPlaceholderText('100');
         fireEvent.change(input, { target: { value: '85' } });
         
         expect(defaultProps.updateTeam).toHaveBeenCalledWith('t1', {
@@ -92,10 +120,16 @@ describe('TeamPage', () => {
             }]
         };
 
-        render(<TeamPage {...defaultProps} data={dataWithOverride} />);
+        render(
+            <NotificationProvider>
+                <DashboardProvider value={{ data: dataWithOverride, updateEpic: vi.fn() }}>
+                    <TeamPage {...defaultProps} data={dataWithOverride} />
+                </DashboardProvider>
+            </NotificationProvider>
+        );
         
-        const clearBtn = screen.getByTitle('Clear override');
-        fireEvent.click(clearBtn);
+        const input = screen.getByDisplayValue('85');
+        fireEvent.change(input, { target: { value: '' } });
 
         expect(defaultProps.updateTeam).toHaveBeenCalledWith('t1', {
             sprint_capacity_overrides: {}

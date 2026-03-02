@@ -5,6 +5,7 @@ import { authorizedFetch } from "../../utils/api";
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
 import { sanitizeUrl } from '../../utils/security';
+import { PageWrapper } from '../layout/PageWrapper';
 
 export interface EpicPageProps {
     epicId: string;
@@ -28,14 +29,11 @@ export const EpicPage: React.FC<EpicPageProps> = ({
 }) => {
     const { showAlert, showConfirm } = useDashboardContext();
     const [syncing, setSyncing] = useState<boolean>(false);
-    if (loading) return <div>Loading epic details...</div>;
-    if (error) return <div>Error: {error.message}</div>;
-    if (!data) return <div>No data available</div>;
 
-    const epic = data.epics.find(e => e.id === epicId);
-    if (!epic) return <div>Epic not found.</div>;
+    const epic = data?.epics.find(e => e.id === epicId);
 
     const getActiveSprintStart = () => {
+        if (!data) return new Date();
         const today = new Date();
         const activeSprint = data.sprints.find(s => {
             const start = parseISO(s.start_date);
@@ -46,347 +44,200 @@ export const EpicPage: React.FC<EpicPageProps> = ({
     };
 
     const updateEpicWithOverlapCheck = async (id: string, updates: Partial<Epic>) => {
+        if (!epic) return;
         // Validation: Start Date must be before End Date
         const newStart = updates.target_start || epic.target_start;
         const newEnd = updates.target_end || epic.target_end;
 
-        if (newStart && newEnd && parseISO(newStart) >= parseISO(newEnd)) {
+        if (newStart && newEnd && newStart >= newEnd) {
             await showAlert('Invalid Dates', 'The Start Date must be before the End Date.');
             return;
         }
 
-        // If updating dates, check for historical overlap
-        if (updates.target_start || updates.target_end) {
-            const activeSprintStart = getActiveSprintStart();
+        // 1. If start date is changing, check if we're moving it past already "frozen" work
+        if (updates.target_start && updates.target_start !== epic.target_start) {
+            const activeStart = getActiveSprintStart();
+            const currentStart = epic.target_start ? parseISO(epic.target_start) : null;
             
-            // Refined Logic: 
-            // 1. If only target_end is changing AND it's still in the future (>= activeSprintStart), don't prompt.
-            // 2. Otherwise (start date changing OR end date moved to past), perform overlap check.
-            const isFutureEndShiftOnly = updates.target_end && !updates.target_start && parseISO(updates.target_end) >= activeSprintStart;
-
-            if (!isFutureEndShiftOnly) {
-                const pastSprints = data.sprints.filter(s => parseISO(s.end_date) < activeSprintStart);
-                
-                // Check if this epic has any effort/overrides in past sprints
-                const hasPastWork = pastSprints.some(s => 
-                    epic.sprint_effort_overrides?.[s.id] !== undefined
+            // If the current start is in the past (before active sprint)
+            if (currentStart && currentStart < activeStart) {
+                const confirmed = await showConfirm(
+                    'Historical Work Warning',
+                    'Moving the start date will clear any historical work overrides for this epic. Do you want to proceed?'
                 );
-
-                if (hasPastWork) {
-                    const confirmed = await showConfirm(
-                        "Historical Work Warning",
-                        "This Epic has recorded effort in past sprints. Shifting the start date or moving the end date into the past will overwrite this historical data. Do you want to recalculate past work?"
-                    );
-                    
-                    if (!confirmed) return;
-
-                    // User said YES: Unthaw past work
-                    const newOverrides = { ...(epic.sprint_effort_overrides || {}) };
-                    pastSprints.forEach(s => delete newOverrides[s.id]);
-                    updates.sprint_effort_overrides = Object.keys(newOverrides).length > 0 ? newOverrides : undefined;
-                }
+                if (!confirmed) return;
+                
+                // Clear overrides as they are no longer valid for the new timeline
+                updates.sprint_effort_overrides = undefined;
             }
         }
-        
+
         updateEpic(id, updates);
     };
 
-    const handleDelete = async () => {
-        const confirmed = await showConfirm('Delete Epic', 'Are you sure you want to completely delete this Epic?');
-        if (!confirmed) return;
-        try {
-            deleteEpic(epicId);
-            
-            
-            onBack();
-        } catch (err) {
-            console.error('Delete failed', err);
-        }
-    };
-
-    const handleSyncJira = async () => {
-        if (!epic.jira_key) return;
-        if (!data.settings.jira_base_url) {
-            await showAlert('Configuration Required', 'Please configure Jira Base URL in Settings first.');
+    const handleSync = async () => {
+        if (!epic || epic.jira_key === 'TBD') {
+            await showAlert('Invalid Key', 'Please enter a valid Jira Key before syncing.');
             return;
         }
         setSyncing(true);
         try {
-            const response = await authorizedFetch('/api/jira/issue', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    jira_key: epic.jira_key,
-                    jira_base_url: data.settings.jira_base_url,
-                    jira_api_version: data.settings.jira_api_version || '3',
-                    jira_api_token: data.settings.jira_api_token
-                })
-            });
-
-            const resData = await response.json();
-            if (!response.ok || !resData.success) {
-                throw new Error(resData.error || 'Failed to fetch Jira data');
+            const res = await authorizedFetch(`/api/jira/issue?jira_key=${epic.jira_key}`);
+            const json = await res.ok ? await res.json() : null;
+            if (json && json.success) {
+                const updates = {
+                    name: json.data.summary,
+                    effort_md: json.data.effort_md,
+                    target_start: json.data.target_start,
+                    target_end: json.data.target_end,
+                    team_id: data?.teams.find(t => t.name.toLowerCase() === json.data.team?.toLowerCase())?.id || epic.team_id
+                };
+                updateEpicWithOverlapCheck(epic.id, updates);
+            } else {
+                await showAlert('Sync Failed', json?.error || 'Failed to sync epic from Jira.');
             }
-
-            const issue = resData.data;
-            const fields = issue.fields;
-            const names = issue.names;
-
-            let targetStartKey = '';
-            let targetEndKey = '';
-            let teamKey = '';
-
-            Object.entries(names as Record<string, string>).forEach(([key, name]) => {
-                if (name === 'Target start') targetStartKey = key;
-                if (name === 'Target end') targetEndKey = key;
-                if (name === 'Team') teamKey = key;
-            });
-
-            const updates: Partial<Epic> = {};
-            if (fields.summary) updates.name = fields.summary;
-            if (fields.timeestimate !== undefined && fields.timeestimate !== null) {
-                updates.effort_md = Math.round(fields.timeestimate / 28800);
-            }
-
-            if (targetStartKey && fields[targetStartKey]) updates.target_start = fields[targetStartKey];
-            if (targetEndKey && fields[targetEndKey]) updates.target_end = fields[targetEndKey];
-
-            if (teamKey && fields[teamKey]) {
-                const teamField = fields[teamKey];
-                const jiraTeamId = (teamField.id || teamField.value || teamField.toString()).toString();
-                const jiraTeamName = teamField.name || '';
-
-                const matchedTeam = data.teams.find(t =>
-                    (t.jira_team_id && t.jira_team_id.toString() === jiraTeamId) ||
-                    (t.name === jiraTeamId) ||
-                    (jiraTeamName && t.name === jiraTeamName)
-                );
-                if (matchedTeam) updates.team_id = matchedTeam.id;
-            }
-
-            updateEpic(epicId, updates);
-        } catch (err: any) {
-            console.error('Jira sync error:', err);
-            await showAlert('Sync Error', `Error syncing from Jira: ${err.message}`);
+        } catch (err) {
+            console.error('Sync failed', err);
         } finally {
             setSyncing(false);
         }
     };
 
-    const handleOverrideChange = (sprintId: string, val: string) => {
-        const overrides = { ...(epic.sprint_effort_overrides || {}) };
-        const cleanVal = val.trim();
-
-        if (cleanVal === '') {
-            delete overrides[sprintId];
-        } else {
-            const parsed = Number(cleanVal);
-            if (!isNaN(parsed) && parsed >= 0) {
-                overrides[sprintId] = parsed;
-            }
-        }
-        updateEpic(epicId, { sprint_effort_overrides: Object.keys(overrides).length > 0 ? overrides : undefined });
+    const handleDelete = async () => {
+        if (!epic) return;
+        const confirmed = await showConfirm('Delete Epic', `Are you sure you want to delete ${epic.jira_key}?`);
+        if (!confirmed) return;
+        deleteEpic(epic.id);
+        onBack();
     };
 
-    // Calculate effort overlaps
-    const sStart = epic.target_start ? parseISO(epic.target_start) : null;
-    const sEnd = epic.target_end ? parseISO(epic.target_end) : null;
-    const totalMd = Number(epic.effort_md) || 0;
-    const overrides = epic.sprint_effort_overrides || {};
-
-    let overlappingSprints: { id: string, name: string, defaultEffort: number, hasOverride: boolean }[] = [];
-
-    if (sStart && sEnd) {
-        try {
-            const overlaps = (data.sprints || []).map(sprint => {
-                const spStart = parseISO(sprint.start_date);
-                const spEnd = parseISO(sprint.end_date);
-                const overlapStart = max([sStart, spStart]);
-                const overlapEnd = min([sEnd, spEnd]);
-                if (overlapStart <= overlapEnd) {
-                    return { sprint, overlapDays: differenceInDays(overlapEnd, overlapStart) + 1 };
-                }
-                return null;
-            }).filter(Boolean) as { sprint: any, overlapDays: number }[];
-
-            let totalOverrideMd = 0;
-            let remainingDefaultDays = 0;
-
-            overlaps.forEach(({ sprint, overlapDays }) => {
-                const overrideVal = overrides[sprint.id];
-                const hasOverride = overrideVal !== undefined && overrideVal !== null;
-                if (hasOverride) {
-                    totalOverrideMd += Number(overrideVal);
-                } else {
-                    remainingDefaultDays += overlapDays;
-                }
-            });
-
-            const remainingMdForDefaults = Math.max(0, totalMd - totalOverrideMd);
-
-            overlappingSprints = overlaps.map(({ sprint, overlapDays }) => {
-                const overrideVal = overrides[sprint.id];
-                const hasOverride = overrideVal !== undefined && overrideVal !== null;
-                let defaultEffort = 0;
-
-                if (!hasOverride && remainingDefaultDays > 0) {
-                    defaultEffort = remainingMdForDefaults * (overlapDays / remainingDefaultDays);
-                } else if (hasOverride) {
-                    defaultEffort = Number(overrideVal);
-                }
-
-                return {
-                    id: sprint.id,
-                    name: sprint.name,
-                    defaultEffort,
-                    hasOverride
-                };
-            });
-        } catch (e) {
-            // ignore invalid dates
-        }
-    }
-
     return (
-        <div className={styles.pageContainer}>
-            <div className={styles.header}>
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                    <button onClick={onBack} className="btn-secondary">← Back</button>
-                    <h1>Epic: {epicId}</h1>
-                </div>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                    <button
-                        onClick={handleDelete}
-                        className="btn-danger"
-                    >
-                        Delete Epic
-                    </button>
-                    <button
-                        onClick={handleSyncJira}
-                        disabled={!epic?.jira_key || epic.jira_key === 'TBD' || syncing}
-                        className="btn-secondary"
-                        style={{
-                            opacity: (!epic?.jira_key || epic.jira_key === 'TBD' || syncing) ? 0.5 : 1
-                        }}
-                    >
-                        {syncing ? 'Syncing...' : 'Sync from Jira'}
-                    </button>
-                </div>
-            </div>
+        <PageWrapper
+            loading={loading}
+            error={error}
+            data={data}
+            loadingMessage="Loading epic details..."
+            emptyMessage="No data available."
+        >
+            {!epic ? (
+                <div className={styles.empty}>Epic not found.</div>
+            ) : (
+                <>
+                    <header className={styles.header}>
+                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                            <button onClick={onBack} className="btn-secondary">← Back</button>
+                            <h1>{epic.jira_key}: {epic.name}</h1>
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <button onClick={handleSync} className="btn-primary" disabled={syncing}>
+                                {syncing ? 'Syncing...' : 'Sync from Jira'}
+                            </button>
+                            <button onClick={handleDelete} className="btn-danger">Delete Epic</button>
+                        </div>
+                    </header>
 
-            <div className={styles.content}>
-                <section className={styles.card}>
-                    <h2>Epic Details</h2>
-                    <div className={styles.formGrid}>
-                        <label>
-                            Custom Name (Optional):
-                            <input
-                                type="text"
-                                value={epic.name || ''}
-                                placeholder="Uses Work Item Name by default"
-                                onChange={e => updateEpic(epicId, { name: e.target.value.trim() || undefined })}
-                            />
-                        </label>
-                        <label>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                <span>Jira Key:</span>
-                                {epic.jira_key && epic.jira_key !== 'TBD' && data?.settings?.jira_base_url && (
-                                    <a
-                                        href={sanitizeUrl(`${data.settings.jira_base_url}/browse/${epic.jira_key}`)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{ fontSize: '12px', color: '#60a5fa', textDecoration: 'none' }}
+                    <div className={styles.content}>
+                        <section className={styles.card}>
+                            <h2>Epic Configuration</h2>
+                            <div className={styles.formGrid}>
+                                <label>
+                                    Jira Key:
+                                    <input 
+                                        type="text" 
+                                        value={epic.jira_key} 
+                                        onChange={e => updateEpic(epic.id, { jira_key: e.target.value })}
+                                    />
+                                </label>
+                                <label>
+                                    Name:
+                                    <input 
+                                        type="text" 
+                                        value={epic.name} 
+                                        onChange={e => updateEpic(epic.id, { name: e.target.value })}
+                                    />
+                                </label>
+                            </div>
+
+                            <div className={styles.formGrid} style={{ marginTop: '24px' }}>
+                                <label>
+                                    Effort (MDs):
+                                    <input 
+                                        type="number" 
+                                        value={epic.effort_md} 
+                                        onChange={e => updateEpic(epic.id, { effort_md: parseInt(e.target.value) || 0 })}
+                                    />
+                                </label>
+                                <label>
+                                    Team:
+                                    <select 
+                                        value={epic.team_id} 
+                                        onChange={e => updateEpic(epic.id, { team_id: e.target.value })}
                                     >
-                                        View in Jira ↗
-                                    </a>
+                                        {data?.teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                    </select>
+                                </label>
+                            </div>
+
+                            <div className={styles.formGrid} style={{ marginTop: '24px' }}>
+                                <label>
+                                    Target Start:
+                                    <input 
+                                        type="date" 
+                                        value={epic.target_start || ''} 
+                                        onChange={e => updateEpicWithOverlapCheck(epic.id, { target_start: e.target.value })}
+                                    />
+                                </label>
+                                <label>
+                                    Target End:
+                                    <input 
+                                        type="date" 
+                                        value={epic.target_end || ''} 
+                                        onChange={e => updateEpicWithOverlapCheck(epic.id, { target_end: e.target.value })}
+                                    />
+                                </label>
+                            </div>
+
+                            <div className={styles.formGrid} style={{ marginTop: '24px' }}>
+                                <label>
+                                    External URL:
+                                    <input 
+                                        type="text" 
+                                        placeholder="https://..."
+                                        value={epic.external_url || ''} 
+                                        onChange={e => updateEpic(epic.id, { external_url: sanitizeUrl(e.target.value) })}
+                                    />
+                                </label>
+                                {epic.external_url && (
+                                    <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '8px' }}>
+                                        <a href={epic.external_url} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '14px' }}>
+                                            Open Link ↗
+                                        </a>
+                                    </div>
                                 )}
                             </div>
-                            <input
-                                type="text"
-                                value={epic.jira_key || ''}
-                                onChange={e => updateEpic(epicId, { jira_key: e.target.value })}
-                            />
-                        </label>
-                        <label>
-                            Effort MDs:
-                            <input
-                                type="number"
-                                step="0.1"
-                                value={epic.effort_md === undefined ? '' : epic.effort_md}
-                                onChange={e => updateEpic(epicId, { effort_md: Number(e.target.value) })}
-                            />
-                        </label>
-                        <label>
-                            Target Start:
-                            <input
-                                type="date"
-                                value={epic.target_start || ''}
-                                onChange={e => updateEpicWithOverlapCheck(epicId, { target_start: e.target.value })}
-                            />
-                        </label>
-                        <label>
-                            Target End:
-                            <input
-                                type="date"
-                                value={epic.target_end || ''}
-                                onChange={e => updateEpicWithOverlapCheck(epicId, { target_end: e.target.value })}
-                            />
-                        </label>
-                    </div>
-                </section>
+                        </section>
 
-                <section className={styles.card}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                        <h2>Effort Breakdown</h2>
-                    </div>
-                    {overlappingSprints.length === 0 ? (
-                        <p style={{ color: '#9ca3af', fontSize: '14px' }}>
-                            No overlapping sprints found for the selected Target Dates.
-                        </p>
-                    ) : (
-                        <div className={styles.formGrid} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-                            {overlappingSprints.map((sprint) => (
-                                <div key={sprint.id} style={{
-                                    backgroundColor: '#1f2937',
-                                    padding: '12px',
-                                    borderRadius: '6px',
-                                    border: sprint.hasOverride ? '1px solid #8b5cf6' : '1px solid #374151'
-                                }}>
-                                    <div style={{ color: sprint.hasOverride ? '#fff' : '#9ca3af', fontSize: '13px', marginBottom: '8px', fontWeight: 500 }}>
-                                        {sprint.name}
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            placeholder={sprint.defaultEffort.toFixed(1)}
-                                            value={epic.sprint_effort_overrides?.[sprint.id] ?? ''}
-                                            onChange={e => handleOverrideChange(sprint.id, e.target.value)}
-                                            style={{
-                                                textAlign: 'right'
-                                            }}
-                                        />
-                                        {sprint.hasOverride && (
-                                            <button
-                                                onClick={() => handleOverrideChange(sprint.id, '')}
-                                                style={{
-                                                    background: 'none',
-                                                    border: 'none',
-                                                    color: '#ef4444',
-                                                    cursor: 'pointer',
-                                                    fontSize: '18px',
-                                                    padding: '0 4px'
-                                                }}
-                                                title="Clear override"
-                                            >×</button>
-                                        )}
-                                    </div>
+                        <section className={styles.card}>
+                            <h2>Effort Overrides (Actuals)</h2>
+                            <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '16px' }}>
+                                Values captured when a sprint ends. These are used instead of calculated proportions for historical data.
+                            </p>
+                            {!epic.sprint_effort_overrides || Object.keys(epic.sprint_effort_overrides).length === 0 ? (
+                                <div style={{ color: '#64748b', fontSize: '14px', fontStyle: 'italic' }}>No historical overrides recorded.</div>
+                            ) : (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                                    {Object.entries(epic.sprint_effort_overrides).map(([sprintId, value]) => (
+                                        <div key={sprintId} style={{ padding: '8px 12px', backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '6px' }}>
+                                            <span style={{ color: '#94a3b8', fontSize: '12px', display: 'block' }}>Sprint ID: {sprintId}</span>
+                                            <span style={{ fontWeight: '600', color: '#f1f5f9' }}>{value} MDs</span>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    )}
-                </section>
-            </div>
-        </div>
+                            )}
+                        </section>
+                    </div>
+                </>
+            )}
+        </PageWrapper>
     );
 };

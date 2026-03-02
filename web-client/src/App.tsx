@@ -93,12 +93,13 @@ function SprintPageRouteWrapper({ dashboardState }: any) {
 }
 
 function SettingsPageRouteWrapper({ dashboardState }: any) {
-  if (dashboardState.loading && !dashboardState.data) return <div style={{ color: 'white', padding: '24px' }}>Loading settings...</div>;
   return (
     <SettingsPage 
       settings={dashboardState.data?.settings || { jira_base_url: '', jira_api_version: '3' }} 
       onUpdateSettings={dashboardState.updateSettings} 
       data={dashboardState.data} 
+      loading={dashboardState.loading}
+      error={dashboardState.error}
       updateEpic={dashboardState.updateEpic} 
       addEpic={dashboardState.addEpic} 
     />

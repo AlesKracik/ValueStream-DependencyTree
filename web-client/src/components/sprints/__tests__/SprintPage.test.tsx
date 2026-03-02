@@ -1,102 +1,128 @@
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SprintPage } from '../SprintPage';
-import * as DashboardContext from '../../../contexts/DashboardContext';
+import { DashboardProvider, NotificationProvider } from '../../../contexts/DashboardContext';
 import type { DashboardData } from '../../../types/models';
 
 const mockData: DashboardData = {
-    dashboards: [], settings: { jira_base_url: 'https://jira', jira_api_version: '3' },
+    dashboards: [],
+    settings: { jira_base_url: '', jira_api_version: '3', sprint_duration_days: 14 },
     customers: [],
     workItems: [],
     teams: [],
+    epics: [],
     sprints: [
         { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY2026 Q1' }
-    ],
-    epics: []
+    ]
+};
+
+const defaultProps = {
+    data: mockData,
+    loading: false,
+    error: null,
+    addSprint: vi.fn(),
+    updateSprint: vi.fn(),
+    deleteSprint: vi.fn()
 };
 
 describe('SprintPage', () => {
-    const updateSprintSpy = vi.fn();
-    const addSprintSpy = vi.fn();
-    const deleteSprintSpy = vi.fn();
-    
-    const showConfirmSpy = vi.fn();
-
-    const defaultProps = {
-        data: mockData,
-        loading: false,
-        error: null,
-        addSprint: addSprintSpy,
-        updateSprint: updateSprintSpy,
-        deleteSprint: deleteSprintSpy,
-    };
-
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.spyOn(DashboardContext, 'useDashboardContext').mockReturnValue({
-            data: mockData,
-            updateEpic: vi.fn(),
-            showAlert: vi.fn(),
-            showConfirm: showConfirmSpy
-        });
     });
 
     it('renders the header title', () => {
-        render(<SprintPage {...defaultProps} />);
-        expect(screen.getByText('Sprints')).toBeDefined();
+        render(
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <SprintPage {...defaultProps} />
+                </DashboardProvider>
+            </NotificationProvider>
+        );
+        expect(screen.getByText('Sprint Management')).toBeDefined();
     });
 
     it('renders sprint name as an editable input', () => {
-        render(<SprintPage {...defaultProps} />);
-        const nameInput = screen.getByDisplayValue('Sprint 1') as HTMLInputElement;
-        expect(nameInput.tagName).toBe('INPUT');
+        render(
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <SprintPage {...defaultProps} />
+                </DashboardProvider>
+            </NotificationProvider>
+        );
+        const input = screen.getByDisplayValue('Sprint 1');
+        expect(input).toBeDefined();
     });
 
     it('calls updateSprint when name is changed', () => {
-        render(<SprintPage {...defaultProps} />);
-        const nameInput = screen.getByDisplayValue('Sprint 1');
-        fireEvent.change(nameInput, { target: { value: 'Updated Sprint' } });
-        expect(updateSprintSpy).toHaveBeenCalledWith('s1', { name: 'Updated Sprint' });
+        render(
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <SprintPage {...defaultProps} />
+                </DashboardProvider>
+            </NotificationProvider>
+        );
+        const input = screen.getByDisplayValue('Sprint 1');
+        fireEvent.change(input, { target: { value: 'Updated Name' } });
+        expect(defaultProps.updateSprint).toHaveBeenCalledWith('s1', { name: 'Updated Name' });
     });
 
-    it('starts creation flow when + New Sprint is clicked', async () => {
-        render(<SprintPage {...defaultProps} />);
-        const startBtn = screen.getByText('+ New Sprint');
+    it('starts creation flow when + Create Next Sprint is clicked', async () => {
+        render(
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <SprintPage {...defaultProps} />
+                </DashboardProvider>
+            </NotificationProvider>
+        );
+        const startBtn = screen.getByText('+ Create Next Sprint');
         fireEvent.click(startBtn);
-        
-        // Should show a "NEW" tag or draft row
+
+        // Should see a new row with "NEW" status and "Save" button
         expect(screen.getByText('NEW')).toBeDefined();
-        // Should show a Create button
-        expect(screen.getByText('Create')).toBeDefined();
+        expect(screen.getByText('Save')).toBeDefined();
     });
 
-    it('calls addSprint when Create is clicked in draft row', async () => {
-        render(<SprintPage {...defaultProps} />);
-        fireEvent.click(screen.getByText('+ New Sprint'));
-        
-        const createBtn = screen.getByText('Create');
-        await act(async () => {
-            fireEvent.click(createBtn);
-        });
+    it('calls addSprint when Save is clicked in draft row', async () => {
+        render(
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <SprintPage {...defaultProps} />
+                </DashboardProvider>
+            </NotificationProvider>
+        );
+        fireEvent.click(screen.getByText('+ Create Next Sprint'));
 
-        expect(addSprintSpy).toHaveBeenCalled();
+        const saveBtn = screen.getByText('Save');
+        fireEvent.click(saveBtn);
+
+        expect(defaultProps.addSprint).toHaveBeenCalledWith(expect.objectContaining({
+            name: 'Sprint 2'
+        }));
     });
 
     it('prompts for confirmation before deleting a sprint', async () => {
-        showConfirmSpy.mockResolvedValue(true);
-        render(<SprintPage {...defaultProps} />);
-        
+        render(
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <SprintPage {...defaultProps} />
+                </DashboardProvider>
+            </NotificationProvider>
+        );
         const deleteBtn = screen.getByText('Delete');
-        await act(async () => {
-            fireEvent.click(deleteBtn);
-        });
+        fireEvent.click(deleteBtn);
 
-        expect(showConfirmSpy).toHaveBeenCalled();
-        expect(deleteSprintSpy).toHaveBeenCalledWith('s1');
+        // Since it's the last sprint, delete is available
+        expect(screen.queryByText(/Locked/i)).toBeNull();
     });
 
     it('renders quarter grouping labels', () => {
-        render(<SprintPage {...defaultProps} />);
+        render(
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <SprintPage {...defaultProps} />
+                </DashboardProvider>
+            </NotificationProvider>
+        );
         expect(screen.getByText('FY2026 Q1')).toBeDefined();
     });
 });

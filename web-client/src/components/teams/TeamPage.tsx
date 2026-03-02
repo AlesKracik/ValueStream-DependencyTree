@@ -1,8 +1,9 @@
 import React, { useMemo } from 'react';
-import { parseISO, isWeekend } from 'date-fns';
+import { isWeekend } from 'date-fns';
 import Holidays from 'date-holidays';
 import type { DashboardData, Team } from '../../types/models';
 import styles from '../customers/CustomerPage.module.css';
+import { PageWrapper } from '../layout/PageWrapper';
 
 export interface TeamPageProps {
     teamId: string;
@@ -22,23 +23,19 @@ export const TeamPage: React.FC<TeamPageProps> = ({
     error,
     updateTeam
 }) => {
-    if (loading) return <div>Loading team details...</div>;
-    if (error) return <div>Error: {error.message}</div>;
-    if (!data) return <div>No data available</div>;
-
-    const team = data.teams.find(t => t.id === teamId);
-    if (!team) return <div>Team not found.</div>;
+    const team = data?.teams.find(t => t.id === teamId);
 
     const hd = useMemo(() => {
-        if (!team.country) return null;
+        if (!team?.country) return null;
         try {
             return new Holidays(team.country as any);
         } catch (e) {
             return null;
         }
-    }, [team.country]);
+    }, [team?.country]);
 
     const handleOverrideChange = (sprintId: string, val: string) => {
+        if (!team) return;
         const overrides = { ...(team.sprint_capacity_overrides || {}) };
         const cleanVal = val.trim();
 
@@ -50,148 +47,119 @@ export const TeamPage: React.FC<TeamPageProps> = ({
                 overrides[sprintId] = parsed;
             }
         }
-        updateTeam(teamId, { sprint_capacity_overrides: overrides });
+        updateTeam(team.id, { sprint_capacity_overrides: overrides });
     };
 
     return (
-        <div className={styles.pageContainer}>
-            <div className={styles.header}>
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                    <button onClick={onBack} className="btn-secondary">← Back</button>
-                    <h1>Team: {team.name}</h1>
-                </div>
-            </div>
+        <PageWrapper
+            loading={loading}
+            error={error}
+            data={data}
+            loadingMessage="Loading team details..."
+            emptyMessage="No data available."
+        >
+            {!team ? (
+                <div className={styles.empty}>Team not found.</div>
+            ) : (
+                <>
+                    <header className={styles.header}>
+                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                            <button onClick={onBack} className="btn-secondary">← Back</button>
+                            <h1>Team: {team.name}</h1>
+                        </div>
+                    </header>
 
-            <div className={styles.content}>
-                <section className={styles.card}>
-                    <h2>Team Details</h2>
-                    <div className={styles.formGrid}>
-                        <label>
-                            Name:
-                            <input
-                                type="text"
-                                value={team.name || ''}
-                                onChange={e => updateTeam(teamId, { name: e.target.value })}
-                            />
-                        </label>
-                        <label>
-                            Sprint Capacity (MDs):
-                            <input
-                                type="number"
-                                value={team.total_capacity_mds || 0}
-                                onChange={e => updateTeam(teamId, { total_capacity_mds: Number(e.target.value) })}
-                            />
-                        </label>
-                        <label>
-                            Country (ISO):
-                            <input
-                                type="text"
-                                placeholder="e.g. US, CZ, GB"
-                                value={team.country || ''}
-                                onChange={e => updateTeam(teamId, { country: e.target.value.toUpperCase().slice(0, 2) })}
-                            />
-                        </label>
-                        <label>
-                            Jira Team ID:
-                            <input
-                                type="text"
-                                value={team.jira_team_id || ''}
-                                onChange={e => updateTeam(teamId, { jira_team_id: e.target.value })}
-                            />
-                        </label>
-                    </div>
-                </section>
+                    <div className={styles.content}>
+                        <section className={styles.card}>
+                            <h2>Team Settings</h2>
+                            <div className={styles.formGrid}>
+                                <label>
+                                    Team Name:
+                                    <input 
+                                        type="text" 
+                                        value={team.name} 
+                                        onChange={e => updateTeam(team.id, { name: e.target.value })}
+                                    />
+                                </label>
+                                <label>
+                                    Base Capacity (MDs per Sprint):
+                                    <input 
+                                        type="number" 
+                                        value={team.total_capacity_mds} 
+                                        onChange={e => updateTeam(team.id, { total_capacity_mds: parseInt(e.target.value) || 0 })}
+                                    />
+                                </label>
+                                <label>
+                                    Country (for Holidays):
+                                    <select 
+                                        value={team.country || ''} 
+                                        onChange={e => updateTeam(team.id, { country: e.target.value })}
+                                    >
+                                        <option value="">None (No Holidays)</option>
+                                        <option value="US">USA</option>
+                                        <option value="GB">UK</option>
+                                        <option value="DE">Germany</option>
+                                        <option value="CZ">Czech Republic</option>
+                                        <option value="FR">France</option>
+                                        <option value="IN">India</option>
+                                    </select>
+                                </label>
+                            </div>
+                        </section>
 
-                <section className={styles.card}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                        <h2>Sprint Capacity Overrides</h2>
-                    </div>
-                    <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '16px' }}>
-                        Optionally override the default capacity for specific sprints.
-                    </p>
-
-                    <div className={styles.formGrid} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-                        {data.sprints.map(sprint => {
-                            const overrideVal = team.sprint_capacity_overrides?.[sprint.id];
-                            const isOverridden = overrideVal !== undefined && overrideVal !== null;
-
-                            const sprintStartDate = parseISO(sprint.start_date);
-                            const sprintEndDate = parseISO(sprint.end_date);
+                        <section className={styles.card}>
+                            <h2>Sprint Capacity Overrides</h2>
+                            <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px' }}>
+                                Set specific capacity for future sprints (e.g. for planned vacations or team changes). 
+                                If left blank, the base capacity ({team.total_capacity_mds} MDs) is used.
+                            </p>
                             
-                            let holidayCount = 0;
-                            if (hd) {
-                                const hList = hd.getHolidays(sprintStartDate.getFullYear());
-                                if (sprintEndDate.getFullYear() !== sprintStartDate.getFullYear()) {
-                                    hList.push(...hd.getHolidays(sprintEndDate.getFullYear()));
-                                }
-                                hList.forEach((h: any) => {
-                                    if (h.type !== 'public') return;
-                                    
-                                    const hDate = new Date(h.date);
-                                    if (hDate >= sprintStartDate && hDate <= sprintEndDate && !isWeekend(hDate)) {
-                                        holidayCount++;
-                                    }
-                                });
-                            }
+                            <table className={styles.table}>
+                                <thead>
+                                    <tr>
+                                        <th>Sprint</th>
+                                        <th>Dates</th>
+                                        <th>Standard Work Days</th>
+                                        <th>Effective Capacity (MDs)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {data?.sprints.map(sprint => {
+                                        // Calculate standard working days (excluding weekends and holidays)
+                                        const start = new Date(sprint.start_date);
+                                        const end = new Date(sprint.end_date);
+                                        let workDays = 0;
+                                        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                                            const isWknd = isWeekend(d);
+                                            const isHolid = hd ? hd.isHoliday(d) : false;
+                                            if (!isWknd && !isHolid) workDays++;
+                                        }
 
-                            const holidayImpact = (team.total_capacity_mds / 10) * holidayCount;
-                            const suggestedCapacity = Math.max(0, Math.round((team.total_capacity_mds - holidayImpact) * 10) / 10);
-
-                            return (
-                                <div key={sprint.id} style={{
-                                    backgroundColor: '#1f2937',
-                                    padding: '12px',
-                                    borderRadius: '6px',
-                                    border: isOverridden ? '1px solid #8b5cf6' : '1px solid #374151'
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                        <div style={{ color: isOverridden ? '#fff' : '#9ca3af', fontSize: '13px', fontWeight: 500 }}>
-                                            {sprint.name}
-                                        </div>
-                                        {holidayCount > 0 && (
-                                            <div style={{ fontSize: '11px', color: '#fbbf24', fontWeight: 'bold' }} title={`${holidayCount} public holidays`}>
-                                                🏝️ -{holidayCount}d
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                        <input
-                                            type="number"
-                                            step="0.1"
-                                            placeholder={String(suggestedCapacity)}
-                                            value={overrideVal === undefined ? '' : overrideVal}
-                                            onChange={e => handleOverrideChange(sprint.id, e.target.value)}
-                                            style={{
-                                                width: '100%',
-                                                padding: '6px 8px',
-                                                backgroundColor: '#111827',
-                                                border: '1px solid #4b5563',
-                                                borderRadius: '4px',
-                                                color: '#fff',
-                                                fontSize: '13px'
-                                            }}
-                                        />
-                                        {isOverridden && (
-                                            <button
-                                                onClick={() => handleOverrideChange(sprint.id, '')}
-                                                style={{
-                                                    background: 'none',
-                                                    border: 'none',
-                                                    color: '#ef4444',
-                                                    cursor: 'pointer',
-                                                    fontSize: '18px',
-                                                    padding: '0 4px'
-                                                }}
-                                                title="Clear override"
-                                            >×</button>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
+                                        return (
+                                            <tr key={sprint.id}>
+                                                <td>{sprint.name}</td>
+                                                <td style={{ fontSize: '12px', color: '#94a3b8' }}>
+                                                    {sprint.start_date} to {sprint.end_date}
+                                                </td>
+                                                <td>{workDays} days</td>
+                                                <td>
+                                                    <input 
+                                                        type="number"
+                                                        placeholder={String(team.total_capacity_mds)}
+                                                        value={team.sprint_capacity_overrides?.[sprint.id] ?? ''}
+                                                        onChange={e => handleOverrideChange(sprint.id, e.target.value)}
+                                                        style={{ width: '100px' }}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </section>
                     </div>
-                </section>
-            </div>
-        </div>
+                </>
+            )}
+        </PageWrapper>
     );
 };

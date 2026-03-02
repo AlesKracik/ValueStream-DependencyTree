@@ -3,6 +3,7 @@ import type { DashboardData, DashboardEntity } from '../types/models';
 import { useDashboardContext } from '../contexts/DashboardContext';
 import styles from '../components/customers/CustomerPage.module.css';
 import { generateId } from '../utils/security';
+import { PageWrapper } from '../components/layout/PageWrapper';
 
 export interface DashboardEditPageProps {
     dashboardId: string;
@@ -44,36 +45,24 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
         }
     });
 
-    if (loading) return <div className={styles.pageContainer}>Loading dashboard details...</div>;
-    if (error) return <div className={styles.pageContainer}>Error: {error.message}</div>;
-    if (!data) return <div className={styles.pageContainer}>No data available.</div>;
+    const dashboard = isNew ? draft as DashboardEntity : data?.dashboards.find(d => d.id === dashboardId);
 
-    const dashboard = isNew ? draft as DashboardEntity : data.dashboards.find(d => d.id === dashboardId);
-    if (!dashboard) return <div className={styles.pageContainer}>Dashboard not found.</div>;
-
-    const handleCreate = () => {
-        const newId = generateId('d');
-        const newDashboard: DashboardEntity = {
-            id: newId,
-            name: draft.name || 'New Dashboard',
-            description: draft.description || '',
-            parameters: (draft.parameters as any) || {
-                customerFilter: '',
-                workItemFilter: '',
-                releasedFilter: 'all',
-                minTcvFilter: '',
-                minScoreFilter: '',
-                teamFilter: '',
-                epicFilter: '',
-                startSprintId: '',
-                endSprintId: ''
-            }
-        };
-        addDashboard(newDashboard);
-        onBack();
+    const handleSave = () => {
+        if (!data) return;
+        if (isNew) {
+            const newId = generateId('d');
+            const newDashboard: DashboardEntity = {
+                ...draft as DashboardEntity,
+                id: newId,
+                name: draft.name || 'New Dashboard'
+            };
+            addDashboard(newDashboard);
+            onBack();
+        }
     };
 
     const handleDelete = async () => {
+        if (!dashboard) return;
         const confirmed = await showConfirm('Delete Dashboard', `Are you sure you want to delete "${dashboard.name}"?`);
         if (confirmed) {
             deleteDashboard(dashboard.id);
@@ -81,201 +70,146 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
         }
     };
 
-    const updateParam = (key: string, value: any) => {
+    const updateParam = (key: keyof DashboardEntity['parameters'], value: any) => {
+        if (!dashboard) return;
+        const newParams = { ...dashboard.parameters, [key]: value };
         if (isNew) {
-            setDraft(prev => ({ ...prev, parameters: { ...prev.parameters!, [key]: value } }));
+            setDraft({ ...draft, parameters: newParams });
         } else {
-            updateDashboard(dashboard.id, { parameters: { ...dashboard.parameters, [key]: value } });
+            updateDashboard(dashboard.id, { parameters: newParams });
         }
     };
 
-    const getParam = (key: keyof DashboardEntity['parameters']) => {
-        return isNew ? draft.parameters?.[key] : dashboard.parameters[key];
-    };
-
-    const labelStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '8px' };
-    const sectionTitleStyle: React.CSSProperties = { fontSize: '14px', fontWeight: 'bold', color: '#60a5fa', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' };
-
     return (
-        <div className={styles.pageContainer} style={{ maxWidth: '1000px', margin: '0 auto' }}>
-            <div className={styles.header}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <button className="btn-secondary" onClick={onBack}>← Back</button>
-                    <h1>{isNew ? 'Create Dashboard' : `Edit: ${dashboard.name}`}</h1>
-                </div>
-                <div style={{ display: 'flex', gap: '16px' }}>
-                    {!isNew && (
-                        <button className="btn-danger" onClick={handleDelete}>Delete Dashboard</button>
-                    )}
-                    {isNew && (
-                        <button 
-                            className="btn-primary" 
-                            onClick={handleCreate}
-                        >
-                            Create
-                        </button>
-                    )}
-                </div>
-            </div>
+        <PageWrapper
+            loading={loading}
+            error={error}
+            data={data}
+            loadingMessage="Loading dashboard details..."
+            emptyMessage="No data available."
+        >
+            {!dashboard ? (
+                <div className={styles.empty}>Dashboard not found.</div>
+            ) : (
+                <>
+                    <header className={styles.header}>
+                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                            <button onClick={onBack} className="btn-secondary">← Back</button>
+                            <h1>{isNew ? 'Create Dashboard' : `Edit: ${dashboard.name}`}</h1>
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            {isNew ? (
+                                <button onClick={handleSave} className="btn-primary">Create</button>
+                            ) : (
+                                <button onClick={handleDelete} className="btn-danger">Delete Dashboard</button>
+                            )}
+                        </div>
+                    </header>
 
-            <div className={styles.content}>
-                <section className={styles.card}>
-                    <h2>Dashboard Details</h2>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        <label style={labelStyle}>
-                            Name:
-                            <input
-                                type="text"
-                                value={isNew ? draft.name : dashboard.name}
-                                onChange={e => {
-                                    if (isNew) setDraft(prev => ({ ...prev, name: e.target.value }));
-                                    else updateDashboard(dashboard.id, { name: e.target.value });
-                                }}
-                                
-                            />
-                        </label>
-                        <label style={labelStyle}>
-                            Description:
-                            <input
-                                type="text"
-                                value={isNew ? draft.description : dashboard.description}
-                                onChange={e => {
-                                    if (isNew) setDraft(prev => ({ ...prev, description: e.target.value }));
-                                    else updateDashboard(dashboard.id, { description: e.target.value });
-                                }}
-                                
-                            />
-                        </label>
-                    </div>
-                </section>
-
-                <section className={styles.card} style={{ marginTop: '24px' }}>
-                    <h2>Default Parameters (Filters)</h2>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                        
-                        {/* Customer Group */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-                            <div style={sectionTitleStyle}>Customer</div>
-                            <div style={{ display: 'flex', gap: '20px' }}>
-                                <label style={{ ...labelStyle, flex: 1 }}>
-                                    Customer Name Filter:
-                                    <input
-                                        type="text"
-                                        value={getParam('customerFilter')}
-                                        onChange={e => updateParam('customerFilter', e.target.value)}
-                                        
+                    <div className={styles.content}>
+                        <section className={styles.card}>
+                            <h2>General</h2>
+                            <div className={styles.formGrid}>
+                                <label>
+                                    Name:
+                                    <input 
+                                        type="text" 
+                                        value={dashboard.name} 
+                                        onChange={e => isNew ? setDraft({ ...draft, name: e.target.value }) : updateDashboard(dashboard.id, { name: e.target.value })}
                                     />
                                 </label>
-                                <label style={{ ...labelStyle, flex: 1 }}>
-                                    Min TCV Filter:
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={getParam('minTcvFilter')}
-                                        onChange={e => updateParam('minTcvFilter', e.target.value)}
-                                        
+                                <label>
+                                    Description:
+                                    <input 
+                                        type="text" 
+                                        value={dashboard.description || ''} 
+                                        onChange={e => isNew ? setDraft({ ...draft, description: e.target.value }) : updateDashboard(dashboard.id, { description: e.target.value })}
                                     />
                                 </label>
                             </div>
-                        </div>
+                        </section>
 
-                        {/* Work Item Group */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-                            <div style={sectionTitleStyle}>Work Item</div>
-                            <div style={{ display: 'flex', gap: '20px' }}>
-                                <label style={{ ...labelStyle, flex: 1 }}>
-                                    Work Item Name Filter:
-                                    <input
-                                        type="text"
-                                        value={getParam('workItemFilter')}
-                                        onChange={e => updateParam('workItemFilter', e.target.value)}
-                                        
-                                    />
-                                </label>
-                                <label style={{ ...labelStyle, flex: 1 }}>
-                                    Min Score Filter:
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.1"
-                                        value={getParam('minScoreFilter')}
-                                        onChange={e => updateParam('minScoreFilter', e.target.value)}
-                                        
-                                    />
-                                </label>
-                            </div>
-                            <label style={labelStyle}>
-                                Release Filter:
-                                <select
-                                    value={getParam('releasedFilter')}
-                                    onChange={e => updateParam('releasedFilter', e.target.value)}
-                                    
-                                >
-                                    <option value="all">All</option>
-                                    <option value="released">Released Only</option>
-                                    <option value="unreleased">Unreleased Only</option>
-                                </select>
-                            </label>
-                        </div>
-
-                        {/* Team Group */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-                            <div style={sectionTitleStyle}>Team</div>
-                            <label style={labelStyle}>
-                                Team Name Filter:
-                                <input
-                                    type="text"
-                                    value={getParam('teamFilter')}
-                                    onChange={e => updateParam('teamFilter', e.target.value)}
-                                    
-                                />
-                            </label>
-                        </div>
-
-                        {/* Epic Group */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-                            <div style={sectionTitleStyle}>Epic</div>
-                            <label style={labelStyle}>
-                                Epic Name Filter:
-                                <input
-                                    type="text"
-                                    value={getParam('epicFilter')}
-                                    onChange={e => updateParam('epicFilter', e.target.value)}
-                                    
-                                />
-                            </label>
-                            
-                            <div style={{ display: 'flex', gap: '20px' }}>
-                                <label style={{ ...labelStyle, flex: 1 }}>
+                        <section className={styles.card}>
+                            <h2>Time Range</h2>
+                            <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '16px' }}>
+                                Limit the dashboard to a specific range of sprints.
+                            </p>
+                            <div className={styles.formGrid}>
+                                <label>
                                     Start Sprint:
-                                    <select
-                                        value={getParam('startSprintId') || ''}
+                                    <select 
+                                        value={dashboard.parameters.startSprintId || ''} 
                                         onChange={e => updateParam('startSprintId', e.target.value)}
                                     >
-                                        <option value="">No Start Limit</option>
-                                        {data.sprints.map(s => (
+                                        <option value="">Beginning of time</option>
+                                        {data?.sprints.map(s => (
                                             <option key={s.id} value={s.id}>{s.name} ({s.start_date})</option>
                                         ))}
                                     </select>
                                 </label>
-                                <label style={{ ...labelStyle, flex: 1 }}>
+                                <label>
                                     End Sprint:
-                                    <select
-                                        value={getParam('endSprintId') || ''}
+                                    <select 
+                                        value={dashboard.parameters.endSprintId || ''} 
                                         onChange={e => updateParam('endSprintId', e.target.value)}
                                     >
-                                        <option value="">No End Limit</option>
-                                        {data.sprints.map(s => (
-                                            <option key={s.id} value={s.id}>{s.name} ({s.end_date})</option>
+                                        <option value="">End of time</option>
+                                        {data?.sprints.map(s => (
+                                            <option key={s.id} value={s.id}>{s.name} ({s.start_date})</option>
                                         ))}
                                     </select>
                                 </label>
                             </div>
-                        </div>
+                        </section>
+
+                        <section className={styles.card}>
+                            <h2>Structural Filters</h2>
+                            <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '16px' }}>
+                                Pre-set filters for this dashboard view.
+                            </p>
+                            <div className={styles.formGrid}>
+                                <label>
+                                    Customer Filter:
+                                    <input type="text" value={dashboard.parameters.customerFilter || ''} onChange={e => updateParam('customerFilter', e.target.value)} placeholder="Filter by customer name..." />
+                                </label>
+                                <label>
+                                    Work Item Filter:
+                                    <input type="text" value={dashboard.parameters.workItemFilter || ''} onChange={e => updateParam('workItemFilter', e.target.value)} placeholder="Filter by work item name..." />
+                                </label>
+                            </div>
+                            <div className={styles.formGrid} style={{ marginTop: '24px' }}>
+                                <label>
+                                    Team Filter:
+                                    <input type="text" value={dashboard.parameters.teamFilter || ''} onChange={e => updateParam('teamFilter', e.target.value)} placeholder="Filter by team name..." />
+                                </label>
+                                <label>
+                                    Epic Filter:
+                                    <input type="text" value={dashboard.parameters.epicFilter || ''} onChange={e => updateParam('epicFilter', e.target.value)} placeholder="Filter by epic name..." />
+                                </label>
+                            </div>
+                            <div className={styles.formGrid} style={{ marginTop: '24px' }}>
+                                <label>
+                                    Release Status:
+                                    <select value={dashboard.parameters.releasedFilter} onChange={e => updateParam('releasedFilter', e.target.value)}>
+                                        <option value="all">All Items</option>
+                                        <option value="released">Released Only</option>
+                                        <option value="unreleased">Unreleased Only</option>
+                                    </select>
+                                </label>
+                                <label>
+                                    Min TCV Impact ($):
+                                    <input type="number" value={dashboard.parameters.minTcvFilter || ''} onChange={e => updateParam('minTcvFilter', e.target.value)} placeholder="0" />
+                                </label>
+                                <label>
+                                    Min RICE Score:
+                                    <input type="number" value={dashboard.parameters.minScoreFilter || ''} onChange={e => updateParam('minScoreFilter', e.target.value)} placeholder="0" />
+                                </label>
+                            </div>
+                        </section>
 
                     </div>
-                </section>
-            </div>
-        </div>
+                </>
+            )}
+        </PageWrapper>
     );
 };
