@@ -2,24 +2,7 @@ import { useState, useEffect } from 'react';
 import { parseISO } from 'date-fns';
 import type { DashboardData, Customer, WorkItem, Team, Epic, Settings, Sprint, DashboardEntity, DashboardParameters } from '../types/models';
 import { authorizedFetch } from '../utils/api';
-
-const calculateQuarter = (dateStr: string, fiscalStartMonth: number) => {
-    const date = parseISO(dateStr);
-    const month = date.getMonth() + 1; // 1-12
-    const year = date.getFullYear();
-
-    // Shift month based on fiscal start
-    // e.g. if fiscal start is April (4), then April becomes month 1
-    let shiftedMonth = month - fiscalStartMonth + 1;
-    let fiscalYear = year;
-    if (shiftedMonth <= 0) {
-        shiftedMonth += 12;
-        fiscalYear -= 1;
-    }
-
-    const quarter = Math.ceil(shiftedMonth / 3);
-    return `FY${fiscalYear} Q${quarter}`;
-};
+import { calculateQuarter } from '../utils/dateHelpers';
 
 const persistEntity = async (collection: string, method: 'POST' | 'DELETE', entity: any) => {
     try {
@@ -233,7 +216,7 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
             if (updates.fiscal_year_start_month !== undefined && updates.fiscal_year_start_month !== prev.settings.fiscal_year_start_month) {
                 newSprints = prev.sprints.map(s => ({
                     ...s,
-                    quarter: calculateQuarter(s.start_date, updates.fiscal_year_start_month!)
+                    quarter: calculateQuarter(s.end_date, updates.fiscal_year_start_month!)
                 }));
                 // Persist all updated sprints
                 newSprints.forEach(s => persistEntity('sprints', 'POST', s));
@@ -256,7 +239,7 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
             if (!prev) return prev;
             const newSprint = {
                 ...sprint,
-                quarter: calculateQuarter(sprint.start_date, prev.settings.fiscal_year_start_month || 1)
+                quarter: calculateQuarter(sprint.end_date, prev.settings.fiscal_year_start_month || 1)
             };
             persistEntity('sprints', 'POST', newSprint);
             return {
@@ -273,9 +256,9 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
             if (!existing) return prev;
 
             const updatedSprint = { ...existing, ...updates };
-            // If start date changed, recompute quarter
-            if (updates.start_date && updates.start_date !== existing.start_date) {
-                updatedSprint.quarter = calculateQuarter(updates.start_date, prev.settings.fiscal_year_start_month || 1);
+            // If end date is provided (or start date, though quarter is based on end), recompute quarter
+            if (updates.end_date || updates.start_date) {
+                updatedSprint.quarter = calculateQuarter(updatedSprint.end_date, prev.settings.fiscal_year_start_month || 1);
             }
 
             persistEntity('sprints', 'POST', updatedSprint);

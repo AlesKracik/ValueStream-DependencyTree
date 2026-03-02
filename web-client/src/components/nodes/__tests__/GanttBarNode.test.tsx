@@ -24,7 +24,7 @@ const mockData: DashboardData = {
             id: 'e1',
             jira_key: 'J-1',
             team_id: 't1',
-            remaining_md: 10,
+            effort_md: 10,
             target_start: '2026-01-05',
             target_end: '2026-02-25'
         }
@@ -71,6 +71,44 @@ describe('GanttBarNode Auto-Freeze', () => {
                 's_past': expect.any(Number)
             })
         }));
+    });
+
+    it('calculates proportional effort correctly and avoids NaN by using effort_md', async () => {
+        const nodeData = {
+            label: 'Epic 1',
+            width: 400,
+            color: '#8b5cf6',
+            epicId: 'e1',
+            targetStart: '2026-01-05',
+            targetEnd: '2026-02-25',
+            segments: [
+                { startOffsetPixels: 0, widthPixels: 100, intensity: 1, color: '#475569', isFrozen: true },
+                { startOffsetPixels: 100, widthPixels: 100, intensity: 1, color: '#8b5cf6', isFrozen: false }
+            ]
+        };
+
+        render(
+            <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                <GanttBarNode data={nodeData} />
+            </DashboardProvider>
+        );
+
+        act(() => {
+            vi.runAllTimers();
+        });
+
+        // Verify the calculation result isn't NaN or null
+        const call = updateEpicSpy.mock.calls.find(c => c[0] === 'e1');
+        expect(call).toBeDefined();
+        const overrides = call[1].sprint_effort_overrides;
+        const pastEffort = overrides['s_past'];
+        
+        expect(pastEffort).not.toBeNaN();
+        expect(pastEffort).toBeGreaterThan(0);
+        // Duration: Jan 5 to Feb 25 = 52 days
+        // Overlap with s_past (Jan 1 to Jan 14): Jan 5 to Jan 14 = 10 days
+        // Calculated effort: 10 * (10/52) = 1.923... rounded to 1.9
+        expect(pastEffort).toBe(1.9);
     });
 
     afterEach(() => {

@@ -165,7 +165,7 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
                     const duration = differenceInDays(eEnd, eStart) + 1;
                     
                     // Simple proportional spread for the snapshot if no complex override exists
-                    const calculatedEffort = (epic.remaining_md * (overlapDays / duration));
+                    const calculatedEffort = (epic.effort_md * (overlapDays / duration));
                     newOverrides[s.id] = Math.round(calculatedEffort * 10) / 10;
                     needsUpdate = true;
                 }

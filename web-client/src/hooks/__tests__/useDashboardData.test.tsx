@@ -191,23 +191,60 @@ describe('useDashboardData', () => {
         });
         expect(result.current.data?.sprints[0].quarter).toBe('FY2026 Q1');
 
-        // Update: FY starts in April (4). 2026-01-01 is now FY2025 Q4
+        // Update: FY starts in April (4). 2026-01-01 is now FY2026 Q4
         act(() => {
             result.current.updateSettings({ fiscal_year_start_month: 4 });
         });
-        expect(result.current.data?.sprints[0].quarter).toBe('FY2025 Q4');
+        expect(result.current.data?.sprints[0].quarter).toBe('FY2026 Q4');
         
         // Should have persisted the updated sprint
         expect(fetch).toHaveBeenCalledWith(
             '/api/entity/sprints',
             expect.objectContaining({
                 method: 'POST',
-                body: expect.stringContaining('"quarter":"FY2025 Q4"'),
+                body: expect.stringContaining('"quarter":"FY2026 Q4"'),
                 headers: expect.objectContaining({
                     'Authorization': expect.stringContaining('Bearer')
                 })
             })
         );
+    });
+
+    it('assigns sprint to the quarter in which it ends', async () => {
+        const dataWithCrossQuarterSprint: DashboardData = {
+            ...mockData,
+            settings: { ...mockData.settings, fiscal_year_start_month: 7 }, // July 1st FY start
+            sprints: [
+                { 
+                    id: 's_cross', 
+                    name: 'Cross-Quarter Sprint', 
+                    start_date: '2026-09-20', 
+                    end_date: '2026-10-04',
+                    quarter: 'FY2027 Q1'
+                }
+            ]
+        };
+        vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => {
+            if (url.startsWith('/api/loadData')) return Promise.resolve({ ok: true, json: () => Promise.resolve(dataWithCrossQuarterSprint) });
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+        }));
+
+        const { result } = renderHook(() => useDashboardData());
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        // FY starts July 1.
+        // Q1: July, Aug, Sept
+        // Q2: Oct, Nov, Dec
+        // Sprint ends Oct 4, should be Q2.
+        
+        act(() => {
+            // Trigger a re-save and ensure end_date is present for recomputation
+            const existing = result.current.data?.sprints.find(s => s.id === 's_cross');
+            result.current.updateSprint('s_cross', { name: 'Updated Name', end_date: existing?.end_date });
+        });
+
+        const sprint = result.current.data?.sprints.find(s => s.id === 's_cross');
+        expect(sprint?.quarter).toBe('FY2027 Q2');
     });
 
     it('refreshes data when MongoDB connection settings change', async () => {

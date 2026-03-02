@@ -191,6 +191,10 @@ const MockDataPersistencePlugin = (): Plugin => ({
             fiscalYear -= 1;
         }
 
+        if (fiscalStartMonth > 1) {
+            fiscalYear += 1;
+        }
+
         const quarter = Math.ceil(shiftedMonth / 3);
         return `FY${fiscalYear} Q${quarter}`;
       }
@@ -307,7 +311,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
               const sprintsToUpdate = dbData.sprints.filter((s: any) => !s.quarter);
               if (sprintsToUpdate.length > 0) {
                 for (const sprint of sprintsToUpdate) {
-                  const quarter = calculateQuarter(sprint.start_date, settings.fiscal_year_start_month || 1);
+                  const quarter = calculateQuarter(sprint.end_date, settings.fiscal_year_start_month || 1);
                   await db.collection('sprints').updateOne({ id: sprint.id }, { $set: { quarter } });
                   sprint.quarter = quarter;
                 }
