@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Node } from '@xyflow/react';
 import type { DashboardData, Customer, WorkItem, Team } from '../../types/models';
 import { SearchableDropdown } from '../common/SearchableDropdown';
+import { calculateWorkItemEffort } from '../../utils/businessLogic';
 
 interface EditNodeModalProps {
     node: Node;
@@ -166,8 +167,23 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                         Total Effort (MDs):
                         <input style={styles.input} type="number" value={formData.total_effort_mds || 0} onChange={e => setFormData({ ...formData, total_effort_mds: e.target.value })} required />
                     </label>
+
+                    {(() => {
+                        const workItem = data.workItems.find(f => f.id === domainId);
+                        if (!workItem) return null;
+                        const workItemEpics = data.epics.filter(e => e.work_item_id === workItem.id);
+                        const calculatedEffort = calculateWorkItemEffort(workItem, workItemEpics);
+                        const epicSum = workItemEpics.reduce((sum, e) => sum + (e.effort_md || 0), 0);
+                        
+                        return (
+                            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '-8px', padding: '0 4px' }}>
+                                Effective total: <span style={{ color: '#60a5fa', fontWeight: 'bold' }}>{calculatedEffort} MDs</span>
+                                {epicSum > 0 && <span> (Epic sum: {epicSum} MDs takes precedence)</span>}
+                            </div>
+                        );
+                    })()}
                     
-                    <div style={{ padding: '12px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '6px', marginBottom: '16px' }}>
+                    <div style={{ padding: '12px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '6px', marginBottom: '16px', marginTop: '8px' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginBottom: formData.all_customers_target ? '12px' : '0' }}>
                             <input 
                                 type="checkbox" 

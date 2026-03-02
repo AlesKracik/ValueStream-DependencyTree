@@ -409,7 +409,8 @@ export function useGraphLayout(
                     ...f,
                     epicMdsSum,
                     hasDatelessEpics,
-                    hasUnestimatedEffort
+                    hasUnestimatedEffort,
+                    calculatedEffort: totalEffort
                 };
             });
 
@@ -430,7 +431,7 @@ export function useGraphLayout(
                 data: {
                     label: workItem.name,
                     description: workItem.description,
-                    effortMds: workItem.total_effort_mds,
+                    effortMds: workItem.calculatedEffort,
                     epicMds: workItem.epicMdsSum,
                     score: score,
                     maxScore: maxScore,
@@ -449,7 +450,7 @@ export function useGraphLayout(
                     const customer = data.customers.find(c => c.id === target.customer_id);
                     if (customer) {
                         const targetTcv = target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv;
-                        const roi = targetTcv / (workItem.total_effort_mds || 1);
+                        const roi = targetTcv / (workItem.calculatedEffort || 1);
                         const normalizedStrokeWidth = Math.min(10, Math.max(2, (roi / maxRoi) * 10));
 
                         edges.push({

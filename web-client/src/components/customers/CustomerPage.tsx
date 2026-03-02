@@ -4,6 +4,7 @@ import { SearchableDropdown } from '../common/SearchableDropdown';
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from './CustomerPage.module.css';
 import { generateId } from '../../utils/security';
+import { calculateWorkItemEffort } from '../../utils/businessLogic';
 
 export interface CustomerPageProps {
     customerId: string;
@@ -304,6 +305,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                             <thead>
                                 <tr>
                                     <th>Work Item</th>
+                                    <th>Effort (MDs)</th>
                                     <th>TCV Target</th>
                                     <th>Priority</th>
                                     <th>Actions</th>
@@ -311,6 +313,9 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                             </thead>
                             <tbody>
                                 {targetedWorkItems.map(workItem => {
+                                    const workItemEpics = data.epics.filter(e => e.work_item_id === workItem.id);
+                                    const calculatedEffort = calculateWorkItemEffort(workItem, workItemEpics);
+                                    
                                     const targetDef = isNew
                                         ? newCustomerWorkItems.find(ncf => ncf.workItemId === workItem.id)!
                                         : workItem.customer_targets.find(ct => ct.customer_id === customerId)!;
@@ -340,6 +345,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                     return (
                                         <tr key={workItem.id}>
                                             <td>{workItem.name}</td>
+                                            <td>{calculatedEffort}</td>
                                             <td>
                                                 <select 
                                                     value={targetDef.tcv_type}
@@ -367,7 +373,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                 })}
                                 {targetedWorkItems.length === 0 && (
                                     <tr>
-                                        <td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No targeted work items found.</td>
+                                        <td colSpan={5} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No targeted work items found.</td>
                                     </tr>
                                 )}
                             </tbody>
