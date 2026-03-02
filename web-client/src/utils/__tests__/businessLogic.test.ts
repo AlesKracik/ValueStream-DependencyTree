@@ -1,8 +1,76 @@
 import { describe, it, expect } from 'vitest';
-import { calculateWorkItemEffort, calculateWorkItemTcv, calculateEpicEffortPerSprint, calculateEpicIntensityRatio } from '../businessLogic';
-import type { WorkItem, Epic, Customer, Sprint } from '../../types/models';
+import { calculateWorkItemEffort, calculateWorkItemTcv, calculateEpicEffortPerSprint, calculateEpicIntensityRatio, parseJiraIssue } from '../businessLogic';
+import type { WorkItem, Epic, Customer, Sprint, Team } from '../../types/models';
 
 describe('businessLogic', () => {
+    describe('parseJiraIssue', () => {
+        const mockTeams: Team[] = [
+            { id: 't1', name: 'Team Alpha', jira_team_id: '101' },
+            { id: 't2', name: 'Team Beta', jira_team_id: '102' }
+        ];
+
+        it('parses basic fields correctly', () => {
+            const jiraIssue = {
+                fields: {
+                    summary: 'Test Epic',
+                    timeestimate: 28800 * 5 // 5 man-days
+                }
+            };
+            const result = parseJiraIssue(jiraIssue, mockTeams);
+            expect(result.name).toBe('Test Epic');
+            expect(result.effort_md).toBe(5);
+        });
+
+        it('parses custom date fields correctly', () => {
+            const jiraIssue = {
+                fields: {
+                    summary: 'Test Epic',
+                    'customfield_101': '2026-01-01',
+                    'customfield_102': '2026-01-14'
+                },
+                names: {
+                    'customfield_101': 'Target start',
+                    'customfield_102': 'Target end'
+                }
+            };
+            const result = parseJiraIssue(jiraIssue, mockTeams);
+            expect(result.target_start).toBe('2026-01-01');
+            expect(result.target_end).toBe('2026-01-14');
+        });
+
+        it('matches teams by jira_team_id', () => {
+            const jiraIssue = {
+                fields: {
+                    'customfield_103': { id: '102', name: 'Some Team' }
+                },
+                names: {
+                    'customfield_103': 'Team'
+                }
+            };
+            const result = parseJiraIssue(jiraIssue, mockTeams);
+            expect(result.team_id).toBe('t2');
+        });
+
+        it('matches teams by name if ID doesn\'t match', () => {
+            const jiraIssue = {
+                fields: {
+                    'customfield_103': { id: '999', name: 'Team Alpha' }
+                },
+                names: {
+                    'customfield_103': 'Team'
+                }
+            };
+            const result = parseJiraIssue(jiraIssue, mockTeams);
+            expect(result.team_id).toBe('t1');
+        });
+
+        it('handles missing fields gracefully', () => {
+            const jiraIssue = { fields: {} };
+            const result = parseJiraIssue(jiraIssue, mockTeams);
+            expect(result).toEqual({});
+        });
+    });
+
     describe('calculateWorkItemEffort', () => {
         const mockWorkItem: WorkItem = {
             id: 'f1',

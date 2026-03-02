@@ -1,8 +1,17 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { WorkItemPage } from './WorkItemPage';
 import { DashboardProvider, NotificationProvider } from '../../contexts/DashboardContext';
-import type { DashboardData } from '../../types/models';
+import type { DashboardData, Epic } from '../../types/models';
+import * as api from '../../utils/api';
+
+vi.mock('../../utils/api', async () => {
+    const actual = await vi.importActual('../../utils/api');
+    return {
+        ...actual,
+        authorizedFetch: vi.fn()
+    };
+});
 
 const mockData: DashboardData = {
     dashboards: [], settings: {
@@ -279,5 +288,78 @@ describe('WorkItemPage', () => {
 
         // 3. Sprint Field (SearchableDropdown)
         expect(screen.getByText(/Released in Sprint:/i)).toBeDefined();
+    });
+
+    it('shows error alert when syncEpic fails', async () => {
+        const dataWithEpic: DashboardData = {
+            ...mockData,
+            epics: [
+                { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5 }
+            ],
+            teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
+        };
+
+        // Mock authorizedFetch to return an error
+        (api.authorizedFetch as any).mockResolvedValueOnce({
+            ok: false,
+            json: async () => ({ success: false, error: 'Jira API Error' })
+        });
+
+        render(
+            <NotificationProvider>
+                <DashboardProvider value={{ data: dataWithEpic, updateEpic: vi.fn() }}>
+                    <WorkItemPage {...defaultProps} data={dataWithEpic} workItemId="f1" />
+                </DashboardProvider>
+            </NotificationProvider>
+        );
+
+        // Switch to Epics tab
+        const epicsTab = screen.getByText(/Epics \(/i);
+        fireEvent.click(epicsTab);
+
+        // Click Sync button
+        const syncButton = screen.getByText('Sync from Jira');
+        fireEvent.click(syncButton);
+
+        // Should show alert
+        await waitFor(() => {
+            expect(screen.getByText('Sync Failed')).toBeDefined();
+            expect(screen.getByText('Jira API Error')).toBeDefined();
+        });
+    });
+
+    it('shows error alert when syncEpic throws exception', async () => {
+        const dataWithEpic: DashboardData = {
+            ...mockData,
+            epics: [
+                { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5 }
+            ],
+            teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
+        };
+
+        // Mock authorizedFetch to throw
+        (api.authorizedFetch as any).mockRejectedValueOnce(new Error('Network Failure'));
+
+        render(
+            <NotificationProvider>
+                <DashboardProvider value={{ data: dataWithEpic, updateEpic: vi.fn() }}>
+                    <WorkItemPage {...defaultProps} data={dataWithEpic} workItemId="f1" />
+                </DashboardProvider>
+            </NotificationProvider>
+        );
+
+        // Switch to Epics tab
+        const epicsTab = screen.getByText(/Epics \(/i);
+        fireEvent.click(epicsTab);
+
+        // Click Sync button
+        const syncButton = screen.getByText('Sync from Jira');
+        fireEvent.click(syncButton);
+
+        // Should show alert
+        await waitFor(() => {
+            expect(screen.getByText('Sync Failed')).toBeDefined();
+            expect(screen.getByText('Network Failure')).toBeDefined();
+        });
     });
 });

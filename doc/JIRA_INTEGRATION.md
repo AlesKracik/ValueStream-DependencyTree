@@ -11,10 +11,11 @@ sequenceDiagram
     participant UI as Web Client
     participant Proxy as Vite Proxy
     participant Jira as Atlassian API
-    UI->>Proxy: POST /api/jira/issue (with Token)
-    Proxy->>Jira: GET /rest/api/3/issue/{key}
-    Jira-->>Proxy: JSON Data
-    Proxy-->>UI: Normalized Epic Fields
+    UI->>Proxy: POST /api/jira/issue (with Settings)
+    Proxy->>Jira: GET /rest/api/3/issue/{key}?expand=names
+    Jira-->>Proxy: Raw JSON Data
+    Proxy-->>UI: Raw JSON Data
+    Note over UI: parseJiraIssue() normalizes fields
 ```
 
 ## Data Mapping

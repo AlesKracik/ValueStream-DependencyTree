@@ -5,7 +5,7 @@ import { authorizedFetch } from "../../utils/api";
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
 import { PageWrapper } from '../layout/PageWrapper';
-import { calculateEpicEffortPerSprint, calculateEpicIntensityRatio } from '../../utils/businessLogic';
+import { calculateEpicEffortPerSprint, calculateEpicIntensityRatio, parseJiraIssue } from '../../utils/businessLogic';
 import Holidays from 'date-holidays';
 import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers';
 
@@ -83,22 +83,26 @@ export const EpicPage: React.FC<EpicPageProps> = ({
         }
         setSyncing(true);
         try {
-            const res = await authorizedFetch(`/api/jira/issue?jira_key=${epic.jira_key}`);
-            const json = await res.ok ? await res.json() : null;
-            if (json && json.success) {
-                const updates = {
-                    name: json.data.summary,
-                    effort_md: json.data.effort_md,
-                    target_start: json.data.target_start,
-                    target_end: json.data.target_end,
-                    team_id: data?.teams.find(t => t.name.toLowerCase() === json.data.team?.toLowerCase())?.id || epic.team_id
-                };
-                updateEpicWithOverlapCheck(epic.id, updates);
-            } else {
-                await showAlert('Sync Failed', json?.error || 'Failed to sync epic from Jira.');
+            const response = await authorizedFetch("/api/jira/issue", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    jira_key: epic.jira_key,
+                    jira_base_url: data?.settings.jira_base_url,
+                    jira_api_version: data?.settings.jira_api_version || "3",
+                    jira_api_token: data?.settings.jira_api_token,
+                }),
+            });
+            const resData = await response.json();
+            if (!response.ok || !resData.success) {
+                throw new Error(resData.error || "Failed to fetch Jira data");
             }
-        } catch (err) {
+
+            const updates = parseJiraIssue(resData.data, data?.teams || []);
+            updateEpicWithOverlapCheck(epic.id, updates);
+        } catch (err: any) {
             console.error('Sync failed', err);
+            await showAlert('Sync Failed', err.message || 'An unexpected error occurred during sync.');
         } finally {
             setSyncing(false);
         }

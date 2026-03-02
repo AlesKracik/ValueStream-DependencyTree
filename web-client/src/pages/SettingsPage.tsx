@@ -6,6 +6,7 @@ import { authorizedFetch } from "../utils/api";
 import { generateId } from '../utils/security';
 import { useDashboardContext } from "../contexts/DashboardContext";
 import { PageWrapper } from "../components/layout/PageWrapper";
+import { parseJiraIssue } from "../utils/businessLogic";
 
 interface SettingsPageProps {
   settings: Settings;
@@ -279,37 +280,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         });
         const resData = await response.json();
         if (!response.ok || !resData.success) throw new Error(resData.error || "Failed to fetch Jira data");
-        const issue = resData.data;
-        const fields = issue.fields;
-        const names = issue.names;
-        let targetStartKey = "";
-        let targetEndKey = "";
-        let teamKey = "";
-        Object.entries(names as Record<string, string>).forEach(([key, name]) => {
-          if (name === "Target start") targetStartKey = key;
-          if (name === "Target end") targetEndKey = key;
-          if (name === "Team") teamKey = key;
-        });
-
-        const updates: Partial<Epic> = {};
-        if (fields.summary) updates.name = fields.summary;
-        if (fields.timeestimate !== undefined && fields.timeestimate !== null) {
-          updates.effort_md = Math.round(fields.timeestimate / 28800);
-        }
-        if (targetStartKey && fields[targetStartKey]) updates.target_start = fields[targetStartKey];
-        if (targetEndKey && fields[targetEndKey]) updates.target_end = fields[targetEndKey];
-
-        if (teamKey && fields[teamKey]) {
-          const teamField = fields[teamKey];
-          const jiraTeamId = (teamField.id || teamField.value || teamField.toString()).toString();
-          const jiraTeamName = teamField.name || "";
-          const matchedTeam = data.teams.find(t =>
-              (t.jira_team_id && t.jira_team_id.toString() === jiraTeamId) ||
-              t.name === jiraTeamId ||
-              (jiraTeamName && t.name === jiraTeamName)
-          );
-          if (matchedTeam) updates.team_id = matchedTeam.id;
-        }
+        
+        const updates = parseJiraIssue(resData.data, data.teams);
         updateEpic(epic.id, updates);
         successCount++;
       } catch (err: any) {
@@ -371,37 +343,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         const issue = issues[i];
         const jiraKey = issue.key;
         setImportProgress(`Processing ${i + 1}/${issues.length}: ${jiraKey}`);
-        const fields = issue.fields;
-        const names = resData.data.names || {};
-        let targetStartKey = "";
-        let targetEndKey = "";
-        let teamKey = "";
-
-        Object.entries(names as Record<string, string>).forEach(([key, name]) => {
-          if (name === "Target start") targetStartKey = key;
-          if (name === "Target end") targetEndKey = key;
-          if (name === "Team") teamKey = key;
-        });
-
-        const updates: Partial<Epic> = {};
-        if (fields.summary) updates.name = fields.summary;
-        if (fields.timeestimate !== undefined && fields.timeestimate !== null) {
-          updates.effort_md = Math.round(fields.timeestimate / 28800);
-        }
-        if (targetStartKey && fields[targetStartKey]) updates.target_start = fields[targetStartKey];
-        if (targetEndKey && fields[targetEndKey]) updates.target_end = fields[targetEndKey];
-
-        if (teamKey && fields[teamKey]) {
-          const teamField = fields[teamKey];
-          const jiraTeamId = (teamField.id || teamField.value || teamField.toString()).toString();
-          const jiraTeamName = teamField.name || "";
-          const matchedTeam = data.teams.find(t =>
-              (t.jira_team_id && t.jira_team_id.toString() === jiraTeamId) ||
-              t.name === jiraTeamId ||
-              (jiraTeamName && t.name === jiraTeamName)
-          );
-          if (matchedTeam) updates.team_id = matchedTeam.id;
-        }
+        
+        const updates = parseJiraIssue(issue, data.teams);
 
         const existingEpic = data.epics.find((e) => e.jira_key === jiraKey);
         try {

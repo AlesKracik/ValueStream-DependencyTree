@@ -5,7 +5,7 @@ import { SearchableDropdown } from '../common/SearchableDropdown';
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
 import { generateId } from '../../utils/security';
-import { calculateWorkItemEffort, calculateWorkItemTcv } from '../../utils/businessLogic';
+import { calculateWorkItemEffort, calculateWorkItemTcv, parseJiraIssue } from '../../utils/businessLogic';
 import { PageWrapper } from '../layout/PageWrapper';
 
 export interface WorkItemPageProps {
@@ -138,30 +138,35 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
         }
         setSyncingId(id);
         try {
-            const res = await authorizedFetch(`/api/jira/issue?jira_key=${jiraKey}`);
-            const json = await res.ok ? await res.json() : null;
-            if (json && json.success) {
-                const updates = {
-                    name: json.data.summary,
-                    effort_md: json.data.effort_md,
-                    target_start: json.data.target_start,
-                    target_end: json.data.target_end,
-                    team_id: data?.teams.find(t => t.name.toLowerCase() === json.data.team?.toLowerCase())?.id || (isNew ? newWorkItemEpics.find(e => e.id === id)?.team_id : data?.epics.find(e => e.id === id)?.team_id)
-                };
-                if (isNew) {
-                    setNewWorkItemEpics(prev => prev.map(e => e.id === id ? { 
-                        ...e, 
-                        ...updates,
-                        team_id: updates.team_id || e.team_id || (data?.teams[0]?.id || '')
-                    } : e));
-                } else {
-                    updateEpic(id, updates);
-                }
-            } else {
-                await showAlert('Sync Failed', json?.error || 'Failed to sync epic from Jira.');
+            const response = await authorizedFetch("/api/jira/issue", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    jira_key: jiraKey,
+                    jira_base_url: data?.settings.jira_base_url,
+                    jira_api_version: data?.settings.jira_api_version || "3",
+                    jira_api_token: data?.settings.jira_api_token,
+                }),
+            });
+            const resData = await response.json();
+            if (!response.ok || !resData.success) {
+                throw new Error(resData.error || "Failed to fetch Jira data");
             }
-        } catch (err) {
+            
+            const updates = parseJiraIssue(resData.data, data?.teams || []);
+            
+            if (isNew) {
+                setNewWorkItemEpics(prev => prev.map(e => e.id === id ? { 
+                    ...e, 
+                    ...updates,
+                    team_id: updates.team_id || e.team_id || (data?.teams[0]?.id || '')
+                } : e));
+            } else {
+                updateEpic(id, updates);
+            }
+        } catch (err: any) {
             console.error('Sync failed', err);
+            await showAlert('Sync Failed', err.message || 'An unexpected error occurred during sync.');
         } finally {
             setSyncingId(null);
         }
