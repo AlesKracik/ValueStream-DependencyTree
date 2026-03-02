@@ -474,13 +474,13 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                 <table className={styles.table}>
                                     <thead>
                                         <tr>
-                                            <th>Key</th>
+                                            <th style={{ width: '100px' }}>Key</th>
                                             <th>Name</th>
-                                            <th>Effort (MDs)</th>
-                                            <th>Start</th>
-                                            <th>End</th>
-                                            <th>Team</th>
-                                            <th>Actions</th>
+                                            <th style={{ width: '100px' }}>Effort (MDs)</th>
+                                            <th style={{ width: '140px' }}>Start</th>
+                                            <th style={{ width: '140px' }}>End</th>
+                                            <th style={{ width: '160px' }}>Team</th>
+                                            <th style={{ width: '200px' }}>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -491,15 +491,15 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                         type="text"
                                                         value={epic.jira_key}
                                                         onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, jira_key: e.target.value } : ev)) : updateEpic(epic.id, { jira_key: e.target.value })}
-                                                        style={{ width: '120px' }}
+                                                        style={{ width: '80px' }}
                                                     />
                                                 </td>
-                                                <td>
+                                                <td style={{ width: '100%' }}>
                                                     <input
                                                         type="text"
                                                         value={epic.name}
                                                         onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, name: e.target.value } : ev)) : updateEpic(epic.id, { name: e.target.value })}
-                                                        style={{ width: '100%' }}
+                                                        style={{ width: '100%', minWidth: '1000px' }}
                                                     />
                                                 </td>
                                                 <td>
