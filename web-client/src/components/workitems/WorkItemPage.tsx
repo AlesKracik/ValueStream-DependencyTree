@@ -206,7 +206,56 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                 </div>
                             </div>
 
-                            <div className={styles.formGrid}>                                <label style={{ flex: 1 }}>
+                            <div className={styles.formGrid}>
+                                <label>
+                                    Name:
+                                    <input
+                                        type="text"
+                                        value={workItem.name}
+                                        onChange={e => {
+                                            if (isNew) {
+                                                setNewWorkItemDraft(prev => ({ ...prev, name: e.target.value }));
+                                            } else {
+                                                updateWorkItem(workItem.id, { name: e.target.value });
+                                            }
+                                        }}
+                                    />
+                                </label>
+                                <label>
+                                    Total Effort (MDs):
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={workItem.total_effort_mds}
+                                        onChange={e => {
+                                            const val = parseInt(e.target.value) || 0;
+                                            if (isNew) {
+                                                setNewWorkItemDraft(prev => ({ ...prev, total_effort_mds: val }));
+                                            } else {
+                                                updateWorkItem(workItem.id, { total_effort_mds: val });
+                                            }
+                                        }}
+                                    />
+                                </label>
+                                <label>
+                                    Released in Sprint:
+                                    <SearchableDropdown
+                                        options={data?.sprints.map(s => ({ id: s.id, label: s.name })) || []}
+                                        onSelect={(sprintId) => {
+                                            if (isNew) {
+                                                setNewWorkItemDraft(prev => ({ ...prev, released_in_sprint_id: sprintId }));
+                                            } else {
+                                                updateWorkItem(workItem.id, { released_in_sprint_id: sprintId });
+                                            }
+                                        }}
+                                        placeholder="Select release sprint..."
+                                        initialValue={data?.sprints.find(s => s.id === (workItem.released_in_sprint_id))?.name || ''}
+                                        clearOnSelect={false}
+                                    />
+                                </label>
+                            </div>
+
+                            <div className={styles.formGrid} style={{ marginTop: '16px' }}>                                <label style={{ flex: 1 }}>
                                     Description:
                                     <textarea
                                         value={workItem.description || ''}
