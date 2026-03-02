@@ -77,3 +77,15 @@ export const calculateQuarter = (dateStr: string, fiscalStartMonth: number) => {
     const quarter = Math.ceil(shiftedMonth / 3);
     return `FY${fiscalYear} Q${quarter}`;
 };
+
+/**
+ * Returns a list of supported countries for the holiday calculation.
+ */
+export const getCountryOptions = (): { id: string; label: string }[] => {
+    const hd = new Holidays();
+    const countries = hd.getCountries();
+    return Object.entries(countries).map(([code, name]) => ({
+        id: code,
+        label: `${name} (${code})`
+    })).sort((a, b) => a.label.localeCompare(b.label));
+};

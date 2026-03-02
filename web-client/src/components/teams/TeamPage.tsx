@@ -5,7 +5,8 @@ import type { DashboardData, Team } from '../../types/models';
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
 import { PageWrapper } from '../layout/PageWrapper';
-import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers';
+import { calculateWorkingDays, getHolidayImpact, getCountryOptions } from '../../utils/dateHelpers';
+import { SearchableDropdown } from '../common/SearchableDropdown';
 
 export interface TeamPageProps {
     teamId: string;
@@ -137,23 +138,25 @@ export const TeamPage: React.FC<TeamPageProps> = ({
                                         }}
                                     />
                                 </label>
-                                <label>
+                                <label style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                     Country (for Holidays):
-                                    <select 
-                                        value={team.country || ''} 
-                                        onChange={e => {
-                                            if (isNew) setNewTeamDraft({ ...newTeamDraft, country: e.target.value });
-                                            else updateTeam(team.id, { country: e.target.value });
+                                    <SearchableDropdown
+                                        options={[
+                                            { id: '', label: 'None (No Holidays)' },
+                                            ...getCountryOptions()
+                                        ]}
+                                        onSelect={id => {
+                                            if (isNew) setNewTeamDraft({ ...newTeamDraft, country: id });
+                                            else updateTeam(team.id, { country: id });
                                         }}
-                                    >
-                                        <option value="">None (No Holidays)</option>
-                                        <option value="US">USA</option>
-                                        <option value="GB">UK</option>
-                                        <option value="DE">Germany</option>
-                                        <option value="CZ">Czech Republic</option>
-                                        <option value="FR">France</option>
-                                        <option value="IN">India</option>
-                                    </select>
+                                        placeholder="Select Country..."
+                                        clearOnSelect={false}
+                                        initialValue={(() => {
+                                            const options = getCountryOptions();
+                                            const match = options.find(o => o.id === team.country);
+                                            return match ? match.label : (team.country === '' ? 'None (No Holidays)' : team.country || '');
+                                        })()}
+                                    />
                                 </label>
                             </div>
                         </section>

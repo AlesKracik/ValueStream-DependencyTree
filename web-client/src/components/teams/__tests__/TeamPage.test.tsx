@@ -21,6 +21,11 @@ vi.mock('date-holidays', () => {
     return {
         default: class {
             isHoliday = mockIsHoliday;
+            getCountries = () => ({
+                'US': 'United States of America',
+                'GB': 'United Kingdom',
+                'CZ': 'Czech Republic'
+            });
         }
     };
 });
@@ -78,7 +83,7 @@ describe('TeamPage', () => {
         );
         expect(screen.getByDisplayValue('Team 1')).toBeDefined();
         expect(screen.getByDisplayValue('100')).toBeDefined();
-        expect(screen.getByDisplayValue('USA')).toBeDefined();
+        expect(screen.getByDisplayValue('United States of America (US)')).toBeDefined();
     });
 
     it('calls updateTeam when name changes', () => {

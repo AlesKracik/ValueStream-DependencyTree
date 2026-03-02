@@ -1,7 +1,32 @@
 import { describe, it, expect } from 'vitest';
-import { calculateQuarter } from '../dateHelpers';
+import { calculateQuarter, getCountryOptions } from '../dateHelpers';
 
 describe('dateHelpers', () => {
+    describe('getCountryOptions', () => {
+        it('returns a non-empty list of countries', () => {
+            const countries = getCountryOptions();
+            expect(countries.length).toBeGreaterThan(100);
+            expect(countries[0]).toHaveProperty('id');
+            expect(countries[0]).toHaveProperty('label');
+        });
+
+        it('includes common countries', () => {
+            const countries = getCountryOptions();
+            const ids = countries.map(c => c.id);
+            expect(ids).toContain('US');
+            expect(ids).toContain('GB');
+            expect(ids).toContain('CZ');
+            expect(ids).toContain('DE');
+        });
+
+        it('is sorted by label', () => {
+            const countries = getCountryOptions();
+            const labels = countries.map(c => c.label);
+            const sortedLabels = [...labels].sort((a, b) => a.localeCompare(b));
+            expect(labels).toEqual(sortedLabels);
+        });
+    });
+
     describe('calculateQuarter', () => {
         it('calculates correctly for standard calendar year (Jan start)', () => {
             expect(calculateQuarter('2026-01-15', 1)).toBe('FY2026 Q1');
