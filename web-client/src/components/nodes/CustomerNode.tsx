@@ -55,6 +55,7 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
             style={{ 
                 opacity: potentialOpacity,
                 display: 'flex',
+                flexDirection: 'row',
                 alignItems: 'flex-start',
                 justifyContent: 'center',
                 paddingTop: '6px',
