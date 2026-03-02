@@ -4,7 +4,6 @@ import type { DashboardData, Epic } from '../../types/models';
 import { authorizedFetch } from "../../utils/api";
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
-import { sanitizeUrl } from '../../utils/security';
 import { PageWrapper } from '../layout/PageWrapper';
 import { calculateEpicEffortPerSprint, calculateEpicIntensityRatio } from '../../utils/businessLogic';
 import Holidays from 'date-holidays';
@@ -300,7 +299,6 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                                                         {!hasCapacityOverride && holidayCount > 0 && (
                                                             <span style={{ fontSize: '11px', marginLeft: '4px', opacity: 0.8 }} title={`${holidayCount} holiday(s)`}>
                                                                 (🏖️ -{Math.round(holidayImpact * 10) / 10})
-
                                                             </span>
                                                         )}
                                                     </div>

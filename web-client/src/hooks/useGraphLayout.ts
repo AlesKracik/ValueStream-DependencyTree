@@ -4,6 +4,7 @@ import type { Node, Edge } from '@xyflow/react';
 import type { DashboardData, DashboardParameters } from '../types/models';
 import Holidays from 'date-holidays';
 import { calculateWorkItemEffort, calculateEpicEffortPerSprint, calculateEpicIntensityRatio } from '../utils/businessLogic';
+import { countBusinessDays } from '../utils/dateHelpers';
 
 export function useGraphLayout(
     data: DashboardData | null,
@@ -644,7 +645,6 @@ export function useGraphLayout(
                     const daysOffset = Math.max(0, differenceInDays(renderStart, windowStartDate));
                     // Ensure duration doesn't go negative or 0 if start == end
                     const visibleDuration = Math.max(1, differenceInDays(renderEnd, renderStart) + 1);
-                    const totalEpicDuration = Math.max(1, differenceInDays(end, start) + 1);
 
                     const laneIdx = epicLanes[epic.id];
                     const maxLanes = Math.max(teamMaxLanes[team.id] || 1, 1);
@@ -669,8 +669,8 @@ export function useGraphLayout(
                             const overlapStartOffsetDays = differenceInDays(overlapStart, windowStartDate);
                             const segmentOffsetPixels = Math.max(0, (overlapStartOffsetDays - daysOffset) * PIXELS_PER_DAY);
 
-                            const overlapDays = differenceInDays(overlapEnd, overlapStart) + 1;
-                            let segmentWidthPixels = overlapDays * PIXELS_PER_DAY;
+                            const overlapCalendarDays = differenceInDays(overlapEnd, overlapStart) + 1;
+                            let segmentWidthPixels = overlapCalendarDays * PIXELS_PER_DAY;
 
                             // Crop segments so they don't draw outside the main rendering bar boundary
                             if (segmentOffsetPixels + segmentWidthPixels > visibleDuration * PIXELS_PER_DAY) {
@@ -678,9 +678,10 @@ export function useGraphLayout(
                             }
 
                             const segmentEffort = epicSprintEffort[sprint.id] || 0;
+                            const totalEpicDuration = Math.max(1, differenceInDays(end, start) + 1);
 
                             // Calculate mathematical strictly uniform proportion for the baseline:
-                            const baselineProportion = overlapDays / totalEpicDuration;
+                            const baselineProportion = overlapCalendarDays / totalEpicDuration;
                             const baselineEffort = (epic.effort_md || 0) * baselineProportion;
                             const intensityRatio = calculateEpicIntensityRatio(segmentEffort, baselineEffort);
 
