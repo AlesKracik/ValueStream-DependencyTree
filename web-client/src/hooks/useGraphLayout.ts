@@ -3,6 +3,7 @@ import { differenceInDays, parseISO, min, max, format, isWeekend, addDays } from
 import type { Node, Edge } from '@xyflow/react';
 import type { DashboardData, DashboardParameters } from '../types/models';
 import Holidays from 'date-holidays';
+import { calculateWorkItemEffort } from '../utils/businessLogic';
 
 export function useGraphLayout(
     data: DashboardData | null,
@@ -399,7 +400,10 @@ export function useGraphLayout(
                 const epicsForWorkItem = data.epics.filter(e => e.work_item_id === f.id && visibleEpics.has(e.id));
                 const epicMdsSum = epicsForWorkItem.reduce((sum, e) => sum + e.effort_md, 0);
                 const hasDatelessEpics = epicsForWorkItem.some(e => !e.target_start || !e.target_end);
-                const hasUnestimatedEffort = (f.total_effort_mds || 0) === 0 || epicsForWorkItem.some(e => (e.effort_md || 0) === 0);
+                
+                // Use centralized logic for effort warning
+                const totalEffort = calculateWorkItemEffort(f, data.epics);
+                const hasUnestimatedEffort = totalEffort === 0 || epicsForWorkItem.some(e => (e.effort_md || 0) === 0);
 
                 return {
                     ...f,

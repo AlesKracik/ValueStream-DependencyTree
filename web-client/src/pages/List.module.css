@@ -86,3 +86,30 @@
     text-align: center;
     padding: 40px;
 }
+
+.sortBtn {
+    background: none;
+    border: 1px solid #334155;
+    color: #94a3b8;
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.sortBtn:hover {
+    border-color: #60a5fa;
+    color: #f1f5f9;
+}
+
+.activeSort {
+    background-color: rgba(96, 165, 250, 0.1);
+    border: 1px solid #60a5fa;
+    color: #60a5fa;
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+}
