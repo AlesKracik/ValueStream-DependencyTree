@@ -146,8 +146,8 @@ describe('useGraphLayout Math Engine', () => {
                 { id: 'f3', name: 'Feat with Unestimated Epic', total_effort_mds: 10, score: 50, customer_targets: [] },
             ],
             epics: [
-                { id: 'e1', work_item_id: 'f1', team_id: 't1', effort_md: 5 },
-                { id: 'e2', work_item_id: 'f3', team_id: 't1', effort_md: 0 },
+                { id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', effort_md: 5 },
+                { id: 'e2', jira_key: 'E2', work_item_id: 'f3', team_id: 't1', effort_md: 0 },
             ]
         };
 

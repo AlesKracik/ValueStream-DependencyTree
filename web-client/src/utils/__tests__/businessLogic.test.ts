@@ -18,15 +18,15 @@ describe('businessLogic', () => {
 
         it('uses workItem effort when epic effort sum is 0', () => {
             const epics: Epic[] = [
-                { id: 'e1', work_item_id: 'f1', team_id: 't1', effort_md: 0 }
+                { id: 'e1', jira_key: 'J1', work_item_id: 'f1', team_id: 't1', effort_md: 0 }
             ];
             expect(calculateWorkItemEffort(mockWorkItem, epics)).toBe(10);
         });
 
         it('prioritizes epic effort sum when it is greater than 0', () => {
             const epics: Epic[] = [
-                { id: 'e1', work_item_id: 'f1', team_id: 't1', effort_md: 5 },
-                { id: 'e2', work_item_id: 'f1', team_id: 't2', effort_md: 7 }
+                { id: 'e1', jira_key: 'J1', work_item_id: 'f1', team_id: 't1', effort_md: 5 },
+                { id: 'e2', jira_key: 'J2', work_item_id: 'f1', team_id: 't2', effort_md: 7 }
             ];
             // Epic sum (12) > WorkItem effort (10)
             expect(calculateWorkItemEffort(mockWorkItem, epics)).toBe(12);
@@ -34,7 +34,7 @@ describe('businessLogic', () => {
 
         it('uses epic effort sum even if it is smaller than workItem effort (as long as it is > 0)', () => {
             const epics: Epic[] = [
-                { id: 'e1', work_item_id: 'f1', team_id: 't1', effort_md: 5 }
+                { id: 'e1', jira_key: 'J1', work_item_id: 'f1', team_id: 't1', effort_md: 5 }
             ];
             // Epic sum (5) is taken because it's > 0, even though WorkItem effort is 10
             expect(calculateWorkItemEffort(mockWorkItem, epics)).toBe(5);
@@ -42,7 +42,7 @@ describe('businessLogic', () => {
 
         it('ignores epics for other work items', () => {
             const epics: Epic[] = [
-                { id: 'e1', work_item_id: 'f2', team_id: 't1', effort_md: 50 }
+                { id: 'e1', jira_key: 'J1', work_item_id: 'f2', team_id: 't1', effort_md: 50 }
             ];
             expect(calculateWorkItemEffort(mockWorkItem, epics)).toBe(10);
         });

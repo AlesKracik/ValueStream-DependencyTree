@@ -7,9 +7,8 @@ import path from 'path'
 import { MongoClient } from 'mongodb'
 import dns from 'node:dns'
 import { promisify } from 'node:util'
-import { calculateQuarter } from './src/utils/dateHelpers'
 
-const lookup = promisify(dns.lookup);
+const dnsLookup = promisify(dns.lookup);
 
 const MockDataPersistencePlugin = (): Plugin => ({
   name: 'mock-data-persistence',
@@ -119,7 +118,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
           // Allow localhost/loopback for local development/integration
           if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return true;
 
-          const { address } = await lookup(hostname);
+          const { address } = await dnsLookup(hostname);
           
           // Allow loopback address from DNS resolution too
           if (address === '127.0.0.1' || address === '::1') return true;

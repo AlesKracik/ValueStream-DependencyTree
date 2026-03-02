@@ -6,7 +6,7 @@ import type { DashboardData } from '../../types/models';
 
 const mockData: DashboardData = {
     dashboards: [],
-    settings: { jira_base_url: '', fiscal_year_start_month: 1 },
+    settings: { jira_base_url: '', jira_api_version: '3', fiscal_year_start_month: 1 },
     customers: [
         { id: 'c1', name: 'Alpha Cust', existing_tcv: 500, potential_tcv: 100 },
         { id: 'c2', name: 'Gamma Cust', existing_tcv: 100, potential_tcv: 1000 },

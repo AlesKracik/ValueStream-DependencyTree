@@ -2,15 +2,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Dashboard } from '../Dashboard';
 import { ReactFlowProvider } from '@xyflow/react';
-import { DashboardProvider } from '../../../contexts/DashboardContext';
+import { DashboardProvider, NotificationProvider } from '../../../contexts/DashboardContext';
 import type { DashboardData, DashboardViewState } from '../../../types/models';
 
 // Mock ResizeObserver which is needed by React Flow
-global.ResizeObserver = class ResizeObserver {
+vi.stubGlobal('ResizeObserver', class {
     observe() {}
     unobserve() {}
     disconnect() {}
-};
+});
 
 const mockData: DashboardData = {
     dashboards: [],
@@ -63,29 +63,35 @@ describe('Dashboard', () => {
 
     it('navigates to sprint list when sprint capacity node is clicked', () => {
         render(
-            <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                <ReactFlowProvider>
-                    <Dashboard {...defaultProps} />
-                </ReactFlowProvider>
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <ReactFlowProvider>
+                        <Dashboard 
+                            {...defaultProps}
+                        />
+                    </ReactFlowProvider>
+                </DashboardProvider>
+            </NotificationProvider>
         );
 
-        // Find the sprint capacity node. In tests, we might need to look for the sprint label
-        const sprintHeader = screen.getByText('Sprint 1');
-        fireEvent.click(sprintHeader);
+        const sprintNode = screen.getByText('Sprint 1');
+        fireEvent.click(sprintNode);
 
         expect(onNavigateToSprint).toHaveBeenCalledWith('list');
     });
 
     it('navigates to customer page when customer node is clicked', () => {
         render(
-            <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                <ReactFlowProvider>
-                    <Dashboard {...defaultProps} />
-                </ReactFlowProvider>
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <ReactFlowProvider>
+                        <Dashboard 
+                            {...defaultProps}
+                        />
+                    </ReactFlowProvider>
+                </DashboardProvider>
+            </NotificationProvider>
         );
-
         const customerNode = screen.getByText('Customer 1');
         fireEvent.click(customerNode);
 

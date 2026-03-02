@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { WorkItemListPage } from '../WorkItemListPage';
 import { MemoryRouter } from 'react-router-dom';
@@ -6,7 +6,7 @@ import type { DashboardData } from '../../types/models';
 
 const mockData: DashboardData = {
     dashboards: [],
-    settings: { jira_base_url: '', fiscal_year_start_month: 1 },
+    settings: { jira_base_url: '', jira_api_version: '3', fiscal_year_start_month: 1 },
     customers: [
         { id: 'c1', name: 'Cust A', existing_tcv: 1000, potential_tcv: 500 }
     ],

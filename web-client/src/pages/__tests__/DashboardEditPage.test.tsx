@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { DashboardEditPage } from '../DashboardEditPage';
-import { DashboardProvider } from '../../contexts/DashboardContext';
+import { DashboardProvider, NotificationProvider } from '../../contexts/DashboardContext';
 import type { DashboardData } from '../../types/models';
 
 const mockData: DashboardData = {
@@ -36,9 +36,11 @@ describe('DashboardEditPage', () => {
 
     it('renders "Create Dashboard" when dashboardId is "new"', () => {
         render(
-            <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                <DashboardEditPage {...defaultProps} dashboardId="new" />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <DashboardEditPage {...defaultProps} dashboardId="new" />
+                </DashboardProvider>
+            </NotificationProvider>
         );
 
         expect(screen.getByText('Create Dashboard')).toBeDefined();
@@ -47,9 +49,11 @@ describe('DashboardEditPage', () => {
 
     it('calls addDashboard when Create button is clicked', () => {
         render(
-            <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                <DashboardEditPage {...defaultProps} dashboardId="new" />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <DashboardEditPage {...defaultProps} dashboardId="new" />
+                </DashboardProvider>
+            </NotificationProvider>
         );
 
         const nameInput = screen.getByLabelText(/Name:/i);
@@ -66,9 +70,11 @@ describe('DashboardEditPage', () => {
 
     it('renders edit mode for existing dashboard', () => {
         render(
-            <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                <DashboardEditPage {...defaultProps} dashboardId="d1" />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <DashboardEditPage {...defaultProps} dashboardId="d1" />
+                </DashboardProvider>
+            </NotificationProvider>
         );
 
         expect(screen.getByText('Edit: Existing Dashboard')).toBeDefined();
@@ -77,9 +83,11 @@ describe('DashboardEditPage', () => {
 
     it('shows error if dashboard not found', () => {
         render(
-            <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                <DashboardEditPage {...defaultProps} dashboardId="invalid" />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <DashboardEditPage {...defaultProps} dashboardId="invalid" />
+                </DashboardProvider>
+            </NotificationProvider>
         );
 
         expect(screen.getByText('Dashboard not found.')).toBeDefined();
@@ -87,16 +95,17 @@ describe('DashboardEditPage', () => {
 
     it('renders Time Range sprint selects', () => {
         render(
-            <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                <DashboardEditPage {...defaultProps} dashboardId="new" />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <DashboardEditPage {...defaultProps} dashboardId="new" />
+                </DashboardProvider>
+            </NotificationProvider>
         );
 
         expect(screen.getByLabelText(/Start Sprint:/i)).toBeDefined();
         expect(screen.getByLabelText(/End Sprint:/i)).toBeDefined();
         
         // Check options
-        const startSelect = screen.getByLabelText(/Start Sprint:/i);
         expect(screen.getByText('Sprint 1 (2026-01-01)')).toBeDefined();
         expect(screen.getByText('Sprint 2 (2026-01-15)')).toBeDefined();
     });

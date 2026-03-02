@@ -22,7 +22,7 @@ import { DocumentationPage } from './pages/DocumentationPage';
 import { LoginPage } from './pages/LoginPage';
 
 import { useDashboardData } from './hooks/useDashboardData';
-import { DashboardProvider } from './contexts/DashboardContext';
+import { DashboardProvider, NotificationProvider, useNotificationContext, useDashboardContext } from './contexts/DashboardContext';
 import { getAdminSecret } from './utils/api';
 import type { DashboardViewState } from './types/models';
 import './App.css';
@@ -96,7 +96,7 @@ function SettingsPageRouteWrapper({ dashboardState }: any) {
   if (dashboardState.loading && !dashboardState.data) return <div style={{ color: 'white', padding: '24px' }}>Loading settings...</div>;
   return (
     <SettingsPage 
-      settings={dashboardState.data?.settings || {}} 
+      settings={dashboardState.data?.settings || { jira_base_url: '', jira_api_version: '3' }} 
       onUpdateSettings={dashboardState.updateSettings} 
       data={dashboardState.data} 
       updateEpic={dashboardState.updateEpic} 
@@ -120,41 +120,43 @@ function MainAppContent() {
     isInitialOffsetSet: false,
   });
 
-  const { showAlert } = useDashboardContext();
+  const { showAlert } = useNotificationContext();
   const globalState = useDashboardData(undefined, undefined, 1000, showAlert);
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Navigate to="/dashboards" replace />} />
-        
-        <Route element={<Layout />}>
-          {/* List Pages */}
-          <Route path="/dashboards" element={<DashboardListPage data={globalState.data} loading={globalState.loading} />} />
-          <Route path="/dashboard/new" element={<DashboardEditPage dashboardId="new" onBack={() => window.history.back()} {...globalState} />} />
-          <Route path="/customers" element={<CustomerListPage data={globalState.data} loading={globalState.loading} />} />
-          <Route path="/workitems" element={<WorkItemListPage data={globalState.data} loading={globalState.loading} />} />
-          <Route path="/teams" element={<TeamListPage data={globalState.data} loading={globalState.loading} />} />
-          <Route path="/sprints" element={<SprintPageRouteWrapper dashboardState={globalState} />} />
+    <DashboardProvider value={{ data: globalState.data, updateEpic: globalState.updateEpic }}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboards" replace />} />
           
-          {/* Other Pages */}
-          <Route path="/settings" element={<SettingsPageRouteWrapper dashboardState={globalState} />} />
-          <Route path="/documentation" element={<DocumentationPage />} />
+          <Route element={<Layout />}>
+            {/* List Pages */}
+            <Route path="/dashboards" element={<DashboardListPage data={globalState.data} loading={globalState.loading} />} />
+            <Route path="/dashboard/new" element={<DashboardEditPage dashboardId="new" onBack={() => window.history.back()} {...globalState} />} />
+            <Route path="/customers" element={<CustomerListPage data={globalState.data} loading={globalState.loading} />} />
+            <Route path="/workitems" element={<WorkItemListPage data={globalState.data} loading={globalState.loading} />} />
+            <Route path="/teams" element={<TeamListPage data={globalState.data} loading={globalState.loading} />} />
+            <Route path="/sprints" element={<SprintPageRouteWrapper dashboardState={globalState} />} />
+            
+            {/* Other Pages */}
+            <Route path="/settings" element={<SettingsPageRouteWrapper dashboardState={globalState} />} />
+            <Route path="/documentation" element={<DocumentationPage />} />
 
-          {/* Entity Detail Pages */}
-          <Route path="/dashboard/:id" element={
-            <ReactFlowProvider>
-              <DashboardRouteWrapper dashboardViewState={dashboardViewState} setDashboardViewState={setDashboardViewState} />
-            </ReactFlowProvider>
-          } />
-          <Route path="/dashboard/edit/:id" element={<DashboardEditPageRouteWrapper dashboardState={globalState} />} />
-          <Route path="/customer/:id" element={<CustomerPageRouteWrapper dashboardState={globalState} />} />
-          <Route path="/workitem/:id" element={<WorkItemPageRouteWrapper dashboardState={globalState} />} />
-          <Route path="/epic/:id" element={<EpicPageRouteWrapper dashboardState={globalState} />} />
-          <Route path="/team/:id" element={<TeamPageRouteWrapper dashboardState={globalState} />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+            {/* Entity Detail Pages */}
+            <Route path="/dashboard/:id" element={
+              <ReactFlowProvider>
+                <DashboardRouteWrapper dashboardViewState={dashboardViewState} setDashboardViewState={setDashboardViewState} />
+              </ReactFlowProvider>
+            } />
+            <Route path="/dashboard/edit/:id" element={<DashboardEditPageRouteWrapper dashboardState={globalState} />} />
+            <Route path="/customer/:id" element={<CustomerPageRouteWrapper dashboardState={globalState} />} />
+            <Route path="/workitem/:id" element={<WorkItemPageRouteWrapper dashboardState={globalState} />} />
+            <Route path="/epic/:id" element={<EpicPageRouteWrapper dashboardState={globalState} />} />
+            <Route path="/team/:id" element={<TeamPageRouteWrapper dashboardState={globalState} />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </DashboardProvider>
   );
 }
 
@@ -200,9 +202,9 @@ function App() {
   }
 
   return (
-    <DashboardProvider>
+    <NotificationProvider>
       <MainAppContent />
-    </DashboardProvider>
+    </NotificationProvider>
   );
 }
 

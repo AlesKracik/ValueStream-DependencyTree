@@ -1,8 +1,8 @@
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EpicPage } from '../EpicPage';
-import { DashboardProvider } from '../../../contexts/DashboardContext';
-import type { DashboardData } from '../../../types/models';
+import { DashboardProvider, NotificationProvider } from '../../../contexts/DashboardContext';
+import type { DashboardData, Epic } from '../../../types/models';
 
 const mockData: DashboardData = {
     dashboards: [], settings: { jira_base_url: 'https://jira', jira_api_version: '3' },
@@ -47,9 +47,11 @@ describe('EpicPage Date Shift Logic', () => {
 
     it('prompts user and clears past work when shifting dates if they confirm', async () => {
         render(
-            <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
-                <EpicPage {...defaultProps} />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                    <EpicPage {...defaultProps} />
+                </DashboardProvider>
+            </NotificationProvider>
         );
         
         const startInput = screen.getByLabelText(/Target Start:/i);
@@ -75,9 +77,11 @@ describe('EpicPage Date Shift Logic', () => {
 
     it('aborts date shift if user cancels the confirmation', async () => {
         render(
-            <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
-                <EpicPage {...defaultProps} />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                    <EpicPage {...defaultProps} />
+                </DashboardProvider>
+            </NotificationProvider>
         );
         
         const startInput = screen.getByLabelText(/Target Start:/i);
@@ -94,9 +98,11 @@ describe('EpicPage Date Shift Logic', () => {
 
     it('does NOT prompt when shifting end date into the future', async () => {
         render(
-            <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
-                <EpicPage {...defaultProps} />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                    <EpicPage {...defaultProps} />
+                </DashboardProvider>
+            </NotificationProvider>
         );
         
         const endInput = screen.getByLabelText(/Target End:/i);
@@ -113,9 +119,11 @@ describe('EpicPage Date Shift Logic', () => {
 
     it('shows an alert and prevents update if start date is not before end date', async () => {
         render(
-            <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
-                <EpicPage {...defaultProps} />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                    <EpicPage {...defaultProps} />
+                </DashboardProvider>
+            </NotificationProvider>
         );
         
         const startInput = screen.getByLabelText(/Target Start:/i);
@@ -130,9 +138,11 @@ describe('EpicPage Date Shift Logic', () => {
 
     it('shows an alert and prevents update if start date is equal to end date', async () => {
         render(
-            <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
-                <EpicPage {...defaultProps} />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                    <EpicPage {...defaultProps} />
+                </DashboardProvider>
+            </NotificationProvider>
         );
         
         const startInput = screen.getByLabelText(/Target Start:/i);

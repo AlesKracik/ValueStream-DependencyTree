@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { differenceInDays, parseISO, min, max, format, isWeekend, addDays } from 'date-fns';
+import { differenceInDays, parseISO, min, max, format, isWeekend } from 'date-fns';
 import type { Node, Edge } from '@xyflow/react';
 import type { DashboardData, DashboardParameters } from '../types/models';
 import Holidays from 'date-holidays';
@@ -72,7 +72,6 @@ export function useGraphLayout(
         const tf = teamFilter.toLowerCase();
         const ef = epicFilter.toLowerCase();
 
-        const combinedMinTcv = Math.max(minTcv, bMinTcv);
         const combinedMinScore = Math.max(minScore, bMinScore);
 
         const bRel = baseParams?.releasedFilter || 'all';

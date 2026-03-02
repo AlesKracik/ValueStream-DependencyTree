@@ -75,8 +75,10 @@ describe('SettingsPage', () => {
         }));
         
         // Mock URL methods for download
-        global.URL.createObjectURL = vi.fn().mockReturnValue('mock-url');
-        global.URL.revokeObjectURL = vi.fn();
+        vi.stubGlobal('URL', {
+            createObjectURL: vi.fn().mockReturnValue('mock-url'),
+            revokeObjectURL: vi.fn()
+        });
     });
 
     it('renders and shows Export button in MongoDB tab', () => {
@@ -114,12 +116,12 @@ describe('SettingsPage', () => {
             fireEvent.click(exportBtn);
         });
 
-        expect(global.fetch).toHaveBeenCalledWith('/api/mongo/export', expect.objectContaining({
+        expect(fetch).toHaveBeenCalledWith('/api/mongo/export', expect.objectContaining({
             method: 'POST'
         }));
 
         await waitFor(() => {
-            expect(global.URL.createObjectURL).toHaveBeenCalled();
+            expect(URL.createObjectURL).toHaveBeenCalled();
             expect(screen.getByText(/Export successful! staticImport.json download started/i)).toBeDefined();
         });
     });
@@ -149,7 +151,7 @@ describe('SettingsPage', () => {
         });
 
         expect(mockShowConfirm).toHaveBeenCalled();
-        expect(global.fetch).toHaveBeenCalledWith('/api/mongo/import', expect.objectContaining({
+        expect(fetch).toHaveBeenCalledWith('/api/mongo/import', expect.objectContaining({
             method: 'POST',
             body: expect.stringContaining('"data":{"data":{"customers":[]}}')
         }));
@@ -343,8 +345,8 @@ describe('SettingsPage', () => {
         });
 
         // Should call both endpoints
-        expect(global.fetch).toHaveBeenCalledWith('/api/mongo/databases', expect.anything());
-        expect(global.fetch).toHaveBeenCalledWith('/api/mongo/test', expect.anything());
+        expect(fetch).toHaveBeenCalledWith('/api/mongo/databases', expect.anything());
+        expect(fetch).toHaveBeenCalledWith('/api/mongo/test', expect.anything());
 
         // Should show the "Exists" badge and the connection message
         await waitFor(() => {

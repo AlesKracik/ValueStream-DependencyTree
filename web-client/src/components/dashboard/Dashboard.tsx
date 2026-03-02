@@ -511,7 +511,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </ReactFlow>
             </div>
 
-            {editingNode && (
+            {editingNode && data && (
                 <EditNodeModal
                     node={editingNode}
                     onClose={() => setEditingNode(null)}

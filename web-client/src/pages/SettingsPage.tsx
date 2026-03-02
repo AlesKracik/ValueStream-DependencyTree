@@ -23,7 +23,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get("tab") as "general" | "mongo" | "jira") || "general";
-  const { showAlert, showConfirm } = useDashboardContext();
+  const { showConfirm } = useDashboardContext();
 
   const [localFormData, setFormData] = useState<Partial<Settings>>({});
   const [isTesting, setIsTesting] = useState(false);

@@ -113,6 +113,10 @@ export interface DashboardData {
   epics: Epic[];
   sprints: Sprint[];
   dashboards: DashboardEntity[];
+  metrics?: {
+    maxScore: number;
+    maxRoi: number;
+  };
 }
 
 export interface DashboardViewState {

@@ -10,14 +10,26 @@ interface NotificationConfig {
     onCancel?: () => void;
 }
 
-interface DashboardContextType {
-    data: DashboardData | null;
-    updateEpic: (id: string, updates: Partial<Epic>) => void;
+interface NotificationContextType {
     showAlert: (title: string, message: string) => Promise<void>;
     showConfirm: (title: string, message: string) => Promise<boolean>;
 }
 
+interface DashboardContextType extends NotificationContextType {
+    data: DashboardData | null;
+    updateEpic: (id: string, updates: Partial<Epic>) => void;
+}
+
+const NotificationContext = createContext<NotificationContextType | null>(null);
 const DashboardContext = createContext<DashboardContextType | null>(null);
+
+export const useNotificationContext = () => {
+    const context = useContext(NotificationContext);
+    if (!context) {
+        throw new Error('useNotificationContext must be used within a NotificationProvider');
+    }
+    return context;
+};
 
 export const useDashboardContext = () => {
     const context = useContext(DashboardContext);
@@ -27,10 +39,7 @@ export const useDashboardContext = () => {
     return context;
 };
 
-export const DashboardProvider: React.FC<{
-    children: React.ReactNode;
-    value: { data: DashboardData | null; updateEpic: (id: string, updates: Partial<Epic>) => void };
-}> = ({ children, value }) => {
+export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [notification, setNotification] = useState<NotificationConfig | null>(null);
 
     const showAlert = (title: string, message: string): Promise<void> => {
@@ -66,7 +75,7 @@ export const DashboardProvider: React.FC<{
     };
 
     return (
-        <DashboardContext.Provider value={{ ...value, showAlert, showConfirm }}>
+        <NotificationContext.Provider value={{ showAlert, showConfirm }}>
             {children}
             {notification && (
                 <NotificationModal
@@ -78,6 +87,19 @@ export const DashboardProvider: React.FC<{
                     onCancel={notification.onCancel || (() => setNotification(null))}
                 />
             )}
+        </NotificationContext.Provider>
+    );
+};
+
+export const DashboardProvider: React.FC<{
+    children: React.ReactNode;
+    value: { data: DashboardData | null; updateEpic: (id: string, updates: Partial<Epic>) => void };
+}> = ({ children, value }) => {
+    const { showAlert, showConfirm } = useNotificationContext();
+
+    return (
+        <DashboardContext.Provider value={{ ...value, showAlert, showConfirm }}>
+            {children}
         </DashboardContext.Provider>
     );
 };

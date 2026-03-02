@@ -1,7 +1,7 @@
 import { render, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { GanttBarNode } from '../GanttBarNode';
-import { DashboardProvider } from '../../../contexts/DashboardContext';
+import { DashboardProvider, NotificationProvider } from '../../../contexts/DashboardContext';
 import type { DashboardData } from '../../../types/models';
 
 // Mock React Flow components that don't play well with RTL
@@ -55,9 +55,11 @@ describe('GanttBarNode Auto-Freeze', () => {
         };
 
         render(
-            <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
-                <GanttBarNode data={nodeData} />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                    <GanttBarNode data={nodeData} />
+                </DashboardProvider>
+            </NotificationProvider>
         );
 
         // Advance timers to trigger useEffect
@@ -88,9 +90,11 @@ describe('GanttBarNode Auto-Freeze', () => {
         };
 
         render(
-            <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
-                <GanttBarNode data={nodeData} />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                    <GanttBarNode data={nodeData} />
+                </DashboardProvider>
+            </NotificationProvider>
         );
 
         act(() => {
@@ -98,9 +102,9 @@ describe('GanttBarNode Auto-Freeze', () => {
         });
 
         // Verify the calculation result isn't NaN or null
-        const call = updateEpicSpy.mock.calls.find(c => c[0] === 'e1');
+        const call = (updateEpicSpy as any).mock.calls.find((c: any) => c[0] === 'e1');
         expect(call).toBeDefined();
-        const overrides = call[1].sprint_effort_overrides;
+        const overrides = call![1].sprint_effort_overrides;
         const pastEffort = overrides['s_past'];
         
         expect(pastEffort).not.toBeNaN();

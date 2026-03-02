@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { WorkItemPage } from './WorkItemPage';
-import { DashboardProvider } from '../../contexts/DashboardContext';
+import { DashboardProvider, NotificationProvider } from '../../contexts/DashboardContext';
 import type { DashboardData } from '../../types/models';
 
 const mockData: DashboardData = {
@@ -56,9 +56,11 @@ describe('WorkItemPage', () => {
 
     it('should show TCV history selection when targeting Existing TCV', () => {
         render(
-            <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                <WorkItemPage {...defaultProps} workItemId="f1" />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <WorkItemPage {...defaultProps} workItemId="f1" />
+                </DashboardProvider>
+            </NotificationProvider>
         );
 
         // History dropdown should be visible because f1 targets existing TCV of c1 which has history
@@ -77,9 +79,11 @@ describe('WorkItemPage', () => {
 
     it('should have Nice-to-have option in the priority dropdown for existing targets', () => {
         render(
-            <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                <WorkItemPage {...defaultProps} workItemId="f1" />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <WorkItemPage {...defaultProps} workItemId="f1" />
+                </DashboardProvider>
+            </NotificationProvider>
         );
 
         const niceToHaveOptions = screen.getAllByRole('option', { name: 'Nice-to-have' }) as HTMLOptionElement[];
@@ -89,9 +93,11 @@ describe('WorkItemPage', () => {
 
     it('should have Nice-to-have option in the priority dropdown when adding a new target', () => {
         render(
-            <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                <WorkItemPage {...defaultProps} workItemId="new" />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <WorkItemPage {...defaultProps} workItemId="new" />
+                </DashboardProvider>
+            </NotificationProvider>
         );
 
         const customerInput = screen.getByPlaceholderText('Search for a customer to target...');
@@ -117,9 +123,11 @@ describe('WorkItemPage', () => {
         };
 
         render(
-            <DashboardProvider value={{ data: dataWithUnassigned, updateEpic: vi.fn() }}>
-                <WorkItemPage {...defaultProps} data={dataWithUnassigned} workItemId="f1" />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: dataWithUnassigned, updateEpic: vi.fn() }}>
+                    <WorkItemPage {...defaultProps} data={dataWithUnassigned} workItemId="f1" />
+                </DashboardProvider>
+            </NotificationProvider>
         );
 
         // Switch to Epics tab
@@ -136,9 +144,11 @@ describe('WorkItemPage', () => {
 
     it('toggles global target row and hides individual customer search', () => {
         render(
-            <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                <WorkItemPage {...defaultProps} workItemId="f1" />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <WorkItemPage {...defaultProps} workItemId="f1" />
+                </DashboardProvider>
+            </NotificationProvider>
         );
 
         const globalCheckbox = screen.getByLabelText(/ALL CUSTOMERS \(Global\)/i);
@@ -168,9 +178,11 @@ describe('WorkItemPage', () => {
         const updateEpicSpy = vi.fn();
 
         render(
-            <DashboardProvider value={{ data: dataWithEpic, updateEpic: updateEpicSpy }}>
-                <WorkItemPage {...defaultProps} data={dataWithEpic} workItemId="f1" />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: dataWithEpic, updateEpic: updateEpicSpy }}>
+                    <WorkItemPage {...defaultProps} data={dataWithEpic} workItemId="f1" />
+                </DashboardProvider>
+            </NotificationProvider>
         );
 
         // Switch to Epics tab
@@ -199,9 +211,11 @@ describe('WorkItemPage', () => {
         };
 
         render(
-            <DashboardProvider value={{ data: dataWithDatelessEpic, updateEpic: vi.fn() }}>
-                <WorkItemPage {...defaultProps} data={dataWithDatelessEpic} workItemId="f1" />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: dataWithDatelessEpic, updateEpic: vi.fn() }}>
+                    <WorkItemPage {...defaultProps} data={dataWithDatelessEpic} workItemId="f1" />
+                </DashboardProvider>
+            </NotificationProvider>
         );
 
         // Switch to Epics tab
@@ -222,9 +236,11 @@ describe('WorkItemPage', () => {
         };
 
         render(
-            <DashboardProvider value={{ data: dataWithDesc, updateEpic: vi.fn() }}>
-                <WorkItemPage {...defaultProps} data={dataWithDesc} workItemId="f1" />
-            </DashboardProvider>
+            <NotificationProvider>
+                <DashboardProvider value={{ data: dataWithDesc, updateEpic: vi.fn() }}>
+                    <WorkItemPage {...defaultProps} data={dataWithDesc} workItemId="f1" />
+                </DashboardProvider>
+            </NotificationProvider>
         );
 
         const textarea = screen.getByPlaceholderText(/Add a detailed description for this work item.../i) as HTMLTextAreaElement;
