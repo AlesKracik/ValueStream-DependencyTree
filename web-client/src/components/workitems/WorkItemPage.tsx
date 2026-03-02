@@ -475,12 +475,12 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                     <thead>
                                         <tr>
                                             <th style={{ width: '12%' }}>Key</th>
-                                            <th style={{ width: '36%' }}>Name</th>
+                                            <th style={{ width: '30%' }}>Name</th>
                                             <th style={{ width: '8%' }}>Effort (MDs)</th>
                                             <th style={{ width: '10%' }}>Start</th>
                                             <th style={{ width: '10%' }}>End</th>
-                                            <th style={{ width: '10%' }}>Team</th>
-                                            <th style={{ width: '14%' }}>Actions</th>
+                                            <th style={{ width: '15%' }}>Team</th>
+                                            <th style={{ width: '15%' }}>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -561,8 +561,8 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                     </select>
                                                 </td>
                                                 <td style={{ display: 'flex', gap: '8px' }}>
-                                                    <button className="btn-secondary" onClick={() => syncEpic(epic.id, epic.jira_key)} disabled={syncingId === epic.id}>
-                                                        {syncingId === epic.id ? 'Syncing...' : 'Sync Jira'}
+                                                    <button className="btn-primary" onClick={() => syncEpic(epic.id, epic.jira_key)} disabled={syncingId === epic.id}>
+                                                        {syncingId === epic.id ? 'Syncing...' : 'Sync from Jira'}
                                                     </button>
                                                     <button className="btn-danger" onClick={() => handleDeleteEpic(epic.id, epic.name || epic.jira_key)}>
                                                         Delete

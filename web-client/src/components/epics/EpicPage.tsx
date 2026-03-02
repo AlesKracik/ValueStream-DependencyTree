@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { parseISO } from 'date-fns';
+import { parseISO, min, max, differenceInDays } from 'date-fns';
 import type { DashboardData, Epic } from '../../types/models';
 import { authorizedFetch } from "../../utils/api";
 import { useDashboardContext } from '../../contexts/DashboardContext';
@@ -15,7 +15,6 @@ export interface EpicPageProps {
     error: Error | null;
     updateEpic: (id: string, updates: Partial<Epic>) => void;
     deleteEpic: (id: string) => void;
-    
 }
 
 export const EpicPage: React.FC<EpicPageProps> = ({
@@ -111,6 +110,42 @@ export const EpicPage: React.FC<EpicPageProps> = ({
         onBack();
     };
 
+    const handleOverrideChange = (sprintId: string, val: string) => {
+        if (!epic) return;
+        const overrides = { ...(epic.sprint_effort_overrides || {}) };
+        const cleanVal = val.trim();
+
+        if (cleanVal === '') {
+            delete overrides[sprintId];
+        } else {
+            const parsed = Number(cleanVal);
+            if (!isNaN(parsed) && parsed >= 0) {
+                overrides[sprintId] = parsed;
+            }
+        }
+        updateEpic(epic.id, { sprint_effort_overrides: overrides });
+    };
+
+    const getCalculatedEffortForSprint = (sprint: any) => {
+        if (!epic || !epic.target_start || !epic.target_end) return 0;
+        
+        const sStart = parseISO(sprint.start_date);
+        const sEnd = parseISO(sprint.end_date);
+        const eStart = parseISO(epic.target_start);
+        const eEnd = parseISO(epic.target_end);
+
+        const overlapStart = max([sStart, eStart]);
+        const overlapEnd = min([sEnd, eEnd]);
+
+        if (overlapStart <= overlapEnd) {
+            const overlapDays = differenceInDays(overlapEnd, overlapStart) + 1;
+            const duration = differenceInDays(eEnd, eStart) + 1;
+            const calculatedEffort = (epic.effort_md * (overlapDays / duration));
+            return Math.round(calculatedEffort * 10) / 10;
+        }
+        return 0;
+    };
+
     return (
         <PageWrapper
             loading={loading}
@@ -139,14 +174,28 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                     <div className={styles.content}>
                         <section className={styles.card}>
                             <h2>Epic Configuration</h2>
-                            <div className={styles.formGrid}>
+                            <div className={styles.formGrid} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
                                 <label>
                                     Jira Key:
-                                    <input 
-                                        type="text" 
-                                        value={epic.jira_key} 
-                                        onChange={e => updateEpic(epic.id, { jira_key: e.target.value })}
-                                    />
+                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                        <input 
+                                            type="text" 
+                                            value={epic.jira_key} 
+                                            onChange={e => updateEpic(epic.id, { jira_key: e.target.value })}
+                                            style={{ flex: 1 }}
+                                        />
+                                        {epic.jira_key && epic.jira_key !== 'TBD' && data?.settings.jira_base_url && (
+                                            <a 
+                                                href={`${data.settings.jira_base_url.replace(/\/$/, '')}/browse/${epic.jira_key}`} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer" 
+                                                title="Open in Jira"
+                                                style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '18px', display: 'flex', alignItems: 'center' }}
+                                            >
+                                                ↗
+                                            </a>
+                                        )}
+                                    </div>
                                 </label>
                                 <label>
                                     Name:
@@ -156,9 +205,6 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                                         onChange={e => updateEpic(epic.id, { name: e.target.value })}
                                     />
                                 </label>
-                            </div>
-
-                            <div className={styles.formGrid} style={{ marginTop: '24px' }}>
                                 <label>
                                     Effort (MDs):
                                     <input 
@@ -167,6 +213,9 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                                         onChange={e => updateEpic(epic.id, { effort_md: parseInt(e.target.value) || 0 })}
                                     />
                                 </label>
+                            </div>
+
+                            <div className={styles.formGrid} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', marginTop: '24px' }}>
                                 <label>
                                     Team:
                                     <select 
@@ -176,9 +225,6 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                                         {data?.teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                     </select>
                                 </label>
-                            </div>
-
-                            <div className={styles.formGrid} style={{ marginTop: '24px' }}>
                                 <label>
                                     Target Start:
                                     <input 
@@ -196,44 +242,49 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                                     />
                                 </label>
                             </div>
-
-                            <div className={styles.formGrid} style={{ marginTop: '24px' }}>
-                                <label>
-                                    External URL:
-                                    <input 
-                                        type="text" 
-                                        placeholder="https://..."
-                                        value={epic.external_url || ''} 
-                                        onChange={e => updateEpic(epic.id, { external_url: sanitizeUrl(e.target.value) })}
-                                    />
-                                </label>
-                                {epic.external_url && (
-                                    <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '8px' }}>
-                                        <a href={epic.external_url} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '14px' }}>
-                                            Open Link ↗
-                                        </a>
-                                    </div>
-                                )}
-                            </div>
                         </section>
 
                         <section className={styles.card}>
-                            <h2>Effort Overrides (Actuals)</h2>
-                            <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '16px' }}>
-                                Values captured when a sprint ends. These are used instead of calculated proportions for historical data.
+                            <h2>Sprint Effort Overrides (Actuals)</h2>
+                            <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px' }}>
+                                Values captured when a sprint ends or manually overridden. These are used instead of calculated proportions for historical data.
                             </p>
-                            {!epic.sprint_effort_overrides || Object.keys(epic.sprint_effort_overrides).length === 0 ? (
-                                <div style={{ color: '#64748b', fontSize: '14px', fontStyle: 'italic' }}>No historical overrides recorded.</div>
-                            ) : (
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                                    {Object.entries(epic.sprint_effort_overrides).map(([sprintId, value]) => (
-                                        <div key={sprintId} style={{ padding: '8px 12px', backgroundColor: '#111827', border: '1px solid #374151', borderRadius: '6px' }}>
-                                            <span style={{ color: '#94a3b8', fontSize: '12px', display: 'block' }}>Sprint ID: {sprintId}</span>
-                                            <span style={{ fontWeight: '600', color: '#f1f5f9' }}>{value} MDs</span>
-                                        </div>
+                            
+                            <table className={styles.table}>
+                                <thead>
+                                    <tr>
+                                        <th>Sprint</th>
+                                        <th>Dates</th>
+                                        <th>Quarter</th>
+                                        <th>Effective Effort (MDs)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {data?.sprints.map(sprint => (
+                                        <tr key={sprint.id}>
+                                            <td>{sprint.name}</td>
+                                            <td style={{ fontSize: '12px', color: '#94a3b8' }}>
+                                                {sprint.start_date} to {sprint.end_date}
+                                            </td>
+                                            <td style={{ fontSize: '12px', color: '#94a3b8' }}>{sprint.quarter}</td>
+                                            <td>
+                                                <input 
+                                                    type="number"
+                                                    placeholder={String(getCalculatedEffortForSprint(sprint))}
+                                                    value={epic.sprint_effort_overrides?.[sprint.id] ?? ''}
+                                                    onChange={e => handleOverrideChange(sprint.id, e.target.value)}
+                                                    style={{ width: '100px' }}
+                                                />
+                                            </td>
+                                        </tr>
                                     ))}
-                                </div>
-                            )}
+                                    {(!data?.sprints || data.sprints.length === 0) && (
+                                        <tr>
+                                            <td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No sprints defined.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </section>
                     </div>
                 </>
