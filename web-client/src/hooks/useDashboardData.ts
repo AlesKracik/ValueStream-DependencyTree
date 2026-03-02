@@ -58,7 +58,12 @@ export function useDashboardData(
 
     // Debounced persistence functions
     const debouncedPersist = useMemo(() => debounce((col, meth, ent) => persistEntity(col, meth, ent, showAlert), persistenceDebounceMs), [persistenceDebounceMs, showAlert]);
-    const debouncedSettings = useMemo(() => debounce((sets) => persistSettings(sets, showAlert), persistenceDebounceMs), [persistenceDebounceMs, showAlert]);
+    const debouncedSettings = useMemo(() => debounce(async (sets, needsRefresh) => {
+        await persistSettings(sets, showAlert);
+        if (needsRefresh) {
+            refreshData();
+        }
+    }, persistenceDebounceMs), [persistenceDebounceMs, showAlert]);
 
     const fetchData = async () => {
         try {
@@ -246,13 +251,24 @@ export function useDashboardData(
                 newSprints.forEach(s => persistEntity('sprints', 'POST', s, showAlert));
             }
 
-            debouncedSettings(newSettings);
-            
-            // If connection string, integration keys, or database creation flag changed, re-fetch everything from the new source
-            if (updates.mongo_uri !== undefined || updates.mongo_db !== undefined || updates.mongo_auth_method !== undefined ||
+            // Check if we need to refresh data (critical connection settings changed)
+            const needsRefresh = (
+                updates.mongo_uri !== undefined || 
+                updates.mongo_db !== undefined || 
+                updates.mongo_auth_method !== undefined ||
                 updates.mongo_create_if_not_exists !== undefined ||
-                updates.jira_base_url !== undefined || updates.jira_api_token !== undefined) {
-                refreshData();
+                updates.jira_base_url !== undefined || 
+                updates.jira_api_token !== undefined
+            );
+
+            if (needsRefresh) {
+                // For critical connection changes, persist immediately and then refresh
+                persistSettings(newSettings, showAlert).then(() => {
+                    refreshData();
+                });
+            } else {
+                // For UI-only settings (like duration or fiscal month), debounce the save
+                debouncedSettings(newSettings, false);
             }
 
             return { ...prev, settings: newSettings, sprints: newSprints };

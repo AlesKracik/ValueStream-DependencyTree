@@ -282,4 +282,27 @@ describe('useDashboardData', () => {
             expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/loadData'), expect.anything());
         });
     });
+
+    it('shows an alert when an ID collision occurs (409 Conflict)', async () => {
+        const mockAlert = vi.fn();
+        const { result } = renderHook(() => useDashboardData(undefined, {}, 0, mockAlert));
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        // Mock a 409 Conflict response for the next fetch
+        vi.stubGlobal('fetch', vi.fn().mockImplementation(() => 
+            Promise.resolve({
+                ok: false,
+                status: 409,
+                json: () => Promise.resolve({ error: "ID collision: 'f1' already exists in the 'workItems' collection." })
+            })
+        ));
+
+        act(() => {
+            result.current.addWorkItem({ id: 'f1', name: 'Collision Item', total_effort_mds: 10, score: 0, customer_targets: [] });
+        });
+
+        await waitFor(() => {
+            expect(mockAlert).toHaveBeenCalledWith('Conflict', expect.stringContaining("ID collision: 'f1'"));
+        });
+    });
 });
