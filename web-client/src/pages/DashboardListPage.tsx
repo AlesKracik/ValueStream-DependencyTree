@@ -16,7 +16,9 @@ export const DashboardListPage: React.FC<Props> = ({ data, loading }) => {
     if (!data) return <div className={styles.pageContainer}>No data</div>;
 
     const dashboards = data.dashboards || [];
-    const filtered = dashboards.filter(d => d.name.toLowerCase().includes(filter.toLowerCase()));
+    const filtered = dashboards
+        .filter(d => d.name.toLowerCase().includes(filter.toLowerCase()))
+        .sort((a, b) => a.name.localeCompare(b.name));
 
     return (
         <div className={styles.pageContainer}>

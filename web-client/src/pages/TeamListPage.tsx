@@ -15,7 +15,9 @@ export const TeamListPage: React.FC<Props> = ({ data, loading }) => {
     if (loading) return <div className={styles.pageContainer}>Loading teams...</div>;
     if (!data) return <div className={styles.pageContainer}>No data</div>;
 
-    const filtered = data.teams.filter(t => t.name.toLowerCase().includes(filter.toLowerCase()));
+    const filtered = data.teams
+        .filter(t => t.name.toLowerCase().includes(filter.toLowerCase()))
+        .sort((a, b) => a.name.localeCompare(b.name));
 
     return (
         <div className={styles.pageContainer}>
