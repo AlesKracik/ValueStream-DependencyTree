@@ -145,7 +145,11 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     team_id: data?.teams.find(t => t.name.toLowerCase() === json.data.team?.toLowerCase())?.id || (isNew ? newWorkItemEpics.find(e => e.id === id)?.team_id : data?.epics.find(e => e.id === id)?.team_id)
                 };
                 if (isNew) {
-                    setNewWorkItemEpics(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+                    setNewWorkItemEpics(prev => prev.map(e => e.id === id ? { 
+                        ...e, 
+                        ...updates,
+                        team_id: updates.team_id || e.team_id || (data?.teams[0]?.id || '')
+                    } : e));
                 } else {
                     updateEpic(id, updates);
                 }

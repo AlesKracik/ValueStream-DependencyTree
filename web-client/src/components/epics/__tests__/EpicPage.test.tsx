@@ -2,7 +2,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EpicPage } from '../EpicPage';
 import { DashboardProvider, NotificationProvider } from '../../../contexts/DashboardContext';
-import type { DashboardData, Epic } from '../../../types/models';
+import type { DashboardData } from '../../../types/models';
 
 const mockData: DashboardData = {
     dashboards: [], settings: { jira_base_url: 'https://jira', jira_api_version: '3' },

@@ -55,6 +55,7 @@ export interface Epic {
   target_start?: string;
   target_end?: string;
   name?: string;
+  external_url?: string;
   sprint_effort_overrides?: Record<string, number>;
   dependencies?: EpicDependency[];
 }

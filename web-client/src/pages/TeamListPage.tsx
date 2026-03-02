@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { DashboardData, Team } from '../types/models';
-import { GenericListPage, SortOption } from '../components/common/GenericListPage';
+import { GenericListPage } from '../components/common/GenericListPage';
+import type { SortOption } from '../components/common/GenericListPage';
 
 interface Props {
     data: DashboardData | null;

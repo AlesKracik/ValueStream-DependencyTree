@@ -116,13 +116,15 @@ describe('SprintPage', () => {
     });
 
     it('renders quarter grouping labels', () => {
-        render(
+        const { container } = render(
             <NotificationProvider>
                 <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <SprintPage {...defaultProps} />
                 </DashboardProvider>
             </NotificationProvider>
         );
-        expect(screen.getByText('FY2026 Q1')).toBeDefined();
+        // Look for the text inside a div with the sectionHeader class
+        const qHeader = container.querySelector('[class*="sectionHeader"]');
+        expect(qHeader?.textContent).toBe('FY2026 Q1');
     });
 });

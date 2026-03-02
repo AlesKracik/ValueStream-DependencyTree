@@ -2,11 +2,11 @@ import React, { useState, useMemo } from 'react';
 import styles from '../../pages/List.module.css';
 import { PageWrapper } from '../layout/PageWrapper';
 
-export interface SortOption<T> {
+export type SortOption<T> = {
     label: string;
     key: string;
     getValue: (item: T) => string | number;
-}
+};
 
 interface GenericListPageProps<T> {
     title: string;

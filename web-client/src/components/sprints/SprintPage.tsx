@@ -95,6 +95,15 @@ export const SprintPage: React.FC<SprintPageProps> = ({
         return 'future';
     };
 
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'active': return '#2563eb';
+            case 'past':
+            case 'future': return '#475569';
+            default: return '#334155';
+        }
+    };
+
     return (
         <PageWrapper
             loading={loading}
@@ -110,96 +119,112 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                         <button onClick={handleStartCreate} className="btn-primary">+ Create Next Sprint</button>
                     </header>
 
-                    <div className={styles.list} style={{ overflow: 'visible' }}>
-                        <table className={styles.table} style={{ width: '100%', borderCollapse: 'collapse', color: '#f1f5f9' }}>
-                            <thead>
-                                <tr style={{ textAlign: 'left', borderBottom: '1px solid #334155' }}>
-                                    <th style={{ padding: '12px' }}>Name</th>
-                                    <th style={{ padding: '12px' }}>Start Date</th>
-                                    <th style={{ padding: '12px' }}>End Date</th>
-                                    <th style={{ padding: '12px' }}>Status</th>
-                                    <th style={{ padding: '12px' }}>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {sortedQuarters.map(q => (
-                                    <React.Fragment key={q}>
-                                        <tr style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
-                                            <td colSpan={5} style={{ padding: '8px 12px', fontSize: '12px', fontWeight: 'bold', color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                                {q}
-                                            </td>
-                                        </tr>
-                                        {groupedSprints[q].map((s) => {
-                                            const status = getSprintStatus(s);
-                                            const isLast = data.sprints[data.sprints.length - 1].id === s.id;
-                                            
-                                            return (
-                                                <tr key={s.id} style={{ 
-                                                    borderBottom: '1px solid #1e293b',
-                                                    backgroundColor: status === 'active' ? 'rgba(37, 99, 235, 0.1)' : 'transparent'
-                                                }}>
-                                                    <td style={{ padding: '12px' }}>
-                                                        <input 
-                                                            type="text" 
-                                                            value={s.name} 
-                                                            onChange={e => updateSprint(s.id, { name: e.target.value })}
-                                                            style={{ background: 'none', border: 'none', color: 'inherit', fontWeight: status === 'active' ? 'bold' : 'normal', outline: 'none', width: '100%' }}
-                                                        />
-                                                    </td>
-                                                    <td style={{ padding: '12px', color: '#94a3b8' }}>{s.start_date}</td>
-                                                    <td style={{ padding: '12px', color: '#94a3b8' }}>{s.end_date}</td>
-                                                    <td style={{ padding: '12px' }}>
-                                                        <span style={{ 
-                                                            fontSize: '11px', 
-                                                            textTransform: 'uppercase', 
-                                                            fontWeight: 'bold',
-                                                            padding: '2px 8px',
-                                                            borderRadius: '10px',
-                                                            backgroundColor: status === 'active' ? '#2563eb' : (status === 'past' ? '#334155' : '#065f46'),
-                                                            color: 'white'
-                                                        }}>
-                                                            {status}
-                                                        </span>
-                                                    </td>
-                                                    <td style={{ padding: '12px' }}>
-                                                        {isLast ? (
-                                                            <button onClick={() => handleDelete(s.id, s.name)} className="btn-danger" style={{ padding: '4px 8px', fontSize: '12px' }}>Delete</button>
-                                                        ) : (
-                                                            <span title="Only the last sprint can be deleted to maintain sequence." style={{ color: '#475569', fontSize: '12px', cursor: 'help' }}>Locked</span>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
+                    <div className={styles.list} style={{ paddingBottom: '100px' }}>
+                        {sortedQuarters.map(q => (
+                            <React.Fragment key={q}>
+                                <div className={styles.sectionHeader}>{q}</div>
+                                {groupedSprints[q].map((s) => {
+                                    const status = getSprintStatus(s);
+                                    const isLast = data.sprints[data.sprints.length - 1].id === s.id;
+                                    
+                                    return (
+                                        <div key={s.id} className={styles.listItem} style={{ 
+                                            cursor: 'default',
+                                            borderLeft: `4px solid ${getStatusColor(status)}`,
+                                            backgroundColor: status === 'active' ? 'rgba(37, 99, 235, 0.05)' : undefined
+                                        }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <input 
+                                                        type="text" 
+                                                        value={s.name} 
+                                                        onChange={e => updateSprint(s.id, { name: e.target.value })}
+                                                        style={{ 
+                                                            background: 'none', 
+                                                            border: 'none', 
+                                                            color: '#f1f5f9', 
+                                                            fontWeight: 'bold', 
+                                                            fontSize: '16px',
+                                                            outline: 'none', 
+                                                            width: '100%',
+                                                            marginBottom: '4px'
+                                                        }}
+                                                    />
+                                                    <div className={styles.itemDetails}>
+                                                        {s.start_date} to {s.end_date}
+                                                    </div>
+                                                </div>
+                                                
+                                                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                                                    <span style={{ 
+                                                        fontSize: '11px', 
+                                                        textTransform: 'uppercase', 
+                                                        fontWeight: 'bold',
+                                                        padding: '2px 8px',
+                                                        borderRadius: '10px',
+                                                        backgroundColor: getStatusColor(status),
+                                                        color: 'white'
+                                                    }}>
+                                                        {status}
+                                                    </span>
+                                                    
+                                                    {isLast ? (
+                                                        <button 
+                                                            onClick={() => handleDelete(s.id, s.name)} 
+                                                            className="btn-danger" 
+                                                            style={{ padding: '4px 12px', fontSize: '12px' }}
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    ) : (
+                                                        <span title="Only the last sprint can be deleted." style={{ color: '#475569', fontSize: '12px', cursor: 'help', width: '55px', textAlign: 'center' }}>Locked</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                    })}
                                     </React.Fragment>
-                                ))}
-
-                                {isCreating && (
-                                    <tr style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', borderBottom: '1px solid #059669' }}>
-                                        <td style={{ padding: '12px' }}>
-                                            <input 
-                                                autoFocus
-                                                type="text" 
-                                                value={newSprintDraft.name} 
-                                                onChange={e => setNewSprintDraft({ ...newSprintDraft, name: e.target.value })}
-                                                style={{ background: 'none', border: 'none', color: '#10b981', fontWeight: 'bold', outline: 'none', width: '100%' }}
-                                            />
-                                        </td>
-                                        <td style={{ padding: '12px', color: '#10b981' }}>{newSprintDraft.start_date}</td>
-                                        <td style={{ padding: '12px', color: '#10b981' }}>{newSprintDraft.end_date}</td>
-                                        <td style={{ padding: '12px' }}><span style={{ fontSize: '11px', fontWeight: 'bold', color: '#10b981' }}>NEW</span></td>
-                                        <td style={{ padding: '12px', display: 'flex', gap: '8px' }}>
-                                            <button onClick={handleCreate} className="btn-primary" style={{ padding: '4px 8px', fontSize: '12px', backgroundColor: '#10b981' }}>Save</button>
-                                            <button onClick={() => setIsCreating(false)} className="btn-secondary" style={{ padding: '4px 8px', fontSize: '12px' }}>Cancel</button>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                    ))}
+                        {isCreating && (
+                            <div className={styles.listItem} style={{ 
+                                border: '2px dashed #10b981', 
+                                backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                                marginTop: '12px'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <input 
+                                            autoFocus
+                                            type="text" 
+                                            value={newSprintDraft.name} 
+                                            onChange={e => setNewSprintDraft({ ...newSprintDraft, name: e.target.value })}
+                                            style={{ 
+                                                background: 'none', 
+                                                border: 'none', 
+                                                color: '#10b981', 
+                                                fontWeight: 'bold', 
+                                                fontSize: '16px',
+                                                outline: 'none', 
+                                                width: '100%',
+                                                marginBottom: '4px'
+                                            }}
+                                        />
+                                        <div className={styles.itemDetails} style={{ color: '#10b981' }}>
+                                            {newSprintDraft.start_date} to {newSprintDraft.end_date} (Draft)
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button onClick={handleCreate} className="btn-primary" style={{ backgroundColor: '#10b981' }}>Save</button>
+                                        <button onClick={() => setIsCreating(false)} className="btn-secondary">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {data.sprints.length === 0 && !isCreating && (
-                        <div className={styles.empty}>No sprints configured.</div>
+                        <div className={styles.empty}>No sprints configured. Use the button above to start your timeline.</div>
                     )}
                 </>
             )}
