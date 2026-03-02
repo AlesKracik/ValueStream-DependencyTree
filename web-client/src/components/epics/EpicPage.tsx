@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import { parseISO, min, max, differenceInDays } from 'date-fns';
+import React, { useState, useMemo } from 'react';
+import { parseISO, min, max, differenceInDays, isWeekend } from 'date-fns';
 import type { DashboardData, Epic } from '../../types/models';
 import { authorizedFetch } from "../../utils/api";
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
 import { sanitizeUrl } from '../../utils/security';
 import { PageWrapper } from '../layout/PageWrapper';
+import { calculateEpicEffortPerSprint, calculateEpicIntensityRatio } from '../../utils/businessLogic';
+import Holidays from 'date-holidays';
 
 export interface EpicPageProps {
     epicId: string;
@@ -126,25 +128,21 @@ export const EpicPage: React.FC<EpicPageProps> = ({
         updateEpic(epic.id, { sprint_effort_overrides: overrides });
     };
 
-    const getCalculatedEffortForSprint = (sprint: any) => {
-        if (!epic || !epic.target_start || !epic.target_end) return 0;
-        
-        const sStart = parseISO(sprint.start_date);
-        const sEnd = parseISO(sprint.end_date);
-        const eStart = parseISO(epic.target_start);
-        const eEnd = parseISO(epic.target_end);
+    const effortPerSprint = useMemo(() => {
+        if (!epic || !data) return {};
+        return calculateEpicEffortPerSprint(epic, data.sprints);
+    }, [epic, data]);
 
-        const overlapStart = max([sStart, eStart]);
-        const overlapEnd = min([sEnd, eEnd]);
-
-        if (overlapStart <= overlapEnd) {
-            const overlapDays = differenceInDays(overlapEnd, overlapStart) + 1;
-            const duration = differenceInDays(eEnd, eStart) + 1;
-            const calculatedEffort = (epic.effort_md * (overlapDays / duration));
-            return Math.round(calculatedEffort * 10) / 10;
+    const team = data?.teams.find(t => t.id === epic?.team_id);
+    const holidayChecker = useMemo(() => {
+        if (!team?.country) return null;
+        try {
+            return new Holidays(team.country as any);
+        } catch (e) {
+            console.error(`Invalid country code: ${team.country}`);
+            return null;
         }
-        return 0;
-    };
+    }, [team]);
 
     return (
         <PageWrapper
@@ -245,9 +243,9 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                         </section>
 
                         <section className={styles.card}>
-                            <h2>Sprint Effort Overrides (Actuals)</h2>
+                            <h2>Sprint Effort Distribution</h2>
                             <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px' }}>
-                                Values captured when a sprint ends or manually overridden. These are used instead of calculated proportions for historical data.
+                                Values show the effective effort (MDs) in each sprint. Bold values indicate a manual override.
                             </p>
                             
                             <table className={styles.table}>
@@ -255,32 +253,86 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                                     <tr>
                                         <th>Sprint</th>
                                         <th>Dates</th>
-                                        <th>Quarter</th>
-                                        <th>Effective Effort (MDs)</th>
+                                        <th>Context</th>
+                                        <th>Team Capacity</th>
+                                        <th>Effort (MDs)</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {data?.sprints.map(sprint => (
-                                        <tr key={sprint.id}>
-                                            <td>{sprint.name}</td>
-                                            <td style={{ fontSize: '12px', color: '#94a3b8' }}>
-                                                {sprint.start_date} to {sprint.end_date}
-                                            </td>
-                                            <td style={{ fontSize: '12px', color: '#94a3b8' }}>{sprint.quarter}</td>
-                                            <td>
-                                                <input 
-                                                    type="number"
-                                                    placeholder={String(getCalculatedEffortForSprint(sprint))}
-                                                    value={epic.sprint_effort_overrides?.[sprint.id] ?? ''}
-                                                    onChange={e => handleOverrideChange(sprint.id, e.target.value)}
-                                                    style={{ width: '100px' }}
-                                                />
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {(!data?.sprints || data.sprints.length === 0) && (
+                                    {data?.sprints.filter(s => effortPerSprint[s.id] !== undefined).map(sprint => {
+                                        const effective = Math.round((effortPerSprint[sprint.id] || 0) * 10) / 10;
+                                        const isOverridden = epic.sprint_effort_overrides?.[sprint.id] !== undefined;
+
+                                        // Holiday calculation logic
+                                        let holidayCount = 0;
+                                        if (holidayChecker) {
+                                            const sStart = parseISO(sprint.start_date);
+                                            const sEnd = parseISO(sprint.end_date);
+                                            const hList = holidayChecker.getHolidays(sStart.getFullYear());
+                                            if (sEnd.getFullYear() !== sStart.getFullYear()) {
+                                                hList.push(...holidayChecker.getHolidays(sEnd.getFullYear()));
+                                            }
+                                            hList.forEach((h: any) => {
+                                                if (h.type !== 'public') return;
+                                                const hDate = new Date(h.date);
+                                                if (hDate >= sStart && hDate <= sEnd && !isWeekend(hDate)) {
+                                                    holidayCount++;
+                                                }
+                                            });
+                                        }
+
+                                        const capacityOverride = team?.sprint_capacity_overrides?.[sprint.id];
+                                        const hasCapacityOverride = capacityOverride !== undefined;
+                                        const holidayImpact = ((team?.total_capacity_mds || 0) / 10) * holidayCount;
+                                        const effectiveCapacity = hasCapacityOverride ? capacityOverride : ((team?.total_capacity_mds || 0) - holidayImpact);
+
+                                        return (
+                                            <tr key={sprint.id} style={{ fontSize: '14px' }}>
+                                                <td>{sprint.name}</td>
+                                                <td style={{ color: '#94a3b8' }}>
+                                                    {sprint.start_date} to {sprint.end_date}
+                                                </td>
+                                                <td style={{ color: '#94a3b8' }}>{sprint.quarter}</td>
+                                                <td style={{ color: (hasCapacityOverride || holidayCount > 0) ? '#3b82f6' : '#94a3b8' }}>
+                                                    <div style={{ fontWeight: (hasCapacityOverride || holidayCount > 0) ? 'bold' : 'normal' }}>
+                                                        {Math.round(effectiveCapacity * 10) / 10} MDs
+                                                        {hasCapacityOverride && <span style={{ fontSize: '11px', marginLeft: '4px', opacity: 0.8 }}>(Override)</span>}
+                                                        {!hasCapacityOverride && holidayCount > 0 && (
+                                                            <span style={{ fontSize: '11px', marginLeft: '4px', opacity: 0.8 }} title={`${holidayCount} holiday(s)`}>
+                                                                (🏖️ -{Math.round(holidayImpact * 10) / 10})
+
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td style={{ width: '140px' }}>
+                                                    <input 
+                                                        type="number"
+                                                        value={epic.sprint_effort_overrides?.[sprint.id] ?? ''}
+                                                        placeholder={effective > 0 ? String(effective) : '-'}
+                                                        onChange={e => handleOverrideChange(sprint.id, e.target.value)}
+                                                        title={isOverridden ? 'Manual Override Active' : 'Calculated Proportion'}
+                                                        style={{ 
+                                                            width: '100%',
+                                                            backgroundColor: isOverridden ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                                                            border: isOverridden ? '1px solid #3b82f6' : '1px solid #334155',
+                                                            borderRadius: '4px',
+                                                            color: isOverridden ? '#fff' : '#94a3b8',
+                                                            fontWeight: isOverridden ? 'bold' : 'normal',
+                                                            padding: '6px 10px',
+                                                            boxSizing: 'border-box',
+                                                            textAlign: 'center',
+                                                            outline: 'none',
+                                                            fontSize: '14px'
+                                                        }}
+                                                    />
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                    {(!data?.sprints || data.sprints.filter(s => effortPerSprint[s.id] !== undefined).length === 0) && (
                                         <tr>
-                                            <td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No sprints defined.</td>
+                                            <td colSpan={5} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No sprints overlap with this epic's timeline.</td>
                                         </tr>
                                     )}
                                 </tbody>

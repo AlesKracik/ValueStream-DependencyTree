@@ -3,7 +3,7 @@ import { differenceInDays, parseISO, min, max, format, isWeekend } from 'date-fn
 import type { Node, Edge } from '@xyflow/react';
 import type { DashboardData, DashboardParameters } from '../types/models';
 import Holidays from 'date-holidays';
-import { calculateWorkItemEffort } from '../utils/businessLogic';
+import { calculateWorkItemEffort, calculateEpicEffortPerSprint, calculateEpicIntensityRatio } from '../utils/businessLogic';
 
 export function useGraphLayout(
     data: DashboardData | null,
@@ -514,50 +514,13 @@ export function useGraphLayout(
 
         // 4.1. Pre-calculate global team capacity usage (NOT affected by UI filters)
         data.epics.forEach(epic => {
-            if (!epic.target_start || !epic.target_end) return;
             const team = data.teams.find(t => t.id === epic.team_id);
             if (!team) return;
 
-            const start = parseISO(epic.target_start);
-            const end = parseISO(epic.target_end);
-            const duration = differenceInDays(end, start) + 1;
-
-            let totalOverrideMd = 0;
-            let overrideDays = 0;
-
-            sprints.forEach(sprint => {
-                const spStart = parseISO(sprint.start_date);
-                const spEnd = parseISO(sprint.end_date);
-                const overlapStart = max([start, spStart]);
-                const overlapEnd = min([end, spEnd]);
-                if (overlapStart <= overlapEnd) {
-                    const overrideVal = epic.sprint_effort_overrides?.[sprint.id];
-                    if (overrideVal !== undefined) {
-                        totalOverrideMd += overrideVal;
-                        overrideDays += (differenceInDays(overlapEnd, overlapStart) + 1);
-                    }
-                }
-            });
-
-            const remainingDefaultMd = Math.max(0, epic.effort_md - totalOverrideMd);
-            const remainingDefaultDays = Math.max(0, duration - overrideDays);
-
-            sprints.forEach((sprint) => {
-                const sprintStart = parseISO(sprint.start_date);
-                const sprintEnd = parseISO(sprint.end_date);
-                const overlapStart = max([start, sprintStart]);
-                const overlapEnd = min([end, sprintEnd]);
-
-                if (overlapStart <= overlapEnd) {
-                    const overlapDays = differenceInDays(overlapEnd, overlapStart) + 1;
-                    const overrideVal = epic.sprint_effort_overrides?.[sprint.id];
-
-                    if (overrideVal !== undefined) {
-                        teamSprintUsage[team.id][sprint.id] += overrideVal;
-                    } else {
-                        const proportion = remainingDefaultDays > 0 ? (overlapDays / remainingDefaultDays) : 0;
-                        teamSprintUsage[team.id][sprint.id] += (remainingDefaultMd * proportion);
-                    }
+            const epicSprintEffort = calculateEpicEffortPerSprint(epic, sprints);
+            Object.entries(epicSprintEffort).forEach(([sprintId, effort]) => {
+                if (teamSprintUsage[team.id][sprintId] !== undefined) {
+                    teamSprintUsage[team.id][sprintId] += effort;
                 }
             });
         });
@@ -692,8 +655,10 @@ export function useGraphLayout(
 
                     const workItem = data.workItems.find(f => f.id === epic.work_item_id);
 
-                    // Build the segments for heat/intensity mapping
+                    // Build the segments for heat/intensity mapping using centralized logic
                     const segments: { startOffsetPixels: number, widthPixels: number, intensity: number, color: string, isFrozen: boolean }[] = [];
+                    const epicSprintEffort = calculateEpicEffortPerSprint(epic, sprints);
+
                     sprints.forEach(sprint => {
                         const sprintStart = parseISO(sprint.start_date);
                         const sprintEnd = parseISO(sprint.end_date);
@@ -712,45 +677,12 @@ export function useGraphLayout(
                                 segmentWidthPixels = (visibleDuration * PIXELS_PER_DAY) - segmentOffsetPixels;
                             }
 
-                            let segmentEffort = 0;
-                            const overrideVal = epic.sprint_effort_overrides?.[sprint.id];
-
-                            let totalOverrideMd = 0;
-                            let overrideDays = 0;
-                            sprints.forEach(sp => {
-                                const spStart = parseISO(sp.start_date);
-                                const spEnd = parseISO(sp.end_date);
-                                const oStart = max([start, spStart]);
-                                const oEnd = min([end, spEnd]);
-                                if (oStart <= oEnd) {
-                                    const oVal = epic.sprint_effort_overrides?.[sp.id];
-                                    if (oVal !== undefined) {
-                                        totalOverrideMd += oVal;
-                                        overrideDays += (differenceInDays(oEnd, oStart) + 1);
-                                    }
-                                }
-                            });
-                            const remainingDefaultMd = Math.max(0, epic.effort_md - totalOverrideMd);
-                            const remainingDefaultDays = Math.max(0, totalEpicDuration - overrideDays);
-
-                            if (overrideVal !== undefined) {
-                                segmentEffort = overrideVal;
-                            } else {
-                                const proportion = remainingDefaultDays > 0 ? (overlapDays / remainingDefaultDays) : 0;
-                                segmentEffort = remainingDefaultMd * proportion;
-                            }
+                            const segmentEffort = epicSprintEffort[sprint.id] || 0;
 
                             // Calculate mathematical strictly uniform proportion for the baseline:
-                            // Use TOTAL duration for baseline, so intensity remains constant regardless of visible window
                             const baselineProportion = overlapDays / totalEpicDuration;
-                            const baselineEffort = epic.effort_md * baselineProportion;
-
-                            let intensityRatio = 1;
-                            if (baselineEffort > 0) {
-                                intensityRatio = segmentEffort / baselineEffort;
-                            } else if (segmentEffort > 0) {
-                                intensityRatio = 2; // if baseline is 0 but we threw effort on it, glow white
-                            }
+                            const baselineEffort = (epic.effort_md || 0) * baselineProportion;
+                            const intensityRatio = calculateEpicIntensityRatio(segmentEffort, baselineEffort);
 
                             // Progress-Aware Color Logic: Sprints older than Active Sprint are frozen
                             const isFrozen = sprintEnd < activeSprintStartDate;

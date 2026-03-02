@@ -1,4 +1,5 @@
-import type { WorkItem, Epic, Customer } from '../types/models';
+import { parseISO, differenceInDays, max, min } from 'date-fns';
+import type { WorkItem, Epic, Customer, Sprint } from '../types/models';
 
 /**
  * Calculates the total effort for a work item in man-days (MDs).
@@ -40,4 +41,67 @@ export const calculateWorkItemTcv = (workItem: WorkItem, customers: Customer[]):
         }
         return sum + (targetTcv || 0);
     }, 0);
+};
+
+/**
+ * Calculates how much effort from an Epic falls into each sprint.
+ * Respects manual overrides and distributes the remaining effort proportionally.
+ */
+export const calculateEpicEffortPerSprint = (epic: Epic, allSprints: Sprint[]): Record<string, number> => {
+    if (!epic.target_start || !epic.target_end) return {};
+
+    const start = parseISO(epic.target_start);
+    const end = parseISO(epic.target_end);
+    const duration = Math.max(1, differenceInDays(end, start) + 1);
+
+    let totalOverrideMd = 0;
+    let overrideDays = 0;
+
+    const overlaps: { sprintId: string, days: number, isOverridden: boolean, overrideValue?: number }[] = [];
+
+    allSprints.forEach(sprint => {
+        const spStart = parseISO(sprint.start_date);
+        const spEnd = parseISO(sprint.end_date);
+        const oStart = max([start, spStart]);
+        const oEnd = min([end, spEnd]);
+        
+        if (oStart <= oEnd) {
+            const days = differenceInDays(oEnd, oStart) + 1;
+            const overrideValue = epic.sprint_effort_overrides?.[sprint.id];
+            const isOverridden = overrideValue !== undefined;
+            
+            overlaps.push({ sprintId: sprint.id, days, isOverridden, overrideValue });
+            
+            if (isOverridden) {
+                totalOverrideMd += overrideValue!;
+                overrideDays += days;
+            }
+        }
+    });
+
+    const remainingDefaultMd = Math.max(0, (epic.effort_md || 0) - totalOverrideMd);
+    const remainingDefaultDays = Math.max(0, duration - overrideDays);
+
+    const result: Record<string, number> = {};
+    overlaps.forEach(o => {
+        if (o.isOverridden) {
+            result[o.sprintId] = o.overrideValue!;
+        } else {
+            const proportion = remainingDefaultDays > 0 ? (o.days / remainingDefaultDays) : 0;
+            result[o.sprintId] = remainingDefaultMd * proportion;
+        }
+    });
+
+    return result;
+};
+
+/**
+ * Calculates the intensity ratio for visual heat mapping.
+ * 1.0 is neutral (uniform distribution).
+ */
+export const calculateEpicIntensityRatio = (actualEffort: number, baselineEffort: number): number => {
+    if (baselineEffort > 0) {
+        return actualEffort / baselineEffort;
+    }
+    return actualEffort > 0 ? 2 : 1;
 };

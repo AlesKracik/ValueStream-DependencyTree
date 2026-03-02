@@ -1,8 +1,9 @@
 import { memo, useState, useRef, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { addDays, format, parseISO, min, max, differenceInDays } from 'date-fns';
+import { addDays, format, parseISO } from 'date-fns';
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import { sanitizeUrl } from '../../utils/security';
+import { calculateEpicEffortPerSprint } from '../../utils/businessLogic';
 
 export interface GanttBarNodeData {
     label: string;
@@ -137,7 +138,7 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
     // Auto-freeze logic: If a sprint has passed and we don't have an override, 
     // snapshot the current calculated intensity as a permanent override.
     useEffect(() => {
-        if (!dashboardData || !data.segments) return;
+        if (!dashboardData) return;
 
         const epic = dashboardData.epics.find(ep => ep.id === data.epicId);
         if (!epic) return;
@@ -148,34 +149,19 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
         let needsUpdate = false;
         const newOverrides = { ...(epic.sprint_effort_overrides || {}) };
 
+        const calculatedEffortPerSprint = calculateEpicEffortPerSprint(epic, dashboardData.sprints);
+
         pastSprints.forEach(s => {
-            if (newOverrides[s.id] === undefined) {
-                // Find the calculated effort for this sprint from our segments
-                // Note: segments are visual, we need to find the one corresponding to this sprint
-                const sStart = parseISO(s.start_date);
-                const sEnd = parseISO(s.end_date);
-                const eStart = parseISO(data.targetStart);
-                const eEnd = parseISO(data.targetEnd);
-
-                const overlapStart = max([sStart, eStart]);
-                const overlapEnd = min([sEnd, eEnd]);
-
-                if (overlapStart <= overlapEnd) {
-                    const overlapDays = differenceInDays(overlapEnd, overlapStart) + 1;
-                    const duration = differenceInDays(eEnd, eStart) + 1;
-                    
-                    // Simple proportional spread for the snapshot if no complex override exists
-                    const calculatedEffort = (epic.effort_md * (overlapDays / duration));
-                    newOverrides[s.id] = Math.round(calculatedEffort * 10) / 10;
-                    needsUpdate = true;
-                }
+            if (newOverrides[s.id] === undefined && calculatedEffortPerSprint[s.id] !== undefined) {
+                newOverrides[s.id] = Math.round(calculatedEffortPerSprint[s.id] * 10) / 10;
+                needsUpdate = true;
             }
         });
 
         if (needsUpdate) {
             updateEpic(data.epicId, { sprint_effort_overrides: newOverrides });
         }
-    }, [dashboardData, data.epicId, data.segments, data.targetStart, data.targetEnd]);
+    }, [dashboardData, data.epicId, data.targetStart, data.targetEnd]);
 
     // Calculate visual dimensions based on drag state
     let visualWidth = data.width;
