@@ -1,4 +1,37 @@
-import type { WorkItem, Epic, Customer } from '../types/models';
+import type { WorkItem, Epic, Customer, Sprint } from '../types/models';
+import { countBusinessDays } from './dateHelpers';
+import { parseISO, min, max, format } from 'date-fns';
+
+/**
+ * Reusable business logic for metrics calculation.
+ */
+
+/**
+ * Calculates the proportional effort for an epic within a specific sprint
+ * based on business days overlap.
+ */
+export const calculateProportionalEffort = (epic: Epic, sprint: Sprint, countryCode?: string): number => {
+    if (!epic.target_start || !epic.target_end || !sprint.start_date || !sprint.end_date) return 0;
+
+    const sStart = parseISO(sprint.start_date);
+    const sEnd = parseISO(sprint.end_date);
+    const eStart = parseISO(epic.target_start);
+    const eEnd = parseISO(epic.target_end);
+
+    const overlapStart = max([sStart, eStart]);
+    const overlapEnd = min([sEnd, eEnd]);
+
+    if (overlapStart <= overlapEnd) {
+        const overlapDays = countBusinessDays(format(overlapStart, 'yyyy-MM-dd'), format(overlapEnd, 'yyyy-MM-dd'), countryCode);
+        const totalEpicDays = countBusinessDays(epic.target_start, epic.target_end, countryCode);
+        
+        if (totalEpicDays === 0) return 0;
+
+        const proportionalEffort = (epic.effort_md * (overlapDays / totalEpicDays));
+        return Math.round(proportionalEffort * 10) / 10;
+    }
+    return 0;
+};
 
 /**
  * Calculates the total effort for a work item in man-days (MDs).

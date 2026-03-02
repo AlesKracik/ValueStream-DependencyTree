@@ -32,6 +32,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     deleteWorkItem,
     updateWorkItem,
     addEpic,
+    deleteEpic,
     updateEpic
 }) => {
     const { showAlert, showConfirm } = useDashboardContext();
@@ -487,12 +488,25 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                         {epics.map(epic => (
                                             <tr key={epic.id}>
                                                 <td>
-                                                    <input
-                                                        type="text"
-                                                        value={epic.jira_key}
-                                                        onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, jira_key: e.target.value } : ev)) : updateEpic(epic.id, { jira_key: e.target.value })}
-                                                        style={{ width: '100%' }}
-                                                    />
+                                                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                                        <input
+                                                            type="text"
+                                                            value={epic.jira_key}
+                                                            onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, jira_key: e.target.value } : ev)) : updateEpic(epic.id, { jira_key: e.target.value })}
+                                                            style={{ flex: 1, minWidth: '60px' }}
+                                                        />
+                                                        {epic.jira_key && epic.jira_key !== 'TBD' && data?.settings.jira_base_url && (
+                                                            <a 
+                                                                href={`${data.settings.jira_base_url.replace(/\/$/, '')}/browse/${epic.jira_key}`} 
+                                                                target="_blank" 
+                                                                rel="noopener noreferrer" 
+                                                                title="Open in Jira"
+                                                                style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '14px' }}
+                                                            >
+                                                                ↗
+                                                            </a>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td>
                                                     <input

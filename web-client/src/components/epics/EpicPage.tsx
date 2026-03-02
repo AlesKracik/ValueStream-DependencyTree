@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { parseISO, min, max, differenceInDays } from 'date-fns';
+import { parseISO } from 'date-fns';
 import type { DashboardData, Epic } from '../../types/models';
 import { authorizedFetch } from "../../utils/api";
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
-import { sanitizeUrl } from '../../utils/security';
+import { calculateProportionalEffort } from '../../utils/businessLogic';
 import { PageWrapper } from '../layout/PageWrapper';
 
 export interface EpicPageProps {
@@ -127,23 +127,9 @@ export const EpicPage: React.FC<EpicPageProps> = ({
     };
 
     const getCalculatedEffortForSprint = (sprint: any) => {
-        if (!epic || !epic.target_start || !epic.target_end) return 0;
-        
-        const sStart = parseISO(sprint.start_date);
-        const sEnd = parseISO(sprint.end_date);
-        const eStart = parseISO(epic.target_start);
-        const eEnd = parseISO(epic.target_end);
-
-        const overlapStart = max([sStart, eStart]);
-        const overlapEnd = min([sEnd, eEnd]);
-
-        if (overlapStart <= overlapEnd) {
-            const overlapDays = differenceInDays(overlapEnd, overlapStart) + 1;
-            const duration = differenceInDays(eEnd, eStart) + 1;
-            const calculatedEffort = (epic.effort_md * (overlapDays / duration));
-            return Math.round(calculatedEffort * 10) / 10;
-        }
-        return 0;
+        if (!epic) return 0;
+        const team = data?.teams.find(t => t.id === epic.team_id);
+        return calculateProportionalEffort(epic, sprint, team?.country);
     };
 
     return (

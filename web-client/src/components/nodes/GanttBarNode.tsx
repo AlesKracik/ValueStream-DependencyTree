@@ -1,8 +1,9 @@
 import { memo, useState, useRef, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
-import { addDays, format, parseISO, min, max, differenceInDays } from 'date-fns';
+import { addDays, format, parseISO } from 'date-fns';
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import { sanitizeUrl } from '../../utils/security';
+import { calculateProportionalEffort } from '../../utils/businessLogic';
 
 export interface GanttBarNodeData {
     label: string;
@@ -150,23 +151,11 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
 
         pastSprints.forEach(s => {
             if (newOverrides[s.id] === undefined) {
-                // Find the calculated effort for this sprint from our segments
-                // Note: segments are visual, we need to find the one corresponding to this sprint
-                const sStart = parseISO(s.start_date);
-                const sEnd = parseISO(s.end_date);
-                const eStart = parseISO(data.targetStart);
-                const eEnd = parseISO(data.targetEnd);
-
-                const overlapStart = max([sStart, eStart]);
-                const overlapEnd = min([sEnd, eEnd]);
-
-                if (overlapStart <= overlapEnd) {
-                    const overlapDays = differenceInDays(overlapEnd, overlapStart) + 1;
-                    const duration = differenceInDays(eEnd, eStart) + 1;
-                    
-                    // Simple proportional spread for the snapshot if no complex override exists
-                    const calculatedEffort = (epic.effort_md * (overlapDays / duration));
-                    newOverrides[s.id] = Math.round(calculatedEffort * 10) / 10;
+                // Use centralized logic for snapshots
+                const team = dashboardData.teams.find(t => t.id === epic.team_id);
+                const calculatedEffort = calculateProportionalEffort(epic, s, team?.country);
+                if (calculatedEffort > 0) {
+                    newOverrides[s.id] = calculatedEffort;
                     needsUpdate = true;
                 }
             }

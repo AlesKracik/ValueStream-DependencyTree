@@ -1,4 +1,27 @@
-import { parseISO } from 'date-fns';
+import { parseISO, isWeekend } from 'date-fns';
+import Holidays from 'date-holidays';
+
+/**
+ * Counts business days (Mon-Fri, excluding holidays) between two dates inclusive.
+ */
+export const countBusinessDays = (startStr: string, endStr: string, countryCode?: string): number => {
+    const start = parseISO(startStr);
+    const end = parseISO(endStr);
+    if (start > end) return 0;
+
+    const hd = countryCode ? new Holidays(countryCode as any) : null;
+    let count = 0;
+    const current = new Date(start);
+    while (current <= end) {
+        const isWknd = isWeekend(current);
+        const isHolid = hd ? hd.isHoliday(current) : false;
+        if (!isWknd && !isHolid) {
+            count++;
+        }
+        current.setDate(current.getDate() + 1);
+    }
+    return count;
+};
 
 /**
  * Calculates the fiscal year and quarter for a given date string.
