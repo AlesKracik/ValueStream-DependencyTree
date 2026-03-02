@@ -417,7 +417,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                                         ))}
                                                                     </select>
                                                                 ) : (
-                                                                    <span style={{ color: '#94a3b8' }}>N/A (${customer.potential_tcv.toLocaleString()})</span>
+                                                                    <span style={{ color: '#94a3b8' }}>${customer.potential_tcv.toLocaleString()}</span>
                                                                 )}
                                                             </td>
                                                             <td>
@@ -488,7 +488,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                         type="text"
                                                         value={epic.jira_key}
                                                         onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, jira_key: e.target.value } : ev)) : updateEpic(epic.id, { jira_key: e.target.value })}
-                                                        style={{ width: '80px' }}
+                                                        style={{ width: '120px' }}
                                                     />
                                                 </td>
                                                 <td>
@@ -496,6 +496,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                         type="text"
                                                         value={epic.name}
                                                         onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, name: e.target.value } : ev)) : updateEpic(epic.id, { name: e.target.value })}
+                                                        style={{ width: '100%' }}
                                                     />
                                                 </td>
                                                 <td>
@@ -506,7 +507,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                             const val = parseInt(e.target.value) || 0;
                                                             isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, effort_md: val } : ev)) : updateEpic(epic.id, { effort_md: val });
                                                         }}
-                                                        style={{ width: '60px' }}
+                                                        style={{ width: '50px' }}
                                                     />
                                                 </td>
                                                 <td>
@@ -570,8 +571,10 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                 </table>
 
                                 <div className={styles.addWorkItemBox}>
-                                    <h3>Create & Link Epic</h3>
-                                    <button className="btn-secondary" onClick={handleAddEpic}>+ New Epic</button>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                        <h3>Create & Link Epic</h3>
+                                        <button className="btn-primary" onClick={handleAddEpic}>+ New Epic</button>
+                                    </div>
 
                                     <div style={{ marginTop: '16px', borderTop: '1px solid #334155', paddingTop: '16px' }}>
                                         <h3>Link Existing Epic</h3>
