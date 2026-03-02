@@ -212,4 +212,26 @@ describe('WorkItemPage', () => {
         const warningIcon = screen.getByTitle(/Missing start date/i);
         expect(warningIcon).toBeDefined();
     });
+
+    it('renders and updates the description field', () => {
+        const dataWithDesc: DashboardData = {
+            ...mockData,
+            workItems: [
+                { id: 'f1', name: 'Work Item A', description: 'Initial description', total_effort_mds: 10, score: 0, customer_targets: [] }
+            ]
+        };
+
+        render(
+            <DashboardProvider value={{ data: dataWithDesc, updateEpic: vi.fn() }}>
+                <WorkItemPage {...defaultProps} data={dataWithDesc} workItemId="f1" />
+            </DashboardProvider>
+        );
+
+        const textarea = screen.getByPlaceholderText(/Add a detailed description for this work item.../i) as HTMLTextAreaElement;
+        expect(textarea.value).toBe('Initial description');
+
+        fireEvent.change(textarea, { target: { value: 'Updated description' } });
+
+        expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', { description: 'Updated description' });
+    });
 });

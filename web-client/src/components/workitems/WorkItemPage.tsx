@@ -37,7 +37,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     const isNew = workItemId === 'new';
 
     // Draft states for new workItem creation
-    const [newWorkItemDraft, setNewWorkItemDraft] = useState<Partial<WorkItem>>({ name: 'New Work Item', total_effort_mds: 0, customer_targets: [] });
+    const [newWorkItemDraft, setNewWorkItemDraft] = useState<Partial<WorkItem>>({ name: 'New Work Item', description: '', total_effort_mds: 0, customer_targets: [] });
     const [newWorkItemCustomers, setNewWorkItemCustomers] = useState<{ customerId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have', tcv_history_id?: string }[]>([]);
     const [newWorkItemEpics, setNewWorkItemEpics] = useState<Epic[]>([]);
     const [syncingId, setSyncingId] = useState<string | null>(null);
@@ -61,6 +61,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                 const newFeat: WorkItem = {
                     id: newId,
                     name: newWorkItemDraft.name || 'New Work Item',
+                    description: newWorkItemDraft.description || '',
                     total_effort_mds: newWorkItemDraft.total_effort_mds || 0,
                     score: 0,
                     customer_targets: newWorkItemCustomers.map(c => ({
@@ -296,6 +297,25 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                 placeholder="Select release sprint..."
                                 initialValue={data.sprints.find(s => s.id === (isNew ? newWorkItemDraft.released_in_sprint_id : workItem.released_in_sprint_id))?.name || ''}
                                 clearOnSelect={false}
+                            />
+                        </label>
+                    </div>
+
+                    <div className={styles.formGrid} style={{ marginTop: '16px' }}>
+                        <label style={{ flex: 1 }}>
+                            Description:
+                            <textarea
+                                value={isNew ? newWorkItemDraft.description : (workItem.description || '')}
+                                onChange={e => {
+                                    if (isNew) {
+                                        setNewWorkItemDraft(prev => ({ ...prev, description: e.target.value }));
+                                    } else {
+                                        updateWorkItem(workItem.id, { description: e.target.value });
+                                    }
+                                }}
+                                rows={4}
+                                placeholder="Add a detailed description for this work item..."
+                                style={{ resize: 'none', minHeight: '100px' }}
                             />
                         </label>
                     </div>

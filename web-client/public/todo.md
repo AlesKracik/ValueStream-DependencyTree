@@ -1,6 +1,5 @@
 * bugs
-  • import alert should follow other custom app alerts ✅
-  • add workitem description
+  • add workitem description ✅
   • The code already uses sprint.end_date for quarter calculation in the frontend (useDashboardData.ts lines 219, 243, 262)
   But the backend in vite.config.ts line 344 is using sprint.start_date ❌
   • it seems mongo is wrinting multiples of reads, arent we sending too much data to save too often?

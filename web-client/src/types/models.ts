@@ -16,6 +16,7 @@ export interface Customer {
 export interface WorkItem {
   id: string;
   name: string;
+  description?: string;
   total_effort_mds: number;
   released_in_sprint_id?: string;
   score: number;

@@ -10,6 +10,7 @@ vi.mock('@xyflow/react', () => ({
 
 const mockData = {
     label: 'Test Work Item',
+    description: 'A test description',
     effortMds: 10,
     score: 150,
     maxScore: 500,
@@ -22,6 +23,14 @@ describe('WorkItemNode', () => {
         
         expect(screen.getByText('Test Work Item')).toBeDefined();
         expect(screen.getByText('150')).toBeDefined();
+    });
+
+    it('renders the description as a tooltip', () => {
+        render(<WorkItemNode data={mockData} />);
+        
+        // The container div should have the title attribute
+        const container = screen.getByTitle('A test description');
+        expect(container).toBeDefined();
     });
 
     it('renders the global icon when isGlobal is true', () => {

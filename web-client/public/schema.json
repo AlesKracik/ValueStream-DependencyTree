@@ -103,6 +103,9 @@
                     "name": {
                         "type": "string"
                     },
+                    "description": {
+                        "type": "string"
+                    },
                     "total_effort_mds": {
                         "type": "number",
                         "minimum": 0

@@ -425,6 +425,7 @@ export function useGraphLayout(
                 position: { x: COL_WORKITEM_X - (nodeSize / 2), y: index * 180 + START_Y - (nodeSize / 2) },
                 data: {
                     label: workItem.name,
+                    description: workItem.description,
                     effortMds: workItem.total_effort_mds,
                     epicMds: workItem.epicMdsSum,
                     score: score,

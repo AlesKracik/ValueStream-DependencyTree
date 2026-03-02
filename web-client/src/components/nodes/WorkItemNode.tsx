@@ -3,6 +3,7 @@ import { Handle, Position } from '@xyflow/react';
 
 interface WorkItemNodeData {
     label: string;
+    description?: string;
     effortMds: number;
     epicMds?: number;
     score: number;
@@ -20,7 +21,7 @@ export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
     const nodeSize = data.baseSize * 0.6 + (data.baseSize * 0.8 * sizeRatio);
 
     return (
-        <div style={{ position: 'relative', width: nodeSize, height: nodeSize + 40 }}>
+        <div style={{ position: 'relative', width: nodeSize, height: nodeSize + 40 }} title={data.description}>
             <div
                 style={{
                     width: `${nodeSize}px`,
