@@ -4,6 +4,17 @@ import { SettingsPage } from '../SettingsPage';
 import type { DashboardData, Settings } from '../../types/models';
 import { MemoryRouter } from 'react-router-dom';
 
+// Mock DashboardContext
+const mockShowAlert = vi.fn();
+const mockShowConfirm = vi.fn();
+
+vi.mock('../../contexts/DashboardContext', () => ({
+    useDashboardContext: () => ({
+        showAlert: mockShowAlert,
+        showConfirm: mockShowConfirm
+    })
+}));
+
 const mockSettings: Settings = {
     jira_base_url: 'https://jira.com',
     jira_api_version: '3',
@@ -114,11 +125,11 @@ describe('SettingsPage', () => {
     });
 
     it('calls import API when a file is selected and confirmed', async () => {
-        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+        mockShowConfirm.mockResolvedValue(true);
         const reloadSpy = vi.fn();
         vi.stubGlobal('location', { reload: reloadSpy });
 
-        render(
+        const { container } = render(
             <MemoryRouter initialEntries={['/settings?tab=mongo']}>
                 <SettingsPage 
                     settings={mockSettings} 
@@ -130,15 +141,14 @@ describe('SettingsPage', () => {
             </MemoryRouter>
         );
 
-        const importLabel = screen.getByText(/Import from JSON/i);
-        const fileInput = importLabel.querySelector('input')!;
+        const fileInput = container.querySelector('input[type="file"]')!;
         const file = new File(['{"data": {"customers": []}}'], 'test.json', { type: 'application/json' });
 
         await act(async () => {
             fireEvent.change(fileInput, { target: { files: [file] } });
         });
 
-        expect(confirmSpy).toHaveBeenCalled();
+        expect(mockShowConfirm).toHaveBeenCalled();
         expect(global.fetch).toHaveBeenCalledWith('/api/mongo/import', expect.objectContaining({
             method: 'POST',
             body: expect.stringContaining('"data":{"data":{"customers":[]}}')
@@ -147,8 +157,50 @@ describe('SettingsPage', () => {
         await waitFor(() => {
             expect(screen.getByText(/Import successful! Data has been restored/i)).toBeDefined();
         });
+    });
 
-        confirmSpy.mockRestore();
+    it('triggers file picker when Import button is clicked and shows confirmation after selection', async () => {
+        mockShowConfirm.mockResolvedValue(false); // Cancel the import for this test
+        
+        const { container } = render(
+            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        const importBtn = screen.getByText('Import from JSON');
+        const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+        
+        // Spy on the click method of the hidden file input
+        const clickSpy = vi.spyOn(fileInput, 'click');
+
+        // 1. Click the visible button
+        await act(async () => {
+            fireEvent.click(importBtn);
+        });
+
+        // Verify it triggered the hidden file picker
+        expect(clickSpy).toHaveBeenCalled();
+
+        // 2. Simulate file selection (which should trigger the confirmation dialog)
+        const file = new File(['{}'], 'test.json', { type: 'application/json' });
+        await act(async () => {
+            fireEvent.change(fileInput, { target: { files: [file] } });
+        });
+
+        // Verify confirmation was shown
+        expect(mockShowConfirm).toHaveBeenCalledWith(
+            "Warning: Irreversible Action",
+            expect.stringContaining("Importing data will DELETE all existing collections")
+        );
+        
+        clickSpy.mockRestore();
     });
 
     it('switches to Jira tab and shows Jira settings', async () => {

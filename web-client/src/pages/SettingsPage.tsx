@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { Settings, DashboardData, Epic } from "../types/models";
 import styles from './List.module.css';
 import { authorizedFetch } from "../utils/api";
 import { generateId } from '../utils/security';
+import { useDashboardContext } from "../contexts/DashboardContext";
 
 interface SettingsPageProps {
   settings: Settings;
@@ -22,6 +23,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get("tab") as "general" | "mongo" | "jira") || "general";
+  const { showAlert, showConfirm } = useDashboardContext();
 
   const [localFormData, setFormData] = useState<Partial<Settings>>({});
   const [isTesting, setIsTesting] = useState(false);
@@ -34,6 +36,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [importJql, setImportJql] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<string>("");
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (settings) {
@@ -200,7 +204,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const confirmed = window.confirm("WARNING: Importing data will DELETE all existing collections in the current database and replace them with the data from this file. This action CANNOT be undone. Do you want to proceed?");
+    const confirmed = await showConfirm(
+        "Warning: Irreversible Action",
+        "Importing data will DELETE all existing collections in the current database and replace them with the data from this file. Do you want to proceed?"
+    );
     if (!confirmed) {
       event.target.value = "";
       return;
@@ -653,16 +660,21 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               >
                 {isTesting ? "Exporting..." : "Export to JSON"}
               </button>
-              <label className="btn-primary" style={{ cursor: 'pointer', display: 'inline-block' }}>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isTesting || (!localFormData.mongo_uri && !settings.mongo_uri)}
+              >
                 {isTesting ? "Importing..." : "Import from JSON"}
-                <input
-                  type="file"
-                  accept=".json"
-                  onChange={handleImportMongo}
-                  style={{ display: 'none' }}
-                  disabled={isTesting || (!localFormData.mongo_uri && !settings.mongo_uri)}
-                />
-              </label>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleImportMongo}
+                style={{ display: 'none' }}
+              />
             </div>
           </>
         )}
