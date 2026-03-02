@@ -41,7 +41,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         existing_tcv_valid_from: new Date().toISOString().split('T')[0],
         potential_tcv: 0 
     });
-    const [newCustomerWorkItems, setNewCustomerWorkItems] = useState<{ workItemId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have' }[]>([]);
+    const [newCustomerWorkItems, setNewCustomerWorkItems] = useState<{ workItemId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have', tcv_history_id?: string }[]>([]);
 
     // State for the "Update Actual TCV" form
     const [isUpdatingTcv, setIsUpdatingTcv] = useState(false);
@@ -80,7 +80,8 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                 {
                                     customer_id: newId,
                                     tcv_type: draftTarget.tcv_type,
-                                    priority: draftTarget.priority
+                                    priority: draftTarget.priority,
+                                    tcv_history_id: draftTarget.tcv_history_id
                                 }
                             ]
                         };
@@ -315,7 +316,8 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                         <tr>
                                             <th>Work Item</th>
                                             <th>Effort (MDs)</th>
-                                            <th>TCV Target</th>
+                                            <th>TCV Type</th>
+                                            <th>TCV Selection</th>
                                             <th>Priority</th>
                                             <th>Actions</th>
                                         </tr>
@@ -365,6 +367,21 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                         </select>
                                                     </td>
                                                     <td>
+                                                        {targetDef.tcv_type === 'existing' ? (
+                                                            <select
+                                                                value={targetDef.tcv_history_id || 'latest'}
+                                                                onChange={e => updateTarget({ tcv_history_id: e.target.value === 'latest' ? undefined : e.target.value })}
+                                                            >
+                                                                <option value="latest">Latest Actual (${customer.existing_tcv.toLocaleString()})</option>
+                                                                {customer.tcv_history?.map(h => (
+                                                                    <option key={h.id} value={h.id}>{h.valid_from} (${h.value.toLocaleString()})</option>
+                                                                ))}
+                                                            </select>
+                                                        ) : (
+                                                            <span style={{ color: '#94a3b8' }}>${customer.potential_tcv.toLocaleString()}</span>
+                                                        )}
+                                                    </td>
+                                                    <td>
                                                         <select 
                                                             value={targetDef.priority || 'Must-have'}
                                                             onChange={e => updateTarget({ priority: e.target.value as 'Must-have' | 'Should-have' | 'Nice-to-have' })}
@@ -382,7 +399,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                         })}
                                         {targetedWorkItems.length === 0 && (
                                             <tr>
-                                                <td colSpan={5} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No targeted work items found.</td>
+                                                <td colSpan={6} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No targeted work items found.</td>
                                             </tr>
                                         )}
                                     </tbody>
@@ -401,7 +418,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                     if (isNew) {
                                                         setNewCustomerWorkItems(prev => [...prev, {
                                                             workItemId,
-                                                            tcv_type: 'potential',
+                                                            tcv_type: 'existing',
                                                             priority: 'Should-have'
                                                         }]);
                                                     } else {
@@ -409,7 +426,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                         if (workItem) {
                                                             const newTargets = [...(workItem.customer_targets || []), {
                                                                 customer_id: customerId,
-                                                                tcv_type: 'potential',
+                                                                tcv_type: 'existing',
                                                                 priority: 'Should-have'
                                                             }];
                                                             updateWorkItem(workItemId, { customer_targets: newTargets as any });

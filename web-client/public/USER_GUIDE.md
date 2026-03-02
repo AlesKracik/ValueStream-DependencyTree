@@ -40,7 +40,7 @@ Both Customers and Work Items feature tabbed detail pages for better organizatio
     1. The current value and its "Valid From" date are moved into the history.
     2. You enter a new value and a new date from which it becomes the "Actual" state.
 - **Tabs:**
-    - **Targeted Work Items:** View and manage which strategic initiatives are delivering value to this customer.
+    - **Targeted Work Items:** View and manage which strategic initiatives are delivering value to this customer. For each work item, you can choose whether it targets the **"Latest Actual"** TCV or a specific **historical record** from the customer's timeline.
     - **TCV History:** A chronological audit trail of the customer's contract evolution. Historical entries are created automatically whenever you perform an "Update TCV" action.
 
 #### Work Item Detail Page

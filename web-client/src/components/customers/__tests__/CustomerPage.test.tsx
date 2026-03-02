@@ -111,6 +111,46 @@ describe('CustomerPage', () => {
         });
     });
 
+    it('shows TCV history selection when targeting Existing TCV', () => {
+        const historyData: DashboardData = {
+            ...mockData,
+            customers: [
+                {
+                    ...mockData.customers[0],
+                    tcv_history: [{ id: 'h1', value: 80, valid_from: '2025-01-01' }]
+                }
+            ],
+            workItems: [
+                {
+                    id: 'f1',
+                    name: 'Feature 1',
+                    total_effort_mds: 10,
+                    score: 0,
+                    customer_targets: [{ customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }]
+                }
+            ]
+        };
+
+        render(<CustomerPage {...defaultProps} data={historyData} />);
+
+        // Should see "Existing" in the type dropdown
+        const typeDropdown = screen.getByDisplayValue('Existing');
+        expect(typeDropdown).toBeDefined();
+
+        // Should see "Latest Actual ($100)" in the selection dropdown
+        const selectionDropdown = screen.getByDisplayValue('Latest Actual ($100)');
+        expect(selectionDropdown).toBeDefined();
+
+        // Should see historical option
+        fireEvent.change(selectionDropdown, { target: { value: 'h1' } });
+        
+        expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', expect.objectContaining({
+            customer_targets: [
+                expect.objectContaining({ customer_id: 'c1', tcv_history_id: 'h1' })
+            ]
+        }));
+    });
+
     it('removes a work item target', () => {
         render(<CustomerPage {...defaultProps} />);
 
