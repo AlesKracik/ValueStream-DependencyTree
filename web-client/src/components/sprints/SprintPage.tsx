@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { parseISO, addDays, format } from 'date-fns';
 import type { DashboardData, Sprint } from '../../types/models';
 import { useDashboardContext } from '../../contexts/DashboardContext';
@@ -28,6 +28,25 @@ export const SprintPage: React.FC<SprintPageProps> = ({
 
     // Draft states for new sprint creation
     const [newSprintDraft, setNewSprintDraft] = useState<Partial<Sprint>>({ name: '', start_date: '', end_date: '' });
+
+    const groupedSprints = useMemo(() => {
+        if (!data) return {};
+        const groups: Record<string, Sprint[]> = {};
+        data.sprints.forEach(s => {
+            const q = s.quarter || 'TBD';
+            if (!groups[q]) groups[q] = [];
+            groups[q].push(s);
+        });
+        return groups;
+    }, [data?.sprints]);
+
+    const sortedQuarters = useMemo(() => {
+        return Object.keys(groupedSprints).sort((a, b) => {
+            if (a === 'TBD') return 1;
+            if (b === 'TBD') return -1;
+            return a.localeCompare(b);
+        });
+    }, [groupedSprints]);
 
     const handleStartCreate = () => {
         if (!data) return;
@@ -98,55 +117,62 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                                     <th style={{ padding: '12px' }}>Name</th>
                                     <th style={{ padding: '12px' }}>Start Date</th>
                                     <th style={{ padding: '12px' }}>End Date</th>
-                                    <th style={{ padding: '12px' }}>Quarter</th>
                                     <th style={{ padding: '12px' }}>Status</th>
                                     <th style={{ padding: '12px' }}>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {data.sprints.map((s, index) => {
-                                    const status = getSprintStatus(s);
-                                    const isLast = index === data.sprints.length - 1;
-                                    
-                                    return (
-                                        <tr key={s.id} style={{ 
-                                            borderBottom: '1px solid #1e293b',
-                                            backgroundColor: status === 'active' ? 'rgba(37, 99, 235, 0.1)' : 'transparent'
-                                        }}>
-                                            <td style={{ padding: '12px' }}>
-                                                <input 
-                                                    type="text" 
-                                                    value={s.name} 
-                                                    onChange={e => updateSprint(s.id, { name: e.target.value })}
-                                                    style={{ background: 'none', border: 'none', color: 'inherit', fontWeight: status === 'active' ? 'bold' : 'normal', outline: 'none', width: '100%' }}
-                                                />
-                                            </td>
-                                            <td style={{ padding: '12px', color: '#94a3b8' }}>{s.start_date}</td>
-                                            <td style={{ padding: '12px', color: '#94a3b8' }}>{s.end_date}</td>
-                                            <td style={{ padding: '12px', color: '#94a3b8' }}>{s.quarter}</td>
-                                            <td style={{ padding: '12px' }}>
-                                                <span style={{ 
-                                                    fontSize: '11px', 
-                                                    textTransform: 'uppercase', 
-                                                    fontWeight: 'bold',
-                                                    padding: '2px 8px',
-                                                    borderRadius: '10px',
-                                                    backgroundColor: status === 'active' ? '#2563eb' : (status === 'past' ? '#334155' : '#065f46'),
-                                                    color: 'white'
-                                                }}>
-                                                    {status}
-                                                </span>
-                                            </td>
-                                            <td style={{ padding: '12px' }}>
-                                                {isLast ? (
-                                                    <button onClick={() => handleDelete(s.id, s.name)} className="btn-danger" style={{ padding: '4px 8px', fontSize: '12px' }}>Delete</button>
-                                                ) : (
-                                                    <span title="Only the last sprint can be deleted to maintain sequence." style={{ color: '#475569', fontSize: '12px', cursor: 'help' }}>Locked</span>
-                                                )}
+                                {sortedQuarters.map(q => (
+                                    <React.Fragment key={q}>
+                                        <tr style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
+                                            <td colSpan={5} style={{ padding: '8px 12px', fontSize: '12px', fontWeight: 'bold', color: '#60a5fa', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                                {q}
                                             </td>
                                         </tr>
-                                    );
-                                })}
+                                        {groupedSprints[q].map((s) => {
+                                            const status = getSprintStatus(s);
+                                            const isLast = data.sprints[data.sprints.length - 1].id === s.id;
+                                            
+                                            return (
+                                                <tr key={s.id} style={{ 
+                                                    borderBottom: '1px solid #1e293b',
+                                                    backgroundColor: status === 'active' ? 'rgba(37, 99, 235, 0.1)' : 'transparent'
+                                                }}>
+                                                    <td style={{ padding: '12px' }}>
+                                                        <input 
+                                                            type="text" 
+                                                            value={s.name} 
+                                                            onChange={e => updateSprint(s.id, { name: e.target.value })}
+                                                            style={{ background: 'none', border: 'none', color: 'inherit', fontWeight: status === 'active' ? 'bold' : 'normal', outline: 'none', width: '100%' }}
+                                                        />
+                                                    </td>
+                                                    <td style={{ padding: '12px', color: '#94a3b8' }}>{s.start_date}</td>
+                                                    <td style={{ padding: '12px', color: '#94a3b8' }}>{s.end_date}</td>
+                                                    <td style={{ padding: '12px' }}>
+                                                        <span style={{ 
+                                                            fontSize: '11px', 
+                                                            textTransform: 'uppercase', 
+                                                            fontWeight: 'bold',
+                                                            padding: '2px 8px',
+                                                            borderRadius: '10px',
+                                                            backgroundColor: status === 'active' ? '#2563eb' : (status === 'past' ? '#334155' : '#065f46'),
+                                                            color: 'white'
+                                                        }}>
+                                                            {status}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ padding: '12px' }}>
+                                                        {isLast ? (
+                                                            <button onClick={() => handleDelete(s.id, s.name)} className="btn-danger" style={{ padding: '4px 8px', fontSize: '12px' }}>Delete</button>
+                                                        ) : (
+                                                            <span title="Only the last sprint can be deleted to maintain sequence." style={{ color: '#475569', fontSize: '12px', cursor: 'help' }}>Locked</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </React.Fragment>
+                                ))}
 
                                 {isCreating && (
                                     <tr style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', borderBottom: '1px solid #059669' }}>
@@ -161,7 +187,6 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                                         </td>
                                         <td style={{ padding: '12px', color: '#10b981' }}>{newSprintDraft.start_date}</td>
                                         <td style={{ padding: '12px', color: '#10b981' }}>{newSprintDraft.end_date}</td>
-                                        <td style={{ padding: '12px', color: '#94a3b8' }}>-</td>
                                         <td style={{ padding: '12px' }}><span style={{ fontSize: '11px', fontWeight: 'bold', color: '#10b981' }}>NEW</span></td>
                                         <td style={{ padding: '12px', display: 'flex', gap: '8px' }}>
                                             <button onClick={handleCreate} className="btn-primary" style={{ padding: '4px 8px', fontSize: '12px', backgroundColor: '#10b981' }}>Save</button>
