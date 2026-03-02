@@ -12,12 +12,15 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    border-bottom: 1px solid #374151;
+    padding-bottom: 24px;
+    margin-bottom: 32px;
 }
 
 .header h1 {
     margin: 0;
-    color: #f8fafc;
+    font-size: 24px;
+    color: #e2e8f0;
 }
 
 .createBtn {
