@@ -7,6 +7,7 @@ import path from 'path'
 import { MongoClient } from 'mongodb'
 import dns from 'node:dns'
 import { promisify } from 'node:util'
+import { calculateQuarter } from './src/utils/dateHelpers'
 
 const lookup = promisify(dns.lookup);
 
