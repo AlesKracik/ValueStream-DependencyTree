@@ -475,11 +475,11 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                     <thead>
                                         <tr>
                                             <th style={{ width: '100px' }}>Key</th>
-                                            <th>Name</th>
-                                            <th style={{ width: '100px' }}>Effort (MDs)</th>
+                                            <th style={{ width: '180px' }}>Name</th>
+                                            <th style={{ width: '60px' }}>Effort (MDs)</th>
                                             <th style={{ width: '140px' }}>Start</th>
                                             <th style={{ width: '140px' }}>End</th>
-                                            <th style={{ width: '120px' }}>Team</th>
+                                            <th style={{ width: '600px' }}>Team</th>
                                             <th style={{ width: '200px' }}>Actions</th>
                                         </tr>
                                     </thead>
@@ -494,12 +494,12 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                         style={{ width: '80px' }}
                                                     />
                                                 </td>
-                                                <td style={{ width: '100%' }}>
+                                                <td>
                                                     <input
                                                         type="text"
                                                         value={epic.name}
                                                         onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, name: e.target.value } : ev)) : updateEpic(epic.id, { name: e.target.value })}
-                                                        style={{ width: '100%', minWidth: '350px' }}
+                                                        style={{ width: '100%', minWidth: '150px' }}
                                                     />
                                                 </td>
                                                 <td>
@@ -510,7 +510,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                             const val = parseInt(e.target.value) || 0;
                                                             isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, effort_md: val } : ev)) : updateEpic(epic.id, { effort_md: val });
                                                         }}
-                                                        style={{ width: '80px' }}
+                                                        style={{ width: '40px' }}
                                                     />
                                                 </td>
                                                 <td>
