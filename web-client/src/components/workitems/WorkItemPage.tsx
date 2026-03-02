@@ -188,73 +188,25 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
 
                     <div className={styles.content}>
                         <section className={styles.card}>
-                            <h2>Work Item Details</h2>
-                            <div className={styles.formGrid}>
-                                <label>
-                                    Name:
-                                    <input
-                                        type="text"
-                                        value={workItem.name}
-                                        onChange={e => {
-                                            if (isNew) {
-                                                setNewWorkItemDraft(prev => ({ ...prev, name: e.target.value }));
-                                            } else {
-                                                updateWorkItem(workItem.id, { name: e.target.value });
-                                            }
-                                        }}
-                                    />
-                                </label>
-                                <label>
-                                    Total Effort (MDs):
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={workItem.total_effort_mds}
-                                        onChange={e => {
-                                            const val = parseInt(e.target.value) || 0;
-                                            if (isNew) {
-                                                setNewWorkItemDraft(prev => ({ ...prev, total_effort_mds: val }));
-                                            } else {
-                                                updateWorkItem(workItem.id, { total_effort_mds: val });
-                                            }
-                                        }}
-                                    />
-                                </label>
-                                <label>
-                                    Released in Sprint:
-                                    <SearchableDropdown
-                                        options={data?.sprints.map(s => ({ id: s.id, label: s.name })) || []}
-                                        onSelect={(sprintId) => {
-                                            if (isNew) {
-                                                setNewWorkItemDraft(prev => ({ ...prev, released_in_sprint_id: sprintId }));
-                                            } else {
-                                                updateWorkItem(workItem.id, { released_in_sprint_id: sprintId });
-                                            }
-                                        }}
-                                        placeholder="Select release sprint..."
-                                        initialValue={data?.sprints.find(s => s.id === (workItem.released_in_sprint_id))?.name || ''}
-                                        clearOnSelect={false}
-                                    />
-                                </label>
-                            </div>
-
-                            <div style={{ marginTop: '20px', padding: '12px', backgroundColor: 'rgba(96, 165, 250, 0.05)', borderRadius: '8px', border: '1px solid rgba(96, 165, 250, 0.2)', display: 'flex', gap: '24px' }}>
-                                <div style={{ fontSize: '14px', color: '#94a3b8' }}>
-                                    <span style={{ fontWeight: 'bold', color: '#60a5fa', marginRight: '8px' }}>Total Calculated Effort:</span>
-                                    <span style={{ color: '#f1f5f9' }}>{calculatedEffort} MDs</span>
-                                </div>
-                                <div style={{ fontSize: '14px', color: '#94a3b8' }}>
-                                    <span style={{ fontWeight: 'bold', color: '#10b981', marginRight: '8px' }}>Total TCV Impact:</span>
-                                    <span style={{ color: '#f1f5f9' }}>${calculatedTcv.toLocaleString()}</span>
-                                </div>
-                                <div style={{ fontSize: '14px', color: '#94a3b8' }}>
-                                    <span style={{ fontWeight: 'bold', color: '#f59e0b', marginRight: '8px' }}>Current RICE Score:</span>
-                                    <span style={{ color: '#f1f5f9' }}>{Math.round(workItem.score || 0)}</span>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #374151', paddingBottom: '12px', marginBottom: '24px' }}>
+                                <h2 style={{ margin: 0, border: 'none', padding: 0 }}>Work Item Details</h2>
+                                <div style={{ display: 'flex', gap: '24px' }}>
+                                    <div style={{ fontSize: '14px', color: '#94a3b8' }}>
+                                        <span style={{ fontWeight: 'bold', color: '#60a5fa', marginRight: '8px' }}>Total Effort:</span>
+                                        <span style={{ color: '#f1f5f9' }}>{calculatedEffort} MDs</span>
+                                    </div>
+                                    <div style={{ fontSize: '14px', color: '#94a3b8' }}>
+                                        <span style={{ fontWeight: 'bold', color: '#60a5fa', marginRight: '8px' }}>TCV Impact:</span>
+                                        <span style={{ color: '#f1f5f9' }}>${calculatedTcv.toLocaleString()}</span>
+                                    </div>
+                                    <div style={{ fontSize: '14px', color: '#94a3b8' }}>
+                                        <span style={{ fontWeight: 'bold', color: '#60a5fa', marginRight: '8px' }}>RICE Score:</span>
+                                        <span style={{ color: '#f1f5f9' }}>{Math.round(workItem.score || 0)}</span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className={styles.formGrid} style={{ marginTop: '16px' }}>
-                                <label style={{ flex: 1 }}>
+                            <div className={styles.formGrid}>                                <label style={{ flex: 1 }}>
                                     Description:
                                     <textarea
                                         value={workItem.description || ''}
