@@ -136,4 +136,29 @@ describe('useGraphLayout Math Engine', () => {
         expect(result.current.nodes.find(n => n.id === 'gantt-e1')).toBeDefined();
         expect(result.current.nodes.find(n => n.id === 'gantt-e2')).toBeUndefined();
     });
+
+    it('calculates hasUnestimatedEffort correctly', () => {
+        const TEST_DATA: DashboardData = {
+            ...MOCK_DATA,
+            workItems: [
+                { id: 'f1', name: 'Estimated Feat', total_effort_mds: 10, score: 50, customer_targets: [] },
+                { id: 'f2', name: 'Unestimated Feat (0 MDs)', total_effort_mds: 0, score: 50, customer_targets: [] },
+                { id: 'f3', name: 'Feat with Unestimated Epic', total_effort_mds: 10, score: 50, customer_targets: [] },
+            ],
+            epics: [
+                { id: 'e1', work_item_id: 'f1', team_id: 't1', effort_md: 5 },
+                { id: 'e2', work_item_id: 'f3', team_id: 't1', effort_md: 0 },
+            ]
+        };
+
+        const { result } = renderHook(() => useGraphLayout(TEST_DATA));
+
+        const f1Node = result.current.nodes.find(n => n.id === 'workitem-f1');
+        const f2Node = result.current.nodes.find(n => n.id === 'workitem-f2');
+        const f3Node = result.current.nodes.find(n => n.id === 'workitem-f3');
+
+        expect((f1Node?.data as any).hasUnestimatedEffort).toBe(false);
+        expect((f2Node?.data as any).hasUnestimatedEffort).toBe(true);
+        expect((f3Node?.data as any).hasUnestimatedEffort).toBe(true);
+    });
 });

@@ -57,7 +57,8 @@ Both Customers and Work Items feature tabbed detail pages for better organizatio
 - **Searchable Assignments:** All dropdown menus for linking entities (e.g., adding a Customer Target to a Work Item) are **Searchable**. Simply type a few letters to filter the options.
 - **Node Status Icons:** Work Items display status indicators in the top-right of their circle:
     - **📦 Released:** Marked when a Work Item is associated with a specific release sprint.
-    - **⚠️ Missing Dates:** Displays when a Work Item has connected Epics that are missing target start or end dates (meaning they cannot be visualized on the Gantt chart).     
+    - **🕒 Missing Dates:** Displays when a Work Item has connected Epics that are missing target start or end dates (meaning they cannot be visualized on the Gantt chart).
+    - **📏 Effort Not Estimated:** Displays (in yellow) when a Work Item or any of its connected Epics have an effort of 0 MDs, indicating that the item has not yet been estimated.
     - **🌐 Global:** Marked when a Work Item is designated to impact **ALL Customers** simultaneously.
 - **Global Work Items (Maintenance/Tech Debt):**
     - **Configuration:** In the Work Item detail page, check the **"ALL CUSTOMERS (Global)"** row at the top of the target table.

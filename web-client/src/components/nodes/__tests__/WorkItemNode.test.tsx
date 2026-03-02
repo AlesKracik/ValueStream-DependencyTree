@@ -44,4 +44,28 @@ describe('WorkItemNode', () => {
         
         expect(screen.queryByTitle(/Released in Sprint/i)).toBeNull();
     });
+
+    it('renders the unestimated effort warning icon when hasUnestimatedEffort is true', () => {
+        render(<WorkItemNode data={{ ...mockData, hasUnestimatedEffort: true }} />);
+        
+        const indicator = screen.getByTitle(/Effort is not estimated/i);
+        expect(indicator).toBeDefined();
+        expect(indicator.textContent).toContain('📏');
+        expect(indicator.style.color).toBe('rgb(251, 191, 36)'); // #fbbf24
+    });
+
+    it('renders the dateless epics warning icon when hasDatelessEpics is true', () => {
+        render(<WorkItemNode data={{ ...mockData, hasDatelessEpics: true }} />);
+        
+        const indicator = screen.getByTitle(/Has epics without target dates/i);
+        expect(indicator).toBeDefined();
+        expect(indicator.textContent).toContain('🕒');
+        expect(indicator.style.color).toBe('rgb(248, 113, 113)'); // #f87171
+    });
+
+    it('does not render the unestimated effort warning icon when hasUnestimatedEffort is false', () => {
+        render(<WorkItemNode data={{ ...mockData, hasUnestimatedEffort: false }} />);
+        
+        expect(screen.queryByTitle(/Effort is not estimated/i)).toBeNull();
+    });
 });

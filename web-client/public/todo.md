@@ -1,5 +1,14 @@
 * bugs
-
+  • import json is not following button template
+  * import alert should follow other custom app alerts
+  • add workitem description
+  • The code already uses sprint.end_date for quarter calculation in the frontend (useDashboardData.ts lines 219, 243, 262)
+  But the backend in vite.config.ts line 344 is using sprint.start_date ❌
+  • it seems mongo is wrinting multiples of reads, arent we sending too much data to save too often?
+  • work items - sort by name/score/TCV/effort
+  • customers - sort by name/existing/potential TCV
+  • make sure ids are unique
+• UUID in dashboards and everywhere
 * features
   * dont do anything, just think: there is a jira bug for every existing customer issues. the status drives if its a new (Draft, this needs attention to investigate), noop (Blocked, blocked on customer or 3rd party, no need to do anything) or in-progress (anything else that is not closed or canceled, actively worked on). the jira description also contains info, if the issue is still repeating or not. I want to extend this app to also nicely show on customer page, what is the status of the customer from this point of view. propose visual solution. also propose if you can somehow integrate with LLM model to provide some nice summary
   * workitem  integration with Aha

@@ -11,6 +11,7 @@ interface WorkItemNodeData {
     isGlobal?: boolean;
     releasedInSprintId?: string;
     hasDatelessEpics?: boolean;
+    hasUnestimatedEffort?: boolean;
 }
 
 export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
@@ -54,7 +55,10 @@ export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
                         <div title={`Released in Sprint ${data.releasedInSprintId}`}>📦</div>
                     )}
                     {data.hasDatelessEpics && (
-                        <div title="Has epics without target dates" style={{ color: '#f87171' }}>⚠️</div>
+                        <div title="Has epics without target dates" style={{ color: '#f87171' }}>🕒</div>
+                    )}
+                    {data.hasUnestimatedEffort && (
+                        <div title="Effort is not estimated (0 MDs)" style={{ color: '#fbbf24' }}>📏</div>
                     )}
                 </div>
 

@@ -399,11 +399,13 @@ export function useGraphLayout(
                 const epicsForWorkItem = data.epics.filter(e => e.work_item_id === f.id && visibleEpics.has(e.id));
                 const epicMdsSum = epicsForWorkItem.reduce((sum, e) => sum + e.effort_md, 0);
                 const hasDatelessEpics = epicsForWorkItem.some(e => !e.target_start || !e.target_end);
+                const hasUnestimatedEffort = (f.total_effort_mds || 0) === 0 || epicsForWorkItem.some(e => (e.effort_md || 0) === 0);
 
                 return {
                     ...f,
                     epicMdsSum,
-                    hasDatelessEpics
+                    hasDatelessEpics,
+                    hasUnestimatedEffort
                 };
             });
 
@@ -431,6 +433,7 @@ export function useGraphLayout(
                     isGlobal: !!workItem.all_customers_target,
                     releasedInSprintId: workItem.released_in_sprint_id,
                     hasDatelessEpics: workItem.hasDatelessEpics,
+                    hasUnestimatedEffort: workItem.hasUnestimatedEffort,
                 },
             });
 
