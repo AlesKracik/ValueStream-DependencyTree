@@ -28,6 +28,10 @@ export const TeamListPage: React.FC<Props> = ({ data, loading }) => {
             onItemClick={(t) => navigate(`/team/${t.id}`)}
             renderItemTitle={(t) => t.name}
             renderItemDetails={(t) => `Capacity (MDs): ${t.total_capacity_mds} | Country: ${t.country || 'N/A'}`}
+            actionButton={{
+                label: "+ New Team",
+                onClick: () => navigate('/team/new')
+            }}
             loadingMessage="Loading teams..."
             emptyMessage="No teams found."
         />

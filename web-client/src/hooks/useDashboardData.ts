@@ -204,6 +204,39 @@ export function useDashboardData(
         });
     };
 
+    const addTeam = (team: Team) => {
+        persistEntity('teams', 'POST', team, showAlert);
+        setData(prev => {
+            if (!prev) return prev;
+            return { ...prev, teams: [...prev.teams, team] };
+        });
+    };
+
+    const deleteTeam = (id: string) => {
+        setData(prev => {
+            if (!prev) return prev;
+            
+            // Cascaded update: Epics that belonged to this team should have team_id cleared or handled
+            // Since Epic.team_id is required in interface, we might need to be careful.
+            // But let's assume we can clear it or the user will reassign.
+            const updatedEpics = prev.epics.map(e => e.team_id === id ? { ...e, team_id: '' } : e);
+            
+            persistEntity('teams', 'DELETE', { id }, showAlert);
+            
+            prev.epics.forEach((oldE, i) => {
+                if (oldE.team_id === id) {
+                    persistEntity('epics', 'POST', updatedEpics[i], showAlert);
+                }
+            });
+
+            return {
+                ...prev,
+                teams: prev.teams.filter(t => t.id !== id),
+                epics: updatedEpics
+            };
+        });
+    };
+
     const addEpic = (epic: Epic) => {
         persistEntity('epics', 'POST', epic, showAlert);
         setData(prev => {
@@ -365,6 +398,8 @@ export function useDashboardData(
         addEpic,
         deleteEpic,
         updateTeam,
+        addTeam,
+        deleteTeam,
         updateEpic,
         addSprint,
         updateSprint,

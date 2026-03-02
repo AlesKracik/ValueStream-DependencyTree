@@ -2,25 +2,51 @@ import { parseISO, isWeekend } from 'date-fns';
 import Holidays from 'date-holidays';
 
 /**
- * Counts business days (Mon-Fri, excluding holidays) between two dates inclusive.
+ * Calculates working days (Mon-Fri) and public holidays in a date range.
  */
-export const countBusinessDays = (startStr: string, endStr: string, countryCode?: string): number => {
+export const calculateWorkingDays = (startStr: string, endStr: string, countryCode?: string): { workDays: number; holidayCount: number } => {
     const start = parseISO(startStr);
     const end = parseISO(endStr);
-    if (start > end) return 0;
+    if (start > end) return { workDays: 0, holidayCount: 0 };
 
     const hd = countryCode ? new Holidays(countryCode as any) : null;
-    let count = 0;
+    let workDays = 0;
+    let holidayCount = 0;
     const current = new Date(start);
     while (current <= end) {
         const isWknd = isWeekend(current);
-        const isHolid = hd ? hd.isHoliday(current) : false;
-        if (!isWknd && !isHolid) {
-            count++;
+        const dayHolidays = hd ? hd.isHoliday(current) : false;
+
+        // Only count as holiday if it's a public holiday and not on a weekend
+        const isPublicHoliday = Array.isArray(dayHolidays) 
+            ? dayHolidays.some(h => h.type === 'public')
+            : (dayHolidays && (dayHolidays as any).type === 'public');
+
+        if (!isWknd && !isPublicHoliday) {
+            workDays++;
+        } else if (!isWknd && isPublicHoliday) {
+            holidayCount++;
         }
         current.setDate(current.getDate() + 1);
     }
-    return count;
+    return { workDays, holidayCount };
+};
+
+/**
+ * Calculates the man-day (MD) impact of holidays for a team in a given period.
+ */
+export const getHolidayImpact = (totalCapacityMd: number, holidayCount: number): number => {
+    // Assuming 10 MDs per standard 2-week sprint (this could be parameterized if needed)
+    // The proportion is (totalCapacityMd / 10) per holiday
+    return (totalCapacityMd / 10) * holidayCount;
+};
+
+/**
+ * Counts business days (Mon-Fri, excluding public holidays) between two dates inclusive.
+ * Updated to use the refined public holiday logic.
+ */
+export const countBusinessDays = (startStr: string, endStr: string, countryCode?: string): number => {
+    return calculateWorkingDays(startStr, endStr, countryCode).workDays;
 };
 
 /**

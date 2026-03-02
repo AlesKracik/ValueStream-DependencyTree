@@ -9,5 +9,5 @@
   * TCV History Logic Enhancement: Currently, when a Customer's Actual TCV is updated (archived to history), Work Items linked to "Latest Actual" remain linked to the new "Latest Actual". Consider if some Work Items should be automatically re-linked to the archived historical entry to preserve their context.
 * archive old sprints
 * code readabilty and architecture
-  * find parts copy&pasted (or very simmilar) on multiple places and refactor them to be reusable (DONE: Centralized epic effort and capacity distribution logic)
+  * find parts copy&pasted (or very simmilar) on multiple places and refactor them to be reusable 
 * security

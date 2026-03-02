@@ -1,13 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { TeamPage } from '../TeamPage';
-import { DashboardProvider, NotificationProvider } from '../../../contexts/DashboardContext';
+import { DashboardProvider, NotificationProvider, useDashboardContext } from '../../../contexts/DashboardContext';
 import type { DashboardData } from '../../../types/models';
 
 // Mock date-holidays
 const mockIsHoliday = vi.fn().mockImplementation((date: Date) => {
-    // Jan 1st 2026 is a holiday in our mock
-    return date.getFullYear() === 2026 && date.getMonth() === 0 && date.getDate() === 1;
+    // Jan 1st 2026: Public Holiday (Thu)
+    if (date.getFullYear() === 2026 && date.getMonth() === 0 && date.getDate() === 1) {
+        return [{ type: 'public', name: 'New Year' }];
+    }
+    // Jan 2nd 2026: Non-public Holiday (Fri)
+    if (date.getFullYear() === 2026 && date.getMonth() === 0 && date.getDate() === 2) {
+        return [{ type: 'observance', name: 'Some Observance' }];
+    }
+    return false;
 });
 
 vi.mock('date-holidays', () => {
@@ -15,6 +22,15 @@ vi.mock('date-holidays', () => {
         default: class {
             isHoliday = mockIsHoliday;
         }
+    };
+});
+
+// Mock useDashboardContext
+vi.mock('../../../contexts/DashboardContext', async () => {
+    const actual = await vi.importActual('../../../contexts/DashboardContext');
+    return {
+        ...actual as any,
+        useDashboardContext: vi.fn()
     };
 });
 
@@ -39,11 +55,17 @@ describe('TeamPage', () => {
         data: mockData,
         loading: false,
         error: null,
-        updateTeam: vi.fn()
+        updateTeam: vi.fn(),
+        deleteTeam: vi.fn(),
+        addTeam: vi.fn()
     };
 
     beforeEach(() => {
         vi.clearAllMocks();
+        (useDashboardContext as any).mockReturnValue({
+            showConfirm: vi.fn().mockResolvedValue(true),
+            showAlert: vi.fn().mockResolvedValue(undefined)
+        });
     });
 
     it('renders team details', () => {
@@ -89,8 +111,10 @@ describe('TeamPage', () => {
         // Jan 10, 11 (Sat, Sun) - Weekend
         // Jan 12-14 (Mon-Wed) - Work
         // Total work days = 1 (Jan 2) + 5 (Jan 5-9) + 3 (Jan 12-14) = 9 days
+        // Holiday count = 1
         
         expect(screen.getByText('9 days')).toBeDefined();
+        expect(screen.getByTitle('1 holiday(s)')).toBeDefined();
     });
 
     it('handles capacity override change', () => {
@@ -101,13 +125,31 @@ describe('TeamPage', () => {
                 </DashboardProvider>
             </NotificationProvider>
         );
-        const input = screen.getByPlaceholderText('100');
+        // Base capacity 100, 1 holiday impact = (100/10)*1 = 10. Calculated = 90.
+        const input = screen.getByPlaceholderText('90');
         fireEvent.change(input, { target: { value: '85' } });
         
         expect(defaultProps.updateTeam).toHaveBeenCalledWith('t1', {
             sprint_capacity_overrides: {
                 's1': 85
             }
+        });
+    });
+
+    it('calls deleteTeam when delete button clicked', async () => {
+        render(
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <TeamPage {...defaultProps} />
+                </DashboardProvider>
+            </NotificationProvider>
+        );
+        
+        const deleteBtn = screen.getByText('Delete Team');
+        fireEvent.click(deleteBtn);
+        
+        await waitFor(() => {
+            expect(defaultProps.deleteTeam).toHaveBeenCalledWith('t1');
         });
     });
 
@@ -134,5 +176,28 @@ describe('TeamPage', () => {
         expect(defaultProps.updateTeam).toHaveBeenCalledWith('t1', {
             sprint_capacity_overrides: {}
         });
+    });
+
+    it('renders and saves a new team', () => {
+        render(
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <TeamPage {...defaultProps} teamId="new" />
+                </DashboardProvider>
+            </NotificationProvider>
+        );
+
+        expect(screen.getByText('New Team')).toBeDefined();
+        const nameInput = screen.getByLabelText(/Team Name:/i);
+        fireEvent.change(nameInput, { target: { value: 'Newly Created Team' } });
+        
+        const createBtn = screen.getByText('Create Team');
+        fireEvent.click(createBtn);
+
+        expect(defaultProps.addTeam).toHaveBeenCalledWith(expect.objectContaining({
+            name: 'Newly Created Team',
+            total_capacity_mds: 10
+        }));
+        expect(defaultProps.onBack).toHaveBeenCalled();
     });
 });

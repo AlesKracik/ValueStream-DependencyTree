@@ -61,4 +61,14 @@ describe('TeamListPage', () => {
         expect(items[1].textContent).toContain('Alpha Team');
         expect(items[2].textContent).toContain('Beta Team');
     });
+
+    it('shows the New Team button', () => {
+        render(
+            <MemoryRouter>
+                <TeamListPage data={mockData} loading={false} />
+            </MemoryRouter>
+        );
+
+        expect(screen.getByText('+ New Team')).toBeDefined();
+    });
 });

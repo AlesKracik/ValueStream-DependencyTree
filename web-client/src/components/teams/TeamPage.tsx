@@ -1,9 +1,11 @@
 import React, { useMemo } from 'react';
-import { isWeekend } from 'date-fns';
+import { isWeekend, parseISO } from 'date-fns';
 import Holidays from 'date-holidays';
 import type { DashboardData, Team } from '../../types/models';
+import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
 import { PageWrapper } from '../layout/PageWrapper';
+import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers';
 
 export interface TeamPageProps {
     teamId: string;
@@ -12,7 +14,8 @@ export interface TeamPageProps {
     loading: boolean;
     error: Error | null;
     updateTeam: (id: string, updates: Partial<Team>) => void;
-    
+    deleteTeam: (id: string) => void;
+    addTeam: (team: Team) => void;
 }
 
 export const TeamPage: React.FC<TeamPageProps> = ({
@@ -21,21 +24,47 @@ export const TeamPage: React.FC<TeamPageProps> = ({
     data,
     loading,
     error,
-    updateTeam
+    updateTeam,
+    deleteTeam,
+    addTeam
 }) => {
-    const team = data?.teams.find(t => t.id === teamId);
+    const { showConfirm } = useDashboardContext();
+    const isNew = teamId === 'new';
+
+    const [newTeamDraft, setNewTeamDraft] = React.useState<Partial<Team>>({
+        name: 'New Team',
+        total_capacity_mds: 10,
+        country: ''
+    });
+
+    const team = isNew ? newTeamDraft as Team : data?.teams.find(t => t.id === teamId);
 
     const hd = useMemo(() => {
         if (!team?.country) return null;
         try {
             return new Holidays(team.country as any);
         } catch (e) {
+            console.error(`Invalid country code: ${team.country}`);
             return null;
         }
     }, [team?.country]);
 
+    const handleSave = () => {
+        if (isNew) {
+            const newId = `t-${Math.random().toString(36).substr(2, 9)}`;
+            addTeam({
+                id: newId,
+                name: newTeamDraft.name || 'New Team',
+                total_capacity_mds: newTeamDraft.total_capacity_mds || 0,
+                country: newTeamDraft.country || '',
+                sprint_capacity_overrides: {}
+            });
+            onBack();
+        }
+    };
+
     const handleOverrideChange = (sprintId: string, val: string) => {
-        if (!team) return;
+        if (!team || isNew) return;
         const overrides = { ...(team.sprint_capacity_overrides || {}) };
         const cleanVal = val.trim();
 
@@ -48,6 +77,14 @@ export const TeamPage: React.FC<TeamPageProps> = ({
             }
         }
         updateTeam(team.id, { sprint_capacity_overrides: overrides });
+    };
+
+    const handleDelete = async () => {
+        if (!team || isNew) return;
+        const confirmed = await showConfirm('Delete Team', `Are you sure you want to delete ${team.name}? This will affect epics assigned to this team.`);
+        if (!confirmed) return;
+        deleteTeam(team.id);
+        onBack();
     };
 
     return (
@@ -65,7 +102,11 @@ export const TeamPage: React.FC<TeamPageProps> = ({
                     <header className={styles.header}>
                         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                             <button onClick={onBack} className="btn-secondary">← Back</button>
-                            <h1>Team: {team.name}</h1>
+                            <h1>{isNew ? 'New Team' : `Team: ${team.name}`}</h1>
+                        </div>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            {!isNew && <button onClick={handleDelete} className="btn-danger">Delete Team</button>}
+                            {isNew && <button onClick={handleSave} className="btn-primary">Create Team</button>}
                         </div>
                     </header>
 
@@ -78,7 +119,10 @@ export const TeamPage: React.FC<TeamPageProps> = ({
                                     <input 
                                         type="text" 
                                         value={team.name} 
-                                        onChange={e => updateTeam(team.id, { name: e.target.value })}
+                                        onChange={e => {
+                                            if (isNew) setNewTeamDraft({ ...newTeamDraft, name: e.target.value });
+                                            else updateTeam(team.id, { name: e.target.value });
+                                        }}
                                     />
                                 </label>
                                 <label>
@@ -86,14 +130,21 @@ export const TeamPage: React.FC<TeamPageProps> = ({
                                     <input 
                                         type="number" 
                                         value={team.total_capacity_mds} 
-                                        onChange={e => updateTeam(team.id, { total_capacity_mds: parseInt(e.target.value) || 0 })}
+                                        onChange={e => {
+                                            const val = parseInt(e.target.value) || 0;
+                                            if (isNew) setNewTeamDraft({ ...newTeamDraft, total_capacity_mds: val });
+                                            else updateTeam(team.id, { total_capacity_mds: val });
+                                        }}
                                     />
                                 </label>
                                 <label>
                                     Country (for Holidays):
                                     <select 
                                         value={team.country || ''} 
-                                        onChange={e => updateTeam(team.id, { country: e.target.value })}
+                                        onChange={e => {
+                                            if (isNew) setNewTeamDraft({ ...newTeamDraft, country: e.target.value });
+                                            else updateTeam(team.id, { country: e.target.value });
+                                        }}
                                     >
                                         <option value="">None (No Holidays)</option>
                                         <option value="US">USA</option>
@@ -107,59 +158,103 @@ export const TeamPage: React.FC<TeamPageProps> = ({
                             </div>
                         </section>
 
-                        <section className={styles.card}>
-                            <h2>Sprint Capacity Overrides</h2>
-                            <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px' }}>
-                                Set specific capacity for future sprints (e.g. for planned vacations or team changes). 
-                                If left blank, the base capacity ({team.total_capacity_mds} MDs) is used.
-                            </p>
-                            
-                            <table className={styles.table}>
-                                <thead>
-                                    <tr>
-                                        <th>Sprint</th>
-                                        <th>Dates</th>
-                                        <th>Standard Work Days</th>
-                                        <th>Effective Capacity (MDs)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {data?.sprints.map(sprint => {
-                                        // Calculate standard working days (excluding weekends and holidays)
-                                        const start = new Date(sprint.start_date);
-                                        const end = new Date(sprint.end_date);
-                                        let workDays = 0;
-                                        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                                            const isWknd = isWeekend(d);
-                                            const isHolid = hd ? hd.isHoliday(d) : false;
-                                            if (!isWknd && !isHolid) workDays++;
-                                        }
-
-                                        return (
-                                            <tr key={sprint.id}>
-                                                <td>{sprint.name}</td>
-                                                <td style={{ fontSize: '12px', color: '#94a3b8' }}>
-                                                    {sprint.start_date} to {sprint.end_date}
-                                                </td>
-                                                <td>{workDays} days</td>
-                                                <td>
-                                                    <input 
-                                                        type="number"
-                                                        placeholder={String(team.total_capacity_mds)}
-                                                        value={team.sprint_capacity_overrides?.[sprint.id] ?? ''}
-                                                        onChange={e => handleOverrideChange(sprint.id, e.target.value)}
-                                                        style={{ width: '100px' }}
-                                                    />
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </section>
+                        {!isNew && (
+                            <section className={styles.card}>
+                                <h2>Sprint Capacity Overrides</h2>
+                                <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px' }}>
+                                    Values show the effective capacity (MDs) in each sprint. Bold values indicate a manual override.
+                                </p>
+                                
+                                <table className={styles.table}>
+                                    <thead>
+                                        <tr>
+                                            <th>Sprint</th>
+                                            <th>Dates</th>
+                                            <th>Standard Work Days</th>
+                                            <th>Effective Capacity (MDs)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data?.sprints.map(sprint => {
+                                            const isOverridden = team.sprint_capacity_overrides?.[sprint.id] !== undefined;
+                                            
+                                            // Calculate standard working days (excluding weekends and holidays)
+                                            const { workDays, holidayCount } = calculateWorkingDays(sprint.start_date, sprint.end_date, team.country);
+                                            const holidayImpact = getHolidayImpact(team.total_capacity_mds || 0, holidayCount);
+                                            const calculatedCapacity = Math.max(0, (team.total_capacity_mds || 0) - holidayImpact);
+                                            return (
+                                                <tr key={sprint.id}>
+                                                    <td>{sprint.name}</td>
+                                                    <td style={{ fontSize: '12px', color: '#94a3b8' }}>
+                                                        {sprint.start_date} to {sprint.end_date}
+                                                    </td>
+                                                    <td style={{ color: holidayCount > 0 ? '#3b82f6' : '#94a3b8' }}>
+                                                        {workDays} days
+                                                        {holidayCount > 0 && (
+                                                            <span style={{ fontSize: '11px', marginLeft: '4px', opacity: 0.8 }} title={`${holidayCount} holiday(s)`}>
+                                                                (🏖️ -{holidayCount})
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td style={{ width: '160px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            <input 
+                                                                type="number"
+                                                                placeholder={String(Math.round(calculatedCapacity * 10) / 10)}
+                                                                value={team.sprint_capacity_overrides?.[sprint.id] ?? ''}
+                                                                onChange={e => handleOverrideChange(sprint.id, e.target.value)}
+                                                                title={isOverridden ? 'Manual Override Active' : 'Calculated Capacity'}
+                                                                style={{ 
+                                                                    flex: 1,
+                                                                    backgroundColor: isOverridden ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                                                                    border: isOverridden ? '1px solid #3b82f6' : '1px solid #334155',
+                                                                    borderRadius: '4px',
+                                                                    color: isOverridden ? '#fff' : '#94a3b8',
+                                                                    fontWeight: isOverridden ? 'bold' : 'normal',
+                                                                    padding: '6px 10px',
+                                                                    boxSizing: 'border-box',
+                                                                    textAlign: 'center',
+                                                                    outline: 'none',
+                                                                    fontSize: '14px'
+                                                                }}
+                                                            />
+                                                            {isOverridden && (
+                                                                <button
+                                                                    onClick={() => handleOverrideChange(sprint.id, '')}
+                                                                    title="Remove Override"
+                                                                    style={{
+                                                                        background: 'none',
+                                                                        border: 'none',
+                                                                        color: '#3b82f6',
+                                                                        cursor: 'pointer',
+                                                                        fontSize: '20px',
+                                                                        lineHeight: 1,
+                                                                        padding: '0 4px',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        opacity: 0.8
+                                                                    }}
+                                                                    onMouseOver={e => e.currentTarget.style.opacity = '1'}
+                                                                    onMouseOut={e => e.currentTarget.style.opacity = '0.8'}
+                                                                >
+                                                                    ×
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </section>
+                        )}
                     </div>
                 </>
             )}
         </PageWrapper>
     );
 };
+
+
+

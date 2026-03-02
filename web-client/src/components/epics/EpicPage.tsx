@@ -7,6 +7,7 @@ import styles from '../customers/CustomerPage.module.css';
 import { PageWrapper } from '../layout/PageWrapper';
 import { calculateEpicEffortPerSprint, calculateEpicIntensityRatio } from '../../utils/businessLogic';
 import Holidays from 'date-holidays';
+import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers';
 
 export interface EpicPageProps {
     epicId: string;
@@ -263,26 +264,11 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                                         const isOverridden = epic.sprint_effort_overrides?.[sprint.id] !== undefined;
 
                                         // Holiday calculation logic
-                                        let holidayCount = 0;
-                                        if (holidayChecker) {
-                                            const sStart = parseISO(sprint.start_date);
-                                            const sEnd = parseISO(sprint.end_date);
-                                            const hList = holidayChecker.getHolidays(sStart.getFullYear());
-                                            if (sEnd.getFullYear() !== sStart.getFullYear()) {
-                                                hList.push(...holidayChecker.getHolidays(sEnd.getFullYear()));
-                                            }
-                                            hList.forEach((h: any) => {
-                                                if (h.type !== 'public') return;
-                                                const hDate = new Date(h.date);
-                                                if (hDate >= sStart && hDate <= sEnd && !isWeekend(hDate)) {
-                                                    holidayCount++;
-                                                }
-                                            });
-                                        }
+                                        const { holidayCount } = calculateWorkingDays(sprint.start_date, sprint.end_date, team?.country);
 
                                         const capacityOverride = team?.sprint_capacity_overrides?.[sprint.id];
                                         const hasCapacityOverride = capacityOverride !== undefined;
-                                        const holidayImpact = ((team?.total_capacity_mds || 0) / 10) * holidayCount;
+                                        const holidayImpact = getHolidayImpact(team?.total_capacity_mds || 0, holidayCount);
                                         const effectiveCapacity = hasCapacityOverride ? capacityOverride : ((team?.total_capacity_mds || 0) - holidayImpact);
 
                                         return (
