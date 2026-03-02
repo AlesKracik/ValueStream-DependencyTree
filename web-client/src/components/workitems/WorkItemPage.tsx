@@ -6,6 +6,7 @@ import { SearchableDropdown } from '../common/SearchableDropdown';
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
 import { generateId } from '../../utils/security';
+import { calculateWorkItemEffort, calculateWorkItemTcv } from '../../utils/businessLogic';
 
 export interface WorkItemPageProps {
     workItemId: string;
@@ -102,6 +103,8 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     };
 
     const epics = isNew ? newWorkItemEpics : data.epics.filter(e => e.work_item_id === workItemId);
+    const calculatedEffort = calculateWorkItemEffort(workItem, epics);
+    const calculatedTcv = calculateWorkItemTcv(workItem, data.customers);
 
     const handleAddEpic = () => {
         const tempId = generateId('e-temp-');
@@ -299,6 +302,21 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                 clearOnSelect={false}
                             />
                         </label>
+                    </div>
+
+                    <div style={{ marginTop: '20px', padding: '12px', backgroundColor: 'rgba(96, 165, 250, 0.05)', borderRadius: '8px', border: '1px solid rgba(96, 165, 250, 0.2)', display: 'flex', gap: '24px' }}>
+                        <div style={{ fontSize: '14px', color: '#94a3b8' }}>
+                            <span style={{ fontWeight: 'bold', color: '#60a5fa', marginRight: '8px' }}>Total Calculated Effort:</span>
+                            <span style={{ color: '#f1f5f9' }}>{calculatedEffort} MDs</span>
+                        </div>
+                        <div style={{ fontSize: '14px', color: '#94a3b8' }}>
+                            <span style={{ fontWeight: 'bold', color: '#10b981', marginRight: '8px' }}>Total TCV Impact:</span>
+                            <span style={{ color: '#f1f5f9' }}>${calculatedTcv.toLocaleString()}</span>
+                        </div>
+                        <div style={{ fontSize: '14px', color: '#94a3b8' }}>
+                            <span style={{ fontWeight: 'bold', color: '#f59e0b', marginRight: '8px' }}>Current RICE Score:</span>
+                            <span style={{ color: '#f1f5f9' }}>{Math.round(workItem.score || 0)}</span>
+                        </div>
                     </div>
 
                     <div className={styles.formGrid} style={{ marginTop: '16px' }}>

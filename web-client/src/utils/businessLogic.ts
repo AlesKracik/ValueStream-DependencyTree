@@ -8,7 +8,7 @@ import type { WorkItem, Epic, Customer } from '../types/models';
 export const calculateWorkItemEffort = (workItem: WorkItem, epics: Epic[]): number => {
     const epicsForWorkItem = epics.filter(e => e.work_item_id === workItem.id);
     const epicMdsSum = epicsForWorkItem.reduce((sum, e) => sum + (e.effort_md || 0), 0);
-    return Math.max(workItem.total_effort_mds || 0, epicMdsSum);
+    return epicMdsSum > 0 ? epicMdsSum : (workItem.total_effort_mds || 0);
 };
 
 /**

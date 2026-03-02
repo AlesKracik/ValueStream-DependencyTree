@@ -237,10 +237,9 @@ const MockDataPersistencePlugin = (): Plugin => ({
             // Ensure we use numbers for effort calculation
             const epicMdsSum = f.epicMdsSum || 0;
             const totalEffort = Number(f.total_effort_mds || 0);
-            const displayEffort = Math.max(totalEffort, epicMdsSum, 1);
+            const displayEffort = Math.max(epicMdsSum > 0 ? epicMdsSum : totalEffort, 1);
 
-            if (f.all_customers_target) {
-                const type = f.all_customers_target.tcv_type;
+            if (f.all_customers_target) {                const type = f.all_customers_target.tcv_type;
                 const priority = f.all_customers_target.priority || 'Must-have';
                 // Global workitems are always bound to latest actual existing TCV
                 let totalRelevantTcv = allCustomers.reduce((sum, c) => sum + Number(type === 'existing' ? (c.existing_tcv || 0) : (c.potential_tcv || 0)), 0);
