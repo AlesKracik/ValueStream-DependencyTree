@@ -20,7 +20,7 @@ Sprints are grouped into **Fiscal Quarters** based on the project's `fiscal_year
 ### Calculation Logic
 ```mermaid
 graph TD
-    Date[Sprint Start Date] --> Shift[Shift by Fiscal Start Month]
+    Date[Sprint End Date] --> Shift[Shift by Fiscal Start Month]
     Shift --> Quarter[Calculate Q1-Q4]
     Shift --> Year[Determine Fiscal Year]
     Quarter --> Label[FY2026 Q1]

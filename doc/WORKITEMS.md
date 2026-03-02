@@ -8,6 +8,7 @@ Work Items (also referred to as Features) are strategic initiatives that connect
 export interface WorkItem {
   id: string;
   name: string;
+  description?: string; // Detailed context/requirements
   total_effort_mds: number; // Estimated man-days
   score: number;            // Calculated RICE score
   customer_targets: {
@@ -48,9 +49,11 @@ graph LR
 ## Visual Representation
 - **Node Type:** `WorkItemNode`.
 - **Scaling:** Size scales based on the RICE score relative to the global maximum score.
+- **Tooltip:** Hovering over the node displays the `description`.
 - **Status Icons:**
     - `📦`: Released (linked to a sprint).
-    - `⚠️`: Missing dates in connected Epics.
+    - `🕒`: Missing dates in connected Epics.
+    - `📏`: Effort Not Estimated (0 MDs on item or any connected epic).
     - `🌐`: Global (targets all customers).
 
 ## Relationships

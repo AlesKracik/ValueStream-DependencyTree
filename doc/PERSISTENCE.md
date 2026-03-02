@@ -29,10 +29,12 @@ The response includes standard entities plus a **`metrics`** object used for con
 - `metrics.maxRoi`: The global maximum Return on Investment (TCV/Effort) for edge scaling.
 
 ### 2. `POST /api/entity/{collection}`
-Handles Upsert operations. When a Work Item or Customer is updated, the backend automatically recalculates all affected RICE scores on the next `loadData` call.
+Handles Upsert operations. 
+- **Debouncing:** Client-side updates are debounced by 1000ms to prevent excessive database writes during rapid UI interactions (e.g., typing in text areas).
+- **Recalculation:** When a Work Item or Customer is updated, the backend automatically recalculates all affected RICE scores on the next `loadData` call.
 
-### 3. DELETE /api/entity/{collection}
-Handles record removal.
+### 3. `DELETE /api/entity/{collection}/{id}`
+Handles record removal. The entity ID is passed as a URL parameter.
 
 ### 4. POST /api/mongo/databases
 Fetches a list of all databases available on the configured MongoDB cluster. Used for the Database Discovery feature in the UI.

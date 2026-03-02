@@ -48,12 +48,14 @@ Both Customers and Work Items feature tabbed detail pages for better organizatio
 ![Work Item Detail](images/workitem-detail.png)
 
 - **Work Item Details Section:** Edit the name, total man-day estimates, and release target.
+- **Description:** A dedicated textarea allows you to provide detailed context, requirements, or links for the work item. This description is displayed as a tooltip on the main dashboard when you hover over the item's node.
 - **Tabs:**
     - **Targeted Customers:** Define which customers this initiative benefits. You can target either the **"Latest Actual"** TCV or a specific **historical record** from the customer's timeline.
     - **Epics:** Manage the execution units (Epics) assigned to engineering teams that fulfill this work item.
 
 ### 4. Work Item & Team Management
 - **Labels:** To maximize legibility, all node names are placed **below the circles** in a large, bold font. Circles are reserved for core numerical metrics (TCV, RICE Score, or Capacity).
+- **Tooltips:** Hover over any Work Item node to view its full **Description**.
 - **Searchable Assignments:** All dropdown menus for linking entities (e.g., adding a Customer Target to a Work Item) are **Searchable**. Simply type a few letters to filter the options.
 - **Node Status Icons:** Work Items display status indicators in the top-right of their circle:
     - **📦 Released:** Marked when a Work Item is associated with a specific release sprint.
@@ -99,7 +101,8 @@ Use the dedicated **Settings** page to configure the application behavior. Chang
     - **Existence Badges:** A green **"Exists"** or orange **"New"** badge appears next to the database name after testing, providing immediate feedback on your connection state.
 
 ### 8. Persistence & Collaboration
-- **Automatic Saving:** The application features a robust auto-save system. Edits to node parameters, settings, and structural relationships are written back to the server instantly (or when you click away from a field), ensuring your work is never lost.
+- **Automatic Saving:** The application features a robust auto-save system. Edits to node parameters, settings, and structural relationships are written back to the server.
+- **Performance-Optimized Writes (Debouncing):** To ensure a smooth experience and reduce database load, update operations are **debounced**. Rapid changes (like typing a description or name) are bundled together and saved only once you stop typing for 1 second.
 - **Storage:** The application uses MongoDB for persistence, with a fallback to `staticImport.json` for lightweight or portable environments.
 - **Auto-Snapshot:** When a sprint ends, the system automatically snapshots the calculated effort into permanent overrides, preserving your delivery history.
 - **Data Export:** On the Settings page, you can export your entire current project state as a `staticImport.json` file for local backup or sharing with other team members.

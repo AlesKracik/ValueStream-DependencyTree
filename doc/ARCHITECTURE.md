@@ -55,6 +55,7 @@ The backend fetches raw entities and performs the "heavy lifting":
 ### 4. Mutations & Reactivity
 User actions (updates, deletes, adds) trigger local state changes via mutation functions (`addEpic`, `updateWorkItem`, etc.) which:
 -   **Optimistic Updates:** Immediately execute a local update on the React state array for zero-latency UI feedback.
+-   **Debounced Persistence:** Update operations are debounced by 1000ms. This bundles rapid changes (like typing a description) into a single API call to reduce server load and MongoDB write frequency.
 -   **Asynchronous Persistence:** Fire off background background `fetch` requests (via `authorizedFetch`) to the `/api/entity` endpoints.
 -   **Non-Blocking:** These operations do not block the UI thread waiting for server confirmation.
 
@@ -74,7 +75,8 @@ sequenceDiagram
     Note right of Vite: Calculate RICE Scores & Global Metrics
     Vite-->>UI: JSON Data (Aggregated & Scored)
 
-    Note over UI, Jira: Scenario 2: Save Entity Change
+    Note over UI, Jira: Scenario 2: Save Entity Change (Debounced)
+    UI->>UI: User Types... (1000ms debounce)
     UI->>Vite: POST /api/entity/customers (ID: c1, {name: "New Name"})
     Vite->>FS: Read settings.json
     Vite->>DB: updateOne({id: "c1"}, {$set: {name: "New Name"}})
@@ -99,12 +101,14 @@ graph TD
     hooks[hooks/]
     contexts[contexts/]
     types[types/]
+    utils[utils/]
 
     src --> components
     src --> pages
     src --> hooks
     src --> contexts
     src --> types
+    src --> utils
 
     components --> common["common/ - Shared UI"]
     components --> nodes["nodes/ - React Flow Custom Nodes"]
@@ -131,6 +135,7 @@ The dashboard relies on custom React Flow nodes (`src/components/nodes/`). All n
 2. **Size Calculations:** Node dimensions are dynamically calculated using a base size and a ratio derived from the entity's relative metric weight against a global maximum provided by the backend (e.g., `data.maxScore`, `data.maxTcv`).
 3. **Inline Styling:** Most structural, shape, and shadow logic is applied via inline React `style={{}}` objects to support dynamic dimension calculation (`outerSize`, `innerSize`).
 4. **Handles:** Invisible `<Handle>` components (from `@xyflow/react`) are positioned absolutely on the left/right edges to allow for programmatic edge connections.
+5. **Tooltips:** Nodes use the standard `title` attribute to provide contextual information (e.g., WorkItem description) on hover.
 
 ```mermaid
 graph LR
@@ -239,6 +244,7 @@ erDiagram
     WORK-ITEM {
         string id
         string name
+        string description
         number total_effort_mds
         number score
     }

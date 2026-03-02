@@ -1,7 +1,4 @@
 * bugs
-  • import alert should follow other custom app alerts ✅
-  • add workitem description ✅
-  • it seems mongo is wrinting multiples of reads, arent we sending too much data to save too often? ✅ (Implemented debounced persistence)
   • work items - sort by name/score/TCV/effort
   • customers - sort by name/existing/potential TCV
   • make sure ids are unique
