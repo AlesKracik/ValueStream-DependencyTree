@@ -223,8 +223,9 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
             }
 
             persistSettings(newSettings).then(() => {
-                // If connection string or integration keys changed, re-fetch everything from the new source
+                // If connection string, integration keys, or database creation flag changed, re-fetch everything from the new source
                 if (updates.mongo_uri !== undefined || updates.mongo_db !== undefined || updates.mongo_auth_method !== undefined ||
+                    updates.mongo_create_if_not_exists !== undefined ||
                     updates.jira_base_url !== undefined || updates.jira_api_token !== undefined) {
                     refreshData();
                 }

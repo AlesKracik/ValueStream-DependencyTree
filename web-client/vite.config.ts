@@ -128,15 +128,18 @@ const MockDataPersistencePlugin = (): Plugin => ({
       // helper to connect to Mongo
       async function getDb(settings: any, checkExists = false) {
         const uri = settings.mongo_uri;
+        if (!uri) throw new Error("Mongo URI not provided");
         if (!await isSafeUrl(uri)) {
           throw new Error("Invalid or unsafe MongoDB URI");
         }
-        const dbName = settings.mongo_db;
+        
+        const dbName = settings.mongo_db || 'valuestream';
         const authMethod = settings.mongo_auth_method || 'scram';
 
-        if (!uri) throw new Error("Mongo URI not provided");
-
-        const options: any = {};
+        const options: any = {
+          serverSelectionTimeoutMS: 5000,
+          connectTimeoutMS: 5000,
+        };
 
         if (authMethod === 'aws') {
           if (!settings.mongo_aws_access_key || !settings.mongo_aws_secret_key) {
@@ -148,35 +151,52 @@ const MockDataPersistencePlugin = (): Plugin => ({
             AWS_SECRET_ACCESS_KEY: settings.mongo_aws_secret_key,
             AWS_SESSION_TOKEN: settings.mongo_aws_session_token
           };
-          // Explicitly prevent SCRAM fallback if URI has embedded user:pass
           options.auth = { username: '', password: '' };
         } else if (authMethod === 'oidc') {
           if (!settings.mongo_oidc_token) {
             throw new Error("Access Token is required for OIDC authentication.");
           }
           options.authMechanism = 'MONGODB-OIDC';
-          options.authMechanismProperties = {
-            ENVIRONMENT: 'test',
-          };
-          options.auth = {
-            username: settings.mongo_oidc_token,
-            password: ''
-          };
+          options.authMechanismProperties = { ENVIRONMENT: 'test' };
+          options.auth = { username: settings.mongo_oidc_token, password: '' };
         }
 
         const client = new MongoClient(uri, options);
         await client.connect();
+        const db = client.db(dbName);
 
         if (checkExists && !settings.mongo_create_if_not_exists) {
-          const dbs = await client.db().admin().listDatabases();
-          const exists = dbs.databases.some((d: any) => d.name === (dbName || 'valuestream'));
-          if (!exists) {
+          try {
+            // Check existence by listing collections on the specific database.
+            // This is safer than listDatabases on admin which requires cluster-wide permissions.
+            const collections = await db.listCollections().toArray();
+            if (collections.length === 0) {
+              // In MongoDB, a database without collections technically "doesn't exist" in listDatabases.
+              // So if it's empty, we should check listDatabases IF we have permission, 
+              // but if not, we assume it's missing if create_if_not_exists is false.
+              try {
+                const dbs = await client.db().admin().listDatabases();
+                const exists = dbs.databases.some((d: any) => d.name === dbName);
+                if (!exists) {
+                   await client.close();
+                   throw new Error(`Database '${dbName}' does not exist and 'Create if not exists' is disabled.`);
+                }
+              } catch (adminErr) {
+                // If we can't listDatabases, we rely on the fact that listCollections was empty.
+                // It's safer to throw here to avoid silent failure when the user explicitly said "don't create".
+                await client.close();
+                throw new Error(`Database '${dbName}' has no collections and cluster-wide database listing is restricted. Please check the name or enable 'Create if not exists'.`);
+              }
+            }
+          } catch (err: any) {
+            if (err.message.includes('Database') && err.message.includes('does not exist')) throw err;
+            // Connectivity error
             await client.close();
-            throw new Error(`Database '${dbName || 'valuestream'}' does not exist and 'Create if not exists' is disabled.`);
+            throw err;
           }
         }
 
-        return client.db(dbName || 'valuestream');
+        return db;
       }
 
       function calculateQuarter(dateStr: string, fiscalStartMonth: number) {
@@ -524,14 +544,21 @@ const MockDataPersistencePlugin = (): Plugin => ({
             throw new Error('Missing mongo_uri');
           }
           
-          const client = new MongoClient(config.mongo_uri);
+          const client = new MongoClient(config.mongo_uri, { serverSelectionTimeoutMS: 5000 });
           await client.connect();
-          const dbs = await client.db().admin().listDatabases();
+          let databases: string[] = [];
+          try {
+            const dbs = await client.db().admin().listDatabases();
+            databases = dbs.databases.map((d: any) => d.name);
+          } catch (err) {
+            // If listing fails, we can't provide the list, but we shouldn't fail the whole request
+            console.warn("Could not list databases:", err);
+          }
           await client.close();
           
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
-          res.end(JSON.stringify({ success: true, databases: dbs.databases.map((d: any) => d.name) }));
+          res.end(JSON.stringify({ success: true, databases }));
         } catch (e: any) {
           console.error('Error listing mongo databases:', e);
           res.setHeader('Content-Type', 'application/json');
@@ -551,26 +578,49 @@ const MockDataPersistencePlugin = (): Plugin => ({
             throw new Error('Missing mongo_uri');
           }
           
-          // Test connection and check existence
-          const client = new MongoClient(config.mongo_uri);
+          const targetDb = config.mongo_db || 'valuestream';
+          const client = new MongoClient(config.mongo_uri, { serverSelectionTimeoutMS: 5000 });
           await client.connect();
-          const dbs = await client.db().admin().listDatabases();
-          const exists = dbs.databases.some((d: any) => d.name === (config.mongo_db || 'valuestream'));
+          
+          let exists = false;
+          try {
+              // Try the specific DB first (more likely to have permissions)
+              const collections = await client.db(targetDb).listCollections().toArray();
+              exists = collections.length > 0;
+              
+              if (!exists) {
+                  // Fallback to listDatabases if possible to be absolutely sure
+                  try {
+                      const dbs = await client.db().admin().listDatabases();
+                      exists = dbs.databases.some((d: any) => d.name === targetDb);
+                  } catch (adminErr) {
+                      // Skip if no admin permissions
+                  }
+              }
+          } catch (err) {
+              // If we can't even list collections, it might not exist or we might not have access
+          }
           await client.close();
+
+          let message = exists 
+            ? `Connection successful! Database '${targetDb}' exists.` 
+            : `Connection successful, but database '${targetDb}' does not exist yet.`;
+          
+          if (!exists && config.mongo_create_if_not_exists) {
+              message = `Connection successful! Database '${targetDb}' does not exist yet, but will be created automatically.`;
+          }
 
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
           res.end(JSON.stringify({ 
             success: true, 
             exists,
-            message: exists 
-              ? `Connection successful! Database '${config.mongo_db || 'valuestream'}' exists.` 
-              : `Connection successful, but database '${config.mongo_db || 'valuestream'}' does not exist yet.` 
+            message
           }));
         } catch (e: any) {
           console.error('Error testing mongo connection:', e);
           res.setHeader('Content-Type', 'application/json');
-          res.statusCode = e.message === 'Payload Too Large' ? 413 : 200; 
+          res.statusCode = 200; 
           res.end(JSON.stringify({ success: false, error: e.message }));
         }
       } else if (req.url === '/api/mongo/export' && req.method === 'POST') {

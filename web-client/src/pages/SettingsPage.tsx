@@ -110,7 +110,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           mongo_aws_access_key,
           mongo_aws_secret_key,
           mongo_aws_session_token,
-          mongo_oidc_token
+          mongo_oidc_token,
+          mongo_create_if_not_exists: localFormData.mongo_create_if_not_exists || settings.mongo_create_if_not_exists
         }),
       });
       const resData = await response.json();

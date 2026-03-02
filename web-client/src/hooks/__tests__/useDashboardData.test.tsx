@@ -264,4 +264,22 @@ describe('useDashboardData', () => {
             expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/loadData'), expect.anything());
         });
     });
+
+    it('refreshes data when mongo_create_if_not_exists setting changes', async () => {
+        const { result } = renderHook(() => useDashboardData());
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        // Reset mock to track new calls
+        vi.mocked(fetch).mockClear();
+
+        await act(async () => {
+            result.current.updateSettings({ mongo_create_if_not_exists: true });
+        });
+
+        // Should call persist settings then refresh data (loadData)
+        expect(fetch).toHaveBeenCalledWith('/api/settings', expect.objectContaining({ method: 'POST' }));
+        await waitFor(() => {
+            expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/loadData'), expect.anything());
+        });
+    });
 });
