@@ -71,11 +71,14 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
         }
     };
 
-    const handleRemoveEpic = (id: string) => {
+    const handleDeleteEpic = async (id: string, name: string) => {
         if (isNew) {
             setNewWorkItemEpics(prev => prev.filter(e => e.id !== id));
         } else {
-            updateEpic(id, { work_item_id: undefined });
+            const confirmed = await showConfirm('Delete Epic', `Are you sure you want to delete "${name}"? This will permanently remove the epic from the database.`);
+            if (confirmed) {
+                deleteEpic(id);
+            }
         }
     };
 
@@ -507,7 +510,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                             const val = parseInt(e.target.value) || 0;
                                                             isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, effort_md: val } : ev)) : updateEpic(epic.id, { effort_md: val });
                                                         }}
-                                                        style={{ width: '50px' }}
+                                                        style={{ width: '80px' }}
                                                     />
                                                 </td>
                                                 <td>
@@ -558,8 +561,8 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                     <button className="btn-secondary" onClick={() => syncEpic(epic.id, epic.jira_key)} disabled={syncingId === epic.id}>
                                                         {syncingId === epic.id ? 'Syncing...' : 'Sync Jira'}
                                                     </button>
-                                                    <button className="btn-danger" onClick={() => handleRemoveEpic(epic.id)}>
-                                                        Unlink
+                                                    <button className="btn-danger" onClick={() => handleDeleteEpic(epic.id, epic.name || epic.jira_key)}>
+                                                        Delete
                                                     </button>
                                                 </td>
                                             </tr>
