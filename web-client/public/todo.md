@@ -1,6 +1,6 @@
 * bugs
   * workitems/epics/sync from jira does not throw error if it does not work
-  * teams - capacicty override should have easy delete override option
+  * [DONE] teams - capacicty override should have easy delete override option
   * country does not contain full list of coutries and should be able to tyoe to fileter  
   * customer/targetewd work - existing should have same option as in workitem - to choose which history existing TCV
 * features
@@ -9,5 +9,5 @@
   * TCV History Logic Enhancement: Currently, when a Customer's Actual TCV is updated (archived to history), Work Items linked to "Latest Actual" remain linked to the new "Latest Actual". Consider if some Work Items should be automatically re-linked to the archived historical entry to preserve their context.
 * archive old sprints
 * code readabilty and architecture
-  * find parts copy&pasted (or very simmilar) on multiple places and refactor them to be reusable 
+  * [DONE] find parts copy&pasted (or very simmilar) on multiple places and refactor them to be reusable 
 * security

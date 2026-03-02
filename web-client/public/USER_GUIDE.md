@@ -67,6 +67,11 @@ Both Customers and Work Items feature tabbed detail pages for better organizatio
     - **Effort Prioritization:** Total effort is calculated by prioritizing **Epic-level estimates**. If related Epics have a combined effort greater than 0, that sum is used. Otherwise, the high-level Work Item estimate is used. This ensures that granular execution data always takes precedence over rough high-level estimates.
 - **Advanced Sorting:** List pages for **Work Items**, **Customers**, and **Teams** now support multi-criteria sorting (e.g., sort by TCV, Effort, or Score) with ascending/descending toggles. Sort buttons highlight the active criteria and direction.
 - **Team Capacity:** Team circles show their base capacity in Man-Days (MDs). If a team is over-allocated in a specific sprint, the capacity marker above their Gantt lane will turn red.
+- **Team Management:**
+    - **Add/Delete Teams:** Teams can be managed via the **Team List** page. The **Delete Team** function includes a confirmation dialog to prevent accidental data loss.
+    - **Capacity Overrides:** Both Epics and Teams support **Manual Overrides** for sprint-specific values. 
+    - **Calculated Baseline:** For teams, the baseline capacity automatically accounts for **Public Holidays** (excluding weekends). Sprints with holidays display a 🏖️ icon and a breakdown of the holiday impact.
+    - **Visual Feedback:** All manual overrides (effort or capacity) are highlighted with a **blue background** and bold text in the detail tables. Click the **"×"** button next to any override to clear it and return to the automatic calculation.
 
 ### 5. Progress-Aware Gantt Timeline
 The Gantt chart distinguishes between what has happened and what is planned:

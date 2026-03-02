@@ -17,8 +17,14 @@ export interface Team {
 ## Capacity Logic
 The system calculates available capacity for each team per sprint:
 1. **Base Capacity:** `total_capacity_mds`.
-2. **Holiday Impact:** Automatic reduction of capacity (10% per public holiday) using the `date-holidays` library based on the team's `country`.
+2. **Refined Holiday Impact:** Automatic reduction of capacity (10% per **public holiday** that falls on a weekday) using the `date-holidays` library based on the team's `country`. Observances or religious holidays that are not public days off are excluded.
 3. **Overrides:** Sprint-specific capacity adjustments manually set by users.
+   - **Visual Feedback:** Active overrides are highlighted in blue in the Team Detail page.
+   - **Quick Clear:** Users can click the "×" button to revert to the calculated capacity.
+
+## Team Management
+- **Add Team:** New teams can be created from the Team List page.
+- **Delete Team:** Teams can be deleted from their detail page (includes a confirmation dialog and automatic clearing of team assignments for affected epics).
 
 ## Visual Representation
 - **Node Type:** `TeamNode`.
