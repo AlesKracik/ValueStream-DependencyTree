@@ -188,8 +188,8 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                                     ))}
                         {isCreating && (
                             <div className={styles.listItem} style={{ 
-                                border: '2px dashed #10b981', 
-                                backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                                border: '2px dashed #3b82f6', 
+                                backgroundColor: 'rgba(59, 130, 246, 0.05)',
                                 marginTop: '12px'
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -202,7 +202,7 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                                             style={{ 
                                                 background: 'none', 
                                                 border: 'none', 
-                                                color: '#10b981', 
+                                                color: '#60a5fa', 
                                                 fontWeight: 'bold', 
                                                 fontSize: '16px',
                                                 outline: 'none', 
@@ -210,13 +210,26 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                                                 marginBottom: '4px'
                                             }}
                                         />
-                                        <div className={styles.itemDetails} style={{ color: '#10b981' }}>
+                                        <div className={styles.itemDetails} style={{ color: '#60a5fa' }}>
                                             {newSprintDraft.start_date} to {newSprintDraft.end_date} (Draft)
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '8px' }}>
-                                        <button onClick={handleCreate} className="btn-primary" style={{ backgroundColor: '#10b981' }}>Save</button>
-                                        <button onClick={() => setIsCreating(false)} className="btn-secondary">Cancel</button>
+                                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                                        <span style={{ 
+                                            fontSize: '11px', 
+                                            textTransform: 'uppercase', 
+                                            fontWeight: 'bold',
+                                            padding: '2px 8px',
+                                            borderRadius: '10px',
+                                            backgroundColor: '#3b82f6',
+                                            color: 'white'
+                                        }}>
+                                            NEW
+                                        </span>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <button onClick={handleCreate} className="btn-primary">Save</button>
+                                            <button onClick={() => setIsCreating(false)} className="btn-secondary">Cancel</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
