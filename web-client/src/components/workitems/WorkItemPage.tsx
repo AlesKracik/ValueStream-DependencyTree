@@ -479,7 +479,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                             <th style={{ width: '100px' }}>Effort (MDs)</th>
                                             <th style={{ width: '140px' }}>Start</th>
                                             <th style={{ width: '140px' }}>End</th>
-                                            <th style={{ width: '160px' }}>Team</th>
+                                            <th style={{ width: '120px' }}>Team</th>
                                             <th style={{ width: '200px' }}>Actions</th>
                                         </tr>
                                     </thead>
@@ -499,7 +499,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                         type="text"
                                                         value={epic.name}
                                                         onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, name: e.target.value } : ev)) : updateEpic(epic.id, { name: e.target.value })}
-                                                        style={{ width: '100%', minWidth: '1000px' }}
+                                                        style={{ width: '100%', minWidth: '350px' }}
                                                     />
                                                 </td>
                                                 <td>
@@ -553,6 +553,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                     <select
                                                         value={epic.team_id}
                                                         onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, team_id: e.target.value } : ev)) : updateEpic(epic.id, { team_id: e.target.value })}
+                                                        style={{ width: '100px' }}
                                                     >
                                                         {data?.teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                                     </select>
