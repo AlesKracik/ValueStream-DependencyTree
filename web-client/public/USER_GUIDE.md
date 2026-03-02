@@ -49,6 +49,7 @@ Both Customers and Work Items feature tabbed detail pages for better organizatio
 
 - **Work Item Details Section:** Edit the name, total man-day estimates, and release target.
 - **Description:** A dedicated textarea allows you to provide detailed context, requirements, or links for the work item. This description is displayed as a tooltip on the main dashboard when you hover over the item's node.
+- **Metrics Summary:** A highlighted summary box displays the **Total Calculated Effort**, **Total TCV Impact**, and the current **RICE Score**.
 - **Tabs:**
     - **Targeted Customers:** Define which customers this initiative benefits. You can target either the **"Latest Actual"** TCV or a specific **historical record** from the customer's timeline.
     - **Epics:** Manage the execution units (Epics) assigned to engineering teams that fulfill this work item.
@@ -62,10 +63,9 @@ Both Customers and Work Items feature tabbed detail pages for better organizatio
     - **🕒 Missing Dates:** Displays when a Work Item has connected Epics that are missing target start or end dates (meaning they cannot be visualized on the Gantt chart).
     - **📏 Effort Not Estimated:** Displays (in yellow) when a Work Item or any of its connected Epics have an effort of 0 MDs, indicating that the item has not yet been estimated.
     - **🌐 Global:** Marked when a Work Item is designated to impact **ALL Customers** simultaneously.
-- **Global Work Items (Maintenance/Tech Debt):**
-    - **Configuration:** In the Work Item detail page, check the **"ALL CUSTOMERS (Global)"** row at the top of the target table.
-    - **TCV Basis:** You can choose whether the item's impact is calculated based on total **Existing TCV** or **Potential TCV** across the entire system.
-- **Score Calculation:** Work Items use a RICE-based score that scales visually. The number inside the purple circle is the calculated priority score. For global items, the impact is the sum of relevant TCV across all existing customers.
+- **Score Calculation:** Work Items use a RICE-based score that scales visually. The number inside the purple circle is the calculated priority score.
+    - **Effort Prioritization:** Total effort is calculated by prioritizing **Epic-level estimates**. If related Epics have a combined effort greater than 0, that sum is used. Otherwise, the high-level Work Item estimate is used. This ensures that granular execution data always takes precedence over rough high-level estimates.
+- **Advanced Sorting:** List pages for **Work Items**, **Customers**, and **Teams** now support multi-criteria sorting (e.g., sort by TCV, Effort, or Score) with ascending/descending toggles. Sort buttons highlight the active criteria and direction.
 - **Team Capacity:** Team circles show their base capacity in Man-Days (MDs). If a team is over-allocated in a specific sprint, the capacity marker above their Gantt lane will turn red.
 
 ### 5. Progress-Aware Gantt Timeline
@@ -99,13 +99,16 @@ Use the dedicated **Settings** page to configure the application behavior. Chang
     - **Database Discovery:** After entering a URI and clicking **"Test Mongo Connection"**, the application automatically fetches a list of existing databases on your cluster.
     - **Safety Rail:** To prevent accidental database creation due to typos, the **"Create database if it doesn't exist"** checkbox must be explicitly enabled if you want to initialize a new database.
     - **Existence Badges:** A green **"Exists"** or orange **"New"** badge appears next to the database name after testing, providing immediate feedback on your connection state.
+- **ID Integrity:** The system ensures that all entity IDs are unique within their collection. If a manual update or import causes an ID collision, a **Conflict** alert will notify you before any data is overwritten.
 
 ### 8. Persistence & Collaboration
 - **Automatic Saving:** The application features a robust auto-save system. Edits to node parameters, settings, and structural relationships are written back to the server.
 - **Performance-Optimized Writes (Debouncing):** To ensure a smooth experience and reduce database load, update operations are **debounced**. Rapid changes (like typing a description or name) are bundled together and saved only once you stop typing for 1 second.
 - **Storage:** The application uses MongoDB for persistence, with a fallback to `staticImport.json` for lightweight or portable environments.
 - **Auto-Snapshot:** When a sprint ends, the system automatically snapshots the calculated effort into permanent overrides, preserving your delivery history.
-- **Data Export:** On the Settings page, you can export your entire current project state as a `staticImport.json` file for local backup or sharing with other team members.
+- **Data Export & Import:** 
+    - **Export:** Save your entire current project state as a `staticImport.json` file for backup or sharing.
+    - **Import:** Restore data from a JSON file. This operation uses the app's standard visual identity and includes safety confirmation modals to prevent accidental data loss.
 
 ### 9. Security & Access Control
 The application includes a simple but effective security layer to protect your strategic data and integration tokens.
