@@ -35,7 +35,7 @@ describe('useDashboardData', () => {
     });
 
     it('loads initial data', async () => {
-        const { result } = renderHook(() => useDashboardData());
+        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
         
         expect(result.current.loading).toBe(true);
         
@@ -45,7 +45,7 @@ describe('useDashboardData', () => {
 
     it('passes dashboardId and filters to the API', async () => {
         const filters = { customerFilter: 'test', minTcvFilter: '100' };
-        renderHook(() => useDashboardData('dash123', filters));
+        renderHook(() => useDashboardData('dash123', filters, 0));
         
         await waitFor(() => {
             expect(fetch).toHaveBeenCalledWith(
@@ -69,7 +69,7 @@ describe('useDashboardData', () => {
             minTcvFilter: '500',
             minScoreFilter: '10'
         };
-        renderHook(() => useDashboardData('dash789', filters));
+        renderHook(() => useDashboardData('dash789', filters, 0));
         
         await waitFor(() => {
             const expectedUrl = '/api/loadData?dashboardId=dash789&customerFilter=cust&workItemFilter=work&teamFilter=team&epicFilter=epic&releasedFilter=released&minTcvFilter=500&minScoreFilter=10';
@@ -85,7 +85,7 @@ describe('useDashboardData', () => {
     });
 
     it('adds a customer', async () => {
-        const { result } = renderHook(() => useDashboardData());
+        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         const newCust = { id: 'c2', name: 'Cust 2', existing_tcv: 0, potential_tcv: 50 };
@@ -107,7 +107,7 @@ describe('useDashboardData', () => {
     });
 
     it('deletes a sprint', async () => {
-        const { result } = renderHook(() => useDashboardData());
+        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         act(() => {
@@ -116,7 +116,7 @@ describe('useDashboardData', () => {
 
         expect(result.current.data?.sprints).toHaveLength(0);
         expect(fetch).toHaveBeenCalledWith(
-            '/api/entity/sprints',
+            '/api/entity/sprints/s1',
             expect.objectContaining({
                 method: 'DELETE',
                 headers: expect.objectContaining({
@@ -127,7 +127,7 @@ describe('useDashboardData', () => {
     });
 
     it('cascades deleteCustomer to workItem targets', async () => {
-        const { result } = renderHook(() => useDashboardData());
+        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         act(() => {
@@ -160,7 +160,7 @@ describe('useDashboardData', () => {
             return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
         }));
 
-        const { result } = renderHook(() => useDashboardData());
+        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         act(() => {
@@ -182,7 +182,7 @@ describe('useDashboardData', () => {
     });
 
     it('recomputes sprint quarters when fiscal year setting changes', async () => {
-        const { result } = renderHook(() => useDashboardData());
+        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         // Initial: FY starts in January (default). 2026-01-01 is FY2026 Q1
@@ -229,7 +229,7 @@ describe('useDashboardData', () => {
             return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
         }));
 
-        const { result } = renderHook(() => useDashboardData());
+        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         // FY starts July 1.
@@ -248,7 +248,7 @@ describe('useDashboardData', () => {
     });
 
     it('refreshes data when MongoDB connection settings change', async () => {
-        const { result } = renderHook(() => useDashboardData());
+        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         // Reset mock to track new calls
@@ -266,7 +266,7 @@ describe('useDashboardData', () => {
     });
 
     it('refreshes data when mongo_create_if_not_exists setting changes', async () => {
-        const { result } = renderHook(() => useDashboardData());
+        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         // Reset mock to track new calls

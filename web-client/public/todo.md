@@ -1,7 +1,7 @@
 * bugs
   • import alert should follow other custom app alerts ✅
   • add workitem description ✅
-  • it seems mongo is wrinting multiples of reads, arent we sending too much data to save too often?
+  • it seems mongo is wrinting multiples of reads, arent we sending too much data to save too often? ✅ (Implemented debounced persistence)
   • work items - sort by name/score/TCV/effort
   • customers - sort by name/existing/potential TCV
   • make sure ids are unique
@@ -16,4 +16,3 @@
     * List Pages Duplication: CustomerListPage.tsx, WorkItemListPage.tsx, DashboardListPage.tsx, and TeamListPage.tsx share near-identical structural boilerplate for rendering filtered lists. They should be refactored into a single generic <GenericListPage /> or <EntityList /> component that accepts a title, a list of items, an item render prop, and an action button prop.
     * React Flow Node Duplication: CustomerNode.tsx, TeamNode.tsx, and WorkItemNode.tsx duplicate identical inline styling logic for drawing responsive circular nodes, applying box shadows, absolute-positioning text labels beneath the nodes, scaling base sizes, and wiring up transparent <Handle> components. They should be refactored into a single <BaseCircleNode /> wrapper component.
     * Page Container and Loading States Duplication: Almost every page (CustomerPage, EpicPage, TeamPage, WorkItemPage, DashboardEditPage, etc.) duplicates the exact same boilerplate code for handling if (loading) return ..., if (error) return ..., and wrapping the main content in <div className={styles.pageContainer}>. This should be extracted into a reusable <PageWrapper> layout component that centralizes data-fetching UI states.
-    * Date Formatting / Quarter Calculation Duplication: The exact same calculateQuarter algorithm (determining the FY/Q relative to a fiscal start month) is duplicated entirely between the backend (vite.config.ts) and the frontend (useDashboardData.ts). It should be moved into a shared utils/dateHelpers.ts file. ✅

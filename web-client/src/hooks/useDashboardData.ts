@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { parseISO } from 'date-fns';
 import type { DashboardData, Customer, WorkItem, Team, Epic, Settings, Sprint, DashboardEntity, DashboardParameters } from '../types/models';
-import { authorizedFetch } from '../utils/api';
+import { authorizedFetch, debounce } from '../utils/api';
 import { calculateQuarter } from '../utils/dateHelpers';
 
 const persistEntity = async (collection: string, method: 'POST' | 'DELETE', entity: any) => {
     try {
-        await authorizedFetch(`/api/entity/${collection}`, {
+        await authorizedFetch(`/api/entity/${collection}${method === 'DELETE' ? `/${entity.id}` : ''}`, {
             method,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(entity)
+            body: method === 'DELETE' ? undefined : JSON.stringify(entity)
         });
     } catch (e) {
         console.error(`Failed to ${method} entity in ${collection}`, e);
@@ -28,10 +28,14 @@ const persistSettings = async (settings: any) => {
     }
 };
 
-export function useDashboardData(dashboardId?: string, filters?: Partial<DashboardParameters>) {
+export function useDashboardData(dashboardId?: string, filters?: Partial<DashboardParameters>, persistenceDebounceMs = 1000) {
     const [data, setData] = useState<DashboardData | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<Error | null>(null);
+
+    // Debounced persistence functions
+    const debouncedPersist = useMemo(() => debounce(persistEntity, persistenceDebounceMs), [persistenceDebounceMs]);
+    const debouncedSettings = useMemo(() => debounce(persistSettings, persistenceDebounceMs), [persistenceDebounceMs]);
 
     const fetchData = async () => {
         try {
@@ -67,13 +71,10 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
         fetchData();
     };
 
-    // Note: Server now handles RICE score calculation and filtering.
-    // Client-side automatic persistence of scores is removed to avoid unnecessary DB writes during view.
-
     const addCustomer = (customer: Customer) => {
+        persistEntity('customers', 'POST', customer);
         setData(prev => {
             if (!prev) return prev;
-            persistEntity('customers', 'POST', customer);
             return { ...prev, customers: [...prev.customers, customer] };
         });
     };
@@ -109,7 +110,7 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
             if (!prev) return prev;
             const existing = prev.customers.find(c => c.id === id);
             if (existing) {
-                persistEntity('customers', 'POST', { ...existing, ...updates });
+                debouncedPersist('customers', 'POST', { ...existing, ...updates });
             }
             return {
                 ...prev,
@@ -119,9 +120,9 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
     };
 
     const addWorkItem = (workItem: WorkItem) => {
+        persistEntity('workItems', 'POST', workItem);
         setData(prev => {
             if (!prev) return prev;
-            persistEntity('workItems', 'POST', workItem);
             return { ...prev, workItems: [...prev.workItems, workItem] };
         });
     };
@@ -153,7 +154,7 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
             if (!prev) return prev;
             const existing = prev.workItems.find(w => w.id === id);
             if (existing) {
-                persistEntity('workItems', 'POST', { ...existing, ...updates });
+                debouncedPersist('workItems', 'POST', { ...existing, ...updates });
             }
             return {
                 ...prev,
@@ -167,7 +168,7 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
             if (!prev) return prev;
             const existing = prev.teams.find(t => t.id === id);
             if (existing) {
-                persistEntity('teams', 'POST', { ...existing, ...updates });
+                debouncedPersist('teams', 'POST', { ...existing, ...updates });
             }
             return {
                 ...prev,
@@ -177,17 +178,17 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
     };
 
     const addEpic = (epic: Epic) => {
+        persistEntity('epics', 'POST', epic);
         setData(prev => {
             if (!prev) return prev;
-            persistEntity('epics', 'POST', epic);
             return { ...prev, epics: [...prev.epics, epic] };
         });
     };
 
     const deleteEpic = (id: string) => {
+        persistEntity('epics', 'DELETE', { id });
         setData(prev => {
             if (!prev) return prev;
-            persistEntity('epics', 'DELETE', { id });
             return { ...prev, epics: prev.epics.filter(e => e.id !== id) };
         });
     };
@@ -197,7 +198,7 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
             if (!prev) return prev;
             const existing = prev.epics.find(e => e.id === id);
             if (existing) {
-                persistEntity('epics', 'POST', { ...existing, ...updates });
+                debouncedPersist('epics', 'POST', { ...existing, ...updates });
             }
             return {
                 ...prev,
@@ -218,18 +219,18 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
                     ...s,
                     quarter: calculateQuarter(s.end_date, updates.fiscal_year_start_month!)
                 }));
-                // Persist all updated sprints
+                // Persist all updated sprints immediately (important consistency change)
                 newSprints.forEach(s => persistEntity('sprints', 'POST', s));
             }
 
-            persistSettings(newSettings).then(() => {
-                // If connection string, integration keys, or database creation flag changed, re-fetch everything from the new source
-                if (updates.mongo_uri !== undefined || updates.mongo_db !== undefined || updates.mongo_auth_method !== undefined ||
-                    updates.mongo_create_if_not_exists !== undefined ||
-                    updates.jira_base_url !== undefined || updates.jira_api_token !== undefined) {
-                    refreshData();
-                }
-            });
+            debouncedSettings(newSettings);
+            
+            // If connection string, integration keys, or database creation flag changed, re-fetch everything from the new source
+            if (updates.mongo_uri !== undefined || updates.mongo_db !== undefined || updates.mongo_auth_method !== undefined ||
+                updates.mongo_create_if_not_exists !== undefined ||
+                updates.jira_base_url !== undefined || updates.jira_api_token !== undefined) {
+                refreshData();
+            }
 
             return { ...prev, settings: newSettings, sprints: newSprints };
         });
@@ -262,7 +263,7 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
                 updatedSprint.quarter = calculateQuarter(updatedSprint.end_date, prev.settings.fiscal_year_start_month || 1);
             }
 
-            persistEntity('sprints', 'POST', updatedSprint);
+            debouncedPersist('sprints', 'POST', updatedSprint);
             
             return {
                 ...prev,
@@ -272,9 +273,9 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
     };
 
     const deleteSprint = (id: string) => {
+        persistEntity('sprints', 'DELETE', { id });
         setData(prev => {
             if (!prev) return prev;
-            persistEntity('sprints', 'DELETE', { id });
             return {
                 ...prev,
                 sprints: prev.sprints.filter(s => s.id !== id)
@@ -283,9 +284,9 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
     };
 
     const addDashboard = (dashboard: DashboardEntity) => {
+        persistEntity('dashboards', 'POST', dashboard);
         setData(prev => {
             if (!prev) return prev;
-            persistEntity('dashboards', 'POST', dashboard);
             return { ...prev, dashboards: [...prev.dashboards, dashboard] };
         });
     };
@@ -295,7 +296,7 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
             if (!prev) return prev;
             const existing = prev.dashboards.find(d => d.id === id);
             if (existing) {
-                persistEntity('dashboards', 'POST', { ...existing, ...updates });
+                debouncedPersist('dashboards', 'POST', { ...existing, ...updates });
             }
             return {
                 ...prev,
@@ -305,9 +306,9 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
     };
 
     const deleteDashboard = (id: string) => {
+        persistEntity('dashboards', 'DELETE', { id });
         setData(prev => {
             if (!prev) return prev;
-            persistEntity('dashboards', 'DELETE', { id });
             return { ...prev, dashboards: prev.dashboards.filter(d => d.id !== id) };
         });
     };
