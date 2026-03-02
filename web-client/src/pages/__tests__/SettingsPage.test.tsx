@@ -81,7 +81,8 @@ describe('SettingsPage', () => {
             </MemoryRouter>
         );
 
-        expect(screen.getByText('Export to staticImport.json')).toBeDefined();
+        expect(screen.getByText('Export to JSON')).toBeDefined();
+        expect(screen.getByText('Import from JSON')).toBeDefined();
     });
 
     it('calls export API and triggers download when Export button is clicked', async () => {
@@ -97,7 +98,7 @@ describe('SettingsPage', () => {
             </MemoryRouter>
         );
 
-        const exportBtn = screen.getByText('Export to staticImport.json');
+        const exportBtn = screen.getByText('Export to JSON');
         await act(async () => {
             fireEvent.click(exportBtn);
         });
@@ -110,6 +111,44 @@ describe('SettingsPage', () => {
             expect(global.URL.createObjectURL).toHaveBeenCalled();
             expect(screen.getByText(/Export successful! staticImport.json download started/i)).toBeDefined();
         });
+    });
+
+    it('calls import API when a file is selected and confirmed', async () => {
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+        const reloadSpy = vi.fn();
+        vi.stubGlobal('location', { reload: reloadSpy });
+
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        const importLabel = screen.getByText(/Import from JSON/i);
+        const fileInput = importLabel.querySelector('input')!;
+        const file = new File(['{"data": {"customers": []}}'], 'test.json', { type: 'application/json' });
+
+        await act(async () => {
+            fireEvent.change(fileInput, { target: { files: [file] } });
+        });
+
+        expect(confirmSpy).toHaveBeenCalled();
+        expect(global.fetch).toHaveBeenCalledWith('/api/mongo/import', expect.objectContaining({
+            method: 'POST',
+            body: expect.stringContaining('"data":{"data":{"customers":[]}}')
+        }));
+
+        await waitFor(() => {
+            expect(screen.getByText(/Import successful! Data has been restored/i)).toBeDefined();
+        });
+
+        confirmSpy.mockRestore();
     });
 
     it('switches to Jira tab and shows Jira settings', async () => {
@@ -131,7 +170,7 @@ describe('SettingsPage', () => {
         });
 
         expect(screen.getByLabelText(/Jira Base URL:/i)).toBeDefined();
-        expect(screen.queryByText('Export to staticImport.json')).toBeNull();
+        expect(screen.queryByText('Export to JSON')).toBeNull();
     });
 
     it('shows AWS fields when AWS IAM is selected', async () => {

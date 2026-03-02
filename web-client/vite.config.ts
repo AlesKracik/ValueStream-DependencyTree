@@ -664,6 +664,40 @@ const MockDataPersistencePlugin = (): Plugin => ({
           res.statusCode = 500;
           res.end(JSON.stringify({ success: false, error: e.message }));
         }
+      } else if (req.url === '/api/mongo/import' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const { data: importData } = JSON.parse(body);
+
+          const settingsPath = path.resolve(__dirname, 'settings.json');
+          if (!fs.existsSync(settingsPath)) throw new Error("Settings file not found.");
+          const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+          if (!settings.mongo_uri) throw new Error("MongoDB URI not configured.");
+
+          const db = await getDb(settings, false);
+
+          // Delete all collections
+          for (const collectionName of ALLOWED_COLLECTIONS) {
+              await db.collection(collectionName).deleteMany({});
+          }
+
+          // Import new data
+          if (importData.customers?.length > 0) await db.collection('customers').insertMany(importData.customers);
+          if (importData.workItems?.length > 0) await db.collection('workItems').insertMany(importData.workItems);
+          if (importData.teams?.length > 0) await db.collection('teams').insertMany(importData.teams);
+          if (importData.epics?.length > 0) await db.collection('epics').insertMany(importData.epics);
+          if (importData.sprints?.length > 0) await db.collection('sprints').insertMany(importData.sprints);
+          if (importData.dashboards?.length > 0) await db.collection('dashboards').insertMany(importData.dashboards);
+
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true }));
+        } catch (e: any) {
+          console.error('Error importing mongo data:', e);
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 500;
+          res.end(JSON.stringify({ success: false, error: e.message }));
+        }
       } else if (req.url === '/api/jira/test' && req.method === 'POST') {
         try {
           const body = await readBody(req);

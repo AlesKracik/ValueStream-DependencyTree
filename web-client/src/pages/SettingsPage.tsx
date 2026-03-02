@@ -196,6 +196,43 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
   };
 
+  const handleImportMongo = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const confirmed = window.confirm("WARNING: Importing data will DELETE all existing collections in the current database and replace them with the data from this file. This action CANNOT be undone. Do you want to proceed?");
+    if (!confirmed) {
+      event.target.value = "";
+      return;
+    }
+
+    setIsTesting(true);
+    setMongoTestResult(null);
+    try {
+      const text = await file.text();
+      const importData = JSON.parse(text);
+
+      const response = await authorizedFetch("/api/mongo/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: importData }),
+      });
+      const resData = await response.json();
+      if (response.ok && resData.success) {
+        setMongoTestResult({ success: true, message: "Import successful! Data has been restored. Please refresh the page to see changes." });
+        // Optionally reload the page after a short delay
+        setTimeout(() => window.location.reload(), 2000);
+      } else {
+        setMongoTestResult({ success: false, message: resData.error || "Import failed" });
+      }
+    } catch (e: any) {
+      setMongoTestResult({ success: false, message: e.message || "Error during import. Ensure the file is a valid JSON export." });
+    } finally {
+      setIsTesting(false);
+      event.target.value = "";
+    }
+  };
+
   const handleSyncAllFromJira = async () => {
     if (!data) return;
     const epicsWithKeys = data.epics.filter(e => e.jira_key && e.jira_key !== "TBD");
@@ -602,20 +639,31 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             <hr style={{ borderColor: "#374151", width: "100%", margin: "16px 0 8px 0" }} />
             
             <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#e5e7eb" }}>
-              Export Data
+              Export & Import Data
             </h3>
             <p style={{ color: "#9ca3af", fontSize: "13px", margin: "0 0 8px 0" }}>
-              Downloads current MongoDB content as staticImport.json for local backup or sharing.
+              Manage your database content via staticImport.json files.
             </p>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={handleExportMongo}
-              style={{ alignSelf: "flex-start" }}
-              disabled={isTesting || (!localFormData.mongo_uri && !settings.mongo_uri)}
-            >
-              {isTesting ? "Exporting..." : "Export to staticImport.json"}
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleExportMongo}
+                disabled={isTesting || (!localFormData.mongo_uri && !settings.mongo_uri)}
+              >
+                {isTesting ? "Exporting..." : "Export to JSON"}
+              </button>
+              <label className="btn-primary" style={{ cursor: 'pointer', display: 'inline-block' }}>
+                {isTesting ? "Importing..." : "Import from JSON"}
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImportMongo}
+                  style={{ display: 'none' }}
+                  disabled={isTesting || (!localFormData.mongo_uri && !settings.mongo_uri)}
+                />
+              </label>
+            </div>
           </>
         )}
 
