@@ -1,10 +1,5 @@
 * bugs
-  • [FIXED] sprints belong to a q in which they end
-  • [FIXED] does not create db even if its checked
-  • [FIXED] GanttBarNode.tsx - it's using epic.remaining_md which doesn't exist
-  • [FIXED] add example settings.json
-  • does not check the admin password on FE
-  • assigning epic to workitem causes recalc, which causes past sprints to be null?
+  • does not check the admin password on FE1
   • make import of import explicit on button is setting
   • make lists customer, etc sorted
 * features

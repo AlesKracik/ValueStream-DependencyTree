@@ -482,7 +482,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 <div style={{ flex: 1, position: 'relative' }}>
                   <input
                     type="text"
-                    placeholder="valuestream"
+                    placeholder="valueStream"
                     list="mongo-dbs"
                     value={localFormData.mongo_db || ""}
                     onChange={(e) => setFormData({ ...localFormData, mongo_db: e.target.value })}

@@ -133,7 +133,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
           throw new Error("Invalid or unsafe MongoDB URI");
         }
         
-        const dbName = settings.mongo_db || 'valuestream';
+        const dbName = settings.mongo_db || 'valueStream';
         const authMethod = settings.mongo_auth_method || 'scram';
 
         const options: any = {
@@ -578,7 +578,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
             throw new Error('Missing mongo_uri');
           }
           
-          const targetDb = config.mongo_db || 'valuestream';
+          const targetDb = config.mongo_db || 'valueStream';
           const client = new MongoClient(config.mongo_uri, { serverSelectionTimeoutMS: 5000 });
           await client.connect();
           
