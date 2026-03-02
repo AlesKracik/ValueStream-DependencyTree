@@ -27,3 +27,4 @@ package-lock.json
 
 # App Settings (Sensitive)
 settings.json
+.env

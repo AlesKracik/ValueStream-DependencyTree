@@ -61,11 +61,21 @@ const MockDataPersistencePlugin = (): Plugin => ({
       }
 
       // Simple Authentication Check
-      const adminSecret = process.env.ADMIN_SECRET;
+      const adminSecret = process.env.ADMIN_SECRET || server.config.env.ADMIN_SECRET;
       if (req.url === '/api/auth/status' && req.method === 'GET') {
+        const authHeader = req.headers['authorization'];
+        const hasSecret = !!adminSecret;
+        
+        if (hasSecret && authHeader) {
+            const isAuthorized = authHeader === `Bearer ${adminSecret}`;
+            res.statusCode = isAuthorized ? 200 : 401;
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({ required: true, authenticated: isAuthorized }));
+        }
+
         res.statusCode = 200;
         res.setHeader('Content-Type', 'application/json');
-        return res.end(JSON.stringify({ required: !!adminSecret }));
+        return res.end(JSON.stringify({ required: hasSecret, authenticated: !hasSecret }));
       }
 
       if (adminSecret && req.url.startsWith('/api/')) {
