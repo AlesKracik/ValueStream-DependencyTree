@@ -250,4 +250,34 @@ describe('WorkItemPage', () => {
 
         expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', { description: 'Updated description' });
     });
+
+    it('renders core edit fields and handles updates', () => {
+        const dataWithSprint: DashboardData = {
+            ...mockData,
+            sprints: [{ id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY26 Q1' }]
+        };
+
+        render(
+            <NotificationProvider>
+                <DashboardProvider value={{ data: dataWithSprint, updateEpic: vi.fn() }}>
+                    <WorkItemPage {...defaultProps} data={dataWithSprint} workItemId="f1" />
+                </DashboardProvider>
+            </NotificationProvider>
+        );
+
+        // 1. Name Field
+        const nameInput = screen.getByLabelText(/Name:/i) as HTMLInputElement;
+        expect(nameInput.value).toBe('Work Item A');
+        fireEvent.change(nameInput, { target: { value: 'Renamed Item' } });
+        expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', { name: 'Renamed Item' });
+
+        // 2. Effort Field
+        const effortInput = screen.getByLabelText(/Total Effort \(MDs\):/i) as HTMLInputElement;
+        expect(effortInput.value).toBe('10');
+        fireEvent.change(effortInput, { target: { value: '25' } });
+        expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', { total_effort_mds: 25 });
+
+        // 3. Sprint Field (SearchableDropdown)
+        expect(screen.getByText(/Released in Sprint:/i)).toBeDefined();
+    });
 });
