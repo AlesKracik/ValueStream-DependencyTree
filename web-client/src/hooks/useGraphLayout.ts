@@ -819,6 +819,8 @@ export function useGraphLayout(
                             y: ganttStartY - 45 // Fixed gap above the top-most lane
                         },
                         data: {
+                            teamId: team.id,
+                            sprintId: sprint.id,
                             sprintLabel: sprint.name,
                             startDate: format(sprintStartDate, 'MMM d'),
                             endDate: format(sprintEndDate, 'MMM d'),

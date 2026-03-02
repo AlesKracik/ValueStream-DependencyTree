@@ -80,14 +80,14 @@ The Gantt chart distinguishes between what has happened and what is planned:
 - **Effort Intensity:** In both colors, the brightness of a segment indicates the volume of work allocated to that specific sprint.
 - **Safety Prompts:** If you attempt to shift the **Start Date** of an Epic that has recorded historical work, the app will prompt you to confirm if you want to "unthaw" and overwrite those records.
 
-### 6. Sprint Management & Continuity
-The dashboard ensures a continuous, unbroken timeline through strict schedule management: 
-- **Access:** Left-click any **Sprint Header** (the capacity markers above the Gantt lanes) to open the Sprint Management page.
-- **Inline Editing:** To rename a sprint, simply click its header to enter the management page. The selected sprint will be highlighted and editable directly in the schedule table.
+### 6. Team & Sprint Capacity Management
+The dashboard allows you to manage team capacity and sprint-specific overrides directly from the timeline: 
+- **Capacity Overrides:** Left-click any **Sprint Header** (the capacity markers above the Gantt lanes) to navigate directly to that **Team's Detail Page**. This is the primary location for entering manual capacity overrides for specific sprints.
+- **Sprint Management:** To manage the global sprint schedule (adding, renaming, or deleting sprints), use the **Sprints** link in the main navigation sidebar.
 - **Schedule Integrity:**
     - **Date Locking:** Start and end dates are managed automatically to ensure no gaps or overlaps exist in your timeline. They are read-only for existing sprints.
     - **Deletion Protection:** To prevent orphaning data, only the **last sprint** in the schedule can be deleted. Earlier sprints are "Locked" to preserve the historical sequence.
-- **Timeline Expansion:** Click **"+ Create Next Sprint"** at the bottom of the table to add a new 14-day block. The system automatically calculates the next logical dates and name.
+- **Timeline Expansion:** In the Sprint Management page, click **"+ Create Next Sprint"** at the bottom of the table to add a new 14-day block. The system automatically calculates the next logical dates and name.
 
 ### 7. Settings & Integration
 Use the dedicated **Settings** page to configure the application behavior. Changes are saved automatically as you edit.

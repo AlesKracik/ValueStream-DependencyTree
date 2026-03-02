@@ -61,23 +61,25 @@ describe('Dashboard', () => {
         vi.clearAllMocks();
     });
 
-    it('navigates to sprint list when sprint capacity node is clicked', () => {
+    it('navigates to team page when sprint capacity node is clicked', () => {
+        const onNavigateToTeam = vi.fn();
         render(
             <NotificationProvider>
                 <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <ReactFlowProvider>
                         <Dashboard 
                             {...defaultProps}
+                            onNavigateToTeam={onNavigateToTeam}
                         />
                     </ReactFlowProvider>
                 </DashboardProvider>
             </NotificationProvider>
         );
 
-        const sprintNode = screen.getByText('Sprint 1');
+        const sprintNode = screen.getByText(/Sprint 1/);
         fireEvent.click(sprintNode);
 
-        expect(onNavigateToSprint).toHaveBeenCalledWith('list');
+        expect(onNavigateToTeam).toHaveBeenCalledWith('t1');
     });
 
     it('navigates to customer page when customer node is clicked', () => {
