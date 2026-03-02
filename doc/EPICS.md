@@ -38,5 +38,8 @@ graph LR
 ```
 
 ## Logic
-- **Historical Actuals:** Sprints older than the active sprint are "frozen". Dates for epics with work in frozen sprints are restricted to prevent data corruption.
+- **Effort Distribution:** Effort is distributed proportionally across all sprints overlapping with the epic's timeline.
+- **Manual Overrides:** Users can manually override the calculated effort for specific sprints. This is particularly useful for recording "actuals" for past sprints or specific front-loading/back-loading requirements.
+- **Historical Actuals (Auto-Freeze):** Sprints older than the active sprint are automatically "frozen". If an epic has effort in a past sprint but no manual override, the system snapshots the current calculation as a permanent override to prevent historical data from shifting when dates are changed.
+- **Centralized Math:** All effort calculations (Gantt heat-mapping, team capacity usage, and detail page tables) are powered by a centralized business logic utility (`calculateEpicEffortPerSprint`) ensuring perfect consistency across the UI.
 - **Sync:** Can be updated from Jira to pull latest dates, team, and effort.

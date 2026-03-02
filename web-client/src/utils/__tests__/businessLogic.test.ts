@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { calculateWorkItemEffort, calculateWorkItemTcv } from '../businessLogic';
-import type { WorkItem, Epic, Customer } from '../../types/models';
+import { calculateWorkItemEffort, calculateWorkItemTcv, calculateEpicEffortPerSprint, calculateEpicIntensityRatio } from '../businessLogic';
+import type { WorkItem, Epic, Customer, Sprint } from '../../types/models';
 
 describe('businessLogic', () => {
     describe('calculateWorkItemEffort', () => {
@@ -133,6 +133,73 @@ describe('businessLogic', () => {
                 ]
             };
             expect(calculateWorkItemTcv(workItem, mockCustomers)).toBe(0);
+        });
+    });
+
+    describe('calculateEpicEffortPerSprint', () => {
+        const mockSprints: Sprint[] = [
+            { id: 's1', name: 'S1', start_date: '2025-01-01', end_date: '2025-01-14', quarter: 'Q1' },
+            { id: 's2', name: 'S2', start_date: '2025-01-15', end_date: '2025-01-28', quarter: 'Q1' },
+            { id: 's3', name: 'S3', start_date: '2025-01-29', end_date: '2025-02-11', quarter: 'Q1' }
+        ];
+
+        it('distributes effort proportionally across overlapping sprints', () => {
+            const epic: Epic = {
+                id: 'e1',
+                jira_key: 'J1',
+                team_id: 't1',
+                effort_md: 30,
+                target_start: '2025-01-01',
+                target_end: '2025-01-30' // 30 days
+            };
+
+            const result = calculateEpicEffortPerSprint(epic, mockSprints);
+            // S1 (14 days), S2 (14 days), S3 (2 days)
+            expect(result['s1']).toBeCloseTo(14, 0);
+            expect(result['s2']).toBeCloseTo(14, 0);
+            expect(result['s3']).toBeCloseTo(2, 0);
+        });
+
+        it('respects manual overrides and distributes remaining effort', () => {
+            const epic: Epic = {
+                id: 'e1',
+                jira_key: 'J1',
+                team_id: 't1',
+                effort_md: 30,
+                target_start: '2025-01-01',
+                target_end: '2025-01-30',
+                sprint_effort_overrides: {
+                    's1': 5
+                }
+            };
+
+            const result = calculateEpicEffortPerSprint(epic, mockSprints);
+            // Total effort 30. S1 overridden to 5. 25 left.
+            // S1 had 14 days, S2 had 14 days, S3 had 2 days.
+            // Remaining days for S2 and S3: 14 + 2 = 16.
+            expect(result['s1']).toBe(5);
+            expect(result['s2']).toBeCloseTo(25 * (14/16), 1);
+            expect(result['s3']).toBeCloseTo(25 * (2/16), 1);
+        });
+
+        it('returns empty object if dates are missing', () => {
+            const epic: Epic = { id: 'e1', jira_key: 'J1', team_id: 't1', effort_md: 30 };
+            expect(calculateEpicEffortPerSprint(epic, mockSprints)).toEqual({});
+        });
+    });
+
+    describe('calculateEpicIntensityRatio', () => {
+        it('calculates ratio correctly when baseline is > 0', () => {
+            expect(calculateEpicIntensityRatio(20, 10)).toBe(2);
+            expect(calculateEpicIntensityRatio(5, 10)).toBe(0.5);
+        });
+
+        it('returns 2 if actual > 0 and baseline is 0', () => {
+            expect(calculateEpicIntensityRatio(5, 0)).toBe(2);
+        });
+
+        it('returns 1 if both actual and baseline are 0', () => {
+            expect(calculateEpicIntensityRatio(0, 0)).toBe(1);
         });
     });
 });

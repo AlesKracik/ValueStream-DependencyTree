@@ -154,6 +154,34 @@ describe('EpicPage Date Shift Logic', () => {
         expect(updateEpicSpy).not.toHaveBeenCalled();
     });
 
+    it('filters the sprint effort distribution table to only show overlapping sprints', () => {
+        const extendedData: DashboardData = {
+            ...mockData,
+            sprints: [
+                ...mockData.sprints,
+                { id: 's_future', name: 'Future', start_date: '2026-05-01', end_date: '2026-05-14' }
+            ]
+        };
+
+        render(
+            <NotificationProvider>
+                <DashboardProvider value={{ data: extendedData, updateEpic: updateEpicSpy }}>
+                    <EpicPage {...defaultProps} data={extendedData} />
+                </DashboardProvider>
+            </NotificationProvider>
+        );
+
+        // Epic dates: 2026-01-05 to 2026-02-25
+        // Sprints: 
+        // s_past (2026-01-01 to 2026-01-14) - Overlaps
+        // s_curr (2026-02-15 to 2026-02-28) - Overlaps
+        // s_future (2026-05-01 to 2026-05-14) - Does NOT overlap
+
+        expect(screen.getByText('Past')).toBeDefined();
+        expect(screen.getByText('Active')).toBeDefined();
+        expect(screen.queryByText('Future')).toBeNull();
+    });
+
     afterEach(() => {
         vi.useRealTimers();
     });

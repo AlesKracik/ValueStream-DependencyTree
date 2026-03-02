@@ -161,4 +161,49 @@ describe('useGraphLayout Math Engine', () => {
         expect((f2Node?.data as any).hasUnestimatedEffort).toBe(true);
         expect((f3Node?.data as any).hasUnestimatedEffort).toBe(true);
     });
+
+    it('reflects team capacity overrides in sprint capacity nodes', () => {
+        const OVERRIDE_DATA: DashboardData = {
+            ...MOCK_DATA,
+            teams: [
+                { 
+                    id: 't1', 
+                    name: 'Team Alpha', 
+                    total_capacity_mds: 10,
+                    sprint_capacity_overrides: { 's1': 7 }
+                }
+            ]
+        };
+
+        const { result } = renderHook(() => useGraphLayout(OVERRIDE_DATA));
+        const capNode = result.current.nodes.find(n => n.id === 'sprint-cap-t1-s1');
+        
+        expect((capNode?.data as any).totalCapacityMds).toBe(7);
+        expect((capNode?.data as any).isOverridden).toBe(true);
+    });
+
+    it('calculates holiday impact on team capacity correctly', () => {
+        const HOLIDAY_DATA: DashboardData = {
+            ...MOCK_DATA,
+            teams: [
+                { 
+                    id: 't1', 
+                    name: 'Team Alpha', 
+                    total_capacity_mds: 10,
+                    country: 'US' // Holidays in US
+                }
+            ],
+            sprints: [
+                { id: 's1', name: 'New Year Sprint', start_date: '2026-01-01', end_date: '2026-01-14' }
+            ]
+        };
+
+        const { result } = renderHook(() => useGraphLayout(HOLIDAY_DATA));
+        const capNode = result.current.nodes.find(n => n.id === 'sprint-cap-t1-s1');
+        
+        // Jan 1st 2026 is a Thursday (Public Holiday)
+        // 1 holiday = 10% reduction of 10 MDs = 9 MDs remaining
+        expect((capNode?.data as any).holidayCount).toBe(1);
+        expect((capNode?.data as any).totalCapacityMds).toBe(9);
+    });
 });

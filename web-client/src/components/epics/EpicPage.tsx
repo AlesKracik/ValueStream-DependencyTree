@@ -303,27 +303,51 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td style={{ width: '140px' }}>
-                                                    <input 
-                                                        type="number"
-                                                        value={epic.sprint_effort_overrides?.[sprint.id] ?? ''}
-                                                        placeholder={effective > 0 ? String(effective) : '-'}
-                                                        onChange={e => handleOverrideChange(sprint.id, e.target.value)}
-                                                        title={isOverridden ? 'Manual Override Active' : 'Calculated Proportion'}
-                                                        style={{ 
-                                                            width: '100%',
-                                                            backgroundColor: isOverridden ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                                                            border: isOverridden ? '1px solid #3b82f6' : '1px solid #334155',
-                                                            borderRadius: '4px',
-                                                            color: isOverridden ? '#fff' : '#94a3b8',
-                                                            fontWeight: isOverridden ? 'bold' : 'normal',
-                                                            padding: '6px 10px',
-                                                            boxSizing: 'border-box',
-                                                            textAlign: 'center',
-                                                            outline: 'none',
-                                                            fontSize: '14px'
-                                                        }}
-                                                    />
+                                                <td style={{ width: '160px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        <input 
+                                                            type="number"
+                                                            value={epic.sprint_effort_overrides?.[sprint.id] ?? ''}
+                                                            placeholder={effective > 0 ? String(effective) : '-'}
+                                                            onChange={e => handleOverrideChange(sprint.id, e.target.value)}
+                                                            title={isOverridden ? 'Manual Override Active' : 'Calculated Proportion'}
+                                                            style={{ 
+                                                                flex: 1,
+                                                                backgroundColor: isOverridden ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                                                                border: isOverridden ? '1px solid #3b82f6' : '1px solid #334155',
+                                                                borderRadius: '4px',
+                                                                color: isOverridden ? '#fff' : '#94a3b8',
+                                                                fontWeight: isOverridden ? 'bold' : 'normal',
+                                                                padding: '6px 10px',
+                                                                boxSizing: 'border-box',
+                                                                textAlign: 'center',
+                                                                outline: 'none',
+                                                                fontSize: '14px'
+                                                            }}
+                                                        />
+                                                        {isOverridden && (
+                                                            <button
+                                                                onClick={() => handleOverrideChange(sprint.id, '')}
+                                                                title="Remove Override"
+                                                                style={{
+                                                                    background: 'none',
+                                                                    border: 'none',
+                                                                    color: '#3b82f6',
+                                                                    cursor: 'pointer',
+                                                                    fontSize: '20px',
+                                                                    lineHeight: 1,
+                                                                    padding: '0 4px',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    opacity: 0.8
+                                                                }}
+                                                                onMouseOver={e => e.currentTarget.style.opacity = '1'}
+                                                                onMouseOut={e => e.currentTarget.style.opacity = '0.8'}
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );
