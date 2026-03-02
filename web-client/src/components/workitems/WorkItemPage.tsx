@@ -474,13 +474,13 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                 <table className={styles.table}>
                                     <thead>
                                         <tr>
-                                            <th style={{ width: '100px' }}>Key</th>
-                                            <th style={{ width: '180px' }}>Name</th>
-                                            <th style={{ width: '60px' }}>Effort (MDs)</th>
-                                            <th style={{ width: '140px' }}>Start</th>
-                                            <th style={{ width: '140px' }}>End</th>
-                                            <th style={{ width: '600px' }}>Team</th>
-                                            <th style={{ width: '200px' }}>Actions</th>
+                                            <th style={{ width: '12%' }}>Key</th>
+                                            <th style={{ width: '36%' }}>Name</th>
+                                            <th style={{ width: '8%' }}>Effort (MDs)</th>
+                                            <th style={{ width: '10%' }}>Start</th>
+                                            <th style={{ width: '10%' }}>End</th>
+                                            <th style={{ width: '10%' }}>Team</th>
+                                            <th style={{ width: '14%' }}>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -491,7 +491,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                         type="text"
                                                         value={epic.jira_key}
                                                         onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, jira_key: e.target.value } : ev)) : updateEpic(epic.id, { jira_key: e.target.value })}
-                                                        style={{ width: '80px' }}
+                                                        style={{ width: '100%' }}
                                                     />
                                                 </td>
                                                 <td>
@@ -499,7 +499,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                         type="text"
                                                         value={epic.name}
                                                         onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, name: e.target.value } : ev)) : updateEpic(epic.id, { name: e.target.value })}
-                                                        style={{ width: '100%', minWidth: '150px' }}
+                                                        style={{ width: '100%' }}
                                                     />
                                                 </td>
                                                 <td>
@@ -510,7 +510,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                             const val = parseInt(e.target.value) || 0;
                                                             isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, effort_md: val } : ev)) : updateEpic(epic.id, { effort_md: val });
                                                         }}
-                                                        style={{ width: '40px' }}
+                                                        style={{ width: '100%' }}
                                                     />
                                                 </td>
                                                 <td>
@@ -518,6 +518,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                         <input
                                                             type="date"
                                                             value={epic.target_start || ''}
+                                                            style={{ width: '100%' }}
                                                             onChange={async e => {
                                                                 const newStart = e.target.value;
                                                                 if (newStart && epic.target_end && newStart >= epic.target_end) {
@@ -536,6 +537,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                         <input
                                                             type="date"
                                                             value={epic.target_end || ''}
+                                                            style={{ width: '100%' }}
                                                             onChange={async e => {
                                                                 const newEnd = e.target.value;
                                                                 if (epic.target_start && newEnd && epic.target_start >= newEnd) {
@@ -553,7 +555,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                     <select
                                                         value={epic.team_id}
                                                         onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, team_id: e.target.value } : ev)) : updateEpic(epic.id, { team_id: e.target.value })}
-                                                        style={{ width: '100px' }}
+                                                        style={{ width: '100%' }}
                                                     >
                                                         {data?.teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                                                     </select>
