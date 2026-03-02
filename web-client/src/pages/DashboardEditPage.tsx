@@ -52,7 +52,7 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
     if (!dashboard) return <div className={styles.pageContainer}>Dashboard not found.</div>;
 
     const handleCreate = () => {
-        const newId = `d${Date.now()}`;
+        const newId = generateId('d');
         const newDashboard: DashboardEntity = {
             id: newId,
             name: draft.name || 'New Dashboard',

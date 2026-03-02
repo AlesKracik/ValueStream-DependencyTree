@@ -4,38 +4,61 @@ import type { DashboardData, Customer, WorkItem, Team, Epic, Settings, Sprint, D
 import { authorizedFetch, debounce } from '../utils/api';
 import { calculateQuarter } from '../utils/dateHelpers';
 
-const persistEntity = async (collection: string, method: 'POST' | 'DELETE', entity: any) => {
+const persistEntity = async (collection: string, method: 'POST' | 'DELETE', entity: any, showAlert?: (title: string, message: string) => Promise<void>) => {
     try {
-        await authorizedFetch(`/api/entity/${collection}${method === 'DELETE' ? `/${entity.id}` : ''}`, {
+        const response = await authorizedFetch(`/api/entity/${collection}${method === 'DELETE' ? `/${entity.id}` : ''}`, {
             method,
             headers: { 'Content-Type': 'application/json' },
             body: method === 'DELETE' ? undefined : JSON.stringify(entity)
         });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const message = errorData.error || `Failed to ${method} entity in ${collection}`;
+            console.error(message);
+            if (showAlert) {
+                showAlert(response.status === 409 ? 'Conflict' : 'Error', message);
+            }
+        }
     } catch (e) {
         console.error(`Failed to ${method} entity in ${collection}`, e);
     }
 };
 
-const persistSettings = async (settings: any) => {
+const persistSettings = async (settings: any, showAlert?: (title: string, message: string) => Promise<void>) => {
     try {
-        await authorizedFetch('/api/settings', {
+        const response = await authorizedFetch('/api/settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(settings)
         });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const message = errorData.error || "Failed to persist settings";
+            console.error(message);
+            if (showAlert) {
+                showAlert('Error', message);
+            }
+        }
     } catch (e) {
         console.error("Failed to persist settings", e);
     }
 };
 
-export function useDashboardData(dashboardId?: string, filters?: Partial<DashboardParameters>, persistenceDebounceMs = 1000) {
+export function useDashboardData(
+    dashboardId?: string, 
+    filters?: Partial<DashboardParameters>, 
+    persistenceDebounceMs = 1000,
+    showAlert?: (title: string, message: string) => Promise<void>
+) {
     const [data, setData] = useState<DashboardData | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<Error | null>(null);
 
     // Debounced persistence functions
-    const debouncedPersist = useMemo(() => debounce(persistEntity, persistenceDebounceMs), [persistenceDebounceMs]);
-    const debouncedSettings = useMemo(() => debounce(persistSettings, persistenceDebounceMs), [persistenceDebounceMs]);
+    const debouncedPersist = useMemo(() => debounce((col, meth, ent) => persistEntity(col, meth, ent, showAlert), persistenceDebounceMs), [persistenceDebounceMs, showAlert]);
+    const debouncedSettings = useMemo(() => debounce((sets) => persistSettings(sets, showAlert), persistenceDebounceMs), [persistenceDebounceMs, showAlert]);
 
     const fetchData = async () => {
         try {
@@ -72,7 +95,7 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
     };
 
     const addCustomer = (customer: Customer) => {
-        persistEntity('customers', 'POST', customer);
+        persistEntity('customers', 'POST', customer, showAlert);
         setData(prev => {
             if (!prev) return prev;
             return { ...prev, customers: [...prev.customers, customer] };
@@ -88,12 +111,12 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
                 customer_targets: f.customer_targets.filter(ct => ct.customer_id !== id)
             }));
             
-            persistEntity('customers', 'DELETE', { id });
+            persistEntity('customers', 'DELETE', { id }, showAlert);
             
             // Persist cascaded updates
             prev.workItems.forEach((oldW, i) => {
                 if (oldW.customer_targets.length !== updatedWorkItems[i].customer_targets.length) {
-                    persistEntity('workItems', 'POST', updatedWorkItems[i]);
+                    persistEntity('workItems', 'POST', updatedWorkItems[i], showAlert);
                 }
             });
 
@@ -120,7 +143,7 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
     };
 
     const addWorkItem = (workItem: WorkItem) => {
-        persistEntity('workItems', 'POST', workItem);
+        persistEntity('workItems', 'POST', workItem, showAlert);
         setData(prev => {
             if (!prev) return prev;
             return { ...prev, workItems: [...prev.workItems, workItem] };
@@ -133,11 +156,11 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
             
             const updatedEpics = prev.epics.map(e => e.work_item_id === id ? { ...e, work_item_id: undefined } : e);
             
-            persistEntity('workItems', 'DELETE', { id });
+            persistEntity('workItems', 'DELETE', { id }, showAlert);
             
             prev.epics.forEach((oldE, i) => {
                 if (oldE.work_item_id === id) {
-                    persistEntity('epics', 'POST', updatedEpics[i]);
+                    persistEntity('epics', 'POST', updatedEpics[i], showAlert);
                 }
             });
 
@@ -178,7 +201,7 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
     };
 
     const addEpic = (epic: Epic) => {
-        persistEntity('epics', 'POST', epic);
+        persistEntity('epics', 'POST', epic, showAlert);
         setData(prev => {
             if (!prev) return prev;
             return { ...prev, epics: [...prev.epics, epic] };
@@ -186,7 +209,7 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
     };
 
     const deleteEpic = (id: string) => {
-        persistEntity('epics', 'DELETE', { id });
+        persistEntity('epics', 'DELETE', { id }, showAlert);
         setData(prev => {
             if (!prev) return prev;
             return { ...prev, epics: prev.epics.filter(e => e.id !== id) };
@@ -220,7 +243,7 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
                     quarter: calculateQuarter(s.end_date, updates.fiscal_year_start_month!)
                 }));
                 // Persist all updated sprints immediately (important consistency change)
-                newSprints.forEach(s => persistEntity('sprints', 'POST', s));
+                newSprints.forEach(s => persistEntity('sprints', 'POST', s, showAlert));
             }
 
             debouncedSettings(newSettings);
@@ -243,7 +266,7 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
                 ...sprint,
                 quarter: calculateQuarter(sprint.end_date, prev.settings.fiscal_year_start_month || 1)
             };
-            persistEntity('sprints', 'POST', newSprint);
+            persistEntity('sprints', 'POST', newSprint, showAlert);
             return {
                 ...prev,
                 sprints: [...prev.sprints, newSprint].sort((a, b) => a.start_date.localeCompare(b.start_date))
@@ -273,7 +296,7 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
     };
 
     const deleteSprint = (id: string) => {
-        persistEntity('sprints', 'DELETE', { id });
+        persistEntity('sprints', 'DELETE', { id }, showAlert);
         setData(prev => {
             if (!prev) return prev;
             return {
@@ -284,7 +307,7 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
     };
 
     const addDashboard = (dashboard: DashboardEntity) => {
-        persistEntity('dashboards', 'POST', dashboard);
+        persistEntity('dashboards', 'POST', dashboard, showAlert);
         setData(prev => {
             if (!prev) return prev;
             return { ...prev, dashboards: [...prev.dashboards, dashboard] };
@@ -306,7 +329,7 @@ export function useDashboardData(dashboardId?: string, filters?: Partial<Dashboa
     };
 
     const deleteDashboard = (id: string) => {
-        persistEntity('dashboards', 'DELETE', { id });
+        persistEntity('dashboards', 'DELETE', { id }, showAlert);
         setData(prev => {
             if (!prev) return prev;
             return { ...prev, dashboards: prev.dashboards.filter(d => d.id !== id) };

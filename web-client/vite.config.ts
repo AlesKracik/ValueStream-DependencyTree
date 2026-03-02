@@ -527,6 +527,22 @@ const MockDataPersistencePlugin = (): Plugin => ({
 
           if (req.method === 'POST') {
               if (!id) throw new Error("Missing entity id");
+              
+              // Check for global ID uniqueness across all collections
+              // We only block if the ID exists in a DIFFERENT collection than the one being updated
+              for (const coll of ALLOWED_COLLECTIONS) {
+                  if (coll === collectionName) continue;
+                  const existing = await db.collection(coll).findOne({ id });
+                  if (existing) {
+                      res.statusCode = 409; // Conflict
+                      res.setHeader('Content-Type', 'application/json');
+                      return res.end(JSON.stringify({ 
+                          success: false, 
+                          error: `ID collision: '${id}' already exists in the '${coll}' collection.` 
+                      }));
+                  }
+              }
+
               await db.collection(collectionName).updateOne({ id }, { $set: data }, { upsert: true });
           } else if (req.method === 'DELETE') {
               if (!id) throw new Error("Missing entity id");
