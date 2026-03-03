@@ -338,7 +338,10 @@ export function useDashboardData(
             
             return {
                 ...prev,
-                sprints: prev.sprints.map(s => s.id === id ? updatedSprint : s).sort((a, b) => a.start_date.localeCompare(b.start_date))
+                sprints: prev.sprints
+                    .map(s => s.id === id ? updatedSprint : s)
+                    .filter(s => !s.is_archived)
+                    .sort((a, b) => a.start_date.localeCompare(b.start_date))
             };
         });
     };

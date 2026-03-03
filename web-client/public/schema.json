@@ -306,7 +306,8 @@
                         "type": "string",
                         "format": "date"
                     },
-                    "quarter": { "type": "string" }
+                    "quarter": { "type": "string" },
+                    "is_archived": { "type": "boolean" }
                 }
             }
         },

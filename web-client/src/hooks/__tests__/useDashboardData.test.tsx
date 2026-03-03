@@ -126,6 +126,29 @@ describe('useDashboardData', () => {
         );
     });
 
+    it('archives a sprint and filters it out from the data', async () => {
+        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        act(() => {
+            result.current.updateSprint('s1', { is_archived: true });
+        });
+
+        expect(result.current.data?.sprints).toHaveLength(0);
+        await waitFor(() => {
+            expect(fetch).toHaveBeenCalledWith(
+                '/api/entity/sprints',
+                expect.objectContaining({
+                    method: 'POST',
+                    body: expect.stringContaining('"is_archived":true'),
+                    headers: expect.objectContaining({
+                        'Authorization': expect.stringContaining('Bearer')
+                    })
+                })
+            );
+        });
+    });
+
     it('cascades deleteCustomer to workItem targets', async () => {
         const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));

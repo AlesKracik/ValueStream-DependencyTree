@@ -334,7 +334,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
               const minTcv = Math.max(qMinTcv, Number(activeDashboard?.parameters?.minTcvFilter) || 0);
               const minScore = Math.max(qMinScore, Number(activeDashboard?.parameters?.minScoreFilter) || 0);
 
-              const sprints = await db.collection('sprints').find({}).toArray();
+              const sprints = await db.collection('sprints').find({ is_archived: { $ne: true } }).sort({ start_date: 1 }).toArray();
               dbData.sprints = sprints.map(({ _id, ...rest }) => rest);
 
               const sprintsToUpdate = dbData.sprints.filter((s: any) => !s.quarter);
@@ -460,6 +460,9 @@ const MockDataPersistencePlugin = (): Plugin => ({
              dbData = { 
                 ...localData, 
                 settings: maskSettings(settings), 
+                sprints: (localData.sprints || [])
+                    .filter((s: any) => !s.is_archived)
+                    .sort((a: any, b: any) => (a.start_date || '').localeCompare(b.start_date || '')),
                 workItems: fullW, 
                 metrics: { maxScore: Math.max(...fullW.map(f => f.score || 0), 1), maxRoi: 1 } 
              };

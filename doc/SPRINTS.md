@@ -11,6 +11,7 @@ export interface Sprint {
   start_date: string; // YYYY-MM-DD
   end_date: string;   // YYYY-MM-DD
   quarter?: string;   // FYXXXX QX (Computed and persisted)
+  is_archived?: boolean;
 }
 ```
 
@@ -28,6 +29,14 @@ graph TD
     Label --> Persist[Store in Sprint Attribute]
 ```
 
+## Historical Cleanup (Archiving)
+To manage long-running project timelines without losing historical data, the system supports **Archiving**.
+
+### Behavior
+- **Visibility:** Archived sprints are filtered out from the Sprint Management list and the Dashboard Gantt chart.
+- **Performance:** Archived sprints are not retrieved from the database during normal operations, reducing the payload size and computation overhead for the frontend.
+- **Oldest First:** Archiving is typically performed on the oldest visible sprint to maintain the "forward-looking" nature of the dashboard while keeping the database record intact.
+
 ## Planning Configuration
 Users can define:
 - **Fiscal Year Start Month:** (1-12) to align with company financial calendars.
@@ -37,3 +46,4 @@ Users can define:
 - **Unbroken Sequence:** The system enforces a gap-free timeline. New sprints automatically start the day after the current last sprint.
 - **Locking:** Sprints are locked for deletion unless they are the final sprint in the schedule, preserving historical continuity.
 - **Historical Freeze:** The "Active Sprint" is determined by current system date. All sprints ending before the active sprint's start date are considered "frozen".
+- **Archiving:** Only the oldest visible sprint can be archived, and only if it is in the past, to ensure the timeline remains continuous and focused on current/future planning.

@@ -84,6 +84,13 @@ export const SprintPage: React.FC<SprintPageProps> = ({
         }
     };
 
+    const handleArchive = async (id: string, name: string) => {
+        const confirmed = await showConfirm('Archive Sprint', `Are you sure you want to archive ${name}? It will no longer appear in the list or dashboard.`);
+        if (confirmed) {
+            updateSprint(id, { is_archived: true });
+        }
+    };
+
     const getSprintStatus = (sprint: Sprint) => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -126,6 +133,7 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                                 {groupedSprints[q].map((s) => {
                                     const status = getSprintStatus(s);
                                     const isLast = data.sprints[data.sprints.length - 1].id === s.id;
+                                    const isFirst = data.sprints[0].id === s.id;
                                     
                                     return (
                                         <div key={s.id} className={styles.listItem} style={{ 
@@ -168,17 +176,27 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                                                         {status}
                                                     </span>
                                                     
-                                                    {isLast ? (
-                                                        <button 
-                                                            onClick={() => handleDelete(s.id, s.name)} 
-                                                            className="btn-danger" 
-                                                            style={{ padding: '4px 12px', fontSize: '12px' }}
-                                                        >
-                                                            Delete
-                                                        </button>
-                                                    ) : (
-                                                        <span title="Only the last sprint can be deleted." style={{ color: '#475569', fontSize: '12px', cursor: 'help', width: '55px', textAlign: 'center' }}>Locked</span>
-                                                    )}
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        {isLast ? (
+                                                            <button 
+                                                                onClick={() => handleDelete(s.id, s.name)} 
+                                                                className="btn-danger" 
+                                                                style={{ padding: '4px 12px', fontSize: '12px' }}
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        ) : (isFirst && status === 'past') ? (
+                                                            <button 
+                                                                onClick={() => handleArchive(s.id, s.name)} 
+                                                                className="btn-danger" 
+                                                                style={{ padding: '4px 12px', fontSize: '12px' }}
+                                                            >
+                                                                Archive
+                                                            </button>
+                                                        ) : (
+                                                            <span title="Only the first past sprint or the last sprint can be managed." style={{ color: '#475569', fontSize: '12px', cursor: 'help', width: '55px', textAlign: 'center' }}>Locked</span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

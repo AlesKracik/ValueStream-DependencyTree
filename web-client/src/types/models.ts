@@ -66,6 +66,7 @@ export interface Sprint {
   start_date: string;
   end_date: string;
   quarter?: string; // e.g. "FY2026 Q1"
+  is_archived?: boolean;
 }
 
 export interface Settings {
