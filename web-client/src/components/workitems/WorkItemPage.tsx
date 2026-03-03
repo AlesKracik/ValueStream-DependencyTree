@@ -527,8 +527,8 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                             </div>
 
                                             {/* Line 2: Team, Effort, Start, End */}
-                                            <div style={{ display: 'flex', gap: '16px', alignItems: 'center', fontSize: '13px' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                                            <div style={{ display: 'flex', gap: '24px', alignItems: 'center', fontSize: '13px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '25%' }}>
                                                     <span style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>Team:</span>
                                                     <select
                                                         value={epic.team_id}
@@ -550,7 +550,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                         style={{ width: '100%' }}
                                                     />
                                                 </div>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '160px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '180px' }}>
                                                     <span style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>Start:</span>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
                                                         <input
@@ -570,7 +570,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                         {!epic.target_start && <span title="Missing start date" style={{ cursor: 'help' }}>⚠️</span>}
                                                     </div>
                                                 </div>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '160px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '180px' }}>
                                                     <span style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>End:</span>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
                                                         <input
