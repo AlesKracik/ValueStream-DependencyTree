@@ -477,51 +477,69 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
 
                         {activeTab === 'epics' && (
                             <section className={styles.card}>
-                                <table className={styles.table}>
-                                    <thead>
-                                        <tr>
-                                            <th style={{ width: '12%' }}>Key</th>
-                                            <th style={{ width: '30%' }}>Name</th>
-                                            <th style={{ width: '8%' }}>Effort (MDs)</th>
-                                            <th style={{ width: '10%' }}>Start</th>
-                                            <th style={{ width: '10%' }}>End</th>
-                                            <th style={{ width: '15%' }}>Team</th>
-                                            <th style={{ width: '15%' }}>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {epics.map(epic => (
-                                            <tr key={epic.id}>
-                                                <td>
-                                                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                                                        <input
-                                                            type="text"
-                                                            value={epic.jira_key}
-                                                            onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, jira_key: e.target.value } : ev)) : updateEpic(epic.id, { jira_key: e.target.value })}
-                                                            style={{ flex: 1, minWidth: '60px' }}
-                                                        />
-                                                        {epic.jira_key && epic.jira_key !== 'TBD' && data?.settings.jira_base_url && (
-                                                            <a 
-                                                                href={`${data.settings.jira_base_url.replace(/\/$/, '')}/browse/${epic.jira_key}`} 
-                                                                target="_blank" 
-                                                                rel="noopener noreferrer" 
-                                                                title="Open in Jira"
-                                                                style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '14px' }}
-                                                            >
-                                                                ↗
-                                                            </a>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    {epics.map(epic => (
+                                        <div key={epic.id} style={{ 
+                                            padding: '16px', 
+                                            backgroundColor: '#111827', 
+                                            borderRadius: '8px', 
+                                            border: '1px solid #374151' 
+                                        }}>
+                                            {/* Line 1: Key, Name, Actions */}
+                                            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
+                                                <div style={{ width: '120px', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                                    <input
+                                                        type="text"
+                                                        value={epic.jira_key}
+                                                        placeholder="Key"
+                                                        onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, jira_key: e.target.value } : ev)) : updateEpic(epic.id, { jira_key: e.target.value })}
+                                                        style={{ flex: 1, minWidth: '60px' }}
+                                                    />
+                                                    {epic.jira_key && epic.jira_key !== 'TBD' && data?.settings.jira_base_url && (
+                                                        <a 
+                                                            href={`${data.settings.jira_base_url.replace(/\/$/, '')}/browse/${epic.jira_key}`} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer" 
+                                                            title="Open in Jira"
+                                                            style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '14px' }}
+                                                        >
+                                                            ↗
+                                                        </a>
+                                                    )}
+                                                </div>
+                                                <div style={{ flex: 1 }}>
                                                     <input
                                                         type="text"
                                                         value={epic.name}
+                                                        placeholder="Epic Name"
                                                         onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, name: e.target.value } : ev)) : updateEpic(epic.id, { name: e.target.value })}
                                                         style={{ width: '100%' }}
                                                     />
-                                                </td>
-                                                <td>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button className="btn-primary" onClick={() => syncEpic(epic.id, epic.jira_key)} disabled={syncingId === epic.id}>
+                                                        {syncingId === epic.id ? 'Syncing...' : 'Sync from Jira'}
+                                                    </button>
+                                                    <button className="btn-danger" onClick={() => handleDeleteEpic(epic.id, epic.name || epic.jira_key)}>
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Line 2: Team, Effort, Start, End */}
+                                            <div style={{ display: 'flex', gap: '16px', alignItems: 'center', fontSize: '13px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                                                    <span style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>Team:</span>
+                                                    <select
+                                                        value={epic.team_id}
+                                                        onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, team_id: e.target.value } : ev)) : updateEpic(epic.id, { team_id: e.target.value })}
+                                                        style={{ width: '100%' }}
+                                                    >
+                                                        {data?.teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100px' }}>
+                                                    <span style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>Effort:</span>
                                                     <input
                                                         type="number"
                                                         value={epic.effort_md}
@@ -531,9 +549,10 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                         }}
                                                         style={{ width: '100%' }}
                                                     />
-                                                </td>
-                                                <td>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '160px' }}>
+                                                    <span style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>Start:</span>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
                                                         <input
                                                             type="date"
                                                             value={epic.target_start || ''}
@@ -550,9 +569,10 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                         />
                                                         {!epic.target_start && <span title="Missing start date" style={{ cursor: 'help' }}>⚠️</span>}
                                                     </div>
-                                                </td>
-                                                <td>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '160px' }}>
+                                                    <span style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>End:</span>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
                                                         <input
                                                             type="date"
                                                             value={epic.target_end || ''}
@@ -569,31 +589,14 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                         />
                                                         {!epic.target_end && <span title="Missing end date" style={{ cursor: 'help' }}>⚠️</span>}
                                                     </div>
-                                                </td>
-                                                <td>
-                                                    <select
-                                                        value={epic.team_id}
-                                                        onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, team_id: e.target.value } : ev)) : updateEpic(epic.id, { team_id: e.target.value })}
-                                                        style={{ width: '100%' }}
-                                                    >
-                                                        {data?.teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                                    </select>
-                                                </td>
-                                                <td style={{ display: 'flex', gap: '8px' }}>
-                                                    <button className="btn-primary" onClick={() => syncEpic(epic.id, epic.jira_key)} disabled={syncingId === epic.id}>
-                                                        {syncingId === epic.id ? 'Syncing...' : 'Sync from Jira'}
-                                                    </button>
-                                                    <button className="btn-danger" onClick={() => handleDeleteEpic(epic.id, epic.name || epic.jira_key)}>
-                                                        Delete
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {epics.length === 0 && (
-                                            <tr><td colSpan={7} style={{ textAlign: 'center', color: '#94a3b8', padding: '24px' }}>No epics linked yet.</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {epics.length === 0 && (
+                                        <div style={{ textAlign: 'center', color: '#94a3b8', padding: '24px' }}>No epics linked yet.</div>
+                                    )}
+                                </div>
 
                                 <div className={styles.addWorkItemBox}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
