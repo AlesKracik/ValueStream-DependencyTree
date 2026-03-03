@@ -43,7 +43,7 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
                 const effort = calculateWorkItemEffort(w, data.epics);
                 const tcv = calculateWorkItemTcv(w, data.customers);
                 const sprint = data.sprints.find(s => s.id === w.released_in_sprint_id);
-                return `Score: ${Math.round(w.score || 0)} | Effort: ${effort} MDs | TCV: $${tcv.toLocaleString()} | Released in: ${sprint?.name || 'Not Released'}`;
+                return `Score: ${Math.round(w.score || 0).toLocaleString()} | Effort: ${effort.toLocaleString()} MDs | TCV: $${tcv.toLocaleString()} | Released in: ${sprint?.name || 'Not Released'}`;
             }}
             actionButton={{
                 label: "+ New Work Item",

@@ -26,6 +26,16 @@ export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
         { type: 'source' as const, position: Position.Right }
     ];
 
+    const formatScore = (val: number) => {
+        if (val >= 1000000) {
+            return `${(val / 1000000).toFixed(1)}M`;
+        }
+        if (val >= 1000) {
+            return `${(val / 1000).toFixed(1)}k`;
+        }
+        return Math.round(val).toLocaleString();
+    };
+
     return (
         <BaseCircleNode
             size={nodeSize}
@@ -59,7 +69,7 @@ export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
                 fontSize: `${Math.max(10, nodeSize * 0.22)}px`, 
                 color: '#fcd34d' 
             }}>
-                {Math.round(data.score)}
+                {formatScore(data.score)}
             </div>
         </BaseCircleNode>
     );

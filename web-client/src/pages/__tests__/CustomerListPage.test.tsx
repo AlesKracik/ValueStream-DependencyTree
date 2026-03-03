@@ -8,9 +8,9 @@ const mockData: DashboardData = {
     dashboards: [],
     settings: { jira_base_url: '', jira_api_version: '3', fiscal_year_start_month: 1 },
     customers: [
-        { id: 'c1', name: 'Alpha Cust', existing_tcv: 500, potential_tcv: 100 },
-        { id: 'c2', name: 'Gamma Cust', existing_tcv: 100, potential_tcv: 1000 },
-        { id: 'c3', name: 'Beta Cust', existing_tcv: 1000, potential_tcv: 50 }
+        { id: 'c1', name: 'Alpha Cust', existing_tcv: 5000, potential_tcv: 1000 },
+        { id: 'c2', name: 'Gamma Cust', existing_tcv: 1000, potential_tcv: 10000 },
+        { id: 'c3', name: 'Beta Cust', existing_tcv: 10000, potential_tcv: 500 }
     ],
     workItems: [],
     teams: [],
@@ -88,12 +88,15 @@ describe('CustomerListPage', () => {
 
         const sortBtn = screen.getByRole('button', { name: /Total/i });
         
-        // Totals: Alpha (600), Gamma (1100), Beta (1050)
+        // Totals: Alpha (6000), Gamma (11000), Beta (10500)
         // Click for asc: Alpha, Beta, Gamma
         fireEvent.click(sortBtn);
         const items = container.querySelectorAll('[class*="listItem"]');
         expect(items[0].textContent).toContain('Alpha Cust');
+        expect(items[0].textContent).toContain('$6,000');
         expect(items[1].textContent).toContain('Beta Cust');
+        expect(items[1].textContent).toContain('$10,500');
         expect(items[2].textContent).toContain('Gamma Cust');
+        expect(items[2].textContent).toContain('$11,000');
     });
 });

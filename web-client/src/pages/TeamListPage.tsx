@@ -27,7 +27,7 @@ export const TeamListPage: React.FC<Props> = ({ data, loading }) => {
             sortOptions={sortOptions}
             onItemClick={(t) => navigate(`/team/${t.id}`)}
             renderItemTitle={(t) => t.name}
-            renderItemDetails={(t) => `Capacity (MDs): ${t.total_capacity_mds} | Country: ${t.country || 'N/A'}`}
+            renderItemDetails={(t) => `Capacity (MDs): ${t.total_capacity_mds.toLocaleString()} | Country: ${t.country || 'N/A'}`}
             actionButton={{
                 label: "+ New Team",
                 onClick: () => navigate('/team/new')

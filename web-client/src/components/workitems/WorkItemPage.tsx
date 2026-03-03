@@ -202,7 +202,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                 <div style={{ display: 'flex', gap: '24px' }}>
                                     <div style={{ fontSize: '14px', color: '#94a3b8' }}>
                                         <span style={{ fontWeight: 'bold', color: '#60a5fa', marginRight: '8px' }}>Total Effort:</span>
-                                        <span style={{ color: '#f1f5f9' }}>{calculatedEffort} MDs</span>
+                                        <span style={{ color: '#f1f5f9' }}>{calculatedEffort.toLocaleString()} MDs</span>
                                     </div>
                                     <div style={{ fontSize: '14px', color: '#94a3b8' }}>
                                         <span style={{ fontWeight: 'bold', color: '#60a5fa', marginRight: '8px' }}>TCV Impact:</span>
@@ -210,7 +210,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                     </div>
                                     <div style={{ fontSize: '14px', color: '#94a3b8' }}>
                                         <span style={{ fontWeight: 'bold', color: '#60a5fa', marginRight: '8px' }}>RICE Score:</span>
-                                        <span style={{ color: '#f1f5f9' }}>{Math.round(workItem.score || 0)}</span>
+                                        <span style={{ color: '#f1f5f9' }}>{Math.round(workItem.score || 0).toLocaleString()}</span>
                                     </div>
                                 </div>
                             </div>

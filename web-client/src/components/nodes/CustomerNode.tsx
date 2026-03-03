@@ -43,6 +43,13 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
         }
     ];
 
+    const formatTcv = (val: number) => {
+        if (val >= 1000000) {
+            return `$${(val / 1000000).toFixed(1)}M`;
+        }
+        return `$${(val / 1000).toFixed(0)}k`;
+    };
+
     return (
         <BaseCircleNode
             size={outerSize}
@@ -62,7 +69,7 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
                 overflow: 'visible' // Important to see inner circle and its handle
             }}
         >
-            {/* Total Text */}
+            {/* Total Text (Delta/Potential) */}
             <span style={{ 
                 fontSize: outerFontSize, 
                 color: '#60a5fa', 
@@ -70,7 +77,7 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
                 textShadow: '0 1px 2px rgba(0,0,0,0.5)',
                 zIndex: 1
             }}>
-                ${(data.totalTcv / 1000).toFixed(0)}k
+                {formatTcv(data.potentialTcv)}
             </span>
 
             {/* Inner Circle (Existing TCV) */}
@@ -105,7 +112,7 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
                         opacity: 1,
                         textShadow: '0 1px 2px rgba(0,0,0,0.3)'
                     }}>
-                        ${(data.existingTcv / 1000).toFixed(0)}k
+                        {formatTcv(data.existingTcv)}
                     </div>
                 )}
 

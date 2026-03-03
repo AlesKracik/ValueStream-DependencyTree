@@ -284,11 +284,11 @@ export const EpicPage: React.FC<EpicPageProps> = ({
                                                 <td style={{ color: '#94a3b8' }}>{sprint.quarter}</td>
                                                 <td style={{ color: (hasCapacityOverride || holidayCount > 0) ? '#3b82f6' : '#94a3b8' }}>
                                                     <div style={{ fontWeight: (hasCapacityOverride || holidayCount > 0) ? 'bold' : 'normal' }}>
-                                                        {Math.round(effectiveCapacity * 10) / 10} MDs
+                                                        {(Math.round(effectiveCapacity * 10) / 10).toLocaleString()} MDs
                                                         {hasCapacityOverride && <span style={{ fontSize: '11px', marginLeft: '4px', opacity: 0.8 }}>(Override)</span>}
                                                         {!hasCapacityOverride && holidayCount > 0 && (
                                                             <span style={{ fontSize: '11px', marginLeft: '4px', opacity: 0.8 }} title={`${holidayCount} holiday(s)`}>
-                                                                (🏖️ -{Math.round(holidayImpact * 10) / 10})
+                                                                (🏖️ -{(Math.round(holidayImpact * 10) / 10).toLocaleString()})
                                                             </span>
                                                         )}
                                                     </div>

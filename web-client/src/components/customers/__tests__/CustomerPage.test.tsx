@@ -94,15 +94,18 @@ describe('CustomerPage', () => {
         const valueInput = screen.getByLabelText(/New TCV Value \(\$\):/i);
 
         fireEvent.change(dateInput, { target: { value: '2026-03-01' } });
-        fireEvent.change(valueInput, { target: { value: '200' } });
+        fireEvent.change(valueInput, { target: { value: '2000' } });
 
         const confirmBtn = screen.getByText('Confirm Update');
         fireEvent.click(confirmBtn);
 
         await waitFor(() => {
-            expect(mockShowConfirm).toHaveBeenCalled();
+            expect(mockShowConfirm).toHaveBeenCalledWith(
+                'Update Actual TCV',
+                expect.stringContaining('$100') // should be formatted
+            );
             expect(defaultProps.updateCustomer).toHaveBeenCalledWith('c1', expect.objectContaining({
-                existing_tcv: 200,
+                existing_tcv: 2000,
                 existing_tcv_valid_from: '2026-03-01',
                 tcv_history: [
                     expect.objectContaining({ value: 100, valid_from: '2026-01-01' })
@@ -117,7 +120,8 @@ describe('CustomerPage', () => {
             customers: [
                 {
                     ...mockData.customers[0],
-                    tcv_history: [{ id: 'h1', value: 80, valid_from: '2025-01-01' }]
+                    existing_tcv: 1000,
+                    tcv_history: [{ id: 'h1', value: 800, valid_from: '2025-01-01' }]
                 }
             ],
             workItems: [
@@ -137,8 +141,8 @@ describe('CustomerPage', () => {
         const typeDropdown = screen.getByDisplayValue('Existing');
         expect(typeDropdown).toBeDefined();
 
-        // Should see "Latest Actual ($100)" in the selection dropdown
-        const selectionDropdown = screen.getByDisplayValue('Latest Actual ($100)');
+        // Should see "Latest Actual ($1,000)" in the selection dropdown
+        const selectionDropdown = screen.getByDisplayValue('Latest Actual ($1,000)');
         expect(selectionDropdown).toBeDefined();
 
         // Should see historical option

@@ -199,12 +199,13 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                         Actual Existing TCV ($):
                                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                             <input 
-                                                type="number" 
+                                                type={isNew ? "number" : "text"} 
                                                 readOnly={!isNew}
-                                                value={isNew ? newCustDraft.existing_tcv : customer.existing_tcv} 
+                                                value={isNew ? newCustDraft.existing_tcv : (customer.existing_tcv || 0).toLocaleString()} 
                                                 onChange={e => {
+                                                    if (!isNew) return;
                                                     const val = parseInt(e.target.value) || 0;
-                                                    if (isNew) setNewCustDraft(prev => ({ ...prev, existing_tcv: val }));
+                                                    setNewCustDraft(prev => ({ ...prev, existing_tcv: val }));
                                                 }}
                                                 style={!isNew ? { backgroundColor: '#1e293b', border: 'none' } : {}}
                                             />
@@ -224,11 +225,10 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                 <label>
                                     Potential TCV ($):
                                     <input 
-                                        type="number" 
-                                        min="0" 
-                                        value={isNew ? newCustDraft.potential_tcv : customer.potential_tcv} 
+                                        type="text" 
+                                        value={(isNew ? (newCustDraft.potential_tcv || 0) : (customer.potential_tcv || 0)).toLocaleString()} 
                                         onChange={e => {
-                                            const val = parseInt(e.target.value) || 0;
+                                            const val = parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0;
                                             if (isNew) setNewCustDraft(prev => ({ ...prev, potential_tcv: val }));
                                             else updateCustomer(customer.id, { potential_tcv: val });
                                         }}
@@ -356,7 +356,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                             return (
                                                 <tr key={workItem.id}>
                                                     <td>{workItem.name}</td>
-                                                    <td>{calculatedEffort}</td>
+                                                    <td>{calculatedEffort.toLocaleString()}</td>
                                                     <td>
                                                         <select 
                                                             value={targetDef.tcv_type}

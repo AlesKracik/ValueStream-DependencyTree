@@ -45,7 +45,7 @@ const mockData: DashboardData = {
     customers: [],
     workItems: [],
     teams: [
-        { id: 't1', name: 'Team 1', total_capacity_mds: 100, country: 'US' }
+        { id: 't1', name: 'Team 1', total_capacity_mds: 2000, country: 'US' }
     ],
     epics: [],
     sprints: [
@@ -82,7 +82,7 @@ describe('TeamPage', () => {
             </NotificationProvider>
         );
         expect(screen.getByDisplayValue('Team 1')).toBeDefined();
-        expect(screen.getByDisplayValue('100')).toBeDefined();
+        expect(screen.getByDisplayValue('2000')).toBeDefined();
         expect(screen.getByDisplayValue('United States of America (US)')).toBeDefined();
     });
 
@@ -130,13 +130,13 @@ describe('TeamPage', () => {
                 </DashboardProvider>
             </NotificationProvider>
         );
-        // Base capacity 100, 1 holiday impact = (100/10)*1 = 10. Calculated = 90.
-        const input = screen.getByPlaceholderText('90');
-        fireEvent.change(input, { target: { value: '85' } });
+        // Base capacity 2000, 1 holiday impact = (2000/10)*1 = 200. Calculated = 1800.
+        const input = screen.getByPlaceholderText('1,800');
+        fireEvent.change(input, { target: { value: '1700' } });
         
         expect(defaultProps.updateTeam).toHaveBeenCalledWith('t1', {
             sprint_capacity_overrides: {
-                's1': 85
+                's1': 1700
             }
         });
     });

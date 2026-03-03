@@ -203,7 +203,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                             <input 
                                                                 type="number"
-                                                                placeholder={String(Math.round(calculatedCapacity * 10) / 10)}
+                                                                placeholder={(Math.round(calculatedCapacity * 10) / 10).toLocaleString()}
                                                                 value={team.sprint_capacity_overrides?.[sprint.id] ?? ''}
                                                                 onChange={e => handleOverrideChange(sprint.id, e.target.value)}
                                                                 title={isOverridden ? 'Manual Override Active' : 'Calculated Capacity'}

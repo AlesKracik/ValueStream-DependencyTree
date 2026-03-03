@@ -12,17 +12,17 @@ const mockData = {
     label: 'Test Work Item',
     description: 'A test description',
     effortMds: 10,
-    score: 150,
-    maxScore: 500,
+    score: 1500,
+    maxScore: 5000,
     baseSize: 100,
 };
 
 describe('WorkItemNode', () => {
-    it('renders the label and score', () => {
+    it('renders the label and formatted score', () => {
         render(<WorkItemNode data={mockData} />);
         
         expect(screen.getByText('Test Work Item')).toBeDefined();
-        expect(screen.getByText('150')).toBeDefined();
+        expect(screen.getByText('1.5k')).toBeDefined();
     });
 
     it('renders the description as a tooltip', () => {
