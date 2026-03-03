@@ -4,7 +4,6 @@ import type { Node, Edge } from '@xyflow/react';
 import type { DashboardData, DashboardParameters } from '../types/models';
 import Holidays from 'date-holidays';
 import { calculateWorkItemEffort, calculateEpicEffortPerSprint, calculateEpicIntensityRatio } from '../utils/businessLogic';
-import { countBusinessDays } from '../utils/dateHelpers';
 
 export function useGraphLayout(
     data: DashboardData | null,

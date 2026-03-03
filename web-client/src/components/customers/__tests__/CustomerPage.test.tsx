@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { CustomerPage } from '../CustomerPage';
 import { useDashboardContext } from '../../../contexts/DashboardContext';
 import type { DashboardData } from '../../../types/models';
+import * as api from '../../../utils/api';
 
 // Mock the context
 vi.mock('../../../contexts/DashboardContext', () => ({
@@ -10,13 +11,24 @@ vi.mock('../../../contexts/DashboardContext', () => ({
     DashboardProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
 }));
 
+vi.mock('../../../utils/api', () => ({
+    authorizedFetch: vi.fn()
+}));
+
 const mockData: DashboardData = {
     dashboards: [],
-    settings: { jira_base_url: '', jira_api_version: '3' },
+    settings: { 
+        jira_base_url: 'https://jira.com', 
+        jira_api_version: '3',
+        customer_jql_new: "status = New",
+        customer_jql_in_progress: "status = 'In Progress'",
+        customer_jql_noop: "status = Blocked"
+    },
     customers: [
         { 
             id: 'c1', 
             name: 'Customer A', 
+            customer_id: 'CUST-A',
             existing_tcv: 100, 
             existing_tcv_valid_from: '2026-01-01',
             potential_tcv: 50,
@@ -55,10 +67,16 @@ describe('CustomerPage', () => {
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert
         });
+        (api.authorizedFetch as any).mockResolvedValue({
+            ok: true,
+            json: async () => ({ success: true, data: { issues: [] } })
+        });
     });
 
-    it('renders customer details correctly and Actual TCV is readOnly', () => {
-        render(<CustomerPage {...defaultProps} />);
+    it('renders customer details correctly and Actual TCV is readOnly', async () => {
+        await act(async () => {
+            render(<CustomerPage {...defaultProps} />);
+        });
 
         expect(screen.getByDisplayValue('Customer A')).toBeDefined();
         const existingTcvInput = screen.getByLabelText(/Actual Existing TCV \(\$\):/i);
@@ -67,25 +85,113 @@ describe('CustomerPage', () => {
         expect(screen.getByText(/Valid from: 2026-01-01/i)).toBeDefined();
     });
 
-    it('switches between Targeted Work Items and TCV History tabs', () => {
-        render(<CustomerPage {...defaultProps} />);
+    it('switches between Targeted Work Items, TCV History and Support Health tabs', async () => {
+        await act(async () => {
+            render(<CustomerPage {...defaultProps} />);
+        });
 
         // Default tab is Work Items
         expect(screen.getByText('Feature 1')).toBeDefined();
 
         // Switch to History tab
         const historyTab = screen.getByText(/TCV History/i);
-        fireEvent.click(historyTab);
-
+        await act(async () => {
+            fireEvent.click(historyTab);
+        });
         expect(screen.queryByText('Feature 1')).toBeNull();
         expect(screen.getByText(/No historical entries/i)).toBeDefined();
+
+        // Switch to Support Health tab
+        const supportTab = screen.getByText(/Support Health/i);
+        await act(async () => {
+            fireEvent.click(supportTab);
+        });
+        expect(screen.getByText(/Support Health Overview/i)).toBeDefined();
+    });
+
+    it('displays Jira issues in Support Health tab', async () => {
+        (api.authorizedFetch as any).mockImplementation((_url: string, options: any) => {
+            const body = JSON.parse(options.body);
+            if (body.jql.includes('status = New')) {
+                return Promise.resolve({
+                    ok: true,
+                    json: async () => ({ 
+                        success: true, 
+                        data: { 
+                            issues: [
+                                { key: 'BUG-NEW', fields: { summary: 'Broken UI', status: { name: 'New' }, priority: { name: 'High' } } }
+                            ] 
+                        } 
+                    })
+                });
+            }
+            return Promise.resolve({
+                ok: true,
+                json: async () => ({ success: true, data: { issues: [] } })
+            });
+        });
+
+        await act(async () => {
+            render(<CustomerPage {...defaultProps} />);
+        });
+        
+        const supportTab = screen.getByText(/Support Health/i);
+        await act(async () => {
+            fireEvent.click(supportTab);
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText('BUG-NEW')).toBeDefined();
+            expect(screen.getByText('Broken UI')).toBeDefined();
+        });
+    });
+
+    it('handles AI summary generation', async () => {
+        (api.authorizedFetch as any).mockImplementation((url: string) => {
+            if (url === '/api/llm/generate') {
+                return Promise.resolve({
+                    ok: true,
+                    json: async () => ({ success: true, text: 'This customer is doing great.' })
+                });
+            }
+            return Promise.resolve({
+                ok: true,
+                json: async () => ({ success: true, data: { issues: [] } })
+            });
+        });
+
+        await act(async () => {
+            render(<CustomerPage {...defaultProps} />);
+        });
+        
+        await act(async () => {
+            fireEvent.click(screen.getByText(/Support Health/i));
+        });
+        
+        // Wait for Jira loading to finish so button appears
+        await waitFor(() => {
+            expect(screen.queryByText(/Loading Jira data.../i)).toBeNull();
+        });
+
+        const generateBtn = screen.getByText(/Generate AI Health Summary/i);
+        await act(async () => {
+            fireEvent.click(generateBtn);
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText('This customer is doing great.')).toBeDefined();
+        });
     });
 
     it('handles the Update TCV flow (archiving current to history)', async () => {
-        render(<CustomerPage {...defaultProps} />);
+        await act(async () => {
+            render(<CustomerPage {...defaultProps} />);
+        });
 
         const updateBtn = screen.getByText('Update TCV');
-        fireEvent.click(updateBtn);
+        await act(async () => {
+            fireEvent.click(updateBtn);
+        });
 
         // Form should appear
         expect(screen.getByText('Archive Current and Set New Actual TCV')).toBeDefined();
@@ -93,11 +199,15 @@ describe('CustomerPage', () => {
         const dateInput = screen.getByLabelText(/New Valid From Date:/i);
         const valueInput = screen.getByLabelText(/New TCV Value \(\$\):/i);
 
-        fireEvent.change(dateInput, { target: { value: '2026-03-01' } });
-        fireEvent.change(valueInput, { target: { value: '2000' } });
+        await act(async () => {
+            fireEvent.change(dateInput, { target: { value: '2026-03-01' } });
+            fireEvent.change(valueInput, { target: { value: '2000' } });
+        });
 
         const confirmBtn = screen.getByText('Confirm Update');
-        fireEvent.click(confirmBtn);
+        await act(async () => {
+            fireEvent.click(confirmBtn);
+        });
 
         await waitFor(() => {
             expect(mockShowConfirm).toHaveBeenCalledWith(
@@ -114,7 +224,7 @@ describe('CustomerPage', () => {
         });
     });
 
-    it('shows TCV history selection when targeting Existing TCV', () => {
+    it('shows TCV history selection when targeting Existing TCV', async () => {
         const historyData: DashboardData = {
             ...mockData,
             customers: [
@@ -135,7 +245,9 @@ describe('CustomerPage', () => {
             ]
         };
 
-        render(<CustomerPage {...defaultProps} data={historyData} />);
+        await act(async () => {
+            render(<CustomerPage {...defaultProps} data={historyData} />);
+        });
 
         // Should see "Existing" in the type dropdown
         const typeDropdown = screen.getByDisplayValue('Existing');
@@ -146,7 +258,9 @@ describe('CustomerPage', () => {
         expect(selectionDropdown).toBeDefined();
 
         // Should see historical option
-        fireEvent.change(selectionDropdown, { target: { value: 'h1' } });
+        await act(async () => {
+            fireEvent.change(selectionDropdown, { target: { value: 'h1' } });
+        });
         
         expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', expect.objectContaining({
             customer_targets: [
@@ -155,28 +269,38 @@ describe('CustomerPage', () => {
         }));
     });
 
-    it('removes a work item target', () => {
-        render(<CustomerPage {...defaultProps} />);
+    it('removes a work item target', async () => {
+        await act(async () => {
+            render(<CustomerPage {...defaultProps} />);
+        });
 
         const removeBtn = screen.getByText('Remove');
-        fireEvent.click(removeBtn);
+        await act(async () => {
+            fireEvent.click(removeBtn);
+        });
 
         expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', expect.objectContaining({
             customer_targets: []
         }));
     });
 
-    it('adds a new customer with initial validity date', () => {
-        render(<CustomerPage {...defaultProps} customerId="new" />);
+    it('adds a new customer with initial validity date', async () => {
+        await act(async () => {
+            render(<CustomerPage {...defaultProps} customerId="new" />);
+        });
 
         const nameInput = screen.getByLabelText(/Name:/i);
         const dateInput = screen.getByLabelText(/Valid From \(Initial\):/i);
         
-        fireEvent.change(nameInput, { target: { value: 'New Brand' } });
-        fireEvent.change(dateInput, { target: { value: '2026-02-01' } });
+        await act(async () => {
+            fireEvent.change(nameInput, { target: { value: 'New Brand' } });
+            fireEvent.change(dateInput, { target: { value: '2026-02-01' } });
+        });
 
         const createBtn = screen.getByText('Create');
-        fireEvent.click(createBtn);
+        await act(async () => {
+            fireEvent.click(createBtn);
+        });
 
         expect(defaultProps.addCustomer).toHaveBeenCalledWith(expect.objectContaining({
             name: 'New Brand',
@@ -184,3 +308,5 @@ describe('CustomerPage', () => {
         }));
     });
 });
+
+

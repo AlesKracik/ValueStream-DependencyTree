@@ -6,6 +6,8 @@ import styles from './CustomerPage.module.css';
 import { generateId } from '../../utils/security';
 import { calculateWorkItemEffort } from '../../utils/businessLogic';
 import { PageWrapper } from '../layout/PageWrapper';
+import { useCustomerHealth } from '../../hooks/useCustomerHealth';
+import { authorizedFetch } from '../../utils/api';
 
 export interface CustomerPageProps {
     customerId: string;
@@ -48,9 +50,43 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     const [newTcvValue, setNewTcvValue] = useState<number>(0);
     const [newTcvDate, setNewTcvDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
-    const [activeTab, setActiveTab] = useState<'workItems' | 'history'>('workItems');
+    const [activeTab, setActiveTab] = useState<'workItems' | 'history' | 'support'>('workItems');
 
     const customer = isNew ? newCustDraft as Customer : data?.customers.find(c => c.id === customerId);
+
+    const healthData = useCustomerHealth(customer, data?.settings);
+    const [llmSummary, setLlmSummary] = useState<string | null>(null);
+    const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+
+    const handleGenerateSummary = async () => {
+        if (!data?.settings) return;
+        setIsGeneratingSummary(true);
+        setLlmSummary(null);
+        try {
+            const prompt = `You are a customer success manager. Analyze the following Jira support tickets for customer ${customer?.name}. Summarize the overall healthiness. Pay special attention to 'New' un-triaged issues as they are the most critical. Highlight any concerning trends across the New, In-Progress, and Noop issue categories.
+            
+Data:
+New Issues: ${JSON.stringify(healthData.newIssues)}
+In-Progress Issues: ${JSON.stringify(healthData.inProgressIssues)}
+Noop/Closed Issues: ${JSON.stringify(healthData.noopIssues)}`;
+
+            const res = await authorizedFetch('/api/llm/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt, config: data.settings })
+            });
+            const resData = await res.json();
+            if (resData.success) {
+                setLlmSummary(resData.text);
+            } else {
+                setLlmSummary(`Error: ${resData.error}`);
+            }
+        } catch (e: any) {
+            setLlmSummary(`Error: ${e.message}`);
+        } finally {
+            setIsGeneratingSummary(false);
+        }
+    };
 
     const targetedWorkItems = (isNew && data)
         ? newCustomerWorkItems.map(ncf => data.workItems.find(f => f.id === ncf.workItemId)!).filter(Boolean)
@@ -64,6 +100,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                 const newCust: Customer = {
                     id: newId,
                     name: newCustDraft.name || 'New Customer',
+                    customer_id: newCustDraft.customer_id,
                     existing_tcv: newCustDraft.existing_tcv || 0,
                     existing_tcv_valid_from: newCustDraft.existing_tcv_valid_from,
                     potential_tcv: newCustDraft.potential_tcv || 0
@@ -193,6 +230,19 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                         }}
                                     />
                                 </label>
+
+                                <label>
+                                    Customer ID:
+                                    <input 
+                                        type="text" 
+                                        value={isNew ? (newCustDraft.customer_id || '') : (customer.customer_id || '')} 
+                                        onChange={e => {
+                                            if (isNew) setNewCustDraft(prev => ({ ...prev, customer_id: e.target.value }));
+                                            else updateCustomer(customer.id, { customer_id: e.target.value });
+                                        }}
+                                        placeholder="e.g. CUST-123"
+                                    />
+                                </label>
                                 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                     <label>
@@ -286,24 +336,151 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                 Targeted Work Items ({targetedWorkItems.length})
                             </button>
                             {!isNew && (
-                                <button
-                                    onClick={() => setActiveTab('history')}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        padding: '12px 16px',
-                                        color: activeTab === 'history' ? '#60a5fa' : '#94a3b8',
-                                        borderBottom: activeTab === 'history' ? '2px solid #60a5fa' : '2px solid transparent',
-                                        cursor: 'pointer',
-                                        fontSize: '15px',
-                                        fontWeight: activeTab === 'history' ? 'bold' : '500',
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    TCV History ({customer.tcv_history?.length || 0})
-                                </button>
+                                <>
+                                    <button
+                                        onClick={() => setActiveTab('history')}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            padding: '12px 16px',
+                                            color: activeTab === 'history' ? '#60a5fa' : '#94a3b8',
+                                            borderBottom: activeTab === 'history' ? '2px solid #60a5fa' : '2px solid transparent',
+                                            cursor: 'pointer',
+                                            fontSize: '15px',
+                                            fontWeight: activeTab === 'history' ? 'bold' : '500',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        TCV History ({customer.tcv_history?.length || 0})
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('support')}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            padding: '12px 16px',
+                                            color: activeTab === 'support' ? '#60a5fa' : '#94a3b8',
+                                            borderBottom: activeTab === 'support' ? '2px solid #60a5fa' : '2px solid transparent',
+                                            cursor: 'pointer',
+                                            fontSize: '15px',
+                                            fontWeight: activeTab === 'support' ? 'bold' : '500',
+                                            transition: 'all 0.2s',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px'
+                                        }}
+                                    >
+                                        Support Health
+                                        {healthData.healthStatus === 'New / Untriaged' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#ef4444' }}></span>}
+                                        {healthData.healthStatus === 'Active Work' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#f59e0b' }}></span>}
+                                        {healthData.healthStatus === 'Blocked / Pending' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#3b82f6' }}></span>}
+                                        {healthData.healthStatus === 'Healthy' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981' }}></span>}
+                                    </button>
+                                </>
                             )}
                         </div>
+
+                        {activeTab === 'support' && !isNew && (
+                            <section className={styles.card}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                    <h2>Support Health Overview</h2>
+                                    {healthData.healthStatus !== 'Unknown' && (
+                                        <div style={{ display: 'flex', gap: '16px' }}>
+                                            <div style={{ textAlign: 'center', padding: '8px 16px', backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid #ef4444' }}>
+                                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ef4444' }}>{healthData.newIssues.length}</div>
+                                                <div style={{ fontSize: '12px', color: '#fca5a5' }}>New / Untriaged</div>
+                                            </div>
+                                            <div style={{ textAlign: 'center', padding: '8px 16px', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '8px', border: '1px solid #f59e0b' }}>
+                                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f59e0b' }}>{healthData.inProgressIssues.length}</div>
+                                                <div style={{ fontSize: '12px', color: '#fcd34d' }}>Active Work</div>
+                                            </div>
+                                            <div style={{ textAlign: 'center', padding: '8px 16px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', border: '1px solid #3b82f6' }}>
+                                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#3b82f6' }}>{healthData.noopIssues.length}</div>
+                                                <div style={{ fontSize: '12px', color: '#93c5fd' }}>Blocked / Pending</div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {healthData.loading && <div style={{ color: '#9ca3af' }}>Loading Jira data...</div>}
+                                {healthData.error && <div style={{ color: '#ef4444' }}>{healthData.error}</div>}
+
+                                {healthData.healthStatus === 'Unknown' && !healthData.loading && !healthData.error && (
+                                    <div style={{ color: '#9ca3af', textAlign: 'center', padding: '40px', backgroundColor: '#1e293b', borderRadius: '8px', border: '1px dashed #334155' }}>
+                                        <div style={{ fontSize: '16px', marginBottom: '8px', color: '#e2e8f0' }}>Support Tracking Not Configured</div>
+                                        <p style={{ margin: 0, fontSize: '14px' }}>
+                                            To see Jira bugs here, please provide a <strong>Customer ID</strong> in the Customer Details section above, 
+                                            and ensure <strong>Customer Issue Tracking JQLs</strong> are configured in the <strong>Settings</strong>.
+                                        </p>
+                                    </div>
+                                )}
+
+                                {!healthData.loading && !healthData.error && healthData.healthStatus !== 'Unknown' && (
+                                    <>
+                                        <div style={{ marginTop: '24px', padding: '16px', backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                                <h3 style={{ margin: 0, fontSize: '16px' }}>AI Health Summary</h3>
+                                                <button 
+                                                    className="btn-primary" 
+                                                    onClick={handleGenerateSummary}
+                                                    disabled={isGeneratingSummary}
+                                                >
+                                                    {isGeneratingSummary ? 'Generating...' : 'Generate AI Health Summary'}
+                                                </button>
+                                            </div>
+                                            {llmSummary ? (
+                                                <div style={{ color: '#e2e8f0', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+                                                    {llmSummary}
+                                                </div>
+                                            ) : (
+                                                <div style={{ color: '#64748b', fontStyle: 'italic' }}>
+                                                    Click the button to generate an AI summary of the current support situation.
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <h3 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '16px' }}>Issue List</h3>
+                                        <table className={styles.table}>
+                                            <thead>
+                                                <tr>
+                                                    <th>Key</th>
+                                                    <th>Summary</th>
+                                                    <th>Status</th>
+                                                    <th>Priority</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {[...healthData.newIssues, ...healthData.inProgressIssues, ...healthData.noopIssues].map(issue => (
+                                                    <tr key={issue.key}>
+                                                        <td><a href={issue.url} target="_blank" rel="noreferrer" style={{ color: '#60a5fa' }}>{issue.key}</a></td>
+                                                        <td>{issue.summary}</td>
+                                                        <td>
+                                                            <span style={{ 
+                                                                padding: '2px 6px', 
+                                                                borderRadius: '4px', 
+                                                                fontSize: '12px',
+                                                                backgroundColor: healthData.newIssues.includes(issue) ? 'rgba(239, 68, 68, 0.2)' : 
+                                                                                healthData.inProgressIssues.includes(issue) ? 'rgba(245, 158, 11, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+                                                                color: healthData.newIssues.includes(issue) ? '#f87171' : 
+                                                                      healthData.inProgressIssues.includes(issue) ? '#fbbf24' : '#60a5fa'
+                                                            }}>
+                                                                {issue.status}
+                                                            </span>
+                                                        </td>
+                                                        <td>{issue.priority}</td>
+                                                    </tr>
+                                                ))}
+                                                {healthData.newIssues.length === 0 && healthData.inProgressIssues.length === 0 && healthData.noopIssues.length === 0 && (
+                                                    <tr>
+                                                        <td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No issues found matching the JQL queries.</td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </>
+                                )}
+                            </section>
+                        )}
 
                         {activeTab === 'workItems' && (
                             <section className={styles.card}>

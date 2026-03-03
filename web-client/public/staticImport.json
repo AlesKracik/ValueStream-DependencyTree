@@ -5,9 +5,14 @@
     "jira_api_token": "",
     "mongo_uri": "mongodb://localhost:27017",
     "mongo_db": "valueStream",
-    "customer_jql_new": "",
-    "customer_jql_in_progress": "",
-    "customer_jql_noop": "",
+    "mongo_auth_method": "scram",
+    "mongo_create_if_not_exists": true,
+    "customer_jql_new": "labels = '{{CUSTOMER_ID}}' AND status = 'New'",
+    "customer_jql_in_progress": "labels = '{{CUSTOMER_ID}}' AND status = 'In Progress'",
+    "customer_jql_noop": "labels = '{{CUSTOMER_ID}}' AND status = 'Closed'",
+    "llm_provider": "openai",
+    "llm_api_key": "",
+    "llm_model": "gpt-4-turbo",
     "fiscal_year_start_month": 1,
     "sprint_duration_days": 14
   },
@@ -15,6 +20,7 @@
     {
       "id": "c1",
       "name": "Customer Alpha",
+      "customer_id": "ALPHA-123",
       "existing_tcv": 15000,
       "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 42000,
@@ -25,6 +31,7 @@
     {
       "id": "c2",
       "name": "Customer Beta",
+      "customer_id": "BETA-123",
       "existing_tcv": 300000,
       "existing_tcv_valid_from": "2026-01-01",
       "potential_tcv": 850000

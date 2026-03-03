@@ -7,6 +7,7 @@ export interface TcvHistoryEntry {
 export interface Customer {
   id: string;
   name: string;
+  customer_id?: string;
   existing_tcv: number;
   existing_tcv_valid_from?: string; // ISO date
   potential_tcv: number;
@@ -83,6 +84,9 @@ export interface Settings {
   customer_jql_new?: string;
   customer_jql_in_progress?: string;
   customer_jql_noop?: string;
+  llm_provider?: 'openai' | 'gemini' | 'anthropic';
+  llm_api_key?: string;
+  llm_model?: string;
   fiscal_year_start_month?: number; // 1-12, default 1
   sprint_duration_days?: number; // default 14
   mongo_create_if_not_exists?: boolean;

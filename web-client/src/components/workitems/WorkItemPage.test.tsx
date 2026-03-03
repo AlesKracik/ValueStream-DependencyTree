@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { WorkItemPage } from './WorkItemPage';
 import { DashboardProvider, NotificationProvider } from '../../contexts/DashboardContext';
-import type { DashboardData, Epic } from '../../types/models';
+import type { DashboardData } from '../../types/models';
 import * as api from '../../utils/api';
 
 vi.mock('../../utils/api', async () => {

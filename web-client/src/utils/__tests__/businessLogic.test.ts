@@ -5,8 +5,8 @@ import type { WorkItem, Epic, Customer, Sprint, Team } from '../../types/models'
 describe('businessLogic', () => {
     describe('parseJiraIssue', () => {
         const mockTeams: Team[] = [
-            { id: 't1', name: 'Team Alpha', jira_team_id: '101' },
-            { id: 't2', name: 'Team Beta', jira_team_id: '102' }
+            { id: 't1', name: 'Team Alpha', jira_team_id: '101', total_capacity_mds: 0 },
+            { id: 't2', name: 'Team Beta', jira_team_id: '102', total_capacity_mds: 0 }
         ];
 
         it('parses basic fields correctly', () => {

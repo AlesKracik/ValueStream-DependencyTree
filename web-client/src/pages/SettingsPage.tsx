@@ -28,7 +28,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   addEpic,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = (searchParams.get("tab") as "general" | "mongo" | "jira") || "general";
+  const activeTab = (searchParams.get("tab") as "general" | "mongo" | "jira" | "ai") || "general";
+
   const { showConfirm } = useDashboardContext();
 
   const [localFormData, setFormData] = useState<Partial<Settings>>({});
@@ -62,6 +63,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         customer_jql_new: settings.customer_jql_new || "",
         customer_jql_in_progress: settings.customer_jql_in_progress || "",
         customer_jql_noop: settings.customer_jql_noop || "",
+        llm_provider: settings.llm_provider || "openai",
+        llm_api_key: settings.llm_api_key || "",
+        llm_model: settings.llm_model || "",
         fiscal_year_start_month: settings.fiscal_year_start_month || 1,
         sprint_duration_days: settings.sprint_duration_days || 14,
       });
@@ -439,6 +443,21 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           >
             Jira Integration
           </button>
+          <button
+            onClick={() => setTab("ai")}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: '8px 16px',
+              color: activeTab === "ai" ? '#60a5fa' : '#9ca3af',
+              borderBottom: activeTab === "ai" ? '2px solid #60a5fa' : '2px solid transparent',
+              cursor: 'pointer',
+              fontSize: '15px',
+              fontWeight: activeTab === "ai" ? 'bold' : 'normal',
+            }}
+          >
+            AI & LLM
+          </button>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -752,11 +771,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#e5e7eb" }}>
                 Customer Issue Tracking
               </h3>
+              <p style={{ color: "#9ca3af", fontSize: "13px", margin: "0 0 8px 0" }}>
+                Use <code>{"{{CUSTOMER_ID}}"}</code> as a placeholder for the customer's technical ID.
+              </p>
               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-                New JQL:
+                New / Untriaged JQL:
                 <input
                   type="text"
-                  placeholder="status = 'New'"
+                  placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'New'"
                   value={localFormData.customer_jql_new || ""}
                   onChange={(e) => {
                       const val = e.target.value;
@@ -766,10 +788,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 />
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-                In-Progress JQL:
+                Active Work JQL:
                 <input
                   type="text"
-                  placeholder="status = 'In Progress'"
+                  placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'In Progress'"
                   value={localFormData.customer_jql_in_progress || ""}
                   onChange={(e) => {
                       const val = e.target.value;
@@ -779,10 +801,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 />
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-                Noop JQL:
+                Blocked / Pending JQL (Customer or 3rd Party):
                 <input
                   type="text"
-                  placeholder="status = 'Closed'"
+                  placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'Blocked'"
                   value={localFormData.customer_jql_noop || ""}
                   onChange={(e) => {
                       const val = e.target.value;
@@ -839,6 +861,48 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       setFormData({ ...localFormData, sprint_duration_days: val });
                       onUpdateSettings({ sprint_duration_days: val });
                   }}
+                />
+              </label>
+            </>
+          )}
+
+          {activeTab === "ai" && (
+            <>
+              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                LLM Provider:
+                <select
+                  value={localFormData.llm_provider || "openai"}
+                  onChange={(e) => {
+                      const val = e.target.value as any;
+                      setFormData({ ...localFormData, llm_provider: val });
+                      onUpdateSettings({ llm_provider: val });
+                  }}
+                >
+                  <option value="openai">OpenAI</option>
+                  <option value="gemini">Google Gemini</option>
+                  <option value="anthropic">Anthropic</option>
+                </select>
+              </label>
+
+              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                LLM API Key:
+                <input
+                  type="password"
+                  placeholder="sk-..."
+                  value={localFormData.llm_api_key || ""}
+                  onChange={(e) => setFormData({ ...localFormData, llm_api_key: e.target.value })}
+                  onBlur={() => onUpdateSettings({ llm_api_key: localFormData.llm_api_key })}
+                />
+              </label>
+
+              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                LLM Model (Optional):
+                <input
+                  type="text"
+                  placeholder="gpt-4-turbo"
+                  value={localFormData.llm_model || ""}
+                  onChange={(e) => setFormData({ ...localFormData, llm_model: e.target.value })}
+                  onBlur={() => onUpdateSettings({ llm_model: localFormData.llm_model })}
                 />
               </label>
             </>

@@ -1,6 +1,4 @@
-import React, { useMemo } from 'react';
-import { isWeekend, parseISO } from 'date-fns';
-import Holidays from 'date-holidays';
+import React from 'react';
 import type { DashboardData, Team } from '../../types/models';
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
@@ -39,16 +37,6 @@ export const TeamPage: React.FC<TeamPageProps> = ({
     });
 
     const team = isNew ? newTeamDraft as Team : data?.teams.find(t => t.id === teamId);
-
-    const hd = useMemo(() => {
-        if (!team?.country) return null;
-        try {
-            return new Holidays(team.country as any);
-        } catch (e) {
-            console.error(`Invalid country code: ${team.country}`);
-            return null;
-        }
-    }, [team?.country]);
 
     const handleSave = () => {
         if (isNew) {

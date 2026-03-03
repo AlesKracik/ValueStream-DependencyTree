@@ -354,4 +354,36 @@ describe('SettingsPage', () => {
             expect(screen.getByText('Exists')).toBeDefined();
         });
     });
+
+    it('switches to AI tab and shows LLM settings', async () => {
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=general']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        const aiTab = screen.getByText('AI & LLM');
+        await act(async () => {
+            fireEvent.click(aiTab);
+        });
+
+        expect(screen.getByLabelText(/LLM Provider:/i)).toBeDefined();
+        expect(screen.getByLabelText(/LLM API Key:/i)).toBeDefined();
+
+        const apiKeyInput = screen.getByLabelText(/LLM API Key:/i);
+        await act(async () => {
+            fireEvent.change(apiKeyInput, { target: { value: 'new-api-key' } });
+            fireEvent.blur(apiKeyInput);
+        });
+
+        expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
+            llm_api_key: 'new-api-key'
+        }));
+    });
 });

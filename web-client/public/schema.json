@@ -37,8 +37,19 @@
                 "mongo_uri": { "type": "string" },
                 "mongo_db": { "type": "string" },
                 "mongo_auth_method": { "type": "string", "enum": ["scram", "aws", "oidc"] },
+                "mongo_aws_access_key": { "type": "string" },
+                "mongo_aws_secret_key": { "type": "string" },
+                "mongo_aws_session_token": { "type": "string" },
+                "mongo_oidc_token": { "type": "string" },
+                "customer_jql_new": { "type": "string" },
+                "customer_jql_in_progress": { "type": "string" },
+                "customer_jql_noop": { "type": "string" },
+                "llm_provider": { "type": "string", "enum": ["openai", "gemini", "anthropic"] },
+                "llm_api_key": { "type": "string" },
+                "llm_model": { "type": "string" },
                 "fiscal_year_start_month": { "type": "integer", "minimum": 1, "maximum": 12 },
-                "sprint_duration_days": { "type": "integer", "minimum": 1 }
+                "sprint_duration_days": { "type": "integer", "minimum": 1 },
+                "mongo_create_if_not_exists": { "type": "boolean" }
             }
         },
         "customers": {
@@ -56,6 +67,9 @@
                         "type": "string"
                     },
                     "name": {
+                        "type": "string"
+                    },
+                    "customer_id": {
                         "type": "string"
                     },
                     "existing_tcv": {

@@ -39,7 +39,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
         return res.end();
       }
 
-      const SENSITIVE_FIELDS = ['jira_api_token', 'mongo_uri', 'mongo_aws_access_key', 'mongo_aws_secret_key', 'mongo_aws_session_token', 'mongo_oidc_token'];
+      const SENSITIVE_FIELDS = ['jira_api_token', 'mongo_uri', 'mongo_aws_access_key', 'mongo_aws_secret_key', 'mongo_aws_session_token', 'mongo_oidc_token', 'llm_api_key'];
       const MASK = '********';
 
       function maskSettings(settings: any) {
@@ -784,11 +784,84 @@ const MockDataPersistencePlugin = (): Plugin => ({
           const apiUrl = `${url.origin}/rest/api/${jira_api_version || '3'}/search`;
           const headers: any = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
           if (jira_api_token) headers['Authorization'] = `Bearer ${jira_api_token}`;
+          
           const jiraRes = await fetch(apiUrl, { method: 'POST', headers, body: JSON.stringify({ jql, expand: ['names'], maxResults: 100 }) });
           const jiraData = await jiraRes.json();
+
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
           res.end(JSON.stringify({ success: true, data: jiraData }));
+        } catch (e: any) {
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = e.message === 'Payload Too Large' ? 413 : 500;
+          res.end(JSON.stringify({ success: false, error: e.message }));
+        }
+      } else if (req.url === '/api/llm/generate' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const { prompt, config: rawConfig } = JSON.parse(body);
+
+          const settingsPath = path.resolve(__dirname, 'settings.json');
+          const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+          const config = unmaskSettings(rawConfig || {}, existingSettings);
+
+          const provider = config.llm_provider || 'openai';
+          const apiKey = config.llm_api_key;
+          const model = config.llm_model;
+
+          if (!apiKey) {
+            throw new Error('LLM API key not configured');
+          }
+
+          let resultText = '';
+
+          if (provider === 'openai') {
+            const res = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+              body: JSON.stringify({
+                model: model || 'gpt-4-turbo',
+                messages: [{ role: 'user', content: prompt }]
+              })
+            });
+            const data = await res.json() as any;
+            if (!res.ok) throw new Error(data.error?.message || 'OpenAI API error');
+            resultText = data.choices[0].message.content;
+          } else if (provider === 'gemini') {
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-1.5-pro'}:generateContent?key=${apiKey}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+              })
+            });
+            const data = await res.json() as any;
+            if (!res.ok) throw new Error(data.error?.message || 'Gemini API error');
+            resultText = data.candidates[0].content.parts[0].text;
+          } else if (provider === 'anthropic') {
+            const res = await fetch('https://api.anthropic.com/v1/messages', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json', 
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01'
+              },
+              body: JSON.stringify({
+                model: model || 'claude-3-opus-20240229',
+                max_tokens: 1024,
+                messages: [{ role: 'user', content: prompt }]
+              })
+            });
+            const data = await res.json() as any;
+            if (!res.ok) throw new Error(data.error?.message || 'Anthropic API error');
+            resultText = data.content[0].text;
+          } else {
+            throw new Error(`Unsupported LLM provider: ${provider}`);
+          }
+
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, text: resultText }));
         } catch (e: any) {
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = e.message === 'Payload Too Large' ? 413 : 500;

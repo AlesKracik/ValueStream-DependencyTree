@@ -1,12 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { parseISO, min, max, differenceInDays, isWeekend } from 'date-fns';
+import { parseISO } from 'date-fns';
 import type { DashboardData, Epic } from '../../types/models';
 import { authorizedFetch } from "../../utils/api";
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
 import { PageWrapper } from '../layout/PageWrapper';
-import { calculateEpicEffortPerSprint, calculateEpicIntensityRatio, parseJiraIssue } from '../../utils/businessLogic';
-import Holidays from 'date-holidays';
+import { calculateEpicEffortPerSprint, parseJiraIssue } from '../../utils/businessLogic';
 import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers';
 
 export interface EpicPageProps {
@@ -138,15 +137,6 @@ export const EpicPage: React.FC<EpicPageProps> = ({
     }, [epic, data]);
 
     const team = data?.teams.find(t => t.id === epic?.team_id);
-    const holidayChecker = useMemo(() => {
-        if (!team?.country) return null;
-        try {
-            return new Holidays(team.country as any);
-        } catch (e) {
-            console.error(`Invalid country code: ${team.country}`);
-            return null;
-        }
-    }, [team]);
 
     return (
         <PageWrapper
