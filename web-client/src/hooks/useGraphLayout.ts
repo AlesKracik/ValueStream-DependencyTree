@@ -59,6 +59,14 @@ export function useGraphLayout(
             selectable: false,
             draggable: false,
         });
+        nodes.push({
+            id: 'header-timeline',
+            type: 'headerNode',
+            position: { x: COL_TEAM_X + 250, y: HEADER_Y },
+            data: { label: 'Timeline' },
+            selectable: false,
+            draggable: false,
+        });
 
         // Calculate visible sets based on combined filters (Logical AND)
         const bcf = (baseParams?.customerFilter || '').toLowerCase();
@@ -828,7 +836,7 @@ export function useGraphLayout(
                             totalCapacityMds: Math.max(0, Math.round(baseCapacity * 10) / 10),
                             isOverridden: isOverridden,
                             holidayCount: holidayCount,
-                            width: width - 10,
+                            width: width,
                         },
                         selectable: false,
                     });

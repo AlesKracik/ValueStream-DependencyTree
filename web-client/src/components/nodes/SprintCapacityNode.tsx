@@ -44,9 +44,8 @@ export const SprintCapacityNode = memo(({ data }: { data: SprintCapacityNodeData
                 justifyContent: 'center',
                 borderBottom: `2px solid ${borderColor}`,
                 borderLeft: '1px solid #374151',
-                borderRight: '1px solid #374151',
                 color: textColor,
-                fontSize: '14px',
+                fontSize: '13px',
                 fontWeight: fontWeight as any,
                 backgroundColor: bgColor,
                 transition: 'all 0.2s ease',
@@ -54,18 +53,18 @@ export const SprintCapacityNode = memo(({ data }: { data: SprintCapacityNodeData
             }}
             title={`${data.sprintLabel}: ${data.usedMds} / ${data.totalCapacityMds} MDs${data.holidayCount ? ` (${data.holidayCount} public holidays)` : ''}`}
         >
-            <div style={{ marginBottom: '2px', display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#f3f4f6' }}>
-                    {data.sprintLabel} {data.isOverridden && '*'}
+            <div style={{ marginBottom: '1px', display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#f3f4f6' }}>
+                    {data.sprintLabel}
                 </span>
-                <span style={{ fontSize: '11px', opacity: 0.6, color: '#9ca3af' }}>{data.startDate} - {data.endDate}</span>
+                <span style={{ fontSize: '10px', opacity: 0.5, color: '#9ca3af' }}>{data.startDate}</span>
             </div>
-            <div style={{ fontSize: '12px', opacity: 0.9 }}>
-                <span style={{ color: isOverallocated ? '#f87171' : (isAllocated ? '#4ade80' : '#9ca3af') }}>{data.usedMds}</span>
-                <span style={{ margin: '0 4px', opacity: 0.5 }}>/</span>
-                <span>{data.totalCapacityMds} MDs</span>
-                {data.isOverridden && <span style={{ marginLeft: '4px', fontSize: '10px', color: '#fbbf24' }}>(Fixed)</span>}
-                {hasHolidays && <span style={{ marginLeft: '4px', fontSize: '10px', color: '#fbbf24' }}>(-{data.holidayCount}d 🏝️)</span>}
+            <div style={{ fontSize: '11px', opacity: 0.9 }}>
+                <span style={{ color: isOverallocated ? '#f87171' : (isAllocated ? '#4ade80' : '#9ca3af'), fontWeight: 'bold' }}>{data.usedMds}</span>
+                <span style={{ margin: '0 2px', opacity: 0.4 }}>/</span>
+                <span style={{ opacity: 0.8 }}>{data.totalCapacityMds}</span>
+                {data.isOverridden && <span title="Manual capacity override" style={{ marginLeft: '4px', cursor: 'help' }}>🔒</span>}
+                {hasHolidays && <span title={`${data.holidayCount} holidays`} style={{ marginLeft: '4px', cursor: 'help' }}>🏝️</span>}
             </div>
         </div>
     );

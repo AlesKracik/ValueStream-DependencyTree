@@ -10,12 +10,12 @@ The solution is an entirely local, client-side web application built on Vite and
 
 ## 2. Layout & Architecture (4-Stage Flow)
 
-The dashboard consists of a fixed **3-column bipartite-style graph** on the left, pivoting into a horizontally scrolling **Gantt chart** on the right.
+The dashboard consists of a fixed **4-column bipartite-style graph** on the left, pivoting into a horizontally scrolling **Gantt chart** on the right.
 
 - **Column 1 (Demand):** Customer nodes, sorted vertically from Highest ACV (Top) to Lowest ACV (Bottom).
 - **Column 2 (Scope):** Work Item nodes, sized visually using a RICE prioritization algorithm linked to target Customer TCV and Priority.
 - **Column 3 (Supply / The Pivot):** Team nodes, representing engineering groups and their structural velocity/bottlenecks.
-- **Section 4 (Execution Timeline Framework):** A calendar grid mapped chronologically via dynamic real-world Sprints (Weeks/Months) extending horizontally to the right of Column 3. Each Team node serves as the Y-axis header for its respective swimlane.
+- **Column 4 (Timeline):** A calendar grid mapped chronologically via dynamic real-world Sprints (Weeks/Months) extending horizontally to the right of Column 3. Each Team node serves as the Y-axis header for its respective swimlane.
 
 ## 3. Data Model & Tracking Units
 

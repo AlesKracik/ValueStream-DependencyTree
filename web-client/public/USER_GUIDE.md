@@ -5,7 +5,7 @@
 ![Dashboard View](images/dashboard.png)
 
 The main view provides a high-level map of value flow from Customers to Teams.
-- **Column Structure:** The dashboard is organized into three primary columns: **Customers**, **Work Items**, and **Teams**, followed by the **Gantt Timeline**.
+- **Column Structure:** The dashboard is organized into four primary columns: **Customers**, **Work Items**, **Teams**, and the **Timeline** (Gantt Chart).
 - **Unified Visual Identity:** All buttons and input fields across the application share a consistent visual style. Primary actions are blue, while destructive actions (Delete/Remove) are red.
 - **High-Performance Filtering:** The header contains a streamlined filter bar organized into logic groups. Filtering is now integrated with the database, allowing for lightning-fast searches even on large datasets.
     - **Search:** Quickly filter any column by typing names or partial strings.
@@ -70,8 +70,8 @@ Both Customers and Work Items feature tabbed detail pages for better organizatio
 - **Team Management:**
     - **Add/Delete Teams:** Teams can be managed via the **Team List** page. The **Delete Team** function includes a confirmation dialog to prevent accidental data loss.
     - **Capacity Overrides:** Both Epics and Teams support **Manual Overrides** for sprint-specific values. 
-    - **Calculated Baseline:** For teams, the baseline capacity automatically accounts for **Public Holidays** (excluding weekends). Sprints with holidays display a 🏖️ icon and a breakdown of the holiday impact.
-    - **Visual Feedback:** All manual overrides (effort or capacity) are highlighted with a **blue background** and bold text in the detail tables. Click the **"×"** button next to any override to clear it and return to the automatic calculation.
+    - **Calculated Baseline:** For teams, the baseline capacity automatically accounts for **Public Holidays** (excluding weekends). Sprints with holidays display a 🏝️ icon.
+    - **Visual Feedback:** All manual overrides (effort or capacity) are highlighted with a **blue background** and bold text in the detail tables. In the dashboard timeline, overridden sprint capacities are marked with a 🔒 icon. Click the **"×"** button next to any override to clear it and return to the automatic calculation.
 
 ### 5. Progress-Aware Gantt Timeline
 The Gantt chart distinguishes between what has happened and what is planned:
