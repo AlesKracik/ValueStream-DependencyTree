@@ -84,7 +84,7 @@ export interface Settings {
   customer_jql_new?: string;
   customer_jql_in_progress?: string;
   customer_jql_noop?: string;
-  llm_provider?: 'openai' | 'gemini' | 'anthropic';
+  llm_provider?: 'openai' | 'gemini' | 'anthropic' | 'augment';
   llm_api_key?: string;
   llm_model?: string;
   fiscal_year_start_month?: number; // 1-12, default 1

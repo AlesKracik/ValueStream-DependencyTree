@@ -853,12 +853,31 @@ const MockDataPersistencePlugin = (): Plugin => ({
               })
             });
             const data = await res.json() as any;
-            if (!res.ok) throw new Error(data.error?.message || 'Anthropic API error');
+            if (!res.ok) throw new Error(data.error?.message || 'Anthropic API error');       
             resultText = data.content[0].text;
-          } else {
+            } else if (provider === 'augment') {
+            const { exec } = await import('child_process');
+            const { promisify } = await import('util');
+            const execAsync = promisify(exec);
+            
+            // Use the environment variable name specified by the user (preserving the typo)
+            const env = { ...process.env, augmnet_session_auth: apiKey };
+            
+            try {
+              // Pass the prompt to 'auggie'. We use a simple escape for double quotes.
+              const escapedPrompt = prompt.replace(/"/g, '\\"').replace(/\n/g, ' ');
+              const { stdout, stderr } = await execAsync(`npx --no-install auggie --print --quiet "${escapedPrompt}"`, { env });
+              
+              if (stderr && stdout.trim() === '') {
+                throw new Error(stderr);
+              }
+              resultText = stdout.trim();
+            } catch (execError: any) {
+              throw new Error(`Augment CLI (auggie) execution failed: ${execError.message}`);
+            }
+            } else {
             throw new Error(`Unsupported LLM provider: ${provider}`);
-          }
-
+            }
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
           res.end(JSON.stringify({ success: true, text: resultText }));

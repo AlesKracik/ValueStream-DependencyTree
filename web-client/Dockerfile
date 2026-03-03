@@ -1,6 +1,9 @@
 # Use Node.js as the base image
 FROM node:22-alpine
 
+# Install git (required by many CLI tools like Auggie for codebase context)
+RUN apk add --no-cache git
+
 # Set working directory
 WORKDIR /app
 

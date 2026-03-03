@@ -5,6 +5,8 @@ import { authorizedFetch } from '../utils/api';
 export interface JiraIssue {
     key: string;
     summary: string;
+    description?: string;
+    lastComment?: string;
     status: string;
     priority: string;
     url: string;
@@ -65,13 +67,32 @@ export const useCustomerHealth = (customer: Customer | undefined, settings: Sett
                     const resData = await response.json();
                     if (!response.ok || !resData.success) throw new Error(resData.error || 'Failed to fetch issues');
 
-                    return (resData.data.issues || []).map((issue: any) => ({
-                        key: issue.key,
-                        summary: issue.fields?.summary || 'Unknown',
-                        status: issue.fields?.status?.name || 'Unknown',
-                        priority: issue.fields?.priority?.name || 'Default',
-                        url: `${jira_base_url}/browse/${issue.key}`
-                    }));
+                    return (resData.data.issues || []).map((issue: any) => {
+                        const fields = issue.fields || {};
+                        const comments = fields.comment?.comments || [];
+                        const lastComment = comments.length > 0 ? comments[comments.length - 1].body : undefined;
+                        
+                        // Handle potential Atlassian Document Format (ADF) or plain string for description
+                        let description = '';
+                        if (typeof fields.description === 'string') {
+                            description = fields.description;
+                        } else if (fields.description?.content) {
+                            // Basic extraction from ADF
+                            description = fields.description.content
+                                .map((c: any) => c.content?.map((inner: any) => inner.text).join('') || '')
+                                .join(' ');
+                        }
+
+                        return {
+                            key: issue.key,
+                            summary: fields.summary || 'Unknown',
+                            description: description ? (description.length > 500 ? description.substring(0, 500) + '...' : description) : undefined,
+                            lastComment: lastComment ? (typeof lastComment === 'string' ? (lastComment.length > 300 ? lastComment.substring(0, 300) + '...' : lastComment) : 'Complex comment format') : undefined,
+                            status: fields.status?.name || 'Unknown',
+                            priority: fields.priority?.name || 'Default',
+                            url: `${jira_base_url}/browse/${issue.key}`
+                        };
+                    });
                 } catch (e: any) {
                     console.error("Error fetching Jira issues:", e);
                     return [];

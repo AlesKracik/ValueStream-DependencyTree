@@ -63,12 +63,12 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         setIsGeneratingSummary(true);
         setLlmSummary(null);
         try {
-            const prompt = `You are a customer success manager. Analyze the following Jira support tickets for customer ${customer?.name}. Summarize the overall healthiness. Pay special attention to 'New' un-triaged issues as they are the most critical. Highlight any concerning trends across the New, In-Progress, and Noop issue categories.
+            const prompt = `You are a customer success manager. Analyze the following Jira support tickets for customer ${customer?.name}. Summarize the overall healthiness. Pay special attention to 'New / Untriaged' issues as they are the most critical. Highlight any concerning trends across the categories. For each issue, you have the summary, description, and the last comment to help you understand the context and recent activity.
             
 Data:
-New Issues: ${JSON.stringify(healthData.newIssues)}
-In-Progress Issues: ${JSON.stringify(healthData.inProgressIssues)}
-Noop/Closed Issues: ${JSON.stringify(healthData.noopIssues)}`;
+New / Untriaged Issues: ${JSON.stringify(healthData.newIssues.map(i => ({ key: i.key, summary: i.summary, description: i.description, lastComment: i.lastComment, priority: i.priority })))}
+Active Work Issues: ${JSON.stringify(healthData.inProgressIssues.map(i => ({ key: i.key, summary: i.summary, description: i.description, lastComment: i.lastComment, priority: i.priority })))}
+Blocked / Pending Issues: ${JSON.stringify(healthData.noopIssues.map(i => ({ key: i.key, summary: i.summary, description: i.description, lastComment: i.lastComment, priority: i.priority })))}`;
 
             const res = await authorizedFetch('/api/llm/generate', {
                 method: 'POST',

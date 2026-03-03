@@ -881,30 +881,33 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   <option value="openai">OpenAI</option>
                   <option value="gemini">Google Gemini</option>
                   <option value="anthropic">Anthropic</option>
+                  <option value="augment">Augment CLI</option>
                 </select>
               </label>
 
               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-                LLM API Key:
+                {localFormData.llm_provider === 'augment' ? 'Augment Session Auth:' : 'LLM API Key:'}
                 <input
                   type="password"
-                  placeholder="sk-..."
+                  placeholder={localFormData.llm_provider === 'augment' ? "Session token..." : "sk-..."}
                   value={localFormData.llm_api_key || ""}
                   onChange={(e) => setFormData({ ...localFormData, llm_api_key: e.target.value })}
                   onBlur={() => onUpdateSettings({ llm_api_key: localFormData.llm_api_key })}
                 />
               </label>
 
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-                LLM Model (Optional):
-                <input
-                  type="text"
-                  placeholder="gpt-4-turbo"
-                  value={localFormData.llm_model || ""}
-                  onChange={(e) => setFormData({ ...localFormData, llm_model: e.target.value })}
-                  onBlur={() => onUpdateSettings({ llm_model: localFormData.llm_model })}
-                />
-              </label>
+              {localFormData.llm_provider !== 'augment' && (
+                <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                  LLM Model (Optional):
+                  <input
+                    type="text"
+                    placeholder="gpt-4-turbo"
+                    value={localFormData.llm_model || ""}
+                    onChange={(e) => setFormData({ ...localFormData, llm_model: e.target.value })}
+                    onBlur={() => onUpdateSettings({ llm_model: localFormData.llm_model })}
+                  />
+                </label>
+              )}
             </>
           )}
         </div>
