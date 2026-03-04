@@ -40,7 +40,7 @@ In the dashboard, customers are rendered as `CustomerNode` types:
 - **Scaling:** The diameter scales proportionally based on the maximum TCV across all customers in the dataset.
 
 ## Relationships
-- **Work Items:** Customers are linked to Work Items via `customer_targets`. This relationship defines the ROI impact of a Work Item. Users can manage these targets from either the Work Item page or the Customer page, choosing to target either the "Latest Actual" TCV or a specific entry from the history.
+- **Work Items:** Customers are linked to Work Items via `customer_targets`. This relationship defines the ROI impact of a Work Item. Users can manage these targets from either the Work Item page or the Customer page. On the Customer page, the "Targeted Work Items" tab allows adding new work item targets to both new and existing customers via a searchable dropdown, and choosing whether to target the "Latest Actual" TCV or a specific entry from the history.
 
 ```mermaid
 erDiagram

@@ -860,8 +860,8 @@ const MockDataPersistencePlugin = (): Plugin => ({
             const { promisify } = await import('util');
             const execAsync = promisify(exec);
             
-            // Use the environment variable name specified by the user (preserving the typo)
-            const env = { ...process.env, augmnet_session_auth: apiKey };
+            // Use the standard environment variable name for the Augment provider
+            const env = { ...process.env, AUGMENT_SESSION_AUTH: apiKey };
             
             try {
               // Pass the prompt to 'auggie'. We use a simple escape for double quotes.

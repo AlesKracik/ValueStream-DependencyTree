@@ -39,7 +39,7 @@ An interactive React dashboard designed to visualize the flow of value from cust
 The fastest way to spin up the entire stack (App + MongoDB) is using Docker Compose:
 
 1.  **Configure Environment:**
-    Create a `.env` file in the project root or set environment variables:
+    Create a `.env` file in the project root to define your secrets. This file is automatically loaded by Docker Compose:
     ```env
     ADMIN_SECRET=your-secure-password
     ```

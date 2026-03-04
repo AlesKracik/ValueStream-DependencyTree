@@ -9,6 +9,8 @@ services:
       - mongodb
     environment:
       - NODE_ENV=development
+    env_file:
+      - .env
     networks:
       - app-network
 

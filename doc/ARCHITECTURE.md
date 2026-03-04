@@ -213,7 +213,7 @@ Ideal for individual developers or small teams running everything on a single ma
 Recommended for consistent environments and simplified setup using pre-configured containers.
 - **Requirements:** Docker and Docker Compose.
 - **How-to:**
-  1. Define your secrets in `docker-compose.yml` or a `.env` file (e.g., `ADMIN_SECRET=prod-secret`).
+  1. Define your secrets in a `.env` file in the project root (e.g., `ADMIN_SECRET=prod-secret`).
   2. From the project root, run: `docker-compose up --build`
   3. Access the app at `http://localhost:5173`.
 - **Configuration:** Update App Settings to `mongodb://mongodb:27017` (this utilizes the internal Docker bridge network).

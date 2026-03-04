@@ -63,15 +63,16 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         setIsGeneratingSummary(true);
         setLlmSummary(null);
         try {
-            const prompt = `You are a customer success manager. Analyze the following Jira support tickets for customer ${customer?.name}. Summarize the overall healthiness. Pay special attention to 'New / Untriaged' issues as they are the most critical. Highlight any concerning trends across the categories. For each issue, you have the summary, description, and the last comment to help you understand the context and recent activity.
-            
-Data:
-New / Untriaged Issues: ${JSON.stringify(healthData.newIssues.map(i => ({ key: i.key, summary: i.summary, description: i.description, lastComment: i.lastComment, priority: i.priority })))}
-Active Work Issues: ${JSON.stringify(healthData.inProgressIssues.map(i => ({ key: i.key, summary: i.summary, description: i.description, lastComment: i.lastComment, priority: i.priority })))}
-Blocked / Pending Issues: ${JSON.stringify(healthData.noopIssues.map(i => ({ key: i.key, summary: i.summary, description: i.description, lastComment: i.lastComment, priority: i.priority })))}`;
+            const prompt = `Analyze the following Jira support tickets for customer ${customer?.name}. Summarize the root causes if any and try to find correlations between them.
+        Pay special attention to 'New / Untriaged' issues as they are the most critical.
+        For each issue, you have the summary, description, and the last comment to help you understand the context and recent activity. The output should be short - 1 paragraph for the findings, 1 paragraph for the conclusion.
 
-            const res = await authorizedFetch('/api/llm/generate', {
-                method: 'POST',
+        Data:
+        New / Untriaged Issues: ${JSON.stringify(healthData.newIssues.map(i => ({ key: i.key, summary: i.summary, description: i.description, lastComment: i.lastComment, priority: i.priority })))}
+        Active Work Issues: ${JSON.stringify(healthData.inProgressIssues.map(i => ({ key: i.key, summary: i.summary, description: i.description, lastComment: i.lastComment, priority: i.priority })))}
+        Blocked / Pending Issues: ${JSON.stringify(healthData.noopIssues.map(i => ({ key: i.key, summary: i.summary, description: i.description, lastComment: i.lastComment, priority: i.priority })))}`;
+
+            const res = await authorizedFetch('/api/llm/generate', {                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt, config: data.settings })
             });
@@ -582,7 +583,7 @@ Blocked / Pending Issues: ${JSON.stringify(healthData.noopIssues.map(i => ({ key
                                     </tbody>
                                 </table>
 
-                                {isNew && data && (
+                                {data && (
                                     <div className={styles.addWorkItemBox}>
                                         <h3>Add Work Item Target</h3>
                                         <div style={{ display: 'flex', gap: '12px' }}>

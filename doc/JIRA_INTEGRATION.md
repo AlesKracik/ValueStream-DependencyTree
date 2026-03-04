@@ -11,12 +11,14 @@ sequenceDiagram
     participant UI as Web Client
     participant Proxy as Vite Proxy
     participant Jira as Atlassian API
-    UI->>Proxy: POST /api/jira/issue (with Settings)
-    Proxy->>Jira: GET /rest/api/3/issue/{key}?expand=names
+    UI->>Proxy: POST /api/jira/search (with JQL & Settings)
+    Proxy->>Jira: POST /rest/api/3/search (with JQL)
     Jira-->>Proxy: Raw JSON Data
     Proxy-->>UI: Raw JSON Data
-    Note over UI: parseJiraIssue() normalizes fields
 ```
+
+All integration endpoints (`/api/jira/issue`, `/api/jira/search`) expect the necessary Jira configuration (`jira_base_url`, `jira_api_token`, etc.) to be passed within the JSON request body. This ensures the proxy remains stateless and can handle requests across different integration environments.
+
 
 ## Data Mapping
 The system maps the following fields from Jira to the local model:

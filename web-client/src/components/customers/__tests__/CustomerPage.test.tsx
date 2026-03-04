@@ -307,6 +307,15 @@ describe('CustomerPage', () => {
             existing_tcv_valid_from: '2026-02-01'
         }));
     });
+
+    it('shows "Add Work Item Target" section even for existing customers', async () => {
+        await act(async () => {
+            render(<CustomerPage {...defaultProps} />);
+        });
+
+        expect(screen.getByText('Add Work Item Target')).toBeDefined();
+        expect(screen.getByPlaceholderText('Search for a work item to add...')).toBeDefined();
+    });
 });
 
 
