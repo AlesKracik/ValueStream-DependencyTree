@@ -24,3 +24,6 @@ package-lock.json
 *.sln
 *.sw?
 *.code-workspace
+
+# Environment secrets
+.env

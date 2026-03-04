@@ -9,6 +9,7 @@ services:
       - mongodb
     environment:
       - NODE_ENV=development
+      - ADMIN_SECRET=${ADMIN_SECRET}
     env_file:
       - .env
     networks:
