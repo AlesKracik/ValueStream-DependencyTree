@@ -925,8 +925,15 @@ const MockDataPersistencePlugin = (): Plugin => ({
               const { spawn } = await import('child_process');
               const env = { ...process.env, AUGMENT_SESSION_AUTH: apiKey };
               
-              // We don't need to escape for spawn as it's not a shell command
-              const child = spawn('npx', ['--no-install', 'auggie', '--print', '--quiet', prompt], { env, shell: true });
+              // When shell: true is used, we need to pass a single command string with properly escaped arguments.
+              // We escape backslashes, double quotes, dollar signs, and backticks.
+              const escapedPrompt = prompt
+                .replace(/\\/g, '\\\\')
+                .replace(/"/g, '\\"')
+                .replace(/\$/g, '\\$')
+                .replace(/`/g, '\\`');
+
+              const child = spawn(`npx --no-install auggie --print --quiet "${escapedPrompt}"`, { env, shell: true });
 
               child.stdout.on('data', (data) => {
                 const text = data.toString();
@@ -1003,8 +1010,13 @@ const MockDataPersistencePlugin = (): Plugin => ({
             const env = { ...process.env, AUGMENT_SESSION_AUTH: apiKey };
             
             try {
-              // Pass the prompt to 'auggie'. We use a simple escape for double quotes.
-              const escapedPrompt = prompt.replace(/"/g, '\\"').replace(/\n/g, ' ');
+              // Pass the prompt to 'auggie'. We escape backslashes, double quotes, dollar signs, and backticks.
+              const escapedPrompt = prompt
+                .replace(/\\/g, '\\\\')
+                .replace(/"/g, '\\"')
+                .replace(/\$/g, '\\$')
+                .replace(/`/g, '\\`');
+
               const { stdout, stderr } = await execAsync(`npx --no-install auggie --print --quiet "${escapedPrompt}"`, { env });
               
               if (stderr && stdout.trim() === '') {
