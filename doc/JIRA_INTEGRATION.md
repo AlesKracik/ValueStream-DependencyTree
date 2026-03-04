@@ -34,6 +34,26 @@ Users can define global JQL queries in the settings to categorize issues:
 - **In-Progress JQL:** Criteria for active issues.
 - **Noop JQL:** Criteria for closed or irrelevant issues.
 
+## AI Support Health Assistant
+The application includes an AI-powered assistant that analyzes customer support tickets to identify root causes and correlations.
+
+### Analysis Context
+The assistant receives a structured prompt containing:
+- **Jira Ticket Data:** Summaries, descriptions, and the latest comments for New, Active, and Blocked issues.
+- **Categorization:** Issues are grouped based on the global JQL queries defined in settings.
+- **Findings Requirements:** The AI is instructed to provide a concise summary (2-3 sentences for findings, 1 sentence for conclusion).
+
+### Conversational Memory
+The assistant supports multi-turn dialogues. To maintain context, the system:
+1. Appends the full previous conversation history to each new prompt.
+2. Uses a persistent `sessionId` to support stateful interactions with specific LLM providers (like Augment).
+
+### Real-Time Streaming
+For a more responsive experience, the AI analysis is streamed to the UI in real-time. This is supported for:
+- **OpenAI:** Via Server-Sent Events (SSE).
+- **Gemini:** Via SSE.
+- **Augment:** Via a persistent background process on the server that streams CLI output.
+
 ## Bulk Sync & Import
 - **Sync All Epics:** Iterates through all local epics with a `jira_key` and refreshes their metadata.
 - **Import via JQL:** Executes a custom JQL query and creates new Epics (and potentially Work Items) in the local database based on the results.

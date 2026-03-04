@@ -10,6 +10,34 @@ import { promisify } from 'node:util'
 
 const dnsLookup = promisify(dns.lookup);
 
+// Map to store persistent Augment processes: sessionId -> { child, lastUsed }
+const augmentProcesses = new Map<string, { child: any, lastUsed: number }>();
+
+// Cleanup idle processes every minute
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, item] of augmentProcesses.entries()) {
+    if (now - item.lastUsed > 10 * 60 * 1000) { // 10 minutes idle
+      item.child.kill();
+      augmentProcesses.delete(id);
+    }
+  }
+}, 60000);
+
+// Ensure child processes are killed when the main app process exits
+const cleanupAllProcesses = () => {
+  for (const [id, item] of augmentProcesses.entries()) {
+    try {
+      item.child.kill();
+    } catch (e) { /* ignore */ }
+  }
+  augmentProcesses.clear();
+};
+
+process.on('SIGINT', () => { cleanupAllProcesses(); process.exit(); });
+process.on('SIGTERM', () => { cleanupAllProcesses(); process.exit(); });
+process.on('exit', cleanupAllProcesses);
+
 const MockDataPersistencePlugin = (): Plugin => ({
   name: 'mock-data-persistence',
   configureServer(server: any) {
@@ -799,7 +827,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
       } else if (req.url === '/api/llm/generate' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const { prompt, config: rawConfig } = JSON.parse(body);
+          const { prompt, config: rawConfig, stream = false } = JSON.parse(body);
 
           const settingsPath = path.resolve(__dirname, 'settings.json');
           const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
@@ -811,6 +839,117 @@ const MockDataPersistencePlugin = (): Plugin => ({
 
           if (!apiKey) {
             throw new Error('LLM API key not configured');
+          }
+
+          if (stream) {
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+            res.setHeader('X-Accel-Buffering', 'no'); // for nginx
+
+            if (provider === 'openai') {
+              const fetchRes = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                body: JSON.stringify({
+                  model: model || 'gpt-4-turbo',
+                  messages: [{ role: 'user', content: prompt }],
+                  stream: true
+                })
+              });
+              
+              if (!fetchRes.ok) {
+                const errData = await fetchRes.json() as any;
+                res.write(`data: ${JSON.stringify({ error: errData.error?.message || 'OpenAI API error' })}\n\n`);
+                return res.end();
+              }
+
+              const reader = fetchRes.body!.getReader();
+              const decoder = new TextDecoder();
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+                for (const line of lines) {
+                  if (line.startsWith('data: ')) {
+                    const data = line.slice(6);
+                    if (data === '[DONE]') continue;
+                    try {
+                      const json = JSON.parse(data);
+                      const text = json.choices[0]?.delta?.content || '';
+                      if (text) res.write(`data: ${JSON.stringify({ text })}\n\n`);
+                    } catch (e) { /* skip partial JSON */ }
+                  }
+                }
+              }
+              return res.end();
+            } else if (provider === 'gemini') {
+              // Gemini doesn't use standard SSE for streamGenerateContent, it's a bit more involved
+              // We'll simulate it for now by letting the user know it's not implemented yet for Gemini or just doing a full response.
+              // Actually, Gemini supports streaming via a different URL.
+              const fetchRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-1.5-pro'}:streamGenerateContent?alt=sse&key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }]
+                })
+              });
+
+              if (!fetchRes.ok) {
+                const errData = await fetchRes.json() as any;
+                res.write(`data: ${JSON.stringify({ error: errData.error?.message || 'Gemini API error' })}\n\n`);
+                return res.end();
+              }
+
+              const reader = fetchRes.body!.getReader();
+              const decoder = new TextDecoder();
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+                for (const line of lines) {
+                  if (line.startsWith('data: ')) {
+                    const data = line.slice(6);
+                    try {
+                      const json = JSON.parse(data);
+                      const text = json.candidates[0]?.content?.parts[0]?.text || '';
+                      if (text) res.write(`data: ${JSON.stringify({ text })}\n\n`);
+                    } catch (e) { /* skip partial JSON */ }
+                  }
+                }
+              }
+              return res.end();
+            } else if (provider === 'augment') {
+              const { spawn } = await import('child_process');
+              const env = { ...process.env, AUGMENT_SESSION_AUTH: apiKey };
+              
+              // We don't need to escape for spawn as it's not a shell command
+              const child = spawn('npx', ['--no-install', 'auggie', '--print', '--quiet', prompt], { env, shell: true });
+
+              child.stdout.on('data', (data) => {
+                const text = data.toString();
+                if (text) res.write(`data: ${JSON.stringify({ text })}\n\n`);
+              });
+
+              child.stderr.on('data', (data) => {
+                console.error(`Augment CLI Error: ${data.toString()}`);
+              });
+
+              child.on('close', () => {
+                res.end();
+              });
+
+              req.on('close', () => {
+                child.kill();
+              });
+              
+              return; // Handled by events
+            } else {
+              res.write(`data: ${JSON.stringify({ error: `Streaming not yet supported for provider: ${provider}` })}\n\n`);
+              return res.end();
+            }
           }
 
           let resultText = '';
@@ -882,9 +1021,11 @@ const MockDataPersistencePlugin = (): Plugin => ({
           res.statusCode = 200;
           res.end(JSON.stringify({ success: true, text: resultText }));
         } catch (e: any) {
-          res.setHeader('Content-Type', 'application/json');
-          res.statusCode = e.message === 'Payload Too Large' ? 413 : 500;
-          res.end(JSON.stringify({ success: false, error: e.message }));
+          if (!res.writableEnded) {
+            res.setHeader('Content-Type', 'application/json');
+            res.statusCode = e.message === 'Payload Too Large' ? 413 : 500;
+            res.end(JSON.stringify({ success: false, error: e.message }));
+          }
         }
       } else {
         next();

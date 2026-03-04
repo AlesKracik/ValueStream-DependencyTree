@@ -55,35 +55,120 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     const customer = isNew ? newCustDraft as Customer : data?.customers.find(c => c.id === customerId);
 
     const healthData = useCustomerHealth(customer, data?.settings);
-    const [llmSummary, setLlmSummary] = useState<string | null>(null);
+    const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);
+    const [chatInput, setChatInput] = useState('');
     const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+    const [chatSessionId] = useState(() => generateId('sess'));
 
-    const handleGenerateSummary = async () => {
-        if (!data?.settings) return;
-        setIsGeneratingSummary(true);
-        setLlmSummary(null);
-        try {
-            const prompt = `Analyze the following Jira support tickets for customer ${customer?.name}. Summarize the root causes if any and try to find correlations between them.
+    const getBasePrompt = () => {
+        if (!customer) return '';
+        return `Analyze the following Jira support tickets for customer ${customer.name}. Summarize the root causes if any and try to find correlations between them.
         Pay special attention to 'New / Untriaged' issues as they are the most critical.
-        For each issue, you have the summary, description, and the last comment to help you understand the context and recent activity. The output should be short - 1 paragraph for the findings, 1 paragraph for the conclusion.
+        For each issue, you have the summary, description, and the last comment to help you understand the context and recent activity. The output should be short - 2-3 sentences for the findings, 1 sentence for the conclusion.
 
         Data:
         New / Untriaged Issues: ${JSON.stringify(healthData.newIssues.map(i => ({ key: i.key, summary: i.summary, description: i.description, lastComment: i.lastComment, priority: i.priority })))}
         Active Work Issues: ${JSON.stringify(healthData.inProgressIssues.map(i => ({ key: i.key, summary: i.summary, description: i.description, lastComment: i.lastComment, priority: i.priority })))}
         Blocked / Pending Issues: ${JSON.stringify(healthData.noopIssues.map(i => ({ key: i.key, summary: i.summary, description: i.description, lastComment: i.lastComment, priority: i.priority })))}`;
+    };
+
+    const handleGenerateSummary = async () => {
+        if (!data?.settings) return;
+        setIsGeneratingSummary(true);
+        setChatMessages([]);
+        try {
+            const prompt = getBasePrompt();
+            const res = await authorizedFetch('/api/llm/generate', {                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt, config: data.settings, stream: true, sessionId: chatSessionId })
+            });
+
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+            
+            setChatMessages([{ role: 'assistant', content: '' }]);
+            
+            const reader = res.body!.getReader();
+            const decoder = new TextDecoder();
+            let accumulatedText = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const json = JSON.parse(line.slice(6));
+                            if (json.error) throw new Error(json.error);
+                            if (json.text) {
+                                accumulatedText += json.text;
+                                setChatMessages([{ role: 'assistant', content: accumulatedText }]);
+                            }
+                        } catch (e) {
+                            if (e instanceof Error && e.message.includes('API error')) throw e;
+                        }
+                    }
+                }
+            }
+        } catch (e: any) {
+            setChatMessages([{ role: 'assistant', content: `Error: ${e.message}` }]);
+        } finally {
+            setIsGeneratingSummary(false);
+        }
+    };
+
+    const handleSendChatMessage = async () => {
+        if (!data?.settings || !chatInput.trim() || isGeneratingSummary) return;
+        
+        const userMsg = chatInput.trim();
+        setChatInput('');
+        const newHistory: { role: 'user' | 'assistant', content: string }[] = [...chatMessages, { role: 'user', content: userMsg }];
+        setChatMessages(newHistory);
+        setIsGeneratingSummary(true);
+
+        try {
+            const basePrompt = getBasePrompt();
+            const history = newHistory.slice(0, -1).map(m => `${m.role === 'assistant' ? 'AI' : 'User'}: ${m.content}`).join('\n\n');
+            const prompt = `${basePrompt}\n\nPrevious Conversation:\n${history}\n\nUser Question: ${userMsg}\n\nAI Response:`;
 
             const res = await authorizedFetch('/api/llm/generate', {                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt, config: data.settings })
+                body: JSON.stringify({ prompt, config: data.settings, stream: true, sessionId: chatSessionId })
             });
-            const resData = await res.json();
-            if (resData.success) {
-                setLlmSummary(resData.text);
-            } else {
-                setLlmSummary(`Error: ${resData.error}`);
+
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+
+            setChatMessages([...newHistory, { role: 'assistant', content: '' }]);
+            
+            const reader = res.body!.getReader();
+            const decoder = new TextDecoder();
+            let accumulatedText = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\n');
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const json = JSON.parse(line.slice(6));
+                            if (json.error) throw new Error(json.error);
+                            if (json.text) {
+                                accumulatedText += json.text;
+                                setChatMessages([...newHistory, { role: 'assistant', content: accumulatedText }]);
+                            }
+                        } catch (e) {
+                            if (e instanceof Error && e.message.includes('API error')) throw e;
+                        }
+                    }
+                }
             }
         } catch (e: any) {
-            setLlmSummary(`Error: ${e.message}`);
+            setChatMessages(prev => [...prev, { role: 'assistant', content: `Error: ${e.message}` }]);
         } finally {
             setIsGeneratingSummary(false);
         }
@@ -419,23 +504,69 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                 {!healthData.loading && !healthData.error && healthData.healthStatus !== 'Unknown' && (
                                     <>
                                         <div style={{ marginTop: '24px', padding: '16px', backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                                                <h3 style={{ margin: 0, fontSize: '16px' }}>AI Health Summary</h3>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                                <h3 style={{ margin: 0, fontSize: '16px' }}>AI Health Assistant</h3>
                                                 <button 
                                                     className="btn-primary" 
                                                     onClick={handleGenerateSummary}
                                                     disabled={isGeneratingSummary}
+                                                    style={{ fontSize: '12px', padding: '6px 12px' }}
                                                 >
-                                                    {isGeneratingSummary ? 'Generating...' : 'Generate AI Health Summary'}
+                                                    {chatMessages.length > 0 ? 'Restart Analysis' : 'Generate AI Summary'}
                                                 </button>
                                             </div>
-                                            {llmSummary ? (
-                                                <div style={{ color: '#e2e8f0', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
-                                                    {llmSummary}
-                                                </div>
-                                            ) : (
-                                                <div style={{ color: '#64748b', fontStyle: 'italic' }}>
-                                                    Click the button to generate an AI summary of the current support situation.
+
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: chatMessages.length > 0 ? '16px' : '0' }}>
+                                                {chatMessages.length === 0 && !isGeneratingSummary && (
+                                                    <div style={{ color: '#64748b', fontStyle: 'italic', textAlign: 'center', padding: '20px' }}>
+                                                        Click the button to generate an AI summary of the current support situation.
+                                                    </div>
+                                                )}
+                                                
+                                                {chatMessages.map((msg, idx) => (
+                                                    <div key={idx} style={{
+                                                        alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                                                        maxWidth: '85%',
+                                                        padding: '12px 16px',
+                                                        borderRadius: '12px',
+                                                        backgroundColor: msg.role === 'user' ? '#3b82f6' : '#334155',
+                                                        color: '#f8fafc',
+                                                        lineHeight: '1.5',
+                                                        fontSize: '14px',
+                                                        whiteSpace: 'pre-wrap',
+                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                                                    }}>
+                                                        <div style={{ fontSize: '11px', marginBottom: '4px', opacity: 0.8, fontWeight: 'bold' }}>
+                                                            {msg.role === 'user' ? 'You' : 'AI Assistant'}
+                                                        </div>
+                                                        {msg.content}
+                                                    </div>
+                                                ))}
+
+                                                {isGeneratingSummary && (
+                                                    <div style={{ alignSelf: 'flex-start', padding: '12px 16px', borderRadius: '12px', backgroundColor: '#334155', color: '#94a3b8', fontStyle: 'italic', fontSize: '14px' }}>
+                                                        AI is thinking...
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {chatMessages.length > 0 && (
+                                                <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid #334155', paddingTop: '16px' }}>
+                                                    <input 
+                                                        type="text"
+                                                        value={chatInput}
+                                                        onChange={e => setChatInput(e.target.value)}
+                                                        onKeyDown={e => e.key === 'Enter' && handleSendChatMessage()}
+                                                        placeholder="Ask a follow-up question..."
+                                                        style={{ flex: 1, backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '6px', color: '#f8fafc', padding: '8px 12px' }}
+                                                    />
+                                                    <button 
+                                                        className="btn-primary" 
+                                                        onClick={handleSendChatMessage}
+                                                        disabled={isGeneratingSummary || !chatInput.trim()}
+                                                    >
+                                                        Send
+                                                    </button>
                                                 </div>
                                             )}
                                         </div>

@@ -146,12 +146,22 @@ describe('CustomerPage', () => {
         });
     });
 
-    it('handles AI summary generation', async () => {
+    it('handles AI summary generation and follow-up chat with streaming', async () => {
+        // Mock a streaming response
+        const mockStream = new ReadableStream({
+            start(controller) {
+                const encoder = new TextEncoder();
+                controller.enqueue(encoder.encode('data: {"text": "Hello"}\n\n'));
+                controller.enqueue(encoder.encode('data: {"text": " world"}\n\n'));
+                controller.close();
+            }
+        });
+
         (api.authorizedFetch as any).mockImplementation((url: string) => {
             if (url === '/api/llm/generate') {
                 return Promise.resolve({
                     ok: true,
-                    json: async () => ({ success: true, text: 'This customer is doing great.' })
+                    body: mockStream
                 });
             }
             return Promise.resolve({
@@ -168,18 +178,46 @@ describe('CustomerPage', () => {
             fireEvent.click(screen.getByText(/Support Health/i));
         });
         
-        // Wait for Jira loading to finish so button appears
+        // Wait for Jira loading to finish
         await waitFor(() => {
             expect(screen.queryByText(/Loading Jira data.../i)).toBeNull();
         });
 
-        const generateBtn = screen.getByText(/Generate AI Health Summary/i);
+        const generateBtn = screen.getByText(/Generate AI Summary/i);
         await act(async () => {
             fireEvent.click(generateBtn);
         });
 
         await waitFor(() => {
-            expect(screen.getByText('This customer is doing great.')).toBeDefined();
+            expect(screen.getByText('Hello world')).toBeDefined();
+        });
+
+        // Test follow-up question
+        const input = screen.getByPlaceholderText(/Ask a follow-up question.../i);
+        const sendBtn = screen.getByText('Send');
+
+        // Mock another stream for follow-up
+        const followUpStream = new ReadableStream({
+            start(controller) {
+                const encoder = new TextEncoder();
+                controller.enqueue(encoder.encode('data: {"text": "Sure, I can help."}\n\n'));
+                controller.close();
+            }
+        });
+
+        (api.authorizedFetch as any).mockResolvedValueOnce({
+            ok: true,
+            body: followUpStream
+        });
+
+        await act(async () => {
+            fireEvent.change(input, { target: { value: 'How are you?' } });
+            fireEvent.click(sendBtn);
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText('How are you?')).toBeDefined();
+            expect(screen.getByText('Sure, I can help.')).toBeDefined();
         });
     });
 

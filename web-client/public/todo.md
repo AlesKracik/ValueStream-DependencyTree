@@ -1,9 +1,4 @@
 * bugs
-  • change the promtp to Analyze the following Jira support tickets for customer ${customer?.name}. Summarize the root causes if any and try to find correlations between them.
-  Pay special attention to 'New / Untriaged' issues as they are the most critical.
-  For each issue, you have the summary, description, and the last comment to help you understand the context and recent activity. The output should be short - 1 paragraph for the findings, 1 paragraph for the conclusion.
-  • output the AI as soon as available
-  * add dialogue to chat with ai
 * features
   * Customer Page Extension: Essentially creating lightweight support tool. I want to see customer "healthiness" status. It can be based on Jira bugs (Draft: New issue, Blocked: Noop, others: In-progress). There is already prepration for custom JQLs in Settings. Propose solution and LLM integration for summary. Dont do anything just yet, propose a solution
   * WorkItem integration with Aha! Feture
