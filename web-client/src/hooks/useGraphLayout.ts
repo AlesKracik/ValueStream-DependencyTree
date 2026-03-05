@@ -81,6 +81,7 @@ export function useGraphLayout(
         const ef = epicFilter.toLowerCase();
 
         const combinedMinScore = Math.max(minScore, bMinScore);
+        const combinedMinTcv = Math.max(minTcv, bMinTcv);
 
         const bRel = baseParams?.releasedFilter || 'all';
 
@@ -100,7 +101,7 @@ export function useGraphLayout(
 
         const isFilterActive = cf || bcf || ff || bff || tf || btf || ef || bef || 
                              releasedFilter !== 'all' || bRel !== 'all' ||
-                             minTcv > 0 || bMinTcv > 0 || minScore > 0 || bMinScore > 0 ||
+                             combinedMinTcv > 0 || combinedMinScore > 0 ||
                              !!baseParams?.startSprintId || !!baseParams?.endSprintId;
 
         const visibleCustomers = new Set<string>();
@@ -115,7 +116,11 @@ export function useGraphLayout(
             data.customers.filter(c => {
                 const transientTextMatch = !cf || c.name.toLowerCase().includes(cf);
                 const baseTextMatch = !bcf || c.name.toLowerCase().includes(bcf);
-                return transientTextMatch && baseTextMatch;
+                if (!transientTextMatch || !baseTextMatch) return false;
+
+                // Also respect Min TCV for standalone visibility
+                const totalTcv = (c.existing_tcv || 0) + (c.potential_tcv || 0);
+                return totalTcv >= combinedMinTcv;
             }).map(c => c.id)
         );
 
@@ -145,7 +150,7 @@ export function useGraphLayout(
                 const transientEpicMatch = !ef || epicName.toLowerCase().includes(ef);
                 const baseEpicMatch = !bef || epicName.toLowerCase().includes(bef);
 
-                // Sprint Range Filter
+                // Sprint Range Filter: Proper overlap check
                 let rangeMatch = true;
                 if (rangeStartDate || rangeEndDate) {
                     if (!e.target_start || !e.target_end) {
@@ -154,15 +159,10 @@ export function useGraphLayout(
                         const start = parseISO(e.target_start);
                         const end = parseISO(e.target_end);
                         
-                        const startInRange = rangeStartDate && rangeEndDate 
-                            ? (start >= rangeStartDate && start <= rangeEndDate)
-                            : (rangeStartDate ? start >= rangeStartDate : true) && (rangeEndDate ? start <= rangeEndDate : true);
-                        
-                        const endInRange = rangeStartDate && rangeEndDate
-                            ? (end >= rangeStartDate && end <= rangeEndDate)
-                            : (rangeStartDate ? end >= rangeStartDate : true) && (rangeEndDate ? end <= rangeEndDate : true);
+                        const overlapStart = rangeStartDate ? (end >= rangeStartDate) : true;
+                        const overlapEnd = rangeEndDate ? (start <= rangeEndDate) : true;
 
-                        rangeMatch = startInRange || endInRange;
+                        rangeMatch = overlapStart && overlapEnd;
                     }
                 }
 
@@ -170,8 +170,8 @@ export function useGraphLayout(
             }).map(e => e.id)
         );
 
-        const hasCustomerFilter = cf !== '' || bcf !== '' || minTcv > 0 || bMinTcv > 0;
-        const hasWorkItemFilter = ff !== '' || bff !== '' || minScore > 0 || bMinScore > 0 || releasedFilter !== 'all' || bRel !== 'all';
+        const hasCustomerFilter = cf !== '' || bcf !== '' || combinedMinTcv > 0;
+        const hasWorkItemFilter = ff !== '' || bff !== '' || combinedMinScore > 0 || releasedFilter !== 'all' || bRel !== 'all';
         const hasTeamEpicFilter = tf !== '' || btf !== '' || ef !== '' || bef !== '' || hasRangeFilter;
 
         if (!isFilterActive && !selectedNodeId) {
@@ -188,13 +188,23 @@ export function useGraphLayout(
                 let connectedValidCustomers: string[] = [];
                 if (f.all_customers_target) {
                     const type = f.all_customers_target.tcv_type;
-                    // All valid customers who have relevant TCV
+                    // All valid customers who match combinedMinTcv
                     connectedValidCustomers = data.customers
-                        .filter(c => validCustomers.has(c.id) && (type === 'existing' ? (c.existing_tcv || 0) : (c.potential_tcv || 0)) > 0)
+                        .filter(c => validCustomers.has(c.id))
+                        .filter(c => {
+                            const val = (type === 'existing' ? (c.existing_tcv || 0) : (c.potential_tcv || 0));
+                            return val >= combinedMinTcv && val > 0;
+                        })
                         .map(c => c.id);
                 } else {
                     connectedValidCustomers = f.customer_targets
-                        .filter(ct => validCustomers.has(ct.customer_id))
+                        .filter(ct => {
+                            if (!validCustomers.has(ct.customer_id)) return false;
+                            const c = data.customers.find(cust => cust.id === ct.customer_id);
+                            if (!c) return false;
+                            const val = (ct.tcv_type === 'existing' ? (c.existing_tcv || 0) : (c.potential_tcv || 0));
+                            return val >= combinedMinTcv;
+                        })
                         .map(ct => ct.customer_id);
                 }
 
@@ -203,8 +213,9 @@ export function useGraphLayout(
                     .filter(e => e.work_item_id === f.id && validEpics.has(e.id));
 
                 // Strict intersection rules:
-                // If a customer filter is active (transient or base), we MUST have a valid connected customer.
-                if (hasCustomerFilter && connectedValidCustomers.length === 0) return;
+                // If a customer filter is active (transient or base), we MUST have a valid connected customer,
+                // UNLESS it is a global work item which is shown regardless of customer matches.
+                if (hasCustomerFilter && connectedValidCustomers.length === 0 && !f.all_customers_target) return;
 
                 // If a team/epic filter is active (transient or base), we MUST have a valid connected epic.
                 if (hasTeamEpicFilter && connectedValidEpics.length === 0) return;
@@ -373,7 +384,7 @@ export function useGraphLayout(
         // Sort Highest Total TCV to Lowest, apply Min TCV filter
         const maxTcv = data.customers.reduce((max, c) => Math.max(max, c.existing_tcv + c.potential_tcv), 1);
         const sortedCustomers = [...data.customers]
-            .filter(c => visibleCustomers.has(c.id) && (c.existing_tcv + c.potential_tcv) >= minTcv)
+            .filter(c => visibleCustomers.has(c.id) && (c.existing_tcv + c.potential_tcv) >= combinedMinTcv)
             .sort((a, b) => (b.existing_tcv + b.potential_tcv) - (a.existing_tcv + a.potential_tcv));
 
         // Add Customer node removed from canvas
