@@ -43,8 +43,10 @@ describe('DashboardEditPage', () => {
             </NotificationProvider>
         );
 
-        expect(screen.getByText('Create Dashboard')).toBeDefined();
-        expect(screen.getByDisplayValue('New Dashboard')).toBeDefined();
+        expect(screen.getByText('New Dashboard')).toBeDefined(); // The header shows "New Dashboard"
+        const nameInput = screen.getByLabelText(/Name:/i) as HTMLInputElement;
+        expect(nameInput.value).toBe('');
+        expect(nameInput.placeholder).toBe('New Dashboard');
     });
 
     it('calls addDashboard when Create button is clicked', () => {

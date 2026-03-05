@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { DashboardData, WorkItem, Epic } from '../../types/models';
-import { authorizedFetch, syncJiraIssue } from "../../utils/api";
+import { syncJiraIssue } from "../../utils/api";
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
@@ -39,7 +39,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     const isNew = workItemId === 'new';
 
     // Draft states for new workItem creation
-    const [newWorkItemDraft, setNewWorkItemDraft] = useState<Partial<WorkItem>>({ name: 'New Work Item', description: '', total_effort_mds: 0, customer_targets: [] });
+    const [newWorkItemDraft, setNewWorkItemDraft] = useState<Partial<WorkItem>>({ name: '', description: '', total_effort_mds: 0, customer_targets: [] });
     const [newWorkItemCustomers, setNewWorkItemCustomers] = useState<{ customerId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have', tcv_history_id?: string }[]>([]);
     const [newWorkItemEpics, setNewWorkItemEpics] = useState<Epic[]>([]);
     const [syncingId, setSyncingId] = useState<string | null>(null);
@@ -60,7 +60,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
         const newEpic: Epic = {
             id: newId,
             jira_key: 'TBD',
-            name: 'New Epic',
+            name: '',
             effort_md: 0,
             team_id: data?.teams[0]?.id || '',
             work_item_id: workItemId
@@ -169,7 +169,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     <header className={styles.header}>
                         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                             <button onClick={onBack} className="btn-secondary">← Back</button>
-                            <h1>{isNew ? 'New Work Item' : workItem.name}</h1>
+                            <h1>{isNew ? (newWorkItemDraft.name || 'New Work Item') : workItem.name}</h1>
                         </div>
                         <div style={{ display: 'flex', gap: '12px' }}>
                             {!isNew && <button onClick={handleDelete} className="btn-danger">Delete Work Item</button>}
@@ -210,6 +210,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                 updateWorkItem(workItem.id, { name: e.target.value });
                                             }
                                         }}
+                                        placeholder="New Work Item"
                                     />
                                 </label>
                                 <label>

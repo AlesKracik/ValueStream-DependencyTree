@@ -291,6 +291,36 @@ describe('WorkItemPage', () => {
         expect(screen.getByText(/Released in Sprint:/i)).toBeDefined();
     });
 
+    it('renders and saves a new work item', async () => {
+        render(
+            <NotificationProvider>
+                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <WorkItemPage {...defaultProps} workItemId="new" />
+                </DashboardProvider>
+            </NotificationProvider>
+        );
+
+        // Header should show "New Work Item" by default when name is empty
+        expect(screen.getByText('New Work Item')).toBeDefined();
+
+        // Name input should be empty and have placeholder
+        const nameInput = screen.getByLabelText(/Name:/i) as HTMLInputElement;
+        expect(nameInput.value).toBe('');
+        expect(nameInput.placeholder).toBe('New Work Item');
+
+        fireEvent.change(nameInput, { target: { value: 'Brand New Feature' } });
+        
+        // Header should update to the typed name
+        expect(screen.getByText('Brand New Feature')).toBeDefined();
+
+        const createBtn = screen.getByText('Create Work Item');
+        fireEvent.click(createBtn);
+
+        expect(defaultProps.addWorkItem).toHaveBeenCalledWith(expect.objectContaining({
+            name: 'Brand New Feature'
+        }));
+    });
+
     it('shows error alert when syncEpic fails', async () => {
         const dataWithEpic: DashboardData = {
             ...mockData,

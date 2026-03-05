@@ -30,7 +30,7 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
     const isNew = dashboardId === 'new';
 
     const [draft, setDraft] = useState<Partial<DashboardEntity>>({
-        name: 'New Dashboard',
+        name: '',
         description: '',
         parameters: {
             customerFilter: '',
@@ -95,7 +95,7 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
                     <header className={styles.header}>
                         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                             <button onClick={onBack} className="btn-secondary">← Back</button>
-                            <h1>{isNew ? 'Create Dashboard' : `Edit: ${dashboard.name}`}</h1>
+                            <h1>{isNew ? (draft.name || 'New Dashboard') : `Edit: ${dashboard.name}`}</h1>
                         </div>
                         <div style={{ display: 'flex', gap: '12px' }}>
                             {isNew ? (
@@ -116,6 +116,7 @@ export const DashboardEditPage: React.FC<DashboardEditPageProps> = ({
                                         type="text" 
                                         value={dashboard.name} 
                                         onChange={e => isNew ? setDraft({ ...draft, name: e.target.value }) : updateDashboard(dashboard.id, { name: e.target.value })}
+                                        placeholder="New Dashboard"
                                     />
                                 </label>
                                 <label>

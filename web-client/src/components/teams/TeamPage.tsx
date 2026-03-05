@@ -31,7 +31,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({
     const isNew = teamId === 'new';
 
     const [newTeamDraft, setNewTeamDraft] = React.useState<Partial<Team>>({
-        name: 'New Team',
+        name: '',
         total_capacity_mds: 10,
         country: ''
     });
@@ -91,7 +91,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({
                     <header className={styles.header}>
                         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                             <button onClick={onBack} className="btn-secondary">← Back</button>
-                            <h1>{isNew ? 'New Team' : `Team: ${team.name}`}</h1>
+                            <h1>{isNew ? (newTeamDraft.name || 'New Team') : `Team: ${team.name}`}</h1>
                         </div>
                         <div style={{ display: 'flex', gap: '12px' }}>
                             {!isNew && <button onClick={handleDelete} className="btn-danger">Delete Team</button>}
@@ -112,6 +112,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({
                                             if (isNew) setNewTeamDraft({ ...newTeamDraft, name: e.target.value });
                                             else updateTeam(team.id, { name: e.target.value });
                                         }}
+                                        placeholder="New Team"
                                     />
                                 </label>
                                 <label>

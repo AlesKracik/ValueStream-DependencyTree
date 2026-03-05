@@ -13,6 +13,7 @@ export interface Customer {
   existing_tcv_valid_from?: string; // ISO date
   existing_tcv_duration_months?: number;
   potential_tcv: number;
+  potential_tcv_valid_from?: string; // ISO date
   potential_tcv_duration_months?: number;
   tcv_history?: TcvHistoryEntry[];
 }

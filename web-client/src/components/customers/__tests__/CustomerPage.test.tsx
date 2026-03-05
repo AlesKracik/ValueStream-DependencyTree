@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import { CustomerPage } from '../CustomerPage';
 import { useDashboardContext } from '../../../contexts/DashboardContext';
 import type { DashboardData } from '../../../types/models';
@@ -33,6 +33,7 @@ const mockData: DashboardData = {
             existing_tcv_valid_from: '2026-01-01',
             existing_tcv_duration_months: 12,
             potential_tcv: 50,
+            potential_tcv_valid_from: '2026-04-01',
             potential_tcv_duration_months: 12,
             tcv_history: []
         }
@@ -231,10 +232,10 @@ describe('CustomerPage', () => {
         });
 
         const promoteBtn = screen.getByText('Promote to Actual');
-        const promoDateInput = screen.getByLabelText(/Promotion Date:/i);
+        // The date is already '2026-04-01' in mockData
+        expect(screen.getByDisplayValue('2026-04-01')).toBeDefined();
 
         await act(async () => {
-            fireEvent.change(promoDateInput, { target: { value: '2026-04-01' } });
             fireEvent.click(promoteBtn);
         });
 
@@ -320,7 +321,9 @@ describe('CustomerPage', () => {
         });
 
         const nameInput = screen.getByLabelText(/Name:/i);
-        const dateInput = screen.getByLabelText(/Valid From \(Initial\):/i);
+        // Find the first "Valid From" input (Existing TCV section)
+        const existingSection = screen.getByText(/Actual Existing TCV \(\$\):/i).closest('div');
+        const dateInput = within(existingSection!).getByLabelText(/Valid From:/i);
         
         await act(async () => {
             fireEvent.change(nameInput, { target: { value: 'New Brand' } });

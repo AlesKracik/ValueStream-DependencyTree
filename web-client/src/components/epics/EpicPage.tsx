@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { parseISO } from 'date-fns';
 import type { DashboardData, Epic } from '../../types/models';
-import { authorizedFetch, syncJiraIssue } from "../../utils/api";
+import { syncJiraIssue } from "../../utils/api";
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
 import { PageWrapper } from '../layout/PageWrapper';
