@@ -8,9 +8,9 @@ interface EditNodeModalProps {
     node: Node;
     onClose: () => void;
     data: DashboardData;
-    onUpdateCustomer: (id: string, updates: Partial<Customer>) => void;
-    onUpdateWorkItem: (id: string, updates: Partial<WorkItem>) => void;
-    onUpdateTeam: (id: string, updates: Partial<Team>) => void;
+    onUpdateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
+    onUpdateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
+    onUpdateTeam: (id: string, updates: Partial<Team>, immediate?: boolean) => Promise<void>;
 }
 
 export const EditNodeModal: React.FC<EditNodeModalProps> = ({
@@ -85,17 +85,17 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
         }
     }, [node, domainId, data]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (node.type === 'customerNode') {
-            onUpdateCustomer(domainId, {
+            await onUpdateCustomer(domainId, {
                 name: formData.name,
                 existing_tcv: Number(formData.existing_tcv),
                 potential_tcv: Number(formData.potential_tcv)
             });
         } else if (node.type === 'workItemNode') {
-            onUpdateWorkItem(domainId, {
+            await onUpdateWorkItem(domainId, {
                 name: formData.name,
                 total_effort_mds: Number(formData.total_effort_mds),
                 released_in_sprint_id: formData.released_in_sprint_id,
@@ -116,7 +116,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                         overrides[formData.sprintId] = parsed;
                     }
                 }
-                onUpdateTeam(formData.teamId, { sprint_capacity_overrides: overrides });
+                await onUpdateTeam(formData.teamId, { sprint_capacity_overrides: overrides });
             }
         }
 

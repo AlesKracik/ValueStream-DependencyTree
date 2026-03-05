@@ -12,7 +12,7 @@ export interface TeamPageProps {
     data: DashboardData | null;
     loading: boolean;
     error: Error | null;
-    updateTeam: (id: string, updates: Partial<Team>) => void;
+    updateTeam: (id: string, updates: Partial<Team>, immediate?: boolean) => Promise<void>;
     deleteTeam: (id: string) => void;
     addTeam: (team: Team) => void;
 }

@@ -56,7 +56,18 @@ export function useDashboardData(
     const [error, setError] = useState<Error | null>(null);
 
     // Debounced persistence functions
-    const debouncedPersist = useMemo(() => debounce((col, meth, ent) => persistEntity(col, meth, ent, showAlert), persistenceDebounceMs), [persistenceDebounceMs, showAlert]);
+    const debouncedPersist = useMemo(() => {
+        const timeouts = new Map<string, any>();
+        return (col: string, meth: 'POST' | 'DELETE', ent: any) => {
+            const key = `${col}-${meth}-${ent.id}`;
+            if (timeouts.has(key)) clearTimeout(timeouts.get(key));
+            timeouts.set(key, setTimeout(() => {
+                timeouts.delete(key);
+                persistEntity(col, meth, ent, showAlert);
+            }, persistenceDebounceMs));
+        };
+    }, [persistenceDebounceMs, showAlert]);
+
     const debouncedSettings = useMemo(() => debounce(async (sets, needsRefresh) => {
         await persistSettings(sets, showAlert);
         if (needsRefresh) {
@@ -132,18 +143,24 @@ export function useDashboardData(
         });
     };
 
-    const updateCustomer = (id: string, updates: Partial<Customer>) => {
+    const updateCustomer = async (id: string, updates: Partial<Customer>, immediate = false) => {
+        const existing = data?.customers.find(c => c.id === id);
+        if (!existing) return;
+        const updated = { ...existing, ...updates };
+
         setData(prev => {
             if (!prev) return prev;
-            const existing = prev.customers.find(c => c.id === id);
-            if (existing) {
-                debouncedPersist('customers', 'POST', { ...existing, ...updates });
-            }
             return {
                 ...prev,
-                customers: prev.customers.map(c => c.id === id ? { ...c, ...updates } : c)
+                customers: prev.customers.map(c => c.id === id ? updated : c)
             };
         });
+
+        if (immediate) {
+            await persistEntity('customers', 'POST', updated, showAlert);
+        } else {
+            debouncedPersist('customers', 'POST', updated);
+        }
     };
 
     const addWorkItem = (workItem: WorkItem) => {
@@ -176,32 +193,44 @@ export function useDashboardData(
         });
     };
 
-    const updateWorkItem = (id: string, updates: Partial<WorkItem>) => {
+    const updateWorkItem = async (id: string, updates: Partial<WorkItem>, immediate = false) => {
+        const existing = data?.workItems.find(w => w.id === id);
+        if (!existing) return;
+        const updated = { ...existing, ...updates };
+
         setData(prev => {
             if (!prev) return prev;
-            const existing = prev.workItems.find(w => w.id === id);
-            if (existing) {
-                debouncedPersist('workItems', 'POST', { ...existing, ...updates });
-            }
             return {
                 ...prev,
-                workItems: prev.workItems.map(f => f.id === id ? { ...f, ...updates } : f)
+                workItems: prev.workItems.map(f => f.id === id ? updated : f)
             };
         });
+
+        if (immediate) {
+            await persistEntity('workItems', 'POST', updated, showAlert);
+        } else {
+            debouncedPersist('workItems', 'POST', updated);
+        }
     };
 
-    const updateTeam = (id: string, updates: Partial<Team>) => {
+    const updateTeam = async (id: string, updates: Partial<Team>, immediate = false) => {
+        const existing = data?.teams.find(t => t.id === id);
+        if (!existing) return;
+        const updated = { ...existing, ...updates };
+
         setData(prev => {
             if (!prev) return prev;
-            const existing = prev.teams.find(t => t.id === id);
-            if (existing) {
-                debouncedPersist('teams', 'POST', { ...existing, ...updates });
-            }
             return {
                 ...prev,
-                teams: prev.teams.map(t => t.id === id ? { ...t, ...updates } : t)
+                teams: prev.teams.map(t => t.id === id ? updated : t)
             };
         });
+
+        if (immediate) {
+            await persistEntity('teams', 'POST', updated, showAlert);
+        } else {
+            debouncedPersist('teams', 'POST', updated);
+        }
     };
 
     const addTeam = (team: Team) => {
@@ -253,18 +282,24 @@ export function useDashboardData(
         });
     };
 
-    const updateEpic = (id: string, updates: Partial<Epic>) => {
+    const updateEpic = async (id: string, updates: Partial<Epic>, immediate = false) => {
+        const existing = data?.epics.find(e => e.id === id);
+        if (!existing) return;
+        const updated = { ...existing, ...updates };
+
         setData(prev => {
             if (!prev) return prev;
-            const existing = prev.epics.find(e => e.id === id);
-            if (existing) {
-                debouncedPersist('epics', 'POST', { ...existing, ...updates });
-            }
             return {
                 ...prev,
-                epics: prev.epics.map(e => e.id === id ? { ...e, ...updates } : e)
+                epics: prev.epics.map(e => e.id === id ? updated : e)
             };
         });
+
+        if (immediate) {
+            await persistEntity('epics', 'POST', updated, showAlert);
+        } else {
+            debouncedPersist('epics', 'POST', updated);
+        }
     };
 
     const updateSettings = (updates: Partial<Settings>) => {
@@ -322,20 +357,18 @@ export function useDashboardData(
         });
     };
 
-    const updateSprint = (id: string, updates: Partial<Sprint>) => {
+    const updateSprint = async (id: string, updates: Partial<Sprint>, immediate = false) => {
+        const existing = data?.sprints.find(s => s.id === id);
+        if (!existing) return;
+
+        const updatedSprint = { ...existing, ...updates };
+        // If end date is provided (or start date, though quarter is based on end), recompute quarter
+        if (updates.end_date || updates.start_date) {
+            updatedSprint.quarter = calculateQuarter(updatedSprint.end_date, data?.settings.fiscal_year_start_month || 1);
+        }
+
         setData(prev => {
             if (!prev) return prev;
-            const existing = prev.sprints.find(s => s.id === id);
-            if (!existing) return prev;
-
-            const updatedSprint = { ...existing, ...updates };
-            // If end date is provided (or start date, though quarter is based on end), recompute quarter
-            if (updates.end_date || updates.start_date) {
-                updatedSprint.quarter = calculateQuarter(updatedSprint.end_date, prev.settings.fiscal_year_start_month || 1);
-            }
-
-            debouncedPersist('sprints', 'POST', updatedSprint);
-            
             return {
                 ...prev,
                 sprints: prev.sprints
@@ -344,6 +377,12 @@ export function useDashboardData(
                     .sort((a, b) => a.start_date.localeCompare(b.start_date))
             };
         });
+
+        if (immediate) {
+            await persistEntity('sprints', 'POST', updatedSprint, showAlert);
+        } else {
+            debouncedPersist('sprints', 'POST', updatedSprint);
+        }
     };
 
     const deleteSprint = (id: string) => {
@@ -365,18 +404,24 @@ export function useDashboardData(
         });
     };
 
-    const updateDashboard = (id: string, updates: Partial<DashboardEntity>) => {
+    const updateDashboard = async (id: string, updates: Partial<DashboardEntity>, immediate = false) => {
+        const existing = data?.dashboards.find(d => d.id === id);
+        if (!existing) return;
+        const updated = { ...existing, ...updates };
+
         setData(prev => {
             if (!prev) return prev;
-            const existing = prev.dashboards.find(d => d.id === id);
-            if (existing) {
-                debouncedPersist('dashboards', 'POST', { ...existing, ...updates });
-            }
             return {
                 ...prev,
-                dashboards: prev.dashboards.map(d => d.id === id ? { ...d, ...updates } : d)
+                dashboards: prev.dashboards.map(d => d.id === id ? updated : d)
             };
         });
+
+        if (immediate) {
+            await persistEntity('dashboards', 'POST', updated, showAlert);
+        } else {
+            debouncedPersist('dashboards', 'POST', updated);
+        }
     };
 
     const deleteDashboard = (id: string) => {

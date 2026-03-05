@@ -120,9 +120,9 @@ export interface DashboardProps {
     data: DashboardData | null;
     loading: boolean;
     error: Error | null;
-    updateCustomer: (id: string, updates: Partial<Customer>) => void;
-    updateWorkItem: (id: string, updates: Partial<WorkItem>) => void;
-    updateTeam: (id: string, updates: Partial<Team>) => void;
+    updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
+    updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
+    updateTeam: (id: string, updates: Partial<Team>, immediate?: boolean) => Promise<void>;
     currentDashboardId?: string;
     
     viewState: DashboardViewState;

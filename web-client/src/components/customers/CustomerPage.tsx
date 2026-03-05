@@ -15,10 +15,10 @@ export interface CustomerPageProps {
     data: DashboardData | null;
     loading: boolean;
     error: Error | null;
-    updateCustomer: (id: string, updates: Partial<Customer>) => void;
+    updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
     deleteCustomer: (id: string) => void;
     addCustomer: (customer: Customer) => void;
-    updateWorkItem: (id: string, updates: Partial<WorkItem>) => void;
+    updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
     
 }
 

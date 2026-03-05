@@ -11,7 +11,7 @@ export interface SprintPageProps {
     loading: boolean;
     error: Error | null;
     addSprint: (s: Sprint) => void;
-    updateSprint: (id: string, updates: Partial<Sprint>) => void;
+    updateSprint: (id: string, updates: Partial<Sprint>, immediate?: boolean) => Promise<void>;
     deleteSprint: (id: string) => void;
 }
 

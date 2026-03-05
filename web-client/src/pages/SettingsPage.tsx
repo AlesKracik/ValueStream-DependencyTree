@@ -14,7 +14,7 @@ interface SettingsPageProps {
   data: DashboardData | null;
   loading?: boolean;
   error?: Error | null;
-  updateEpic: (id: string, updates: Partial<Epic>) => void;
+  updateEpic: (id: string, updates: Partial<Epic>, immediate?: boolean) => Promise<void>;
   addEpic: (epic: Epic) => void;
 }
 
@@ -286,7 +286,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         if (!response.ok || !resData.success) throw new Error(resData.error || "Failed to fetch Jira data");
         
         const updates = parseJiraIssue(resData.data, data.teams);
-        updateEpic(epic.id, updates);
+        await updateEpic(epic.id, updates, true);
         successCount++;
       } catch (err: any) {
         console.error(`Error syncing ${epic.jira_key}:`, err);
@@ -353,7 +353,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         const existingEpic = data.epics.find((e) => e.jira_key === jiraKey);
         try {
           if (existingEpic) {
-            updateEpic(existingEpic.id, updates);
+            await updateEpic(existingEpic.id, updates, true);
             updateCount++;
           } else if (addEpic) {
             const newId = generateId('e');

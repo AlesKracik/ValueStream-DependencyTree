@@ -14,7 +14,7 @@ export interface EpicPageProps {
     data: DashboardData | null;
     loading: boolean;
     error: Error | null;
-    updateEpic: (id: string, updates: Partial<Epic>) => void;
+    updateEpic: (id: string, updates: Partial<Epic>, immediate?: boolean) => Promise<void>;
     deleteEpic: (id: string) => void;
 }
 

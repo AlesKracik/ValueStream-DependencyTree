@@ -1,0 +1,161 @@
+import { renderHook, act, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { useDashboardData } from '../useDashboardData';
+import type { DashboardData } from '../../types/models';
+
+const mockData: DashboardData = {
+    dashboards: [], 
+    settings: { jira_base_url: 'https://jira.com', jira_api_version: '3' },
+    customers: [],
+    workItems: [],
+    teams: [],
+    epics: [
+        { id: 'e1', jira_key: 'E1', team_id: 't1', effort_md: 10, name: 'Epic 1' },
+        { id: 'e2', jira_key: 'E2', team_id: 't1', effort_md: 20, name: 'Epic 2' }
+    ],
+    sprints: [],
+    metrics: { maxScore: 100, maxRoi: 10 }
+};
+
+describe('useDashboardData Persistence', () => {
+    beforeEach(() => {
+        const fetchMock = vi.fn().mockImplementation((url) => {
+            if (url.startsWith('/api/loadData')) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve(mockData)
+                });
+            }
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true }) });
+        });
+        vi.stubGlobal('fetch', fetchMock);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    it('debounces multiple updates to the SAME epic', async () => {
+        // Use a small debounce for testing with real timers
+        const { result } = renderHook(() => useDashboardData(undefined, {}, 50));
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        vi.mocked(fetch).mockClear();
+
+        await act(async () => {
+            result.current.updateEpic('e1', { name: 'Update 1' });
+            result.current.updateEpic('e1', { name: 'Update 2' });
+            result.current.updateEpic('e1', { name: 'Update 3' });
+        });
+
+        // Wait for the debounce to expire
+        await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1), { timeout: 1000 });
+        
+        expect(fetch).toHaveBeenCalledWith(
+            '/api/entity/epics',
+            expect.objectContaining({
+                body: expect.stringContaining('"name":"Update 3"')
+            })
+        );
+    });
+
+    it('does NOT debounce updates to DIFFERENT epics (independent timers)', async () => {
+        const { result } = renderHook(() => useDashboardData(undefined, {}, 50));
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        vi.mocked(fetch).mockClear();
+
+        await act(async () => {
+            result.current.updateEpic('e1', { name: 'Epic 1 Updated' });
+            result.current.updateEpic('e2', { name: 'Epic 2 Updated' });
+        });
+
+        // Both should be called independently
+        await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2), { timeout: 1000 });
+
+        expect(fetch).toHaveBeenCalledWith('/api/entity/epics', expect.objectContaining({
+            body: expect.stringContaining('"id":"e1"')
+        }));
+        expect(fetch).toHaveBeenCalledWith('/api/entity/epics', expect.objectContaining({
+            body: expect.stringContaining('"id":"e2"')
+        }));
+    });
+
+    it('persists immediately when the immediate flag is set', async () => {
+        const { result } = renderHook(() => useDashboardData(undefined, {}, 1000));
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        vi.mocked(fetch).mockClear();
+
+        await act(async () => {
+            await result.current.updateEpic('e1', { name: 'Immediate Update' }, true);
+        });
+
+        // Should have called fetch immediately without waiting for debounce
+        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(fetch).toHaveBeenCalledWith(
+            '/api/entity/epics',
+            expect.objectContaining({
+                method: 'POST',
+                body: expect.stringContaining('"name":"Immediate Update"')
+            })
+        );
+    });
+
+    it('returns a promise that resolves after persistence when using immediate flag', async () => {
+        let resolveFetch: (value: any) => void;
+        const fetchPromise = new Promise((resolve) => {
+            resolveFetch = resolve;
+        });
+
+        vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => {
+            if (url.startsWith('/api/loadData')) return Promise.resolve({ ok: true, json: () => Promise.resolve(mockData) });
+            return fetchPromise;
+        }));
+
+        const { result } = renderHook(() => useDashboardData(undefined, {}, 1000));
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        let updateResolved = false;
+        const updatePromise = result.current.updateEpic('e1', { name: 'Async Test' }, true).then(() => {
+            updateResolved = true;
+        });
+
+        expect(updateResolved).toBe(false);
+
+        await act(async () => {
+            resolveFetch!({ ok: true, json: () => Promise.resolve({ success: true }) });
+            await updatePromise;
+        });
+
+        expect(updateResolved).toBe(true);
+    });
+
+    it('supports immediate flag for updateSprint', async () => {
+        const dataWithSprint: DashboardData = {
+            ...mockData,
+            sprints: [{ id: 's1', name: 'S1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'Q1' }]
+        };
+        vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => {
+            if (url.startsWith('/api/loadData')) return Promise.resolve({ ok: true, json: () => Promise.resolve(dataWithSprint) });
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true }) });
+        }));
+
+        const { result } = renderHook(() => useDashboardData(undefined, {}, 1000));
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        vi.mocked(fetch).mockClear();
+
+        await act(async () => {
+            await result.current.updateSprint('s1', { name: 'S1 Updated' }, true);
+        });
+
+        expect(fetch).toHaveBeenCalledWith(
+            '/api/entity/sprints',
+            expect.objectContaining({
+                method: 'POST',
+                body: expect.stringContaining('"name":"S1 Updated"')
+            })
+        );
+    });
+});

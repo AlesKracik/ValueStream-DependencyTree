@@ -16,10 +16,10 @@ export interface WorkItemPageProps {
     error: Error | null;
     addWorkItem: (f: WorkItem) => void;
     deleteWorkItem: (id: string) => void;
-    updateWorkItem: (id: string, updates: Partial<WorkItem>) => void;
+    updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
     addEpic: (e: Epic) => void;
     deleteEpic: (id: string) => void;
-    updateEpic: (id: string, updates: Partial<Epic>) => void;
+    updateEpic: (id: string, updates: Partial<Epic>, immediate?: boolean) => Promise<void>;
 }
 
 export const WorkItemPage: React.FC<WorkItemPageProps> = ({
