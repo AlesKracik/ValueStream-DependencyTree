@@ -401,7 +401,9 @@ export function useGraphLayout(
                 data: {
                     label: customer.name,
                     existingTcv: customer.existing_tcv,
+                    existingTcvDuration: customer.existing_tcv_duration_months,
                     potentialTcv: customer.potential_tcv,
+                    potentialTcvDuration: customer.potential_tcv_duration_months,
                     totalTcv: totalTcv,
                     maxTcv: maxTcv,
                     baseSize: 100, // base px size

@@ -29,7 +29,12 @@ export const CustomerListPage: React.FC<Props> = ({ data, loading }) => {
             sortOptions={sortOptions}
             onItemClick={(c) => navigate(`/customer/${c.id}`)}
             renderItemTitle={(c) => c.name}
-            renderItemDetails={(c) => `Existing TCV: $${c.existing_tcv.toLocaleString()} | Potential TCV: $${c.potential_tcv.toLocaleString()} | Total: $${((c.existing_tcv || 0) + (c.potential_tcv || 0)).toLocaleString()}`}
+            renderItemDetails={(c) => {
+                const existingStr = `Existing TCV: $${c.existing_tcv.toLocaleString()}${c.existing_tcv_duration_months ? ` (${c.existing_tcv_duration_months} mo)` : ''}`;
+                const potentialStr = `Potential TCV: $${c.potential_tcv.toLocaleString()}${c.potential_tcv_duration_months ? ` (${c.potential_tcv_duration_months} mo)` : ''}`;
+                const total = (c.existing_tcv || 0) + (c.potential_tcv || 0);
+                return `${existingStr} | ${potentialStr} | Total: $${total.toLocaleString()}`;
+            }}
             actionButton={{
                 label: "+ New Customer",
                 onClick: () => navigate('/customer/new')

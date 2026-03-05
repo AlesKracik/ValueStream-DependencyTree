@@ -31,7 +31,9 @@ const mockData: DashboardData = {
             customer_id: 'CUST-A',
             existing_tcv: 100, 
             existing_tcv_valid_from: '2026-01-01',
+            existing_tcv_duration_months: 12,
             potential_tcv: 50,
+            potential_tcv_duration_months: 12,
             tcv_history: []
         }
     ],
@@ -82,7 +84,9 @@ describe('CustomerPage', () => {
         const existingTcvInput = screen.getByLabelText(/Actual Existing TCV \(\$\):/i);
         expect(existingTcvInput).toBeDefined();
         expect(existingTcvInput.hasAttribute('readonly')).toBe(true);
-        expect(screen.getByText(/Valid from: 2026-01-01/i)).toBeDefined();
+        
+        // Valid From is now an input with date value
+        expect(screen.getByDisplayValue('2026-01-01')).toBeDefined();
     });
 
     it('switches between Targeted Work Items, TCV History and Support Health tabs', async () => {
@@ -221,40 +225,28 @@ describe('CustomerPage', () => {
         });
     });
 
-    it('handles the Update TCV flow (archiving current to history)', async () => {
+    it('handles the Promote Potential TCV flow', async () => {
         await act(async () => {
             render(<CustomerPage {...defaultProps} />);
         });
 
-        const updateBtn = screen.getByText('Update TCV');
-        await act(async () => {
-            fireEvent.click(updateBtn);
-        });
-
-        // Form should appear
-        expect(screen.getByText('Archive Current and Set New Actual TCV')).toBeDefined();
-
-        const dateInput = screen.getByLabelText(/New Valid From Date:/i);
-        const valueInput = screen.getByLabelText(/New TCV Value \(\$\):/i);
+        const promoteBtn = screen.getByText('Promote to Actual');
+        const promoDateInput = screen.getByLabelText(/Promotion Date:/i);
 
         await act(async () => {
-            fireEvent.change(dateInput, { target: { value: '2026-03-01' } });
-            fireEvent.change(valueInput, { target: { value: '2000' } });
-        });
-
-        const confirmBtn = screen.getByText('Confirm Update');
-        await act(async () => {
-            fireEvent.click(confirmBtn);
+            fireEvent.change(promoDateInput, { target: { value: '2026-04-01' } });
+            fireEvent.click(promoteBtn);
         });
 
         await waitFor(() => {
             expect(mockShowConfirm).toHaveBeenCalledWith(
-                'Update Actual TCV',
-                expect.stringContaining('$100') // should be formatted
+                'Promote Potential TCV',
+                expect.stringContaining('2026-04-01')
             );
             expect(defaultProps.updateCustomer).toHaveBeenCalledWith('c1', expect.objectContaining({
-                existing_tcv: 2000,
-                existing_tcv_valid_from: '2026-03-01',
+                existing_tcv: 50, // potential_tcv from mockData
+                existing_tcv_valid_from: '2026-04-01',
+                potential_tcv: 0,
                 tcv_history: [
                     expect.objectContaining({ value: 100, valid_from: '2026-01-01' })
                 ]

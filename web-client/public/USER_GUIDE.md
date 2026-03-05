@@ -35,10 +35,10 @@ Both Customers and Work Items feature tabbed detail pages for better organizatio
 
 ![Customer Detail](images/customer-detail.png)
 
-- **Customer Details Section:** Displays basic info like Name, Actual TCV, and Potential TCV.
+- **Customer Details Section:** Displays basic info like Name, Actual TCV, and Potential TCV. Each TCV value can have an associated **Duration in Months**, which is used to provide context on the contract or opportunity length.
 - **Updating Actual TCV:** The "Actual Existing TCV" value is protected. To change it, click **"Update TCV"**. This triggers a lifecycle process:
-    1. The current value and its "Valid From" date are moved into the history.
-    2. You enter a new value and a new date from which it becomes the "Actual" state.
+    1. The current value, its "Valid From" date, and its **Duration** are moved into the history.
+    2. You enter a new value, a new date from which it becomes the "Actual" state, and its expected **Duration**.
 - **Tabs:**
     - **Targeted Work Items:** View and manage which strategic initiatives are delivering value to this customer. You can target either the **"Latest Actual"** TCV or a specific **historical record** from the customer's timeline. New targets can be added directly from this tab using the searchable dropdown at the bottom.
     - **TCV History:** A chronological audit trail of the customer's contract evolution. Historical entries are created automatically whenever you perform an "Update TCV" action.

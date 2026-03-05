@@ -41,14 +41,14 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         name: 'New Customer', 
         existing_tcv: 0, 
         existing_tcv_valid_from: new Date().toISOString().split('T')[0],
-        potential_tcv: 0 
+        existing_tcv_duration_months: 12,
+        potential_tcv: 0,
+        potential_tcv_duration_months: 12
     });
     const [newCustomerWorkItems, setNewCustomerWorkItems] = useState<{ workItemId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have', tcv_history_id?: string }[]>([]);
 
-    // State for the "Update Actual TCV" form
-    const [isUpdatingTcv, setIsUpdatingTcv] = useState(false);
-    const [newTcvValue, setNewTcvValue] = useState<number>(0);
-    const [newTcvDate, setNewTcvDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    // State for the "Promote Potential" flow
+    const [promotionDate, setPromotionDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
     const [activeTab, setActiveTab] = useState<'workItems' | 'history' | 'support'>('workItems');
 
@@ -189,7 +189,9 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                     customer_id: newCustDraft.customer_id,
                     existing_tcv: newCustDraft.existing_tcv || 0,
                     existing_tcv_valid_from: newCustDraft.existing_tcv_valid_from,
-                    potential_tcv: newCustDraft.potential_tcv || 0
+                    existing_tcv_duration_months: newCustDraft.existing_tcv_duration_months,
+                    potential_tcv: newCustDraft.potential_tcv || 0,
+                    potential_tcv_duration_months: newCustDraft.potential_tcv_duration_months
                 };
 
                 // Inject the drafted work items
@@ -227,33 +229,31 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         }
     };
 
-    const handleArchiveAndSetNewTcv = async () => {
+    const handlePromotePotentialToExisting = async () => {
         if (!customer) return;
-        if (!newTcvDate || isNaN(newTcvValue)) {
-            await showAlert('Invalid Input', 'Please provide a valid date and value.');
-            return;
-        }
-
-        const confirmed = await showConfirm('Update Actual TCV', `This will move the current TCV ($${customer.existing_tcv.toLocaleString()}) to history and set the new actual TCV to $${newTcvValue.toLocaleString()} starting from ${newTcvDate}. Continue?`);
+        const confirmed = await showConfirm(
+            'Promote Potential TCV', 
+            `This will move current Existing TCV ($${customer.existing_tcv.toLocaleString()}) to history and promote Potential TCV ($${customer.potential_tcv.toLocaleString()}) to be the new Actual Existing TCV valid from ${promotionDate}. Continue?`
+        );
         if (!confirmed) return;
 
-        // 1. Create history entry from current "Actual"
         const historyEntry: TcvHistoryEntry = {
             id: generateId('h'),
             value: customer.existing_tcv,
-            valid_from: customer.existing_tcv_valid_from || '2000-01-01'
+            valid_from: customer.existing_tcv_valid_from || '2000-01-01',
+            duration_months: customer.existing_tcv_duration_months
         };
 
-        // 2. Update customer with new values and updated history
         const newHistory = [...(customer.tcv_history || []), historyEntry].sort((a, b) => b.valid_from.localeCompare(a.valid_from));
         
         updateCustomer(customer.id, {
-            existing_tcv: newTcvValue,
-            existing_tcv_valid_from: newTcvDate,
+            existing_tcv: customer.potential_tcv,
+            existing_tcv_duration_months: customer.potential_tcv_duration_months,
+            existing_tcv_valid_from: promotionDate,
+            potential_tcv: 0,
+            potential_tcv_duration_months: 12,
             tcv_history: newHistory
         });
-
-        setIsUpdatingTcv(false);
     };
 
     const handleDelete = async () => {
@@ -345,31 +345,86 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                 }}
                                                 style={!isNew ? { backgroundColor: '#1e293b', border: 'none' } : {}}
                                             />
-                                            {!isNew && !isUpdatingTcv && (
-                                                <button className="btn-primary" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={() => {
-                                                    setNewTcvValue(customer.existing_tcv);
-                                                    setIsUpdatingTcv(true);
-                                                }}>Update TCV</button>
+                                        </div>
+                                    </label>
+                                    <label>
+                                        Valid From:
+                                        <input 
+                                            type="date" 
+                                            readOnly={!isNew}
+                                            value={isNew ? newCustDraft.existing_tcv_valid_from : (customer.existing_tcv_valid_from || '')} 
+                                            onChange={e => {
+                                                if (!isNew) return;
+                                                setNewCustDraft(prev => ({ ...prev, existing_tcv_valid_from: e.target.value }));
+                                            }}
+                                            style={!isNew ? { backgroundColor: '#1e293b', border: 'none' } : {}}
+                                        />
+                                    </label>
+                                    <label>
+                                        Existing Duration (mo):
+                                        <input 
+                                            type="number" 
+                                            readOnly={!isNew}
+                                            value={isNew ? newCustDraft.existing_tcv_duration_months : (customer.existing_tcv_duration_months || 0)} 
+                                            onChange={e => {
+                                                if (!isNew) return;
+                                                const val = parseInt(e.target.value) || 0;
+                                                setNewCustDraft(prev => ({ ...prev, existing_tcv_duration_months: val }));
+                                            }}
+                                            min="0"
+                                            style={!isNew ? { backgroundColor: '#1e293b', border: 'none' } : {}}
+                                        />
+                                    </label>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <label>
+                                        Potential TCV ($):
+                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                            <input 
+                                                type="number" 
+                                                value={isNew ? (newCustDraft.potential_tcv || 0) : (customer.potential_tcv || 0)} 
+                                                onChange={e => {
+                                                    const val = parseInt(e.target.value) || 0;
+                                                    if (isNew) setNewCustDraft(prev => ({ ...prev, potential_tcv: val }));
+                                                    else updateCustomer(customer.id, { potential_tcv: val });
+                                                }}
+                                            />
+                                            {!isNew && (
+                                                <button 
+                                                    className="btn-primary" 
+                                                    style={{ padding: '4px 8px', fontSize: '12px', whiteSpace: 'nowrap' }} 
+                                                    onClick={handlePromotePotentialToExisting}
+                                                >
+                                                    Promote to Actual
+                                                </button>
                                             )}
                                         </div>
                                     </label>
-                                    {customer.existing_tcv_valid_from && (
-                                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>Valid from: {customer.existing_tcv_valid_from}</span>
+                                    {!isNew && (
+                                        <label>
+                                            Promotion Date:
+                                            <input 
+                                                type="date" 
+                                                value={promotionDate} 
+                                                onChange={e => setPromotionDate(e.target.value)}
+                                            />
+                                        </label>
                                     )}
+                                    <label>
+                                        Potential Duration (mo):
+                                        <input 
+                                            type="number" 
+                                            value={isNew ? newCustDraft.potential_tcv_duration_months : (customer.potential_tcv_duration_months || 0)} 
+                                            onChange={e => {
+                                                const val = parseInt(e.target.value) || 0;
+                                                if (isNew) setNewCustDraft(prev => ({ ...prev, potential_tcv_duration_months: val }));
+                                                else updateCustomer(customer.id, { potential_tcv_duration_months: val });
+                                            }}
+                                            min="0"
+                                        />
+                                    </label>
                                 </div>
-
-                                <label>
-                                    Potential TCV ($):
-                                    <input 
-                                        type="text" 
-                                        value={(isNew ? (newCustDraft.potential_tcv || 0) : (customer.potential_tcv || 0)).toLocaleString()} 
-                                        onChange={e => {
-                                            const val = parseInt(e.target.value.replace(/[^0-9]/g, '')) || 0;
-                                            if (isNew) setNewCustDraft(prev => ({ ...prev, potential_tcv: val }));
-                                            else updateCustomer(customer.id, { potential_tcv: val });
-                                        }}
-                                    />
-                                </label>
 
                                 {isNew && (
                                     <label>
@@ -382,26 +437,6 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                     </label>
                                 )}
                             </div>
-
-                            {isUpdatingTcv && (
-                                <div style={{ marginTop: '24px', padding: '16px', border: '1px solid #3b82f6', borderRadius: '8px', backgroundColor: 'rgba(59, 130, 246, 0.05)' }}>
-                                    <h3 style={{ marginTop: 0, fontSize: '16px', color: '#60a5fa' }}>Archive Current and Set New Actual TCV</h3>
-                                    <div className={styles.formGrid} style={{ gridTemplateColumns: '1fr 1fr auto', alignItems: 'flex-end', marginTop: '12px' }}>
-                                        <label>
-                                            New Valid From Date:
-                                            <input type="date" value={newTcvDate} onChange={e => setNewTcvDate(e.target.value)} />
-                                        </label>
-                                        <label>
-                                            New TCV Value ($):
-                                            <input type="number" value={newTcvValue} onChange={e => setNewTcvValue(parseInt(e.target.value) || 0)} min="0" />
-                                        </label>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <button className="btn-secondary" onClick={() => setIsUpdatingTcv(false)}>Cancel</button>
-                                            <button className="btn-primary" onClick={handleArchiveAndSetNewTcv}>Confirm Update</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
                         </section>
 
                         <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #334155', marginBottom: '24px', marginTop: '24px' }}>
@@ -489,7 +524,14 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                 </div>
 
                                 {healthData.loading && <div style={{ color: '#9ca3af' }}>Loading Jira data...</div>}
-                                {healthData.error && <div style={{ color: '#ef4444' }}>{healthData.error}</div>}
+                                {healthData.error && (
+                                    <div style={{ color: '#fca5a5', textAlign: 'center', padding: '40px', backgroundColor: '#451a1a', borderRadius: '8px', border: '1px dashed #ef4444' }}>
+                                        <div style={{ fontSize: '16px', marginBottom: '8px', color: '#fecaca', fontWeight: 'bold' }}>Jira Integration Error</div>
+                                        <p style={{ margin: 0, fontSize: '14px' }}>
+                                            {healthData.error}
+                                        </p>
+                                    </div>
+                                )}
 
                                 {healthData.healthStatus === 'Unknown' && !healthData.loading && !healthData.error && (
                                     <div style={{ color: '#9ca3af', textAlign: 'center', padding: '40px', backgroundColor: '#1e293b', borderRadius: '8px', border: '1px dashed #334155' }}>
@@ -758,6 +800,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                         <tr>
                                             <th>Valid From</th>
                                             <th>Value ($)</th>
+                                            <th>Duration (mo)</th>
                                             <th>Actions</th>
                                         </tr>
                                     </thead>
@@ -766,6 +809,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                             <tr key={entry.id}>
                                                 <td>{entry.valid_from}</td>
                                                 <td>{entry.value.toLocaleString()}</td>
+                                                <td>{entry.duration_months || '-'}</td>
                                                 <td>
                                                     <button 
                                                         className="btn-danger" 

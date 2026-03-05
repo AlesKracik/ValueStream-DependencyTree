@@ -5,7 +5,9 @@ import { BaseCircleNode } from './BaseCircleNode';
 interface CustomerNodeData {
     label: string;
     existingTcv: number;
+    existingTcvDuration?: number;
     potentialTcv: number;
+    potentialTcvDuration?: number;
     totalTcv: number;
     maxTcv: number;
     baseSize: number;
@@ -43,11 +45,17 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
         }
     ];
 
-    const formatTcv = (val: number) => {
+    const formatTcv = (val: number, duration?: number) => {
+        let tcvStr = '';
         if (val >= 1000000) {
-            return `$${(val / 1000000).toFixed(1)}M`;
+            tcvStr = `$${(val / 1000000).toFixed(1)}M`;
+        } else {
+            tcvStr = `$${(val / 1000).toFixed(0)}k`;
         }
-        return `$${(val / 1000).toFixed(0)}k`;
+        if (duration) {
+            tcvStr += ` (${duration}m)`;
+        }
+        return tcvStr;
     };
 
     return (
@@ -77,7 +85,7 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
                 textShadow: '0 1px 2px rgba(0,0,0,0.5)',
                 zIndex: 1
             }}>
-                {formatTcv(data.potentialTcv)}
+                {formatTcv(data.potentialTcv, data.potentialTcvDuration)}
             </span>
 
             {/* Inner Circle (Existing TCV) */}
@@ -112,7 +120,7 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
                         opacity: 1,
                         textShadow: '0 1px 2px rgba(0,0,0,0.3)'
                     }}>
-                        {formatTcv(data.existingTcv)}
+                        {formatTcv(data.existingTcv, data.existingTcvDuration)}
                     </div>
                 )}
 

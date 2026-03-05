@@ -80,7 +80,15 @@
                         "type": "string",
                         "format": "date"
                     },
+                    "existing_tcv_duration_months": {
+                        "type": "number",
+                        "minimum": 0
+                    },
                     "potential_tcv": {
+                        "type": "number",
+                        "minimum": 0
+                    },
+                    "potential_tcv_duration_months": {
                         "type": "number",
                         "minimum": 0
                     },
@@ -92,7 +100,8 @@
                             "properties": {
                                 "id": { "type": "string" },
                                 "value": { "type": "number", "minimum": 0 },
-                                "valid_from": { "type": "string", "format": "date" }
+                                "valid_from": { "type": "string", "format": "date" },
+                                "duration_months": { "type": "number", "minimum": 0 }
                             }
                         }
                     }
