@@ -69,6 +69,53 @@ describe('businessLogic', () => {
             const result = parseJiraIssue(jiraIssue, mockTeams);
             expect(result).toEqual({});
         });
+
+        it('treats 0 effort in Jira as source of truth', () => {
+            const jiraIssue = {
+                fields: {
+                    timeestimate: 0
+                }
+            };
+            const result = parseJiraIssue(jiraIssue, mockTeams);
+            expect(result.effort_md).toBe(0);
+        });
+
+        it('treats null/empty dates in Jira as source of truth', () => {
+            const jiraIssue = {
+                fields: {
+                    'customfield_101': null,
+                    'customfield_102': ''
+                },
+                names: {
+                    'customfield_101': 'Target start',
+                    'customfield_102': 'Target end'
+                }
+            };
+            const result = parseJiraIssue(jiraIssue, mockTeams);
+            expect(result.target_start).toBeUndefined();
+            expect(result.target_end).toBeUndefined();
+        });
+
+        it('prefers timeestimate over aggregatetimeestimate', () => {
+            const jiraIssue = {
+                fields: {
+                    timeestimate: 28800 * 5,
+                    aggregatetimeestimate: 28800 * 10
+                }
+            };
+            const result = parseJiraIssue(jiraIssue, mockTeams);
+            expect(result.effort_md).toBe(5);
+        });
+
+        it('falls back to aggregatetimeestimate if timeestimate is missing', () => {
+            const jiraIssue = {
+                fields: {
+                    aggregatetimeestimate: 28800 * 10
+                }
+            };
+            const result = parseJiraIssue(jiraIssue, mockTeams);
+            expect(result.effort_md).toBe(10);
+        });
     });
 
     describe('calculateWorkItemEffort', () => {

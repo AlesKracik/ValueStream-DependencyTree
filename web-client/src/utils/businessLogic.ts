@@ -24,11 +24,21 @@ export const parseJiraIssue = (issue: any, teams: Team[]): Partial<Epic> => {
 
     const updates: Partial<Epic> = {};
     if (fields.summary) updates.name = fields.summary;
+    
+    // Effort: Jira is source of truth (even if 0)
     if (fields.timeestimate !== undefined && fields.timeestimate !== null) {
         updates.effort_md = Math.round(fields.timeestimate / 28800);
+    } else if (fields.aggregatetimeestimate !== undefined && fields.aggregatetimeestimate !== null) {
+        updates.effort_md = Math.round(fields.aggregatetimeestimate / 28800);
     }
-    if (targetStartKey && fields[targetStartKey]) updates.target_start = fields[targetStartKey];
-    if (targetEndKey && fields[targetEndKey]) updates.target_end = fields[targetEndKey];
+
+    // Dates: Jira is source of truth (even if null)
+    if (targetStartKey) {
+        updates.target_start = fields[targetStartKey] || undefined;
+    }
+    if (targetEndKey) {
+        updates.target_end = fields[targetEndKey] || undefined;
+    }
 
     if (teamKey && fields[teamKey]) {
         const teamField = fields[teamKey];
