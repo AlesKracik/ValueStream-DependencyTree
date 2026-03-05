@@ -291,12 +291,22 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         if (typeof val === 'object') {
             return (
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, auto) 1fr', gap: '8px 16px' }}>
-                    {Object.entries(val).map(([k, v]) => (
-                        <React.Fragment key={k}>
-                            <div style={{ fontWeight: 'bold', color: '#94a3b8', fontSize: '13px' }}>{k}:</div>
-                            <div style={{ fontSize: '14px', wordBreak: 'break-all' }}>{renderValue(v)}</div>
-                        </React.Fragment>
-                    ))}
+                    {Object.entries(val)
+                        .filter(([k]) => {
+                            const lower = k.toLowerCase();
+                            // Skip IDs: exact 'id', '_id', or suffixes like '_id' or camelCase 'Id'
+                            const isId = lower === 'id' || 
+                                         lower === '_id' || 
+                                         lower.endsWith('_id') || 
+                                         (k.endsWith('Id') && k.length > 2);
+                            return !isId;
+                        })
+                        .map(([k, v]) => (
+                            <React.Fragment key={k}>
+                                <div style={{ fontWeight: 'bold', color: '#94a3b8', fontSize: '13px' }}>{k}:</div>
+                                <div style={{ fontSize: '14px', wordBreak: 'break-all' }}>{renderValue(v)}</div>
+                            </React.Fragment>
+                        ))}
                 </div>
             );
         }
