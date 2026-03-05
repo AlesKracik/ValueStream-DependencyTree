@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { Settings, DashboardData, Epic } from "../types/models";
 import styles from './List.module.css';
-import { authorizedFetch } from "../utils/api";
+import { authorizedFetch, syncJiraIssue } from "../utils/api";
 import { generateId } from '../utils/security';
 import { useDashboardContext } from "../contexts/DashboardContext";
 import { PageWrapper } from "../components/layout/PageWrapper";
@@ -272,20 +272,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       const epic = epicsWithKeys[i];
       setSyncProgress(`Syncing ${i + 1}/${epicsWithKeys.length}: ${epic.jira_key}`);
       try {
-        const response = await authorizedFetch("/api/jira/issue", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            jira_key: epic.jira_key,
+        const issueData = await syncJiraIssue(epic.jira_key, {
             jira_base_url,
             jira_api_version: localFormData.jira_api_version || settings.jira_api_version || "3",
             jira_api_token,
-          }),
         });
-        const resData = await response.json();
-        if (!response.ok || !resData.success) throw new Error(resData.error || "Failed to fetch Jira data");
         
-        const updates = parseJiraIssue(resData.data, data.teams);
+        const updates = parseJiraIssue(issueData, data.teams);
         await updateEpic(epic.id, updates, true);
         successCount++;
       } catch (err: any) {

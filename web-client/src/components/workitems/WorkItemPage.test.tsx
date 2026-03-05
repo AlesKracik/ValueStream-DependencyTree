@@ -9,7 +9,8 @@ vi.mock('../../utils/api', async () => {
     const actual = await vi.importActual('../../utils/api');
     return {
         ...actual,
-        authorizedFetch: vi.fn()
+        authorizedFetch: vi.fn(),
+        syncJiraIssue: vi.fn()
     };
 });
 
@@ -299,11 +300,8 @@ describe('WorkItemPage', () => {
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
         };
 
-        // Mock authorizedFetch to return an error
-        (api.authorizedFetch as any).mockResolvedValueOnce({
-            ok: false,
-            json: async () => ({ success: false, error: 'Jira API Error' })
-        });
+        // Mock syncJiraIssue to return an error
+        (api.syncJiraIssue as any).mockRejectedValueOnce(new Error('Jira API Error'));
 
         render(
             <NotificationProvider>
@@ -337,8 +335,8 @@ describe('WorkItemPage', () => {
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
         };
 
-        // Mock authorizedFetch to throw
-        (api.authorizedFetch as any).mockRejectedValueOnce(new Error('Network Failure'));
+        // Mock syncJiraIssue to throw
+        (api.syncJiraIssue as any).mockRejectedValueOnce(new Error('Network Failure'));
 
         render(
             <NotificationProvider>

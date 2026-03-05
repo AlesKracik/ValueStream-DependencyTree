@@ -30,3 +30,30 @@ export function debounce<T extends (...args: any[]) => any>(
         timeout = setTimeout(() => func(...args), wait);
     };
 }
+
+export const syncJiraIssue = async (
+    jiraKey: string,
+    settings: { jira_base_url?: string; jira_api_version?: string; jira_api_token?: string }
+): Promise<any> => {
+    if (!jiraKey || jiraKey === 'TBD') {
+        throw new Error('Please enter a valid Jira Key before syncing.');
+    }
+
+    const response = await authorizedFetch("/api/jira/issue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            jira_key: jiraKey,
+            jira_base_url: settings.jira_base_url,
+            jira_api_version: settings.jira_api_version || "3",
+            jira_api_token: settings.jira_api_token,
+        }),
+    });
+
+    const resData = await response.json().catch(() => ({}));
+    if (!response.ok || !resData.success) {
+        throw new Error(resData?.error || "Failed to fetch Jira data");
+    }
+
+    return resData.data;
+};

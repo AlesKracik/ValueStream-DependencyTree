@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { parseISO } from 'date-fns';
 import type { DashboardData, Epic } from '../../types/models';
-import { authorizedFetch } from "../../utils/api";
+import { authorizedFetch, syncJiraIssue } from "../../utils/api";
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from '../customers/CustomerPage.module.css';
 import { PageWrapper } from '../layout/PageWrapper';
@@ -76,28 +76,11 @@ export const EpicPage: React.FC<EpicPageProps> = ({
     };
 
     const handleSync = async () => {
-        if (!epic || epic.jira_key === 'TBD') {
-            await showAlert('Invalid Key', 'Please enter a valid Jira Key before syncing.');
-            return;
-        }
+        if (!epic) return;
         setSyncing(true);
         try {
-            const response = await authorizedFetch("/api/jira/issue", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    jira_key: epic.jira_key,
-                    jira_base_url: data?.settings.jira_base_url,
-                    jira_api_version: data?.settings.jira_api_version || "3",
-                    jira_api_token: data?.settings.jira_api_token,
-                }),
-            });
-            const resData = await response.json();
-            if (!response.ok || !resData.success) {
-                throw new Error(resData.error || "Failed to fetch Jira data");
-            }
-
-            const updates = parseJiraIssue(resData.data, data?.teams || []);
+            const issueData = await syncJiraIssue(epic.jira_key, data?.settings || {});
+            const updates = parseJiraIssue(issueData, data?.teams || []);
             updateEpicWithOverlapCheck(epic.id, updates);
         } catch (err: any) {
             console.error('Sync failed', err);
