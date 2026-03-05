@@ -28,8 +28,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   addEpic,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = (searchParams.get("tab") as "general" | "mongo" | "jira" | "ai") || "general";
-  const activeSubTab = searchParams.get("subtab") || "common";
+  const activeTab = (searchParams.get("tab") as "general" | "persistence" | "jira" | "ai") || "general";
+  const activeSubTab = searchParams.get("subtab") || (activeTab === "persistence" ? "mongo" : activeTab === "jira" ? "common" : "");
+  const activeSubSubTab = searchParams.get("subsubtab") || (activeTab === "persistence" && activeSubTab === "mongo" ? "application" : "");
 
   const { showConfirm } = useDashboardContext();
 
@@ -37,6 +38,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [isTesting, setIsTesting] = useState(false);
   const [availableDbs, setAvailableDbs] = useState<string[]>([]);
   const [mongoTestResult, setMongoTestResult] = useState<{ success: boolean; message: string; exists?: boolean } | null>(null);
+  const [isTestingCustomer, setIsTestingCustomer] = useState(false);
+  const [availableCustomerDbs, setAvailableCustomerDbs] = useState<string[]>([]);
+  const [customerMongoTestResult, setCustomerMongoTestResult] = useState<{ success: boolean; message: string; exists?: boolean } | null>(null);
   const [jiraTestResult, setJiraTestResult] = useState<{ success: boolean; message: string; } | null>(null);
   const [importSyncResult, setImportSyncResult] = useState<{ success: boolean; message: string; } | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -61,6 +65,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         mongo_aws_session_token: settings.mongo_aws_session_token || "",
         mongo_oidc_token: settings.mongo_oidc_token || "",
         mongo_create_if_not_exists: settings.mongo_create_if_not_exists ?? false,
+        customer_mongo_uri: settings.customer_mongo_uri || "",
+        customer_mongo_db: settings.customer_mongo_db || "",
+        customer_mongo_auth_method: settings.customer_mongo_auth_method || "scram",
+        customer_mongo_aws_access_key: settings.customer_mongo_aws_access_key || "",
+        customer_mongo_aws_secret_key: settings.customer_mongo_aws_secret_key || "",
+        customer_mongo_aws_session_token: settings.customer_mongo_aws_session_token || "",
+        customer_mongo_oidc_token: settings.customer_mongo_oidc_token || "",
+        customer_mongo_custom_query: settings.customer_mongo_custom_query || "",
         customer_jql_new: settings.customer_jql_new || "",
         customer_jql_in_progress: settings.customer_jql_in_progress || "",
         customer_jql_noop: settings.customer_jql_noop || "",
@@ -76,6 +88,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const setTab = (tab: string) => {
     setSearchParams({ tab });
     setMongoTestResult(null);
+    setCustomerMongoTestResult(null);
     setJiraTestResult(null);
     setImportSyncResult(null);
   };
@@ -84,25 +97,51 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     setSearchParams((prev) => {
       const newParams = new URLSearchParams(prev);
       newParams.set("subtab", subtab);
+      newParams.delete("subsubtab");
       return newParams;
     });
   };
 
-  const handleTestConnection = async () => {
-    const mongo_uri = localFormData.mongo_uri || settings.mongo_uri;
-    const mongo_db = localFormData.mongo_db || settings.mongo_db;
-    const mongo_auth_method = localFormData.mongo_auth_method || settings.mongo_auth_method;
-    const mongo_aws_access_key = localFormData.mongo_aws_access_key || settings.mongo_aws_access_key;
-    const mongo_aws_secret_key = localFormData.mongo_aws_secret_key || settings.mongo_aws_secret_key;
-    const mongo_aws_session_token = localFormData.mongo_aws_session_token || settings.mongo_aws_session_token;
-    const mongo_oidc_token = localFormData.mongo_oidc_token || settings.mongo_oidc_token;
+  const setSubSubTab = (subsubtab: string) => {
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set("subsubtab", subsubtab);
+      return newParams;
+    });
+  };
+
+  const handleTestConnection = async (type: 'application' | 'customer' = 'application') => {
+    const isCustomer = type === 'customer';
+    const uriField = isCustomer ? 'customer_mongo_uri' : 'mongo_uri';
+    const dbField = isCustomer ? 'customer_mongo_db' : 'mongo_db';
+    const authField = isCustomer ? 'customer_mongo_auth_method' : 'mongo_auth_method';
+    const akField = isCustomer ? 'customer_mongo_aws_access_key' : 'mongo_aws_access_key';
+    const skField = isCustomer ? 'customer_mongo_aws_secret_key' : 'mongo_aws_secret_key';
+    const stField = isCustomer ? 'customer_mongo_aws_session_token' : 'mongo_aws_session_token';
+    const otField = isCustomer ? 'customer_mongo_oidc_token' : 'mongo_oidc_token';
+
+    const mongo_uri = localFormData[uriField] || settings[uriField];
+    const mongo_db = localFormData[dbField] || settings[dbField];
+    const mongo_auth_method = localFormData[authField] || settings[authField];
+    const mongo_aws_access_key = localFormData[akField] || settings[akField];
+    const mongo_aws_secret_key = localFormData[skField] || settings[skField];
+    const mongo_aws_session_token = localFormData[stField] || settings[stField];
+    const mongo_oidc_token = localFormData[otField] || settings[otField];
 
     if (!mongo_uri) {
-      setMongoTestResult({ success: false, message: "MongoDB URI is required to test." });
+      if (isCustomer) setCustomerMongoTestResult({ success: false, message: "MongoDB URI is required to test." });
+      else setMongoTestResult({ success: false, message: "MongoDB URI is required to test." });
       return;
     }
-    setIsTesting(true);
-    setMongoTestResult(null);
+    
+    if (isCustomer) {
+        setIsTestingCustomer(true);
+        setCustomerMongoTestResult(null);
+    } else {
+        setIsTesting(true);
+        setMongoTestResult(null);
+    }
+
     try {
       // Fetch available databases
       const dbRes = await authorizedFetch("/api/mongo/databases", {
@@ -119,7 +158,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       });
       const dbData = await dbRes.json();
       if (dbRes.ok && dbData.success) {
-        setAvailableDbs(dbData.databases || []);
+        if (isCustomer) setAvailableCustomerDbs(dbData.databases || []);
+        else setAvailableDbs(dbData.databases || []);
       }
 
       // Test specific database
@@ -134,23 +174,30 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           mongo_aws_secret_key,
           mongo_aws_session_token,
           mongo_oidc_token,
-          mongo_create_if_not_exists: localFormData.mongo_create_if_not_exists || settings.mongo_create_if_not_exists
+          mongo_create_if_not_exists: isCustomer ? false : (localFormData.mongo_create_if_not_exists || settings.mongo_create_if_not_exists)
         }),
       });
       const resData = await response.json();
       if (response.ok && resData.success) {
-        setMongoTestResult({ 
+        const result = { 
           success: true, 
           exists: resData.exists,
           message: resData.message || "MongoDB connection successful!" 
-        });
+        };
+        if (isCustomer) setCustomerMongoTestResult(result);
+        else setMongoTestResult(result);
       } else {
-        setMongoTestResult({ success: false, message: resData.error || "MongoDB connection failed" });
+        const result = { success: false, message: resData.error || "MongoDB connection failed" };
+        if (isCustomer) setCustomerMongoTestResult(result);
+        else setMongoTestResult(result);
       }
     } catch (e: any) {
-      setMongoTestResult({ success: false, message: e.message || "Network error occurred testing MongoDB connection." });
+      const result = { success: false, message: e.message || "Network error occurred testing MongoDB connection." };
+      if (isCustomer) setCustomerMongoTestResult(result);
+      else setMongoTestResult(result);
     } finally {
-      setIsTesting(false);
+      if (isCustomer) setIsTestingCustomer(false);
+      else setIsTesting(false);
     }
   };
 
@@ -394,7 +441,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       data={data} 
       loadingMessage="Loading settings..."
     >
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <div className={styles.pageContainer}>
         <div className={styles.header}>
           <h1>Settings</h1>
         </div>
@@ -416,19 +463,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             General Project
           </button>
           <button
-            onClick={() => setTab("mongo")}
+            onClick={() => setTab("persistence")}
             style={{
               background: 'none',
               border: 'none',
               padding: '8px 16px',
-              color: activeTab === "mongo" ? '#60a5fa' : '#9ca3af',
-              borderBottom: activeTab === "mongo" ? '2px solid #60a5fa' : '2px solid transparent',
+              color: activeTab === "persistence" ? '#60a5fa' : '#9ca3af',
+              borderBottom: activeTab === "persistence" ? '2px solid #60a5fa' : '2px solid transparent',
               cursor: 'pointer',
               fontSize: '15px',
-              fontWeight: activeTab === "mongo" ? 'bold' : 'normal',
+              fontWeight: activeTab === "persistence" ? 'bold' : 'normal',
             }}
           >
-            MongoDB Persistence
+            Persistence
           </button>
           <button
             onClick={() => setTab("jira")}
@@ -463,191 +510,434 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          {activeTab === "mongo" && (
+          {activeTab === "persistence" && (
             <>
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-                Authentication Method:
-                <select
-                  value={localFormData.mongo_auth_method || "scram"}
-                  onChange={(e) => {
-                      const val = e.target.value as any;
-                      setFormData({ ...localFormData, mongo_auth_method: val });
-                      onUpdateSettings({ mongo_auth_method: val });
-                  }}
-                >
-                  <option value="scram">SCRAM (URI-based)</option>
-                  <option value="aws">AWS IAM</option>
-                  <option value="oidc">OIDC (Azure/Okta)</option>
-                </select>
-              </label>
-
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-                MongoDB URI:
-                <input
-                  type="text"
-                  placeholder={localFormData.mongo_auth_method === 'scram' ? "mongodb://username:password@localhost:27017" : "mongodb://localhost:27017"}
-                  value={localFormData.mongo_uri || ""}
-                  onChange={(e) => setFormData({ ...localFormData, mongo_uri: e.target.value })}
-                  onBlur={() => onUpdateSettings({ mongo_uri: localFormData.mongo_uri })}
-                />
-              </label>
-
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-                MongoDB Database Name:
-                <div style={{ position: 'relative', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <div style={{ flex: 1, position: 'relative' }}>
-                    <input
-                      type="text"
-                      placeholder="valueStream"
-                      list="mongo-dbs"
-                      value={localFormData.mongo_db || ""}
-                      onChange={(e) => setFormData({ ...localFormData, mongo_db: e.target.value })}
-                      onBlur={() => onUpdateSettings({ mongo_db: localFormData.mongo_db })}
-                      style={{
-                        borderColor: mongoTestResult?.success && !mongoTestResult.exists && !localFormData.mongo_create_if_not_exists ? '#f59e0b' : undefined
-                      }}
-                    />
-                    <datalist id="mongo-dbs">
-                      {availableDbs.map(db => <option key={db} value={db} />)}
-                    </datalist>
-                  </div>
-                  {mongoTestResult?.success && (
-                    <span style={{ 
-                      fontSize: '11px', 
-                      padding: '2px 6px', 
-                      borderRadius: '4px', 
-                      backgroundColor: mongoTestResult.exists ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                      color: mongoTestResult.exists ? '#10b981' : '#f59e0b',
-                      border: `1px solid ${mongoTestResult.exists ? '#10b981' : '#f59e0b'}`,
-                      whiteSpace: 'nowrap'
-                    }}>
-                      {mongoTestResult.exists ? 'Exists' : 'New'}
-                    </span>
-                  )}
-                </div>
-              </label>
-
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db", cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={localFormData.mongo_create_if_not_exists || false}
-                  onChange={(e) => {
-                    const val = e.target.checked;
-                    setFormData({ ...localFormData, mongo_create_if_not_exists: val });
-                    onUpdateSettings({ mongo_create_if_not_exists: val });
-                  }}
-                />
-                Create database if it doesn't exist
-              </label>
-
-              {localFormData.mongo_auth_method === 'aws' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>AWS IAM Credentials</div>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-                    Access Key ID:
-                    <input
-                      type="text"
-                      value={localFormData.mongo_aws_access_key || ""}
-                      onChange={(e) => setFormData({ ...localFormData, mongo_aws_access_key: e.target.value })}
-                      onBlur={() => onUpdateSettings({ mongo_aws_access_key: localFormData.mongo_aws_access_key })}
-                    />
-                  </label>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-                    Secret Access Key:
-                    <input
-                      type="password"
-                      value={localFormData.mongo_aws_secret_key || ""}
-                      onChange={(e) => setFormData({ ...localFormData, mongo_aws_secret_key: e.target.value })}
-                      onBlur={() => onUpdateSettings({ mongo_aws_secret_key: localFormData.mongo_aws_secret_key })}
-                    />
-                  </label>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-                    Session Token (Optional):
-                    <input
-                      type="password"
-                      value={localFormData.mongo_aws_session_token || ""}
-                      onChange={(e) => setFormData({ ...localFormData, mongo_aws_session_token: e.target.value })}
-                      onBlur={() => onUpdateSettings({ mongo_aws_session_token: localFormData.mongo_aws_session_token })}
-                    />
-                  </label>
-                </div>
-              )}
-
-              {localFormData.mongo_auth_method === 'oidc' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>OIDC Configuration</div>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-                    Access Token:
-                    <input
-                      type="password"
-                      placeholder="eyJhbG..."
-                      value={localFormData.mongo_oidc_token || ""}
-                      onChange={(e) => setFormData({ ...localFormData, mongo_oidc_token: e.target.value })}
-                      onBlur={() => onUpdateSettings({ mongo_oidc_token: localFormData.mongo_oidc_token })}
-                    />
-                  </label>
-                </div>
-              )}
-
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={handleTestConnection}
-                style={{ alignSelf: "flex-start", marginTop: "4px" }}
-                disabled={isTesting || (!localFormData.mongo_uri && !settings.mongo_uri)}
-              >
-                {isTesting ? "Testing Mongo..." : "Test Mongo Connection"}
-              </button>
-
-              {mongoTestResult && (
-                <div
+              <div style={{ display: 'flex', gap: '12px', borderBottom: '1px solid #374151', marginBottom: '20px' }}>
+                <button
+                  onClick={() => setSubTab("mongo")}
                   style={{
-                    padding: "10px",
-                    borderRadius: "4px",
-                    fontSize: "14px",
-                    backgroundColor: mongoTestResult.success ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
-                    color: mongoTestResult.success ? "#34d399" : "#f87171",
-                    border: `1px solid ${mongoTestResult.success ? "#059669" : "#b91c1c"}`,
-                    marginTop: "8px",
+                    background: 'none',
+                    border: 'none',
+                    padding: '8px 12px',
+                    color: activeSubTab === "mongo" ? '#60a5fa' : '#9ca3af',
+                    borderBottom: activeSubTab === "mongo" ? '2px solid #60a5fa' : '2px solid transparent',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: activeSubTab === "mongo" ? 'bold' : 'normal',
                   }}
                 >
-                  {mongoTestResult.message}
-                </div>
+                  Mongo
+                </button>
+                <button
+                  onClick={() => setSubTab("file")}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: '8px 12px',
+                    color: activeSubTab === "file" ? '#60a5fa' : '#9ca3af',
+                    borderBottom: activeSubTab === "file" ? '2px solid #60a5fa' : '2px solid transparent',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: activeSubTab === "file" ? 'bold' : 'normal',
+                  }}
+                >
+                  File
+                </button>
+              </div>
+
+              {activeSubTab === "mongo" && (
+                <>
+                  <div style={{ display: 'flex', gap: '12px', borderBottom: '1px solid #1f2937', marginBottom: '20px' }}>
+                    <button
+                      onClick={() => setSubSubTab("application")}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: '6px 12px',
+                        color: activeSubSubTab === "application" ? '#60a5fa' : '#9ca3af',
+                        borderBottom: activeSubSubTab === "application" ? '2px solid #60a5fa' : '2px solid transparent',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: activeSubSubTab === "application" ? 'bold' : 'normal',
+                      }}
+                    >
+                      Application
+                    </button>
+                    <button
+                      onClick={() => setSubSubTab("customer")}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: '6px 12px',
+                        color: activeSubSubTab === "customer" ? '#60a5fa' : '#9ca3af',
+                        borderBottom: activeSubSubTab === "customer" ? '2px solid #60a5fa' : '2px solid transparent',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: activeSubSubTab === "customer" ? 'bold' : 'normal',
+                      }}
+                    >
+                      Customer
+                    </button>
+                  </div>
+
+                  {activeSubSubTab === "application" && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                        Authentication Method:
+                        <select
+                          value={localFormData.mongo_auth_method || "scram"}
+                          onChange={(e) => {
+                              const val = e.target.value as any;
+                              setFormData({ ...localFormData, mongo_auth_method: val });
+                              onUpdateSettings({ mongo_auth_method: val });
+                          }}
+                        >
+                          <option value="scram">SCRAM (URI-based)</option>
+                          <option value="aws">AWS IAM</option>
+                          <option value="oidc">OIDC (Azure/Okta)</option>
+                        </select>
+                      </label>
+
+                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                        MongoDB URI:
+                        <input
+                          type="text"
+                          placeholder={localFormData.mongo_auth_method === 'scram' ? "mongodb://username:password@localhost:27017" : "mongodb://localhost:27017"}
+                          value={localFormData.mongo_uri || ""}
+                          onChange={(e) => setFormData({ ...localFormData, mongo_uri: e.target.value })}
+                          onBlur={() => onUpdateSettings({ mongo_uri: localFormData.mongo_uri })}
+                        />
+                      </label>
+
+                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                        MongoDB Database Name:
+                        <div style={{ position: 'relative', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <div style={{ flex: 1, position: 'relative' }}>
+                            <input
+                              type="text"
+                              placeholder="valueStream"
+                              list="mongo-dbs"
+                              value={localFormData.mongo_db || ""}
+                              onChange={(e) => setFormData({ ...localFormData, mongo_db: e.target.value })}
+                              onBlur={() => onUpdateSettings({ mongo_db: localFormData.mongo_db })}
+                              style={{
+                                borderColor: mongoTestResult?.success && !mongoTestResult.exists && !localFormData.mongo_create_if_not_exists ? '#f59e0b' : undefined
+                              }}
+                            />
+                            <datalist id="mongo-dbs">
+                              {availableDbs.map(db => <option key={db} value={db} />)}
+                            </datalist>
+                          </div>
+                          {mongoTestResult?.success && (
+                            <span style={{ 
+                              fontSize: '11px', 
+                              padding: '2px 6px', 
+                              borderRadius: '4px', 
+                              backgroundColor: mongoTestResult.exists ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                              color: mongoTestResult.exists ? '#10b981' : '#f59e0b',
+                              border: `1px solid ${mongoTestResult.exists ? '#10b981' : '#f59e0b'}`,
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {mongoTestResult.exists ? 'Exists' : 'New'}
+                            </span>
+                          )}
+                        </div>
+                      </label>
+
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db", cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={localFormData.mongo_create_if_not_exists || false}
+                          onChange={(e) => {
+                            const val = e.target.checked;
+                            setFormData({ ...localFormData, mongo_create_if_not_exists: val });
+                            onUpdateSettings({ mongo_create_if_not_exists: val });
+                          }}
+                        />
+                        Create database if it doesn't exist
+                      </label>
+
+                      {localFormData.mongo_auth_method === 'aws' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>AWS IAM Credentials</div>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            Access Key ID:
+                            <input
+                              type="text"
+                              value={localFormData.mongo_aws_access_key || ""}
+                              onChange={(e) => setFormData({ ...localFormData, mongo_aws_access_key: e.target.value })}
+                              onBlur={() => onUpdateSettings({ mongo_aws_access_key: localFormData.mongo_aws_access_key })}
+                            />
+                          </label>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            Secret Access Key:
+                            <input
+                              type="password"
+                              value={localFormData.mongo_aws_secret_key || ""}
+                              onChange={(e) => setFormData({ ...localFormData, mongo_aws_secret_key: e.target.value })}
+                              onBlur={() => onUpdateSettings({ mongo_aws_secret_key: localFormData.mongo_aws_secret_key })}
+                            />
+                          </label>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            Session Token (Optional):
+                            <input
+                              type="password"
+                              value={localFormData.mongo_aws_session_token || ""}
+                              onChange={(e) => setFormData({ ...localFormData, mongo_aws_session_token: e.target.value })}
+                              onBlur={() => onUpdateSettings({ mongo_aws_session_token: localFormData.mongo_aws_session_token })}
+                            />
+                          </label>
+                        </div>
+                      )}
+
+                      {localFormData.mongo_auth_method === 'oidc' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>OIDC Configuration</div>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            Access Token:
+                            <input
+                              type="password"
+                              placeholder="eyJhbG..."
+                              value={localFormData.mongo_oidc_token || ""}
+                              onChange={(e) => setFormData({ ...localFormData, mongo_oidc_token: e.target.value })}
+                              onBlur={() => onUpdateSettings({ mongo_oidc_token: localFormData.mongo_oidc_token })}
+                            />
+                          </label>
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={handleTestConnection}
+                        style={{ alignSelf: "flex-start", marginTop: "4px" }}
+                        disabled={isTesting || (!localFormData.mongo_uri && !settings.mongo_uri)}
+                      >
+                        {isTesting ? "Testing Mongo..." : "Test Mongo Connection"}
+                      </button>
+
+                      {mongoTestResult && (
+                        <div
+                          style={{
+                            padding: "10px",
+                            borderRadius: "4px",
+                            fontSize: "14px",
+                            backgroundColor: mongoTestResult.success ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
+                            color: mongoTestResult.success ? "#34d399" : "#f87171",
+                            border: `1px solid ${mongoTestResult.success ? "#059669" : "#b91c1c"}`,
+                            marginTop: "8px",
+                          }}
+                        >
+                          {mongoTestResult.message}
+                        </div>
+                      )}
+
+                      <hr style={{ borderColor: "#374151", width: "100%", margin: "16px 0 8px 0" }} />
+                      
+                      <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#e5e7eb" }}>
+                        Export & Import Data
+                      </h3>
+                      <p style={{ color: "#9ca3af", fontSize: "13px", margin: "0 0 8px 0" }}>
+                        Manage your database content via staticImport.json files.
+                      </p>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          onClick={handleExportMongo}
+                          disabled={isTesting || (!localFormData.mongo_uri && !settings.mongo_uri)}
+                        >
+                          {isTesting ? "Exporting..." : "Export to JSON"}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isTesting || (!localFormData.mongo_uri && !settings.mongo_uri)}
+                        >
+                          {isTesting ? "Importing..." : "Import from JSON"}
+                        </button>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept=".json"
+                          onChange={handleImportMongo}
+                          style={{ display: 'none' }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {activeSubSubTab === "customer" && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                        Authentication Method:
+                        <select
+                          value={localFormData.customer_mongo_auth_method || "scram"}
+                          onChange={(e) => {
+                              const val = e.target.value as any;
+                              setFormData({ ...localFormData, customer_mongo_auth_method: val });
+                              onUpdateSettings({ customer_mongo_auth_method: val });
+                          }}
+                        >
+                          <option value="scram">SCRAM (URI-based)</option>
+                          <option value="aws">AWS IAM</option>
+                          <option value="oidc">OIDC (Azure/Okta)</option>
+                        </select>
+                      </label>
+
+                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                        Customer MongoDB URI:
+                        <input
+                          type="text"
+                          placeholder={localFormData.customer_mongo_auth_method === 'scram' ? "mongodb://username:password@localhost:27017" : "mongodb://localhost:27017"}
+                          value={localFormData.customer_mongo_uri || ""}
+                          onChange={(e) => setFormData({ ...localFormData, customer_mongo_uri: e.target.value })}
+                          onBlur={() => onUpdateSettings({ customer_mongo_uri: localFormData.customer_mongo_uri })}
+                        />
+                      </label>
+
+                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                        Customer MongoDB Database Name:
+                        <div style={{ position: 'relative', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <div style={{ flex: 1, position: 'relative' }}>
+                            <input
+                              type="text"
+                              placeholder="valueStream"
+                              list="customer-mongo-dbs"
+                              value={localFormData.customer_mongo_db || ""}
+                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_db: e.target.value })}
+                              onBlur={() => onUpdateSettings({ customer_mongo_db: localFormData.customer_mongo_db })}
+                              style={{
+                                borderColor: customerMongoTestResult?.success && !customerMongoTestResult.exists && !localFormData.customer_mongo_create_if_not_exists ? '#f59e0b' : undefined
+                              }}
+                            />
+                            <datalist id="customer-mongo-dbs">
+                              {availableCustomerDbs.map(db => <option key={db} value={db} />)}
+                            </datalist>
+                          </div>
+                          {customerMongoTestResult?.success && (
+                            <span style={{ 
+                              fontSize: '11px', 
+                              padding: '2px 6px', 
+                              borderRadius: '4px', 
+                              backgroundColor: customerMongoTestResult.exists ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                              color: customerMongoTestResult.exists ? '#10b981' : '#f59e0b',
+                              border: `1px solid ${customerMongoTestResult.exists ? '#10b981' : '#f59e0b'}`,
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {customerMongoTestResult.exists ? 'Exists' : 'New'}
+                            </span>
+                          )}
+                        </div>
+                      </label>
+
+                      {localFormData.customer_mongo_auth_method === 'aws' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>AWS IAM Credentials (Customer)</div>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            Access Key ID:
+                            <input
+                              type="text"
+                              value={localFormData.customer_mongo_aws_access_key || ""}
+                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_access_key: e.target.value })}
+                              onBlur={() => onUpdateSettings({ customer_mongo_aws_access_key: localFormData.customer_mongo_aws_access_key })}
+                            />
+                          </label>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            Secret Access Key:
+                            <input
+                              type="password"
+                              value={localFormData.customer_mongo_aws_secret_key || ""}
+                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_secret_key: e.target.value })}
+                              onBlur={() => onUpdateSettings({ customer_mongo_aws_secret_key: localFormData.customer_mongo_aws_secret_key })}
+                            />
+                          </label>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            Session Token (Optional):
+                            <input
+                              type="password"
+                              value={localFormData.customer_mongo_aws_session_token || ""}
+                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_session_token: e.target.value })}
+                              onBlur={() => onUpdateSettings({ customer_mongo_aws_session_token: localFormData.customer_mongo_aws_session_token })}
+                            />
+                          </label>
+                        </div>
+                      )}
+
+                      {localFormData.customer_mongo_auth_method === 'oidc' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>OIDC Configuration (Customer)</div>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            Access Token:
+                            <input
+                              type="password"
+                              placeholder="eyJhbG..."
+                              value={localFormData.customer_mongo_oidc_token || ""}
+                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_oidc_token: e.target.value })}
+                              onBlur={() => onUpdateSettings({ customer_mongo_oidc_token: localFormData.customer_mongo_oidc_token })}
+                            />
+                          </label>
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={() => handleTestConnection('customer')}
+                        style={{ alignSelf: "flex-start", marginTop: "4px" }}
+                        disabled={isTestingCustomer || (!localFormData.customer_mongo_uri && !settings.customer_mongo_uri)}
+                      >
+                        {isTestingCustomer ? "Testing Customer Mongo..." : "Test Customer Mongo Connection"}
+                      </button>
+
+                      {customerMongoTestResult && (
+                        <div
+                          style={{
+                            padding: "10px",
+                            borderRadius: "4px",
+                            fontSize: "14px",
+                            backgroundColor: customerMongoTestResult.success ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
+                            color: customerMongoTestResult.success ? "#34d399" : "#f87171",
+                            border: `1px solid ${customerMongoTestResult.success ? "#059669" : "#b91c1c"}`,
+                            marginTop: "8px",
+                          }}
+                        >
+                          {customerMongoTestResult.message}
+                        </div>
+                      )}
+
+                      <hr style={{ borderColor: "#374151", width: "100%", margin: "16px 0 8px 0" }} />
+
+                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "100%" }}>
+                        Custom MongoDB Query (JSON/Aggregation):
+                        <span style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>
+                          Enter a JSON-formatted query or aggregation pipeline to fetch custom fields or nested collections. 
+                          Use <code>{"{{CUSTOMER_ID}}"}</code> as a placeholder. It will be replaced with a single ID (e.g. <code>"CUST-123"</code>) on detail pages, 
+                          or a match object (e.g. <code>{"{\"$in\": [\"CUST-1\",\"CUST-2\"]}"}</code>) on the list page.
+                          <br /><br />
+                          <strong>Note:</strong> If you use an aggregation pipeline, ensure you include <code>"customer_id": 1</code> in your final <code>$project</code> stage 
+                          so the application can correctly map the results back to individual customers on the list page.
+                        </span>
+                        <textarea
+                          placeholder='[{"$match": {"customer_id": "{{CUSTOMER_ID}}"}}, {"$lookup": {"from": "Clusters", "localField": "customer_id", "foreignField": "customer_id", "as": "clusters"}}, {"$project": {"customer_id": 1, "status": 1, "clusters": 1}}]'
+                          value={localFormData.customer_mongo_custom_query || ""}
+                          onChange={(e) => setFormData({ ...localFormData, customer_mongo_custom_query: e.target.value })}
+                          onBlur={() => onUpdateSettings({ customer_mongo_custom_query: localFormData.customer_mongo_custom_query })}
+                          rows={12}
+                          style={{ fontFamily: 'monospace', fontSize: '12px', resize: 'vertical' }}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </>
               )}
 
-              <hr style={{ borderColor: "#374151", width: "100%", margin: "16px 0 8px 0" }} />
-              
-              <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#e5e7eb" }}>
-                Export & Import Data
-              </h3>
-              <p style={{ color: "#9ca3af", fontSize: "13px", margin: "0 0 8px 0" }}>
-                Manage your database content via staticImport.json files.
-              </p>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={handleExportMongo}
-                  disabled={isTesting || (!localFormData.mongo_uri && !settings.mongo_uri)}
-                >
-                  {isTesting ? "Exporting..." : "Export to JSON"}
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isTesting || (!localFormData.mongo_uri && !settings.mongo_uri)}
-                >
-                  {isTesting ? "Importing..." : "Import from JSON"}
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".json"
-                  onChange={handleImportMongo}
-                  style={{ display: 'none' }}
-                />
-              </div>
+              {activeSubTab === "file" && (
+                <div style={{ color: "#9ca3af", fontSize: "14px" }}>
+                  File-based persistence configuration will be available here.
+                </div>
+              )}
             </>
           )}
 
@@ -703,7 +993,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
               {activeSubTab === "common" && (
                 <>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                     Jira Base URL:
                     <input
                       type="url"
@@ -714,7 +1004,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     />
                   </label>
 
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                     Jira API Version:
                     <select
                       value={localFormData.jira_api_version || "3"}
@@ -729,7 +1019,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     </select>
                   </label>
 
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                     Jira Personal Access Token (PAT):
                     <input
                       type="password"
@@ -771,7 +1061,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
               {activeSubTab === "epics" && (
                 <>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                     Import JQL Query:
                     <input
                       type="text"
@@ -824,7 +1114,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   <p style={{ color: "#9ca3af", fontSize: "13px", margin: "0 0 8px 0" }}>
                     Use <code>{"{{CUSTOMER_ID}}"}</code> as a placeholder for the customer ID.
                   </p>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                     New / Untriaged JQL:
                     <input
                       type="text"
@@ -837,7 +1127,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       }}
                     />
                   </label>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                     Active Work JQL:
                     <input
                       type="text"
@@ -850,7 +1140,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       }}
                     />
                   </label>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                     Blocked / Pending JQL (Customer or 3rd Party):
                     <input
                       type="text"
@@ -873,7 +1163,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#e5e7eb", borderBottom: "1px solid #374151", paddingBottom: "4px" }}>
                 Time
               </h3>
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                 Fiscal Year Start Month:
                 <select
                   value={localFormData.fiscal_year_start_month || 1}
@@ -898,7 +1188,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 </select>
               </label>
 
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                 Sprint Duration (Days):
                 <span style={{ fontSize: "12px", color: "#9ca3af", marginTop: "-2px", marginBottom: "4px" }}>
                   Defines the default end date when creating new sprints. Does not affect existing sprints.
@@ -920,7 +1210,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
           {activeTab === "ai" && (
             <>
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                 LLM Provider:
                 <select
                   value={localFormData.llm_provider || "openai"}
@@ -937,7 +1227,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 </select>
               </label>
 
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                 {localFormData.llm_provider === 'augment' ? 'Augment Session Auth:' : 'LLM API Key:'}
                 <input
                   type="password"
@@ -949,7 +1239,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               </label>
 
               {localFormData.llm_provider !== 'augment' && (
-                <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                   LLM Model (Optional):
                   <input
                     type="text"

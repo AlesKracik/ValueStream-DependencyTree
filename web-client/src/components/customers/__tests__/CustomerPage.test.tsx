@@ -95,7 +95,12 @@ describe('CustomerPage', () => {
             render(<CustomerPage {...defaultProps} />);
         });
 
-        // Default tab is Work Items
+        // Default tab is Custom Fields now, switch to Work Items
+        const workItemsTab = screen.getByText(/Targeted Work Items/i);
+        await act(async () => {
+            fireEvent.click(workItemsTab);
+        });
+
         expect(screen.getByText('Feature 1')).toBeDefined();
 
         // Switch to History tab
@@ -280,6 +285,11 @@ describe('CustomerPage', () => {
             render(<CustomerPage {...defaultProps} data={historyData} />);
         });
 
+        const workItemsTab = screen.getByText(/Targeted Work Items/i);
+        await act(async () => {
+            fireEvent.click(workItemsTab);
+        });
+
         // Should see "Existing" in the type dropdown
         const typeDropdown = screen.getByDisplayValue('Existing');
         expect(typeDropdown).toBeDefined();
@@ -303,6 +313,11 @@ describe('CustomerPage', () => {
     it('removes a work item target', async () => {
         await act(async () => {
             render(<CustomerPage {...defaultProps} />);
+        });
+
+        const workItemsTab = screen.getByText(/Targeted Work Items/i);
+        await act(async () => {
+            fireEvent.click(workItemsTab);
         });
 
         const removeBtn = screen.getByText('Remove');
@@ -344,6 +359,11 @@ describe('CustomerPage', () => {
     it('shows "Add Work Item Target" section even for existing customers', async () => {
         await act(async () => {
             render(<CustomerPage {...defaultProps} />);
+        });
+
+        const workItemsTab = screen.getByText(/Targeted Work Items/i);
+        await act(async () => {
+            fireEvent.click(workItemsTab);
         });
 
         expect(screen.getByText('Add Work Item Target')).toBeDefined();

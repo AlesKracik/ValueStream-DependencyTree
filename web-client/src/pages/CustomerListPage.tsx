@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { DashboardData, Customer } from '../types/models';
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption } from '../components/common/GenericListPage';
+import { useCustomerCustomFields } from '../hooks/useCustomerCustomFields';
 
 interface Props {
     data: DashboardData | null;
@@ -11,6 +12,7 @@ interface Props {
 
 export const CustomerListPage: React.FC<Props> = ({ data, loading }) => {
     const navigate = useNavigate();
+    const customFields = useCustomerCustomFields(data?.customers, data?.settings);
 
     const sortOptions: SortOption<Customer>[] = useMemo(() => [
         { label: 'Name', key: 'name', getValue: (c) => c.name },
@@ -33,7 +35,28 @@ export const CustomerListPage: React.FC<Props> = ({ data, loading }) => {
                 const existingStr = `Existing TCV: $${c.existing_tcv.toLocaleString()}${c.existing_tcv_duration_months ? ` (${c.existing_tcv_duration_months} mo)` : ''}`;
                 const potentialStr = `Potential TCV: $${c.potential_tcv.toLocaleString()}${c.potential_tcv_duration_months ? ` (${c.potential_tcv_duration_months} mo)` : ''}`;
                 const total = (c.existing_tcv || 0) + (c.potential_tcv || 0);
-                return `${existingStr} | ${potentialStr} | Total: $${total.toLocaleString()}`;
+                
+                // Find matching custom data
+                const customData = c.customer_id ? customFields.data.find(d => d.customer_id === c.customer_id) : null;
+                let customStr = '';
+                if (customData) {
+                    if (Array.isArray(customData.clusters)) {
+                        customStr = ` | Clusters: ${customData.clusters.length}`;
+                    } else if (customData.status) {
+                        customStr = ` | Status: ${customData.status}`;
+                    }
+                }
+
+                return (
+                    <div>
+                        <div>{existingStr} | {potentialStr} | Total: ${total.toLocaleString()}{customStr}</div>
+                        {customData?.clusters?.length > 0 && (
+                            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
+                                Versions: {[...new Set(customData.clusters.map((cl: any) => cl.version))].join(', ')}
+                            </div>
+                        )}
+                    </div>
+                );
             }}
             actionButton={{
                 label: "+ New Customer",

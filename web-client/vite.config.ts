@@ -742,6 +742,44 @@ const MockDataPersistencePlugin = (): Plugin => ({
           res.statusCode = 500;
           res.end(JSON.stringify({ success: false, error: e.message }));
         }
+      } else if (req.url === '/api/mongo/query' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const rawConfig = JSON.parse(body);
+
+          const settingsPath = path.resolve(__dirname, 'settings.json');
+          const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+          const config = unmaskSettings(rawConfig, existingSettings);
+
+          if (!config.mongo_uri) throw new Error("MongoDB URI not provided.");
+          if (!config.query) throw new Error("Query not provided.");
+
+          const db = await getDb(config);
+          const collection = db.collection('Customers'); // Default to Customers for customer-specific queries
+          
+          let query;
+          try {
+            query = typeof config.query === 'string' ? JSON.parse(config.query) : config.query;
+          } catch (e) {
+            throw new Error("Invalid JSON in query: " + e.message);
+          }
+
+          let results;
+          if (Array.isArray(query)) {
+            results = await collection.aggregate(query).toArray();
+          } else {
+            results = await collection.find(query).toArray();
+          }
+
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, data: results }));
+        } catch (e: any) {
+          console.error('Error executing mongo query:', e);
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 200; // Return 200 with success: false to avoid empty response errors
+          res.end(JSON.stringify({ success: false, error: e.message }));
+        }
       } else if (req.url === '/api/jira/test' && req.method === 'POST') {
         try {
           const body = await readBody(req);

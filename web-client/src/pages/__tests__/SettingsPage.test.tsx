@@ -81,9 +81,9 @@ describe('SettingsPage', () => {
         });
     });
 
-    it('renders and shows Export button in MongoDB tab', () => {
+    it('renders and shows Export button in Persistence tab', () => {
         render(
-            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
+            <MemoryRouter initialEntries={['/settings?tab=persistence']}>
                 <SettingsPage 
                     settings={mockSettings} 
                     onUpdateSettings={onUpdateSettings}
@@ -100,7 +100,7 @@ describe('SettingsPage', () => {
 
     it('calls export API and triggers download when Export button is clicked', async () => {
         render(
-            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
+            <MemoryRouter initialEntries={['/settings?tab=persistence']}>
                 <SettingsPage 
                     settings={mockSettings} 
                     onUpdateSettings={onUpdateSettings}
@@ -132,7 +132,7 @@ describe('SettingsPage', () => {
         vi.stubGlobal('location', { reload: reloadSpy });
 
         const { container } = render(
-            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
+            <MemoryRouter initialEntries={['/settings?tab=persistence']}>
                 <SettingsPage 
                     settings={mockSettings} 
                     onUpdateSettings={onUpdateSettings}
@@ -165,7 +165,7 @@ describe('SettingsPage', () => {
         mockShowConfirm.mockResolvedValue(false); // Cancel the import for this test
         
         const { container } = render(
-            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
+            <MemoryRouter initialEntries={['/settings?tab=persistence']}>
                 <SettingsPage 
                     settings={mockSettings} 
                     onUpdateSettings={onUpdateSettings}
@@ -268,7 +268,7 @@ describe('SettingsPage', () => {
 
     it('shows AWS fields when AWS IAM is selected', async () => {
         render(
-            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
+            <MemoryRouter initialEntries={['/settings?tab=persistence']}>
                 <SettingsPage 
                     settings={mockSettings} 
                     onUpdateSettings={onUpdateSettings}
@@ -313,7 +313,7 @@ describe('SettingsPage', () => {
 
     it('saves connection settings on blur', async () => {
         render(
-            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
+            <MemoryRouter initialEntries={['/settings?tab=persistence']}>
                 <SettingsPage 
                     settings={mockSettings} 
                     onUpdateSettings={onUpdateSettings}
@@ -343,7 +343,7 @@ describe('SettingsPage', () => {
 
     it('handles the "Create if not exists" checkbox', async () => {
         render(
-            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
+            <MemoryRouter initialEntries={['/settings?tab=persistence']}>
                 <SettingsPage 
                     settings={mockSettings} 
                     onUpdateSettings={onUpdateSettings}
@@ -366,7 +366,7 @@ describe('SettingsPage', () => {
 
     it('performs database discovery and shows existence badge on test', async () => {
         render(
-            <MemoryRouter initialEntries={['/settings?tab=mongo']}>
+            <MemoryRouter initialEntries={['/settings?tab=persistence']}>
                 <SettingsPage 
                     settings={mockSettings} 
                     onUpdateSettings={onUpdateSettings}

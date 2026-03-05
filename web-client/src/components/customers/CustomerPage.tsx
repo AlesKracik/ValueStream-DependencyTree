@@ -7,6 +7,7 @@ import { generateId } from '../../utils/security';
 import { calculateWorkItemEffort } from '../../utils/businessLogic';
 import { PageWrapper } from '../layout/PageWrapper';
 import { useCustomerHealth } from '../../hooks/useCustomerHealth';
+import { useCustomerCustomFields } from '../../hooks/useCustomerCustomFields';
 import { authorizedFetch } from '../../utils/api';
 
 export interface CustomerPageProps {
@@ -19,7 +20,6 @@ export interface CustomerPageProps {
     deleteCustomer: (id: string) => void;
     addCustomer: (customer: Customer) => void;
     updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
-    
 }
 
 export const CustomerPage: React.FC<CustomerPageProps> = ({
@@ -48,11 +48,12 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     });
     const [newCustomerWorkItems, setNewCustomerWorkItems] = useState<{ workItemId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have', tcv_history_id?: string }[]>([]);
 
-    const [activeTab, setActiveTab] = useState<'workItems' | 'history' | 'support'>('workItems');
+    const [activeTab, setActiveTab] = useState<'customFields' | 'workItems' | 'history' | 'support'>('customFields');
 
     const customer = isNew ? newCustDraft as Customer : data?.customers.find(c => c.id === customerId);
 
     const healthData = useCustomerHealth(customer, data?.settings);
+    const customFields = useCustomerCustomFields(customer, data?.settings);
     const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);
     const [chatInput, setChatInput] = useState('');
     const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
@@ -268,6 +269,40 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         }
     };
 
+    const renderValue = (val: any): React.ReactNode => {
+        if (val === null || val === undefined) return <span style={{ color: '#64748b', fontStyle: 'italic' }}>null</span>;
+        if (Array.isArray(val)) {
+            if (val.length === 0) return <span style={{ color: '#64748b' }}>[]</span>;
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
+                    {val.map((item, idx) => (
+                        <div key={idx} style={{ 
+                            padding: '12px', 
+                            backgroundColor: 'rgba(255,255,255,0.02)', 
+                            border: '1px solid #334155', 
+                            borderRadius: '6px' 
+                        }}>
+                            {renderValue(item)}
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+        if (typeof val === 'object') {
+            return (
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, auto) 1fr', gap: '8px 16px' }}>
+                    {Object.entries(val).map(([k, v]) => (
+                        <React.Fragment key={k}>
+                            <div style={{ fontWeight: 'bold', color: '#94a3b8', fontSize: '13px' }}>{k}:</div>
+                            <div style={{ fontSize: '14px', wordBreak: 'break-all' }}>{renderValue(v)}</div>
+                        </React.Fragment>
+                    ))}
+                </div>
+            );
+        }
+        return String(val);
+    };
+
     return (
         <PageWrapper 
             loading={loading} 
@@ -435,6 +470,24 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                         </section>
 
                         <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #334155', marginBottom: '24px', marginTop: '24px' }}>
+                            {!isNew && (
+                                <button
+                                    onClick={() => setActiveTab('customFields')}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        padding: '12px 16px',
+                                        color: activeTab === 'customFields' ? '#60a5fa' : '#94a3b8',
+                                        borderBottom: activeTab === 'customFields' ? '2px solid #60a5fa' : '2px solid transparent',
+                                        cursor: 'pointer',
+                                        fontSize: '15px',
+                                        fontWeight: activeTab === 'customFields' ? 'bold' : '500',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    Custom Fields ({customFields.data.length})
+                                </button>
+                            )}
                             <button
                                 onClick={() => setActiveTab('workItems')}
                                 style={{
@@ -495,6 +548,45 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                 </>
                             )}
                         </div>
+
+                        {activeTab === 'customFields' && !isNew && (
+                            <section className={styles.card}>
+                                <h2>MongoDB Custom Data</h2>
+                                {customFields.loading && <div style={{ color: '#9ca3af' }}>Loading custom fields...</div>}
+                                {customFields.error && (
+                                    <div style={{ color: '#fca5a5', textAlign: 'center', padding: '40px', backgroundColor: '#451a1a', borderRadius: '8px', border: '1px dashed #ef4444' }}>
+                                        <div style={{ fontSize: '16px', marginBottom: '8px', color: '#fecaca', fontWeight: 'bold' }}>Query Error</div>
+                                        <p style={{ margin: 0, fontSize: '14px' }}>{customFields.error}</p>
+                                    </div>
+                                )}
+                                {!customFields.loading && !customFields.error && (
+                                    <>
+                                        {customFields.data.length === 0 ? (
+                                            <div style={{ color: '#9ca3af', textAlign: 'center', padding: '40px', backgroundColor: '#1e293b', borderRadius: '8px', border: '1px dashed #334155' }}>
+                                                <div style={{ fontSize: '16px', marginBottom: '8px', color: '#e2e8f0' }}>No Data Found</div>
+                                                <p style={{ margin: 0, fontSize: '14px' }}>
+                                                    The custom MongoDB query returned no results for this customer ID (<strong>{customer.customer_id}</strong>).
+                                                    Check your query in the Persistence settings.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                                                {customFields.data.map((item, idx) => (
+                                                    <div key={idx} style={{ 
+                                                        padding: '20px', 
+                                                        backgroundColor: 'rgba(255,255,255,0.03)', 
+                                                        border: '1px solid #334155', 
+                                                        borderRadius: '8px' 
+                                                    }}>
+                                                        {renderValue(item)}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+                            </section>
+                        )}
 
                         {activeTab === 'support' && !isNew && (
                             <section className={styles.card}>

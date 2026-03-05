@@ -94,6 +94,14 @@ export interface Settings {
   fiscal_year_start_month?: number; // 1-12, default 1
   sprint_duration_days?: number; // default 14
   mongo_create_if_not_exists?: boolean;
+  customer_mongo_uri?: string;
+  customer_mongo_db?: string;
+  customer_mongo_auth_method?: 'scram' | 'aws' | 'oidc';
+  customer_mongo_aws_access_key?: string;
+  customer_mongo_aws_secret_key?: string;
+  customer_mongo_aws_session_token?: string;
+  customer_mongo_oidc_token?: string;
+  customer_mongo_custom_query?: string;
 }
 
 export interface DashboardParameters {
