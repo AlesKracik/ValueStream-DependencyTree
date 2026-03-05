@@ -100,11 +100,11 @@ Use the dedicated **Settings** page to configure the application behavior. Chang
 - **Time & Fiscal Calendar:**
     - **Fiscal Year Start:** Define which month your fiscal year begins (e.g., April). The application will automatically group and label sprints into fiscal quarters (FY2026 Q1, etc.) on the Sprint Management page.
     - **Default Sprint Duration:** Set the default number of days for new sprints. This ensures consistency when expanding your timeline.
-- **Native Jira Epic Synchronization:**
-    - **Configuration:** Set your **Jira Base URL** and **API Token** in the integration settings.
-    - **Customer Issue Tracking:** Define custom JQL queries to automatically identify and track specific issue types linked to customers.
-    - **Bulk Import/Sync:** The settings page provides unified tools to **Sync All Epics from Jira** or **Import Epics via JQL** to quickly hydrate your dashboard from Atlassian data.
-    - **Epic Proxy Sync:** Inside any individual Epic's detail page, the **"Sync from Jira"** button pulls the latest Summary, Estimates, Dates, and Team assignments.
+- **Native Jira Integration:**
+    - **Configuration (Common):** Set your **Jira Base URL**, **API Version**, and **PAT** in the common integration settings. Includes a **Test Connection** button.
+    - **Bulk Sync & Import (Epics):** The **Epics** sub-tab provides tools to **Import from Jira** via JQL or **Sync Epics from Jira** (metadata refresh).
+    - **Customer Tracking (Customer):** Define JQL queries to automatically identify and track issues linked to specific customers. Use the `{{CUSTOMER_ID}}` placeholder in your queries.
+    - **Individual Sync:** Inside any Epic's detail page, use the **"Sync from Jira"** button to refresh specific data.
 - **MongoDB Persistence Safety:**
     - **Database Discovery:** After entering a URI and clicking **"Test Mongo Connection"**, the application automatically fetches a list of existing databases on your cluster.
     - **Safety Rail:** To prevent accidental database creation due to typos, the **"Create database if it doesn't exist"** checkbox must be explicitly enabled if you want to initialize a new database.

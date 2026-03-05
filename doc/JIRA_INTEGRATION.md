@@ -55,5 +55,9 @@ For a more responsive experience, the AI analysis is streamed to the UI in real-
 - **Augment:** Via a persistent background process on the server that streams CLI output.
 
 ## Bulk Sync & Import
-- **Sync All Epics:** Iterates through all local epics with a `jira_key` and refreshes their metadata.
-- **Import via JQL:** Executes a custom JQL query and creates new Epics (and potentially Work Items) in the local database based on the results.
+The Jira settings are organized into three sub-tabs for better management:
+- **Common:** Configure the Jira Base URL, API Version, and Personal Access Token (PAT). Includes a **Test Connection** tool.
+- **Epics:** Tools for bulk operations:
+    - **Import from Jira:** Executes a custom JQL query and creates new Epics (and potentially Work Items) in the local database.
+    - **Sync Epics from Jira:** Iterates through all local epics with a `jira_key` and refreshes their metadata.
+- **Customer:** Define JQL queries to automatically identify and track specific issue types linked to customers using the `{{CUSTOMER_ID}}` placeholder.

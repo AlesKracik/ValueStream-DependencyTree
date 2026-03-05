@@ -16,17 +16,17 @@ const augmentProcesses = new Map<string, { child: any, lastUsed: number }>();
 // Cleanup idle processes every minute
 setInterval(() => {
   const now = Date.now();
-  for (const [id, item] of augmentProcesses.entries()) {
+  for (const [_, item] of augmentProcesses.entries()) {
     if (now - item.lastUsed > 10 * 60 * 1000) { // 10 minutes idle
       item.child.kill();
-      augmentProcesses.delete(id);
+      augmentProcesses.delete(_);
     }
   }
 }, 60000);
 
 // Ensure child processes are killed when the main app process exits
 const cleanupAllProcesses = () => {
-  for (const [id, item] of augmentProcesses.entries()) {
+  for (const [_, item] of augmentProcesses.entries()) {
     try {
       item.child.kill();
     } catch (e) { /* ignore */ }

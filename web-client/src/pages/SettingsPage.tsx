@@ -29,6 +29,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get("tab") as "general" | "mongo" | "jira" | "ai") || "general";
+  const activeSubTab = searchParams.get("subtab") || "common";
 
   const { showConfirm } = useDashboardContext();
 
@@ -77,6 +78,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     setMongoTestResult(null);
     setJiraTestResult(null);
     setImportSyncResult(null);
+  };
+
+  const setSubTab = (subtab: string) => {
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      newParams.set("subtab", subtab);
+      return newParams;
+    });
   };
 
   const handleTestConnection = async () => {
@@ -644,168 +653,218 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
           {activeTab === "jira" && (
             <>
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-                Jira Base URL:
-                <input
-                  type="url"
-                  placeholder="https://yourdomain.atlassian.net"
-                  value={localFormData.jira_base_url || ""}
-                  onChange={(e) => setFormData({ ...localFormData, jira_base_url: e.target.value })}
-                  onBlur={() => onUpdateSettings({ jira_base_url: localFormData.jira_base_url })}
-                />
-              </label>
-
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-                Jira API Version:
-                <select
-                  value={localFormData.jira_api_version || "3"}
-                  onChange={(e) => {
-                      const val = e.target.value as "2" | "3";
-                      setFormData({ ...localFormData, jira_api_version: val });
-                      onUpdateSettings({ jira_api_version: val });
+              <div style={{ display: 'flex', gap: '12px', borderBottom: '1px solid #374151', marginBottom: '20px' }}>
+                <button
+                  onClick={() => setSubTab("common")}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: '8px 12px',
+                    color: activeSubTab === "common" ? '#60a5fa' : '#9ca3af',
+                    borderBottom: activeSubTab === "common" ? '2px solid #60a5fa' : '2px solid transparent',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: activeSubTab === "common" ? 'bold' : 'normal',
                   }}
                 >
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                </select>
-              </label>
-
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-                Jira Personal Access Token (PAT):
-                <input
-                  type="password"
-                  placeholder="Your Jira PAT"
-                  value={localFormData.jira_api_token || ""}
-                  onChange={(e) => setFormData({ ...localFormData, jira_api_token: e.target.value })}
-                  onBlur={() => onUpdateSettings({ jira_api_token: localFormData.jira_api_token })}
-                />
-              </label>
-
-              <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                  Common
+                </button>
                 <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={handleJiraTestConnection}
-                  disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira_base_url && !settings.jira_base_url) && (!localFormData.jira_api_token && !settings.jira_api_token))}
+                  onClick={() => setSubTab("epics")}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: '8px 12px',
+                    color: activeSubTab === "epics" ? '#60a5fa' : '#9ca3af',
+                    borderBottom: activeSubTab === "epics" ? '2px solid #60a5fa' : '2px solid transparent',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: activeSubTab === "epics" ? 'bold' : 'normal',
+                  }}
                 >
-                  {isTesting ? "Testing..." : "Test Connection"}
+                  Epics
+                </button>
+                <button
+                  onClick={() => setSubTab("customer")}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: '8px 12px',
+                    color: activeSubTab === "customer" ? '#60a5fa' : '#9ca3af',
+                    borderBottom: activeSubTab === "customer" ? '2px solid #60a5fa' : '2px solid transparent',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: activeSubTab === "customer" ? 'bold' : 'normal',
+                  }}
+                >
+                  Customer
                 </button>
               </div>
 
-              {jiraTestResult && (
-                <div
-                  style={{
-                    padding: "10px",
-                    borderRadius: "4px",
-                    fontSize: "14px",
-                    backgroundColor: jiraTestResult.success ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
-                    color: jiraTestResult.success ? "#34d399" : "#f87171",
-                    border: `1px solid ${jiraTestResult.success ? "#059669" : "#b91c1c"}`,
-                    marginTop: "8px",
-                  }}
-                >
-                  {jiraTestResult.message}
-                </div>
+              {activeSubTab === "common" && (
+                <>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                    Jira Base URL:
+                    <input
+                      type="url"
+                      placeholder="https://yourdomain.atlassian.net"
+                      value={localFormData.jira_base_url || ""}
+                      onChange={(e) => setFormData({ ...localFormData, jira_base_url: e.target.value })}
+                      onBlur={() => onUpdateSettings({ jira_base_url: localFormData.jira_base_url })}
+                    />
+                  </label>
+
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                    Jira API Version:
+                    <select
+                      value={localFormData.jira_api_version || "3"}
+                      onChange={(e) => {
+                          const val = e.target.value as "2" | "3";
+                          setFormData({ ...localFormData, jira_api_version: val });
+                          onUpdateSettings({ jira_api_version: val });
+                      }}
+                    >
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                    </select>
+                  </label>
+
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                    Jira Personal Access Token (PAT):
+                    <input
+                      type="password"
+                      placeholder="Your Jira PAT"
+                      value={localFormData.jira_api_token || ""}
+                      onChange={(e) => setFormData({ ...localFormData, jira_api_token: e.target.value })}
+                      onBlur={() => onUpdateSettings({ jira_api_token: localFormData.jira_api_token })}
+                    />
+                  </label>
+
+                  <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={handleJiraTestConnection}
+                      disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira_base_url && !settings.jira_base_url) && (!localFormData.jira_api_token && !settings.jira_api_token))}
+                    >
+                      {isTesting ? "Testing..." : "Test Connection"}
+                    </button>
+                  </div>
+
+                  {jiraTestResult && (
+                    <div
+                      style={{
+                        padding: "10px",
+                        borderRadius: "4px",
+                        fontSize: "14px",
+                        backgroundColor: jiraTestResult.success ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
+                        color: jiraTestResult.success ? "#34d399" : "#f87171",
+                        border: `1px solid ${jiraTestResult.success ? "#059669" : "#b91c1c"}`,
+                        marginTop: "8px",
+                      }}
+                    >
+                      {jiraTestResult.message}
+                    </div>
+                  )}
+                </>
               )}
 
-              <hr style={{ borderColor: "#374151", width: "100%", margin: "16px 0 8px 0" }} />
-              
-              <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#e5e7eb" }}>
-                Import & Sync Epics
-              </h3>
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-                Import JQL Query:
-                <input
-                  type="text"
-                  placeholder="project = PROJ AND issuetype = Epic"
-                  value={importJql}
-                  onChange={(e) => setImportJql(e.target.value)}
-                />
-              </label>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={handleImportFromJira}
-                  style={{ alignSelf: "flex-start" }}
-                  disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira_base_url && !settings.jira_base_url) && (!localFormData.jira_api_token && !settings.jira_api_token)) || !importJql.trim()}
-                >
-                  {isImporting ? importProgress : "Import from Jira"}
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={handleSyncAllFromJira}
-                  style={{ alignSelf: "flex-start" }}
-                  disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira_base_url && !settings.jira_base_url) && (!localFormData.jira_api_token && !settings.jira_api_token))}
-                >
-                  {isSyncing ? syncProgress : "Sync Epics from Jira"}
-                </button>
-              </div>
+              {activeSubTab === "epics" && (
+                <>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                    Import JQL Query:
+                    <input
+                      type="text"
+                      placeholder="project = PROJ AND issuetype = Epic"
+                      value={importJql}
+                      onChange={(e) => setImportJql(e.target.value)}
+                    />
+                  </label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={handleImportFromJira}
+                      style={{ alignSelf: "flex-start" }}
+                      disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira_base_url && !settings.jira_base_url) && (!localFormData.jira_api_token && !settings.jira_api_token)) || !importJql.trim()}
+                    >
+                      {isImporting ? importProgress : "Import from Jira"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={handleSyncAllFromJira}
+                      style={{ alignSelf: "flex-start" }}
+                      disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira_base_url && !settings.jira_base_url) && (!localFormData.jira_api_token && !settings.jira_api_token))}
+                    >
+                      {isSyncing ? syncProgress : "Sync Epics from Jira"}
+                    </button>
+                  </div>
 
-              {importSyncResult && (
-                <div
-                  style={{
-                    padding: "10px",
-                    borderRadius: "4px",
-                    fontSize: "14px",
-                    backgroundColor: importSyncResult.success ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
-                    color: importSyncResult.success ? "#34d399" : "#f87171",
-                    border: `1px solid ${importSyncResult.success ? "#059669" : "#b91c1c"}`,
-                    marginTop: "8px",
-                  }}
-                >
-                  {importSyncResult.message}
-                </div>
+                  {importSyncResult && (
+                    <div
+                      style={{
+                        padding: "10px",
+                        borderRadius: "4px",
+                        fontSize: "14px",
+                        backgroundColor: importSyncResult.success ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
+                        color: importSyncResult.success ? "#34d399" : "#f87171",
+                        border: `1px solid ${importSyncResult.success ? "#059669" : "#b91c1c"}`,
+                        marginTop: "8px",
+                      }}
+                    >
+                      {importSyncResult.message}
+                    </div>
+                  )}
+                </>
               )}
 
-              <hr style={{ borderColor: "#374151", width: "100%", margin: "16px 0 8px 0" }} />
-              
-              <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#e5e7eb" }}>
-                Customer Issue Tracking
-              </h3>
-              <p style={{ color: "#9ca3af", fontSize: "13px", margin: "0 0 8px 0" }}>
-                Use <code>{"{{CUSTOMER_ID}}"}</code> as a placeholder for the customer's technical ID.
-              </p>
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-                New / Untriaged JQL:
-                <input
-                  type="text"
-                  placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'New'"
-                  value={localFormData.customer_jql_new || ""}
-                  onChange={(e) => {
-                      const val = e.target.value;
-                      setFormData({ ...localFormData, customer_jql_new: val });
-                      onUpdateSettings({ customer_jql_new: val });
-                  }}
-                />
-              </label>
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-                Active Work JQL:
-                <input
-                  type="text"
-                  placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'In Progress'"
-                  value={localFormData.customer_jql_in_progress || ""}
-                  onChange={(e) => {
-                      const val = e.target.value;
-                      setFormData({ ...localFormData, customer_jql_in_progress: val });
-                      onUpdateSettings({ customer_jql_in_progress: val });
-                  }}
-                />
-              </label>
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
-                Blocked / Pending JQL (Customer or 3rd Party):
-                <input
-                  type="text"
-                  placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'Blocked'"
-                  value={localFormData.customer_jql_noop || ""}
-                  onChange={(e) => {
-                      const val = e.target.value;
-                      setFormData({ ...localFormData, customer_jql_noop: val });
-                      onUpdateSettings({ customer_jql_noop: val });
-                  }}
-                />
-              </label>
+              {activeSubTab === "customer" && (
+                <>
+                  <p style={{ color: "#9ca3af", fontSize: "13px", margin: "0 0 8px 0" }}>
+                    Use <code>{"{{CUSTOMER_ID}}"}</code> as a placeholder for the customer ID.
+                  </p>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                    New / Untriaged JQL:
+                    <input
+                      type="text"
+                      placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'New'"
+                      value={localFormData.customer_jql_new || ""}
+                      onChange={(e) => {
+                          const val = e.target.value;
+                          setFormData({ ...localFormData, customer_jql_new: val });
+                          onUpdateSettings({ customer_jql_new: val });
+                      }}
+                    />
+                  </label>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                    Active Work JQL:
+                    <input
+                      type="text"
+                      placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'In Progress'"
+                      value={localFormData.customer_jql_in_progress || ""}
+                      onChange={(e) => {
+                          const val = e.target.value;
+                          setFormData({ ...localFormData, customer_jql_in_progress: val });
+                          onUpdateSettings({ customer_jql_in_progress: val });
+                      }}
+                    />
+                  </label>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db" }}>
+                    Blocked / Pending JQL (Customer or 3rd Party):
+                    <input
+                      type="text"
+                      placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'Blocked'"
+                      value={localFormData.customer_jql_noop || ""}
+                      onChange={(e) => {
+                          const val = e.target.value;
+                          setFormData({ ...localFormData, customer_jql_noop: val });
+                          onUpdateSettings({ customer_jql_noop: val });
+                      }}
+                    />
+                  </label>
+                </>
+              )}
             </>
           )}
 

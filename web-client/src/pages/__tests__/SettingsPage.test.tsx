@@ -205,7 +205,7 @@ describe('SettingsPage', () => {
         clickSpy.mockRestore();
     });
 
-    it('switches to Jira tab and shows Jira settings', async () => {
+    it('switches to Jira tab and shows Jira sub-tabs', async () => {
         render(
             <MemoryRouter initialEntries={['/settings?tab=general']}>
                 <SettingsPage 
@@ -223,8 +223,47 @@ describe('SettingsPage', () => {
             fireEvent.click(jiraTab);
         });
 
+        // Common sub-tab should be active by default
+        expect(screen.getByText('Common')).toBeDefined();
+        expect(screen.getByText('Epics')).toBeDefined();
+        expect(screen.getByText('Customer')).toBeDefined();
+        
         expect(screen.getByLabelText(/Jira Base URL:/i)).toBeDefined();
         expect(screen.queryByText('Export to JSON')).toBeNull();
+    });
+
+    it('navigates between Jira sub-tabs', async () => {
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=jira']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        // Initially in Common
+        expect(screen.getByLabelText(/Jira Base URL:/i)).toBeDefined();
+
+        // Switch to Epics
+        const importTab = screen.getByText('Epics');
+        await act(async () => {
+            fireEvent.click(importTab);
+        });
+        expect(screen.getByLabelText(/Import JQL Query:/i)).toBeDefined();
+        expect(screen.queryByLabelText(/Jira Base URL:/i)).toBeNull();
+
+        // Switch to Customer
+        const customerTab = screen.getByText('Customer');
+        await act(async () => {
+            fireEvent.click(customerTab);
+        });
+        expect(screen.getByText((content) => content.includes('as a placeholder for the customer ID'))).toBeDefined();
+        expect(screen.getByLabelText(/New \/ Untriaged JQL:/i)).toBeDefined();
+        expect(screen.queryByLabelText(/Import JQL Query:/i)).toBeNull();
     });
 
     it('shows AWS fields when AWS IAM is selected', async () => {
