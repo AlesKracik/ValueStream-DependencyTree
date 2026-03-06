@@ -13,6 +13,8 @@ interface Props {
 interface SupportIssueWithCustomer extends SupportIssue {
     customerName: string;
     customerId: string;
+    category: number;
+    activity: 'new' | 'updated' | 'none';
 }
 
 const STATUS_ORDER: Record<SupportIssue['status'], number> = {
@@ -22,6 +24,12 @@ const STATUS_ORDER: Record<SupportIssue['status'], number> = {
     'waiting for customer': 3,
     'waiting for other party': 4,
     'done': 5
+};
+
+const ACTIVITY_ORDER: Record<SupportIssueWithCustomer['activity'], number> = {
+    'new': 0,
+    'updated': 1,
+    'none': 2
 };
 
 export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) => {
@@ -51,12 +59,37 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
     const allIssues = useMemo(() => {
         if (!data) return [];
         const issues: SupportIssueWithCustomer[] = [];
+        const today = new Date().toISOString().split('T')[0];
+        
+        // Find customer with highest combined TCV
+        const maxCombinedTcv = Math.max(
+            ...data.customers.map(c => (c.existing_tcv || 0) + (c.potential_tcv || 0)),
+            0
+        );
+
         data.customers.forEach(customer => {
+            const combinedTcv = (customer.existing_tcv || 0) + (customer.potential_tcv || 0);
+            let category = 1;
+            if (maxCombinedTcv > 0) {
+                const bandSize = maxCombinedTcv / 3;
+                if (combinedTcv > bandSize * 2) {
+                    category = 3;
+                } else if (combinedTcv > bandSize) {
+                    category = 2;
+                }
+            }
+
             (customer.support_issues || []).forEach(issue => {
+                const isNewToday = issue.created_at?.startsWith(today);
+                const isUpdatedToday = issue.updated_at?.startsWith(today);
+                const activity = isNewToday ? 'new' : (isUpdatedToday ? 'updated' : 'none');
+
                 issues.push({
                     ...issue,
                     customerName: customer.name,
-                    customerId: customer.id
+                    customerId: customer.id,
+                    category,
+                    activity
                 });
             });
         });
@@ -65,6 +98,8 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
 
     const sortOptions: SortOption<SupportIssueWithCustomer>[] = useMemo(() => [
         { label: 'Customer', key: 'customerName', getValue: (d) => d.customerName },
+        { label: 'TCV Rank', key: 'category', getValue: (d) => d.category.toString() },
+        { label: 'Activity', key: 'activity', getValue: (d) => ACTIVITY_ORDER[d.activity].toString() },
         { label: 'Description', key: 'description', getValue: (d) => d.description },
         { 
             label: 'Status', 
@@ -74,47 +109,44 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                 const order = STATUS_ORDER[normalized as SupportIssue['status']] ?? 99;
                 return order.toString().padStart(2, '0');
             }
-        },
-        { label: 'Updated', key: 'updated_at', getValue: (d) => d.updated_at || '' }
+        }
     ], []);
 
     const columns: ListColumn<SupportIssueWithCustomer>[] = useMemo(() => [
-        { header: 'Customer', render: (d) => d.customerName, flex: 1.5 },
+        { 
+            header: 'Customer', 
+            render: (d) => (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>{d.customerName}</span>
+                    <span title={`TCV Category: ${d.category}`} style={{ fontSize: '14px', filter: 'grayscale(0.2)' }}>
+                        {'💰'.repeat(d.category)}
+                    </span>
+                </div>
+            ), 
+            flex: 1.5 
+        },
+        {
+            header: 'Activity',
+            render: (d) => {
+                if (d.activity === 'none') return null;
+                const isNew = d.activity === 'new';
+                return (
+                    <span style={{ 
+                        fontSize: '10px', 
+                        backgroundColor: isNew ? '#10b981' : '#3b82f6', 
+                        color: 'white', 
+                        padding: '2px 6px', 
+                        borderRadius: '10px',
+                        fontWeight: 'bold',
+                        textTransform: 'uppercase'
+                    }}>{isNew ? 'New' : 'Updated'}</span>
+                );
+            },
+            flex: 0.6
+        },
         { 
             header: 'Description', 
-            render: (d) => {
-                const today = new Date().toISOString().split('T')[0];
-                const isNewToday = d.created_at?.startsWith(today);
-                const isUpdatedToday = d.updated_at?.startsWith(today);
-                
-                return (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>{d.description}</span>
-                        {isNewToday && (
-                            <span style={{ 
-                                fontSize: '10px', 
-                                backgroundColor: '#10b981', 
-                                color: 'white', 
-                                padding: '2px 6px', 
-                                borderRadius: '10px',
-                                fontWeight: 'bold',
-                                textTransform: 'uppercase'
-                            }}>New</span>
-                        )}
-                        {!isNewToday && isUpdatedToday && (
-                            <span style={{ 
-                                fontSize: '10px', 
-                                backgroundColor: '#3b82f6', 
-                                color: 'white', 
-                                padding: '2px 6px', 
-                                borderRadius: '10px',
-                                fontWeight: 'bold',
-                                textTransform: 'uppercase'
-                            }}>Updated</span>
-                        )}
-                    </div>
-                );
-            }, 
+            render: (d) => d.description, 
             flex: 3 
         },
         { 
@@ -134,11 +166,6 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                 </span>
             ), 
             flex: 1 
-        },
-        {
-            header: 'Updated',
-            render: (d) => d.updated_at ? new Date(d.updated_at).toLocaleDateString() : '-',
-            flex: 1
         }
     ], []);
 

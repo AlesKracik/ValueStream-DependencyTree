@@ -228,4 +228,105 @@ describe('SupportPage', () => {
         // Waiting B (4) should be BEFORE Done A (5)
         expect(waitingB!.compareDocumentPosition(doneA!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
+
+    it('calculates and displays TCV categories (money bags) correctly', () => {
+        const tcvData: ValueStreamData = {
+            ...mockData,
+            customers: [
+                {
+                    id: 'c1',
+                    name: 'Low TCV',
+                    existing_tcv: 10,
+                    potential_tcv: 0,
+                    support_issues: [{ id: 'i1', description: 'Low Issue', status: 'to do' }]
+                },
+                {
+                    id: 'c2',
+                    name: 'Mid TCV',
+                    existing_tcv: 50,
+                    potential_tcv: 0,
+                    support_issues: [{ id: 'i2', description: 'Mid Issue', status: 'to do' }]
+                },
+                {
+                    id: 'c3',
+                    name: 'High TCV',
+                    existing_tcv: 100,
+                    potential_tcv: 0,
+                    support_issues: [{ id: 'i3', description: 'High Issue', status: 'to do' }]
+                }
+            ]
+        };
+
+        render(
+            <MemoryRouter>
+                <SupportPage data={tcvData} loading={false} updateCustomer={mockUpdateCustomer} />
+            </MemoryRouter>
+        );
+
+        // Max TCV is 100. BandSize is 33.33.
+        // Low TCV (10) -> Band 1 (1 bag)
+        // Mid TCV (50) -> Band 2 (2 bags)
+        // High TCV (100) -> Band 3 (3 bags)
+
+        const lowCategory = screen.getByTitle('TCV Category: 1');
+        const midCategory = screen.getByTitle('TCV Category: 2');
+        const highCategory = screen.getByTitle('TCV Category: 3');
+
+        expect(lowCategory.textContent).toBe('💰');
+        expect(midCategory.textContent).toBe('💰💰');
+        expect(highCategory.textContent).toBe('💰💰💰');
+    });
+
+    it('sorts by activity correctly', async () => {
+        const today = new Date().toISOString().split('T')[0];
+        const activityData: ValueStreamData = {
+            ...mockData,
+            customers: [
+                {
+                    ...mockData.customers[0],
+                    support_issues: [
+                        { id: 'a1', description: 'None Issue', status: 'to do', created_at: '2020-01-01', updated_at: '2020-01-01' },
+                        { id: 'a2', description: 'New Issue', status: 'to do', created_at: today, updated_at: today },
+                        { id: 'a3', description: 'Updated Issue', status: 'to do', created_at: '2020-01-01', updated_at: today }
+                    ]
+                }
+            ]
+        };
+
+        render(
+            <MemoryRouter>
+                <SupportPage data={activityData} loading={false} updateCustomer={mockUpdateCustomer} />
+            </MemoryRouter>
+        );
+
+        const activitySortBtn = screen.getByRole('button', { name: /Activity/i });
+        await act(async () => {
+            fireEvent.click(activitySortBtn);
+        });
+
+        // Order should be: New, Updated, None
+        const newIdx = screen.getByText('New Issue').closest('div[class*="listItem"]');
+        const updatedIdx = screen.getByText('Updated Issue').closest('div[class*="listItem"]');
+        const noneIdx = screen.getByText('None Issue').closest('div[class*="listItem"]');
+
+        expect(newIdx!.compareDocumentPosition(updatedIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(updatedIdx!.compareDocumentPosition(noneIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('does not display the "Updated" column or sort option', () => {
+        render(
+            <MemoryRouter>
+                <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+            </MemoryRouter>
+        );
+
+        // Should not have the Updated sort button
+        expect(screen.queryByRole('button', { name: /Updated/i })).toBeNull();
+        
+        // Should not have the "Updated" header (exact match for "Updated" to avoid "Updated Issue" or similar in rows)
+        const headers = screen.queryAllByText('Updated');
+        // We expect only 0 or 1 if it's a label in some row, but definitely NOT as a table header.
+        // In this mockData, there's no "Updated" label.
+        expect(headers.length).toBe(0);
+    });
 });
