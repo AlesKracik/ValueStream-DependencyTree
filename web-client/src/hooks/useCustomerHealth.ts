@@ -1,16 +1,6 @@
 import { useState, useEffect } from 'react';
-import type { Customer, Settings } from '../types/models';
+import type { Customer, Settings, JiraIssue } from '../types/models';
 import { authorizedFetch } from '../utils/api';
-
-export interface JiraIssue {
-    key: string;
-    summary: string;
-    description?: string;
-    lastComment?: string;
-    status: string;
-    priority: string;
-    url: string;
-}
 
 export interface CustomerHealthData {
     newIssues: JiraIssue[];
@@ -63,7 +53,7 @@ export const useCustomerHealth = (customer: Customer | undefined, settings: Sett
             const jqlInProgress = replacePlaceholders(customer_jql_in_progress);
             const jqlNoop = replacePlaceholders(customer_jql_noop);
 
-            const fetchIssues = async (jql: string): Promise<JiraIssue[]> => {
+            const fetchIssues = async (jql: string, category: JiraIssue['category']): Promise<JiraIssue[]> => {
                 if (!jql) return [];
                 try {
                     const response = await authorizedFetch('/api/jira/search', {
@@ -79,30 +69,18 @@ export const useCustomerHealth = (customer: Customer | undefined, settings: Sett
                     const resData = await response.json();
                     if (!response.ok || !resData.success) throw new Error(resData.error || 'Failed to fetch issues');
 
+                    const now = new Date().toISOString();
                     return (resData.data.issues || []).map((issue: any) => {
                         const fields = issue.fields || {};
-                        const comments = fields.comment?.comments || [];
-                        const lastComment = comments.length > 0 ? comments[comments.length - 1].body : undefined;
                         
-                        // Handle potential Atlassian Document Format (ADF) or plain string for description
-                        let description = '';
-                        if (typeof fields.description === 'string') {
-                            description = fields.description;
-                        } else if (fields.description?.content) {
-                            // Basic extraction from ADF
-                            description = fields.description.content
-                                .map((c: any) => c.content?.map((inner: any) => inner.text).join('') || '')
-                                .join(' ');
-                        }
-
                         return {
                             key: issue.key,
                             summary: fields.summary || 'Unknown',
-                            description: description ? (description.length > 500 ? description.substring(0, 500) + '...' : description) : undefined,
-                            lastComment: lastComment ? (typeof lastComment === 'string' ? (lastComment.length > 300 ? lastComment.substring(0, 300) + '...' : lastComment) : 'Complex comment format') : undefined,
                             status: fields.status?.name || 'Unknown',
                             priority: fields.priority?.name || 'Default',
-                            url: `${jira_base_url}/browse/${issue.key}`
+                            url: `${jira_base_url}/browse/${issue.key}`,
+                            last_updated: now,
+                            category
                         };
                     });
                 } catch (e: any) {
@@ -113,9 +91,9 @@ export const useCustomerHealth = (customer: Customer | undefined, settings: Sett
 
             try {
                 const [newIssues, inProgressIssues, noopIssues] = await Promise.all([
-                    fetchIssues(jqlNew),
-                    fetchIssues(jqlInProgress),
-                    fetchIssues(jqlNoop)
+                    fetchIssues(jqlNew, 'new'),
+                    fetchIssues(jqlInProgress, 'in_progress'),
+                    fetchIssues(jqlNoop, 'noop')
                 ]);
 
                 let healthStatus: CustomerHealthData['healthStatus'] = 'Healthy';
@@ -145,7 +123,7 @@ export const useCustomerHealth = (customer: Customer | undefined, settings: Sett
         };
 
         fetchHealth();
-    }, [customer, settings]);
+    }, [customer?.customer_id, settings]); // Reduced dependency surface
 
     return healthData;
 };

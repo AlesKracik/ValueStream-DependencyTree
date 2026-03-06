@@ -99,6 +99,35 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     const healthData = useCustomerHealth(customer, data?.settings);
     const customFields = useCustomerCustomFields(customer, data?.settings);
 
+    // Sync fetched Jira issues to the database
+    useEffect(() => {
+        if (isNew || loading || healthData.loading || healthData.error || !customer) return;
+
+        const allFetchedIssues = [
+            ...healthData.newIssues,
+            ...healthData.inProgressIssues,
+            ...healthData.noopIssues
+        ];
+
+        const existingJiraIssues = customer.jira_support_issues || [];
+
+        // Check if something meaningful changed (ignore last_updated timestamp for comparison)
+        const hasChanged = allFetchedIssues.length !== existingJiraIssues.length ||
+            allFetchedIssues.some(fetched => {
+                const existing = existingJiraIssues.find(e => e.key === fetched.key);
+                if (!existing) return true;
+                return existing.status !== fetched.status || 
+                       existing.summary !== fetched.summary || 
+                       existing.priority !== fetched.priority ||
+                       existing.category !== fetched.category;
+            });
+
+        if (hasChanged) {
+            console.log(`Syncing ${allFetchedIssues.length} Jira issues for customer ${customer.name}`);
+            updateCustomer(customer.id, { jira_support_issues: allFetchedIssues }, true);
+        }
+    }, [healthData.newIssues, healthData.inProgressIssues, healthData.noopIssues, healthData.loading, healthData.error, customer?.id, isNew, loading, updateCustomer]);
+
     const targetedWorkItems = (isNew && data)
         ? newCustomerWorkItems.map(ncf => data.workItems.find(f => f.id === ncf.workItemId)!).filter(Boolean)
         : data?.workItems.filter(f => f.customer_targets.some(ct => ct.customer_id === customerId)) || [];

@@ -16,9 +16,27 @@ const mockData: ValueStreamData = {
             existing_tcv: 100, 
             potential_tcv: 50,
             support_issues: [
-                { id: 'i1', description: 'Active Issue', status: 'to do' },
+                { id: 'i1', description: 'Active Issue', status: 'to do', related_jiras: ['SUP-101'] },
                 { id: 'i2', description: 'Expired Issue', status: 'done', expiration_date: '2020-01-01' },
                 { id: 'i3', description: 'Future Expiring Issue', status: 'done', expiration_date: '2099-01-01' }
+            ],
+            jira_support_issues: [
+                {
+                    key: 'SUP-101',
+                    summary: 'Linked Jira Summary',
+                    status: 'In Progress',
+                    priority: 'High',
+                    url: 'https://jira.com/browse/SUP-101',
+                    last_updated: '2026-03-05T09:00:00Z'
+                },
+                {
+                    key: 'SUP-102',
+                    summary: 'Independent Jira Summary',
+                    status: 'New',
+                    priority: 'Medium',
+                    url: 'https://jira.com/browse/SUP-102',
+                    last_updated: '2026-03-06T11:00:00Z'
+                }
             ]
         }
     ],
@@ -33,7 +51,7 @@ describe('SupportPage', () => {
         vi.clearAllMocks();
     });
 
-    it('renders support issues correctly', () => {
+    it('renders support issues and linked Jiras correctly', () => {
         render(
             <MemoryRouter>
                 <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
@@ -43,6 +61,29 @@ describe('SupportPage', () => {
         expect(screen.getByText('Active Issue')).toBeDefined();
         expect(screen.getByText('Expired Issue')).toBeDefined();
         expect(screen.getByText('Future Expiring Issue')).toBeDefined();
+
+        // Check for linked Jira
+        expect(screen.getByText('SUP-101')).toBeDefined();
+        expect(screen.getByText('In Progress')).toBeDefined();
+
+        // Check that independent Jira (SUP-102) is NOT displayed
+        expect(screen.queryByText('SUP-102')).toBeNull();
+        expect(screen.queryByText(/Independent Jira Summary/)).toBeNull();
+    });
+
+    it('opens linked Jira in a new tab when clicked', () => {
+        const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+        render(
+            <MemoryRouter>
+                <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+            </MemoryRouter>
+        );
+
+        const jiraTag = screen.getByText('SUP-101');
+        fireEvent.click(jiraTag);
+
+        expect(windowOpenSpy).toHaveBeenCalledWith('https://jira.com/browse/SUP-101', '_blank');
+        windowOpenSpy.mockRestore();
     });
 
     it('cleans up expired issues on mount', async () => {

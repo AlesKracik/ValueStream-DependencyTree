@@ -26,6 +26,36 @@
       "potential_tcv": 42000,
       "tcv_history": [
         { "id": "h1_c1", "value": 10000, "valid_from": "2025-01-01" }
+      ],
+      "support_issues": [
+        {
+          "id": "si1",
+          "description": "Slow performance on dashboard",
+          "status": "work in progress",
+          "created_at": "2026-02-15T10:00:00Z",
+          "updated_at": "2026-03-01T14:30:00Z",
+          "related_jiras": ["SUP-101"]
+        }
+      ],
+      "jira_support_issues": [
+        {
+          "key": "SUP-101",
+          "summary": "Optimize dashboard query execution",
+          "status": "In Progress",
+          "priority": "High",
+          "url": "https://jira.example.com/browse/SUP-101",
+          "last_updated": "2026-03-05T09:00:00Z",
+          "category": "in_progress"
+        },
+        {
+          "key": "SUP-102",
+          "summary": "Add more logging for data ingestion",
+          "status": "New",
+          "priority": "Medium",
+          "url": "https://jira.example.com/browse/SUP-102",
+          "last_updated": "2026-03-06T11:00:00Z",
+          "category": "new"
+        }
       ]
     },
     {
@@ -34,14 +64,46 @@
       "customer_id": "BETA-123",
       "existing_tcv": 300000,
       "existing_tcv_valid_from": "2026-01-01",
-      "potential_tcv": 850000
+      "potential_tcv": 850000,
+      "support_issues": [
+        {
+          "id": "si2",
+          "description": "Integration with Auth0 failing occasionally",
+          "status": "waiting for other party",
+          "created_at": "2026-02-20T08:15:00Z",
+          "updated_at": "2026-03-04T16:45:00Z",
+          "related_jiras": ["SUP-201"]
+        }
+      ],
+      "jira_support_issues": [
+        {
+          "key": "SUP-201",
+          "summary": "Intermittent 401 errors during token refresh",
+          "status": "Open",
+          "priority": "Critical",
+          "url": "https://jira.example.com/browse/SUP-201",
+          "last_updated": "2026-03-04T16:00:00Z",
+          "category": "new"
+        }
+      ]
     },
     {
       "id": "c3",
       "name": "Customer Gamma",
       "existing_tcv": 0,
       "existing_tcv_valid_from": "2026-01-01",
-      "potential_tcv": 48000
+      "potential_tcv": 48000,
+      "jira_support_issues": [
+        {
+          "key": "SUP-301",
+          "summary": "Request for custom reporting fields",
+          "status": "Resolved",
+          "priority": "Low",
+          "url": "https://jira.example.com/browse/SUP-301",
+          "last_updated": "2026-02-28T13:20:00Z",
+          "category": "noop"
+        }
+      ]
     },
     {
       "id": "c4",

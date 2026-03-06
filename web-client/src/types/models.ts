@@ -15,6 +15,16 @@ export interface SupportIssue {
   updated_at?: string; // ISO datetime
 }
 
+export interface JiraIssue {
+  key: string;
+  summary: string;
+  status: string;
+  priority: string;
+  url: string;
+  last_updated: string; // ISO datetime
+  category?: 'new' | 'in_progress' | 'noop';
+}
+
 export interface Customer {
   id: string;
   name: string;
@@ -27,6 +37,7 @@ export interface Customer {
   potential_tcv_duration_months?: number;
   tcv_history?: TcvHistoryEntry[];
   support_issues?: SupportIssue[];
+  jira_support_issues?: JiraIssue[];
 }
 
 export interface WorkItem {

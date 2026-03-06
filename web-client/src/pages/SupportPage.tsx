@@ -10,23 +10,34 @@ interface Props {
     updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
 }
 
-interface SupportIssueWithCustomer extends SupportIssue {
+interface SupportIssueWithCustomer {
+    id: string;
+    description: string;
+    status: string;
     customerName: string;
     customerId: string;
     category: number;
     activity: 'new' | 'updated' | 'none';
+    isJira: boolean;
+    linkedJiras?: { key: string; status: string; url: string }[];
+    created_at?: string;
 }
 
-const STATUS_ORDER: Record<SupportIssue['status'], number> = {
+const STATUS_ORDER: Record<string, number> = {
     'to do': 0,
+    'new': 0,
     'work in progress': 1,
+    'in progress': 1,
+    'in_progress': 1,
     'noop': 2,
     'waiting for customer': 3,
     'waiting for other party': 4,
-    'done': 5
+    'done': 5,
+    'resolved': 5,
+    'closed': 5
 };
 
-const ACTIVITY_ORDER: Record<SupportIssueWithCustomer['activity'], number> = {
+const ACTIVITY_ORDER: Record<string, number> = {
     'new': 0,
     'updated': 1,
     'none': 2
@@ -69,27 +80,39 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
 
         data.customers.forEach(customer => {
             const combinedTcv = (customer.existing_tcv || 0) + (customer.potential_tcv || 0);
-            let category = 1;
+            let tcvCategory = 1;
             if (maxCombinedTcv > 0) {
                 const bandSize = maxCombinedTcv / 3;
                 if (combinedTcv > bandSize * 2) {
-                    category = 3;
+                    tcvCategory = 3;
                 } else if (combinedTcv > bandSize) {
-                    category = 2;
+                    tcvCategory = 2;
                 }
             }
 
+            // Manual Support Issues
             (customer.support_issues || []).forEach(issue => {
                 const isNewToday = issue.created_at?.startsWith(today);
                 const isUpdatedToday = issue.updated_at?.startsWith(today);
                 const activity = isNewToday ? 'new' : (isUpdatedToday ? 'updated' : 'none');
 
+                // Find linked Jira details from customer.jira_support_issues
+                const linkedJiras = (issue.related_jiras || []).map(key => {
+                    const jira = (customer.jira_support_issues || []).find(j => j.key === key);
+                    return jira ? { key: jira.key, status: jira.status, url: jira.url } : { key, status: 'Unknown', url: '' };
+                });
+
                 issues.push({
-                    ...issue,
+                    id: issue.id,
+                    description: issue.description,
+                    status: issue.status,
                     customerName: customer.name,
                     customerId: customer.id,
-                    category,
-                    activity
+                    category: tcvCategory,
+                    activity,
+                    isJira: false,
+                    linkedJiras: linkedJiras.length > 0 ? linkedJiras : undefined,
+                    created_at: issue.created_at
                 });
             });
         });
@@ -106,7 +129,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             key: 'status', 
             getValue: (d) => {
                 const normalized = (d.status || '').trim().toLowerCase();
-                const order = STATUS_ORDER[normalized as SupportIssue['status']] ?? 99;
+                const order = STATUS_ORDER[normalized] ?? 99;
                 return order.toString().padStart(2, '0');
             }
         }
@@ -146,25 +169,68 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         },
         { 
             header: 'Description', 
-            render: (d) => d.description, 
+            render: (d) => (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontWeight: 'normal' }}>{d.description}</span>
+                    {d.linkedJiras && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            {d.linkedJiras.map(jira => (
+                                <div 
+                                    key={jira.key} 
+                                    onClick={(e) => {
+                                        if (jira.url) {
+                                            e.stopPropagation();
+                                            window.open(jira.url, '_blank');
+                                        }
+                                    }}
+                                    style={{ 
+                                        fontSize: '10px', 
+                                        backgroundColor: '#f1f5f9', 
+                                        border: '1px solid #cbd5e1',
+                                        borderRadius: '4px',
+                                        padding: '1px 6px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        cursor: jira.url ? 'pointer' : 'default',
+                                        color: '#475569'
+                                    }}
+                                    title={`Jira Status: ${jira.status}`}
+                                >
+                                    <span style={{ fontWeight: 'bold' }}>{jira.key}</span>
+                                    <span style={{ 
+                                        fontSize: '9px', 
+                                        color: '#64748b',
+                                        borderLeft: '1px solid #cbd5e1',
+                                        paddingLeft: '4px'
+                                    }}>{jira.status}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            ), 
             flex: 3 
         },
         { 
             header: 'Status', 
-            render: (d) => (
-                <span style={{ 
-                    padding: '2px 8px', 
-                    borderRadius: '4px', 
-                    backgroundColor: d.status === 'done' ? '#22c55e' : 
-                                   d.status === 'to do' ? '#ef4444' : 
-                                   d.status === 'work in progress' ? '#f59e0b' : '#3b82f6',
-                    fontSize: '11px',
-                    color: 'white',
-                    display: 'inline-block'
-                }}>
-                    {d.status}
-                </span>
-            ), 
+            render: (d) => {
+                const status = (d.status || '').toLowerCase();
+                return (
+                    <span style={{ 
+                        padding: '2px 8px', 
+                        borderRadius: '4px', 
+                        backgroundColor: (status === 'done' || status === 'resolved' || status === 'closed') ? '#22c55e' : 
+                                       (status === 'to do' || status === 'new' || status === 'open') ? '#ef4444' : 
+                                       (status === 'work in progress' || status === 'in progress' || status === 'in_progress' || status === 'active') ? '#f59e0b' : '#3b82f6',
+                        fontSize: '11px',
+                        color: 'white',
+                        display: 'inline-block'
+                    }}>
+                        {d.status}
+                    </span>
+                );
+            }, 
             flex: 1 
         }
     ], []);
@@ -177,12 +243,20 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             filterPlaceholder="Filter issues by description or customer..."
             filterPredicate={(d, query) => 
                 d.description.toLowerCase().includes(query.toLowerCase()) || 
-                d.customerName.toLowerCase().includes(query.toLowerCase())
+                d.customerName.toLowerCase().includes(query.toLowerCase()) ||
+                (d.priority || '').toLowerCase().includes(query.toLowerCase()) ||
+                (d.status || '').toLowerCase().includes(query.toLowerCase())
             }
             sortOptions={sortOptions}
-            onItemClick={(d) => navigate(`/customer/${d.customerId}?tab=support&issueId=${d.id}`)}
+            onItemClick={(d) => {
+                if (d.isJira && d.url) {
+                    window.open(d.url, '_blank');
+                } else {
+                    navigate(`/customer/${d.customerId}?tab=support&issueId=${d.id}`);
+                }
+            }}
             columns={columns}
-            emptyMessage="No manual support issues tracked."
+            emptyMessage="No support issues tracked."
             loadingMessage="Loading support issues..."
         />
     );
