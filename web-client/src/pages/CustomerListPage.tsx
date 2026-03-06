@@ -2,8 +2,7 @@ import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ValueStreamData, Customer } from '../types/models';
 import { GenericListPage } from '../components/common/GenericListPage';
-import type { SortOption } from '../components/common/GenericListPage';
-import { ListAttributeGrid, ListAttribute } from '../components/common/ListAttributeGrid';
+import type { SortOption, ListColumn } from '../components/common/GenericListPage';
 
 interface Props {
     data: ValueStreamData | null;
@@ -19,6 +18,20 @@ export const CustomerListPage: React.FC<Props> = ({ data, loading }) => {
         { label: 'Potential', key: 'potential', getValue: (c) => c.potential_tcv || 0 }
     ], []);
 
+    const columns: ListColumn<Customer>[] = useMemo(() => [
+        { header: 'Name', render: (c) => c.name, flex: 2 },
+        { 
+            header: 'Existing TCV', 
+            render: (c) => `$${c.existing_tcv.toLocaleString()}${c.existing_tcv_duration_months ? ` (${c.existing_tcv_duration_months}mo)` : ''}`,
+            flex: 1.5 
+        },
+        { 
+            header: 'Potential TCV', 
+            render: (c) => `$${c.potential_tcv.toLocaleString()}${c.potential_tcv_duration_months ? ` (${c.potential_tcv_duration_months}mo)` : ''}`,
+            flex: 1.5
+        }
+    ], []);
+
     return (
         <GenericListPage<Customer>
             title="Customers"
@@ -28,19 +41,7 @@ export const CustomerListPage: React.FC<Props> = ({ data, loading }) => {
             filterPredicate={(c, query) => c.name.toLowerCase().includes(query.toLowerCase())}
             sortOptions={sortOptions}
             onItemClick={(c) => navigate(`/customer/${c.id}`)}
-            renderItemTitle={(c) => c.name}
-            renderItemDetails={(c) => (
-                <ListAttributeGrid>
-                    <ListAttribute 
-                        label="Existing" 
-                        value={`$${c.existing_tcv.toLocaleString()}${c.existing_tcv_duration_months ? ` (${c.existing_tcv_duration_months}mo)` : ''}`} 
-                    />
-                    <ListAttribute 
-                        label="Potential" 
-                        value={`$${c.potential_tcv.toLocaleString()}${c.potential_tcv_duration_months ? ` (${c.potential_tcv_duration_months}mo)` : ''}`} 
-                    />
-                </ListAttributeGrid>
-            )}
+            columns={columns}
             actionButton={{
                 label: "+ New Customer",
                 onClick: () => navigate('/customer/new')

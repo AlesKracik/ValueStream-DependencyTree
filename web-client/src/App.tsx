@@ -19,6 +19,7 @@ import { WorkItemListPage } from './pages/WorkItemListPage';
 import { TeamListPage } from './pages/TeamListPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { DocumentationPage } from './pages/DocumentationPage';
+import { SupportPage } from './pages/SupportPage';
 import { LoginPage } from './pages/LoginPage';
 
 import { useValueStreamData } from './hooks/useValueStreamData';
@@ -137,6 +138,7 @@ function MainAppContent() {
             <Route path="/customers" element={<CustomerListPage data={globalState.data} loading={globalState.loading} />} />
             <Route path="/workitems" element={<WorkItemListPage data={globalState.data} loading={globalState.loading} />} />
             <Route path="/teams" element={<TeamListPage data={globalState.data} loading={globalState.loading} />} />
+            <Route path="/support" element={<SupportPage data={globalState.data} loading={globalState.loading} />} />
             <Route path="/sprints" element={<SprintPageRouteWrapper ValueStreamstate={globalState} />} />
             
             {/* Other Pages */}

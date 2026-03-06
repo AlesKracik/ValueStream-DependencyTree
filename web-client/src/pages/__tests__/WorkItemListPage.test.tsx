@@ -32,11 +32,11 @@ describe('WorkItemListPage', () => {
         expect(screen.getByText('Beta Item')).toBeDefined();
         expect(screen.getByText('Gamma Item')).toBeDefined();
 
-        // Check for attribute labels
-        expect(screen.getAllByText('Score:').length).toBe(3);
-        expect(screen.getAllByText('Effort:').length).toBe(3);
-        expect(screen.getAllByText('TCV:').length).toBe(3);
-        expect(screen.getAllByText('Released:').length).toBe(3);
+        // Check for attribute labels in header (may appear twice due to sort buttons)
+        expect(screen.getAllByText('Score').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('Effort').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getAllByText('TCV').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText('Released')).toBeDefined();
 
         // Check for specific values
         expect(screen.getByText('10')).toBeDefined();

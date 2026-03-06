@@ -2,8 +2,7 @@ import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ValueStreamData, Team } from '../types/models';
 import { GenericListPage } from '../components/common/GenericListPage';
-import type { SortOption } from '../components/common/GenericListPage';
-import { ListAttributeGrid, ListAttribute } from '../components/common/ListAttributeGrid';
+import type { SortOption, ListColumn } from '../components/common/GenericListPage';
 
 interface Props {
     data: ValueStreamData | null;
@@ -18,6 +17,12 @@ export const TeamListPage: React.FC<Props> = ({ data, loading }) => {
         { label: 'Capacity', key: 'capacity', getValue: (t) => t.total_capacity_mds || 0 }
     ], []);
 
+    const columns: ListColumn<Team>[] = useMemo(() => [
+        { header: 'Name', render: (t) => t.name, flex: 2 },
+        { header: 'Capacity', render: (t) => `${t.total_capacity_mds.toLocaleString()} MDs`, flex: 1 },
+        { header: 'Country', render: (t) => t.country || 'N/A', flex: 1 }
+    ], []);
+
     return (
         <GenericListPage<Team>
             title="Teams"
@@ -27,13 +32,7 @@ export const TeamListPage: React.FC<Props> = ({ data, loading }) => {
             filterPredicate={(t, query) => t.name.toLowerCase().includes(query.toLowerCase())}
             sortOptions={sortOptions}
             onItemClick={(t) => navigate(`/team/${t.id}`)}
-            renderItemTitle={(t) => t.name}
-            renderItemDetails={(t) => (
-                <ListAttributeGrid>
-                    <ListAttribute label="Capacity" value={`${t.total_capacity_mds.toLocaleString()} MDs`} />
-                    <ListAttribute label="Country" value={t.country || 'N/A'} />
-                </ListAttributeGrid>
-            )}
+            columns={columns}
             actionButton={{
                 label: "+ New Team",
                 onClick: () => navigate('/team/new')

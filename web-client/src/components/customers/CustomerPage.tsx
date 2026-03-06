@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import type { ValueStreamData, Customer, WorkItem, TcvHistoryEntry, SupportIssue } from '../../types/models';
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';
@@ -48,7 +49,15 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     });
     const [newCustomerWorkItems, setNewCustomerWorkItems] = useState<{ workItemId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have', tcv_history_id?: string }[]>([]);
 
-    const [activeTab, setActiveTab] = useState<'customFields' | 'workItems' | 'history' | 'support'>('customFields');
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const initialTab = queryParams.get('tab') as any;
+
+    const [activeTab, setActiveTab] = useState<'customFields' | 'workItems' | 'history' | 'support'>(
+        (initialTab && ['customFields', 'workItems', 'history', 'support'].includes(initialTab)) 
+            ? initialTab 
+            : 'customFields'
+    );
 
     const customer = isNew ? newCustDraft as Customer : data?.customers.find(c => c.id === customerId);
 
@@ -668,10 +677,11 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                                     style={{ width: '100%' }}
                                                                 >
                                                                     <option value="to do">To Do</option>
-                                                                    <option value="done">Done</option>
+                                                                    <option value="work in progress">Work in Progress</option>
                                                                     <option value="noop">Noop</option>
                                                                     <option value="waiting for customer">Waiting for Customer</option>
-                                                                    <option value="waiting for other party">Waiting for Other Party</option>
+                                                                    <option value="waiting for other">Waiting for Other</option>
+                                                                    <option value="done">Done</option>
                                                                 </select>
                                                             </div>
                                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

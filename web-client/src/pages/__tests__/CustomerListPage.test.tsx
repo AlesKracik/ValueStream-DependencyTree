@@ -30,11 +30,9 @@ describe('CustomerListPage', () => {
         expect(screen.getByText('Beta Cust')).toBeDefined();
         expect(screen.getByText('Gamma Cust')).toBeDefined();
 
-        // Check for attribute labels
-        const existingLabels = screen.getAllByText('Existing:');
-        expect(existingLabels.length).toBe(3);
-        const potentialLabels = screen.getAllByText('Potential:');
-        expect(potentialLabels.length).toBe(3);
+        // Check for attribute labels in header
+        expect(screen.getByText('Existing TCV')).toBeDefined();
+        expect(screen.getByText('Potential TCV')).toBeDefined();
 
         // Check for specific values
         expect(screen.getByText('$5,000')).toBeDefined();

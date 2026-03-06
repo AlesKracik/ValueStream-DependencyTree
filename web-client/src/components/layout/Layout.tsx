@@ -13,6 +13,9 @@ export const Layout: React.FC = () => {
                     <NavLink to="/ValueStreams" className={({ isActive }) => isActive ? `${styles.navItem} ${styles.active}` : styles.navItem}>
                         ValueStreams
                     </NavLink>
+                    <NavLink to="/support" className={({ isActive }) => isActive ? `${styles.navItem} ${styles.active}` : styles.navItem}>
+                        Support
+                    </NavLink>
                     <NavLink to="/customers" className={({ isActive }) => isActive ? `${styles.navItem} ${styles.active}` : styles.navItem}>
                         Customers
                     </NavLink>

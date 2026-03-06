@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { ValueStreamData, WorkItem } from '../types/models';
 import { calculateWorkItemEffort, calculateWorkItemTcv } from '../utils/businessLogic';
 import { GenericListPage } from '../components/common/GenericListPage';
-import type { SortOption } from '../components/common/GenericListPage';
-import { ListAttributeGrid, ListAttribute } from '../components/common/ListAttributeGrid';
+import type { SortOption, ListColumn } from '../components/common/GenericListPage';
 
 interface Props {
     data: ValueStreamData | null;
@@ -29,6 +28,30 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
         }
     ], [data]);
 
+    const columns: ListColumn<WorkItem>[] = useMemo(() => [
+        { header: 'Name', render: (w) => w.name, flex: 2 },
+        { 
+            header: 'Score', 
+            render: (w) => Math.round(w.score || 0).toLocaleString(),
+            flex: 1 
+        },
+        { 
+            header: 'Effort', 
+            render: (w) => data ? `${calculateWorkItemEffort(w, data.epics).toLocaleString()} MDs` : '0 MDs',
+            flex: 1
+        },
+        { 
+            header: 'TCV', 
+            render: (w) => data ? `$${calculateWorkItemTcv(w, data.customers).toLocaleString()}` : '$0',
+            flex: 1
+        },
+        { 
+            header: 'Released', 
+            render: (w) => data?.sprints.find(s => s.id === w.released_in_sprint_id)?.name || 'Not Released',
+            flex: 1.5
+        }
+    ], [data]);
+
     return (
         <GenericListPage<WorkItem>
             title="Work Items"
@@ -38,21 +61,7 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
             filterPredicate={(w, query) => w.name.toLowerCase().includes(query.toLowerCase())}
             sortOptions={sortOptions}
             onItemClick={(w) => navigate(`/workitem/${w.id}`)}
-            renderItemTitle={(w) => w.name}
-            renderItemDetails={(w) => {
-                if (!data) return null;
-                const effort = calculateWorkItemEffort(w, data.epics);
-                const tcv = calculateWorkItemTcv(w, data.customers);
-                const sprint = data.sprints.find(s => s.id === w.released_in_sprint_id);
-                return (
-                    <ListAttributeGrid columns={4} columnWidth="180px">
-                        <ListAttribute label="Score" value={Math.round(w.score || 0).toLocaleString()} />
-                        <ListAttribute label="Effort" value={`${effort.toLocaleString()} MDs`} />
-                        <ListAttribute label="TCV" value={`$${tcv.toLocaleString()}`} />
-                        <ListAttribute label="Released" value={sprint?.name || 'Not Released'} />
-                    </ListAttributeGrid>
-                );
-            }}
+            columns={columns}
             actionButton={{
                 label: "+ New Work Item",
                 onClick: () => navigate('/workitem/new')

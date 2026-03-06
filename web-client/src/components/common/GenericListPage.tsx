@@ -8,6 +8,12 @@ export type SortOption<T> = {
     getValue: (item: T) => string | number;
 };
 
+export type ListColumn<T> = {
+    header: string;
+    render: (item: T) => React.ReactNode;
+    flex?: number | string;
+};
+
 interface GenericListPageProps<T> {
     title: string;
     items: T[];
@@ -18,9 +24,10 @@ interface GenericListPageProps<T> {
     sortOptions?: SortOption<T>[];
     defaultSortKey?: string;
     onItemClick: (item: T) => void;
-    renderItemTitle: (item: T) => React.ReactNode;
+    renderItemTitle?: (item: T) => React.ReactNode;
     renderItemDetails?: (item: T) => React.ReactNode;
     renderItemRight?: (item: T) => React.ReactNode;
+    columns?: ListColumn<T>[];
     actionButton?: {
         label: string;
         onClick: () => void;
@@ -42,6 +49,7 @@ export function GenericListPage<T extends { id: string }>({
     renderItemTitle,
     renderItemDetails,
     renderItemRight,
+    columns,
     actionButton,
     loadingMessage = "Loading...",
     emptyMessage = "No items found."
@@ -83,6 +91,10 @@ export function GenericListPage<T extends { id: string }>({
 
         return result;
     }, [items, filter, filterPredicate, sortBy, sortOrder, sortOptions]);
+
+    const gridTemplateColumns = columns 
+        ? columns.map(c => typeof c.flex === 'number' ? `${c.flex}fr` : (c.flex || '1fr')).join(' ')
+        : '1fr';
 
     return (
         <PageWrapper 
@@ -128,17 +140,38 @@ export function GenericListPage<T extends { id: string }>({
             </div>
 
             <div className={styles.list}>
+                {columns && (
+                    <div className={styles.listHeader} style={{ display: 'grid', gridTemplateColumns, gap: '16px', padding: '0 16px 8px 16px' }}>
+                        {columns.map((col, i) => (
+                            <div key={i} className={styles.columnHeader}>{col.header}</div>
+                        ))}
+                    </div>
+                )}
+
                 {filteredAndSortedItems.map(item => (
-                    <div key={item.id} className={styles.listItem} onClick={() => onItemClick(item)}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div>
-                                <div className={styles.itemTitle}>{renderItemTitle(item)}</div>
-                                {renderItemDetails && <div className={styles.itemDetails}>{renderItemDetails(item)}</div>}
+                    <div 
+                        key={item.id} 
+                        className={styles.listItem} 
+                        onClick={() => onItemClick(item)}
+                        style={columns ? { display: 'grid', gridTemplateColumns, gap: '16px', alignItems: 'center' } : {}}
+                    >
+                        {columns ? (
+                            columns.map((col, i) => (
+                                <div key={i} className={styles.itemColumn}>
+                                    {col.render(item)}
+                                </div>
+                            ))
+                        ) : (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div>
+                                    <div className={styles.itemTitle}>{renderItemTitle?.(item)}</div>
+                                    {renderItemDetails && <div className={styles.itemDetails}>{renderItemDetails(item)}</div>}
+                                </div>
+                                {renderItemRight && (
+                                    <div>{renderItemRight(item)}</div>
+                                )}
                             </div>
-                            {renderItemRight && (
-                                <div>{renderItemRight(item)}</div>
-                            )}
-                        </div>
+                        )}
                     </div>
                 ))}
                 {filteredAndSortedItems.length === 0 && (
