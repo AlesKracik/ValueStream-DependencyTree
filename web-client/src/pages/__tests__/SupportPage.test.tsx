@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, act, waitFor } from '@testing-library/react';
+import { render, screen, act, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SupportPage } from '../SupportPage';
 import type { ValueStreamData } from '../types/models';
@@ -70,5 +70,47 @@ describe('SupportPage', () => {
         );
 
         expect(screen.getByText(/Loading support issues/i)).toBeDefined();
+    });
+
+    it('sorts by status correctly', async () => {
+        const sortingData: ValueStreamData = {
+            ...mockData,
+            customers: [
+                {
+                    ...mockData.customers[0],
+                    support_issues: [
+                        { id: 's1', description: 'Done Issue', status: 'done' },
+                        { id: 's2', description: 'Todo Issue', status: 'to do' },
+                        { id: 's3', description: 'WIP Issue', status: 'work in progress' }
+                    ]
+                }
+            ]
+        };
+
+        render(
+            <MemoryRouter>
+                <SupportPage data={sortingData} loading={false} updateCustomer={mockUpdateCustomer} />
+            </MemoryRouter>
+        );
+
+        // Find the "Status" sort button by its text within the "Sort by:" container or just by role
+        const statusSortBtn = screen.getByRole('button', { name: /Status/i });
+        await act(async () => {
+            fireEvent.click(statusSortBtn);
+        });
+
+        // The items should now be in order: Todo, WIP, Done
+        // We can check their relative position in the DOM
+        const todoIdx = screen.getByText('Todo Issue').closest('div[class*="listItem"]');
+        const wipIdx = screen.getByText('WIP Issue').closest('div[class*="listItem"]');
+        const doneIdx = screen.getByText('Done Issue').closest('div[class*="listItem"]');
+
+        expect(todoIdx).toBeDefined();
+        expect(wipIdx).toBeDefined();
+        expect(doneIdx).toBeDefined();
+
+        // Check order using compareDocumentPosition
+        expect(todoIdx!.compareDocumentPosition(wipIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(wipIdx!.compareDocumentPosition(doneIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 });

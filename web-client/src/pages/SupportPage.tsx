@@ -15,6 +15,15 @@ interface SupportIssueWithCustomer extends SupportIssue {
     customerId: string;
 }
 
+const STATUS_ORDER: Record<SupportIssue['status'], number> = {
+    'to do': 0,
+    'work in progress': 1,
+    'noop': 2,
+    'waiting for customer': 3,
+    'waiting for other': 4,
+    'done': 5
+};
+
 export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) => {
     const navigate = useNavigate();
 
@@ -57,7 +66,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
     const sortOptions: SortOption<SupportIssueWithCustomer>[] = useMemo(() => [
         { label: 'Customer', key: 'customerName', getValue: (d) => d.customerName },
         { label: 'Description', key: 'description', getValue: (d) => d.description },
-        { label: 'Status', key: 'status', getValue: (d) => d.status },
+        { label: 'Status', key: 'status', getValue: (d) => STATUS_ORDER[d.status] ?? 99 },
         { label: 'Updated', key: 'updated_at', getValue: (d) => d.updated_at || '' }
     ], []);
 
