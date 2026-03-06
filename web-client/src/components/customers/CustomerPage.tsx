@@ -781,158 +781,148 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                     </div>
                                 </section>
 
-                                <section className={styles.card}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                        <h2>Support Overview (Jira)</h2>
-                                    {healthData.healthStatus !== 'Unknown' && (
-                                        <div style={{ display: 'flex', gap: '16px' }}>
-                                            <div style={{ textAlign: 'center', padding: '8px 16px', backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid #ef4444' }}>
-                                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ef4444' }}>{healthData.newIssues.length}</div>
-                                                <div style={{ fontSize: '12px', color: '#fca5a5' }}>New / Untriaged</div>
-                                            </div>
-                                            <div style={{ textAlign: 'center', padding: '8px 16px', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '8px', border: '1px solid #f59e0b' }}>
-                                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f59e0b' }}>{healthData.inProgressIssues.length}</div>
-                                                <div style={{ fontSize: '12px', color: '#fcd34d' }}>Active Work</div>
-                                            </div>
-                                            <div style={{ textAlign: 'center', padding: '8px 16px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', border: '1px solid #3b82f6' }}>
-                                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#3b82f6' }}>{healthData.noopIssues.length}</div>
-                                                <div style={{ fontSize: '12px', color: '#93c5fd' }}>Blocked / Pending</div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {healthData.loading && <div style={{ color: '#9ca3af' }}>Loading Jira data...</div>}
-                                {healthData.error && (
-                                    <div style={{ color: '#fca5a5', textAlign: 'center', padding: '40px', backgroundColor: '#451a1a', borderRadius: '8px', border: '1px dashed #ef4444' }}>
-                                        <div style={{ fontSize: '16px', marginBottom: '8px', color: '#fecaca', fontWeight: 'bold' }}>Jira Integration Error</div>
-                                        <p style={{ margin: 0, fontSize: '14px' }}>
-                                            {healthData.error}
-                                        </p>
-                                    </div>
-                                )}
-
-                                {healthData.healthStatus === 'Unknown' && !healthData.loading && !healthData.error && (
-                                    <div style={{ color: '#9ca3af', textAlign: 'center', padding: '40px', backgroundColor: '#1e293b', borderRadius: '8px', border: '1px dashed #334155' }}>
-                                        <div style={{ fontSize: '16px', marginBottom: '8px', color: '#e2e8f0' }}>Support Tracking Not Configured</div>
-                                        <p style={{ margin: 0, fontSize: '14px' }}>
-                                            To see Jira bugs here, please provide a <strong>Customer ID</strong> in the Customer Details section above, 
-                                            and ensure <strong>Customer Issue Tracking JQLs</strong> are configured in the <strong>Settings</strong>.
-                                        </p>
-                                    </div>
-                                )}
-
-                                {!healthData.loading && !healthData.error && healthData.healthStatus !== 'Unknown' && (
-                                    <>
-                                        <div style={{ marginTop: '24px', padding: '16px', backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                                <h3 style={{ margin: 0, fontSize: '16px' }}>AI Health Assistant</h3>
-                                                <button 
-                                                    className="btn-primary" 
-                                                    onClick={handleGenerateSummary}
-                                                    disabled={isGeneratingSummary}
-                                                    style={{ fontSize: '12px', padding: '6px 12px' }}
-                                                >
-                                                    {chatMessages.length > 0 ? 'Restart Analysis' : 'Generate AI Summary'}
-                                                </button>
-                                            </div>
-
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: chatMessages.length > 0 ? '16px' : '0' }}>
-                                                {chatMessages.length === 0 && !isGeneratingSummary && (
-                                                    <div style={{ color: '#64748b', fontStyle: 'italic', textAlign: 'center', padding: '20px' }}>
-                                                        Click the button to generate an AI summary of the current support situation.
-                                                    </div>
-                                                )}
-                                                
-                                                {chatMessages.map((msg, idx) => (
-                                                    <div key={idx} style={{
-                                                        alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                                                        maxWidth: '85%',
-                                                        padding: '12px 16px',
-                                                        borderRadius: '12px',
-                                                        backgroundColor: msg.role === 'user' ? '#3b82f6' : '#334155',
-                                                        color: '#f8fafc',
-                                                        lineHeight: '1.5',
-                                                        fontSize: '14px',
-                                                        whiteSpace: 'pre-wrap',
-                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                                                    }}>
-                                                        <div style={{ fontSize: '11px', marginBottom: '4px', opacity: 0.8, fontWeight: 'bold' }}>
-                                                            {msg.role === 'user' ? 'You' : 'AI Assistant'}
-                                                        </div>
-                                                        {msg.content}
-                                                    </div>
-                                                ))}
-
-                                                {isGeneratingSummary && (
-                                                    <div style={{ alignSelf: 'flex-start', padding: '12px 16px', borderRadius: '12px', backgroundColor: '#334155', color: '#94a3b8', fontStyle: 'italic', fontSize: '14px' }}>
-                                                        AI is thinking...
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {chatMessages.length > 0 && (
-                                                <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid #334155', paddingTop: '16px' }}>
-                                                    <input 
-                                                        type="text"
-                                                        value={chatInput}
-                                                        onChange={e => setChatInput(e.target.value)}
-                                                        onKeyDown={e => e.key === 'Enter' && handleSendChatMessage()}
-                                                        placeholder="Ask a follow-up question..."
-                                                        style={{ flex: 1, backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '6px', color: '#f8fafc', padding: '8px 12px' }}
-                                                    />
-                                                    <button 
-                                                        className="btn-primary" 
-                                                        onClick={handleSendChatMessage}
-                                                        disabled={isGeneratingSummary || !chatInput.trim()}
-                                                    >
-                                                        Send
-                                                    </button>
+                                {healthData.healthStatus !== 'Unknown' && (
+                                    <section className={styles.card}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                            <h2>Support Overview (Jira)</h2>
+                                            <div style={{ display: 'flex', gap: '16px' }}>
+                                                <div style={{ textAlign: 'center', padding: '8px 16px', backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid #ef4444' }}>
+                                                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ef4444' }}>{healthData.newIssues.length}</div>
+                                                    <div style={{ fontSize: '12px', color: '#fca5a5' }}>New / Untriaged</div>
                                                 </div>
-                                            )}
+                                                <div style={{ textAlign: 'center', padding: '8px 16px', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '8px', border: '1px solid #f59e0b' }}>
+                                                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f59e0b' }}>{healthData.inProgressIssues.length}</div>
+                                                    <div style={{ fontSize: '12px', color: '#fcd34d' }}>Active Work</div>
+                                                </div>
+                                                <div style={{ textAlign: 'center', padding: '8px 16px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', border: '1px solid #3b82f6' }}>
+                                                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#3b82f6' }}>{healthData.noopIssues.length}</div>
+                                                    <div style={{ fontSize: '12px', color: '#93c5fd' }}>Blocked / Pending</div>
+                                                </div>
+                                            </div>
                                         </div>
 
-                                        <h3 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '16px' }}>Issue List</h3>
-                                        <table className={styles.table}>
-                                            <thead>
-                                                <tr>
-                                                    <th>Key</th>
-                                                    <th>Summary</th>
-                                                    <th>Status</th>
-                                                    <th>Priority</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {[...healthData.newIssues, ...healthData.inProgressIssues, ...healthData.noopIssues].map(issue => (
-                                                    <tr key={issue.key}>
-                                                        <td><a href={issue.url} target="_blank" rel="noreferrer" style={{ color: '#60a5fa' }}>{issue.key}</a></td>
-                                                        <td>{issue.summary}</td>
-                                                        <td>
-                                                            <span style={{ 
-                                                                padding: '2px 6px', 
-                                                                borderRadius: '4px', 
-                                                                fontSize: '12px',
-                                                                backgroundColor: healthData.newIssues.includes(issue) ? 'rgba(239, 68, 68, 0.2)' : 
-                                                                                healthData.inProgressIssues.includes(issue) ? 'rgba(245, 158, 11, 0.2)' : 'rgba(59, 130, 246, 0.2)',
-                                                                color: healthData.newIssues.includes(issue) ? '#f87171' : 
-                                                                      healthData.inProgressIssues.includes(issue) ? '#fbbf24' : '#60a5fa'
+                                        {healthData.loading && <div style={{ color: '#9ca3af' }}>Loading Jira data...</div>}
+                                        {healthData.error && (
+                                            <div style={{ color: '#fca5a5', textAlign: 'center', padding: '40px', backgroundColor: '#451a1a', borderRadius: '8px', border: '1px dashed #ef4444' }}>
+                                                <div style={{ fontSize: '16px', marginBottom: '8px', color: '#fecaca', fontWeight: 'bold' }}>Jira Integration Error</div>
+                                                <p style={{ margin: 0, fontSize: '14px' }}>
+                                                    {healthData.error}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {!healthData.loading && !healthData.error && (
+                                            <>
+                                                <div style={{ marginTop: '24px', padding: '16px', backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                                        <h3 style={{ margin: 0, fontSize: '16px' }}>AI Health Assistant</h3>
+                                                        <button 
+                                                            className="btn-primary" 
+                                                            onClick={handleGenerateSummary}
+                                                            disabled={isGeneratingSummary}
+                                                            style={{ fontSize: '12px', padding: '6px 12px' }}
+                                                        >
+                                                            {chatMessages.length > 0 ? 'Restart Analysis' : 'Generate AI Summary'}
+                                                        </button>
+                                                    </div>
+
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: chatMessages.length > 0 ? '16px' : '0' }}>
+                                                        {chatMessages.length === 0 && !isGeneratingSummary && (
+                                                            <div style={{ color: '#64748b', fontStyle: 'italic', textAlign: 'center', padding: '20px' }}>
+                                                                Click the button to generate an AI summary of the current support situation.
+                                                            </div>
+                                                        )}
+                                                        
+                                                        {chatMessages.map((msg, idx) => (
+                                                            <div key={idx} style={{
+                                                                alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                                                                maxWidth: '85%',
+                                                                padding: '12px 16px',
+                                                                borderRadius: '12px',
+                                                                backgroundColor: msg.role === 'user' ? '#3b82f6' : '#334155',
+                                                                color: '#f8fafc',
+                                                                lineHeight: '1.5',
+                                                                fontSize: '14px',
+                                                                whiteSpace: 'pre-wrap',
+                                                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                                                             }}>
-                                                                {issue.status}
-                                                            </span>
-                                                        </td>
-                                                        <td>{issue.priority}</td>
-                                                    </tr>
-                                                ))}
-                                                {healthData.newIssues.length === 0 && healthData.inProgressIssues.length === 0 && healthData.noopIssues.length === 0 && (
-                                                    <tr>
-                                                        <td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No issues found matching the JQL queries.</td>
-                                                    </tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </>
+                                                                <div style={{ fontSize: '11px', marginBottom: '4px', opacity: 0.8, fontWeight: 'bold' }}>
+                                                                    {msg.role === 'user' ? 'You' : 'AI Assistant'}
+                                                                </div>
+                                                                {msg.content}
+                                                            </div>
+                                                        ))}
+
+                                                        {isGeneratingSummary && (
+                                                            <div style={{ alignSelf: 'flex-start', padding: '12px 16px', borderRadius: '12px', backgroundColor: '#334155', color: '#94a3b8', fontStyle: 'italic', fontSize: '14px' }}>
+                                                                AI is thinking...
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {chatMessages.length > 0 && (
+                                                        <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid #334155', paddingTop: '16px' }}>
+                                                            <input 
+                                                                type="text"
+                                                                value={chatInput}
+                                                                onChange={e => setChatInput(e.target.value)}
+                                                                onKeyDown={e => e.key === 'Enter' && handleSendChatMessage()}
+                                                                placeholder="Ask a follow-up question..."
+                                                                style={{ flex: 1, backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '6px', color: '#f8fafc', padding: '8px 12px' }}
+                                                            />
+                                                            <button 
+                                                                className="btn-primary" 
+                                                                onClick={handleSendChatMessage}
+                                                                disabled={isGeneratingSummary || !chatInput.trim()}
+                                                            >
+                                                                Send
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <h3 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '16px' }}>Issue List</h3>
+                                                <table className={styles.table}>
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Key</th>
+                                                            <th>Summary</th>
+                                                            <th>Status</th>
+                                                            <th>Priority</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {[...healthData.newIssues, ...healthData.inProgressIssues, ...healthData.noopIssues].map(issue => (
+                                                            <tr key={issue.key}>
+                                                                <td><a href={issue.url} target="_blank" rel="noreferrer" style={{ color: '#60a5fa' }}>{issue.key}</a></td>
+                                                                <td>{issue.summary}</td>
+                                                                <td>
+                                                                    <span style={{ 
+                                                                        padding: '2px 6px', 
+                                                                        borderRadius: '4px', 
+                                                                        fontSize: '12px',
+                                                                        backgroundColor: healthData.newIssues.includes(issue) ? 'rgba(239, 68, 68, 0.2)' : 
+                                                                                        healthData.inProgressIssues.includes(issue) ? 'rgba(245, 158, 11, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+                                                                        color: healthData.newIssues.includes(issue) ? '#f87171' : 
+                                                                              healthData.inProgressIssues.includes(issue) ? '#fbbf24' : '#60a5fa'
+                                                                    }}>
+                                                                        {issue.status}
+                                                                    </span>
+                                                                </td>
+                                                                <td>{issue.priority}</td>
+                                                            </tr>
+                                                        ))}
+                                                        {healthData.newIssues.length === 0 && healthData.inProgressIssues.length === 0 && healthData.noopIssues.length === 0 && (
+                                                            <tr>
+                                                                <td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No issues found matching the JQL queries.</td>
+                                                            </tr>
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </>
+                                        )}
+                                    </section>
                                 )}
-                            </section>
                         </div>
                     )}
 
