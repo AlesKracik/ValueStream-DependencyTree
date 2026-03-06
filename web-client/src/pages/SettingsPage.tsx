@@ -921,13 +921,62 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         </div>
                       </label>
 
+                      {localFormData.customer_mongo_auth_method === 'aws' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>AWS IAM Credentials (Customer)</div>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            Access Key ID:
+                            <input
+                              type="text"
+                              value={localFormData.customer_mongo_aws_access_key || ""}
+                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_access_key: e.target.value })}
+                              onBlur={() => onUpdateSettings({ customer_mongo_aws_access_key: localFormData.customer_mongo_aws_access_key })}
+                            />
+                          </label>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            Secret Access Key:
+                            <input
+                              type="password"
+                              value={localFormData.customer_mongo_aws_secret_key || ""}
+                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_secret_key: e.target.value })}
+                              onBlur={() => onUpdateSettings({ customer_mongo_aws_secret_key: localFormData.customer_mongo_aws_secret_key })}
+                            />
+                          </label>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            Session Token (Optional):
+                            <input
+                              type="password"
+                              value={localFormData.customer_mongo_aws_session_token || ""}
+                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_session_token: e.target.value })}
+                              onBlur={() => onUpdateSettings({ customer_mongo_aws_session_token: localFormData.customer_mongo_aws_session_token })}
+                            />
+                          </label>
+                        </div>
+                      )}
+
+                      {localFormData.customer_mongo_auth_method === 'oidc' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>OIDC Configuration (Customer)</div>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            Access Token:
+                            <input
+                              type="password"
+                              placeholder="eyJhbG..."
+                              value={localFormData.customer_mongo_oidc_token || ""}
+                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_oidc_token: e.target.value })}
+                              onBlur={() => onUpdateSettings({ customer_mongo_oidc_token: localFormData.customer_mongo_oidc_token })}
+                            />
+                          </label>
+                        </div>
+                      )}
+
                       <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db", cursor: 'pointer' }}>
                         <input
                           type="checkbox"
                           checked={localFormData.customer_mongo_use_ssh || false}
                           onChange={(e) => {
                             const val = e.target.checked;
-                            setFormData({ ...localFormData, customer_mongo_use_ssh: val });
+                            setFormData({ ...localFormData, customer_mongo_use_ssh: val });   
                             onUpdateSettings({ customer_mongo_use_ssh: val });
                           }}
                         />
@@ -982,56 +1031,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                           </label>
                         </div>
                       )}
-
-                      {localFormData.customer_mongo_auth_method === 'aws' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>AWS IAM Credentials (Customer)</div>
-                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
-                            Access Key ID:
-                            <input
-                              type="text"
-                              value={localFormData.customer_mongo_aws_access_key || ""}
-                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_access_key: e.target.value })}
-                              onBlur={() => onUpdateSettings({ customer_mongo_aws_access_key: localFormData.customer_mongo_aws_access_key })}
-                            />
-                          </label>
-                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
-                            Secret Access Key:
-                            <input
-                              type="password"
-                              value={localFormData.customer_mongo_aws_secret_key || ""}
-                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_secret_key: e.target.value })}
-                              onBlur={() => onUpdateSettings({ customer_mongo_aws_secret_key: localFormData.customer_mongo_aws_secret_key })}
-                            />
-                          </label>
-                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
-                            Session Token (Optional):
-                            <input
-                              type="password"
-                              value={localFormData.customer_mongo_aws_session_token || ""}
-                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_session_token: e.target.value })}
-                              onBlur={() => onUpdateSettings({ customer_mongo_aws_session_token: localFormData.customer_mongo_aws_session_token })}
-                            />
-                          </label>
-                        </div>
-                      )}
-
-                      {localFormData.customer_mongo_auth_method === 'oidc' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>OIDC Configuration (Customer)</div>
-                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
-                            Access Token:
-                            <input
-                              type="password"
-                              placeholder="eyJhbG..."
-                              value={localFormData.customer_mongo_oidc_token || ""}
-                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_oidc_token: e.target.value })}
-                              onBlur={() => onUpdateSettings({ customer_mongo_oidc_token: localFormData.customer_mongo_oidc_token })}
-                            />
-                          </label>
-                        </div>
-                      )}
-
                       <button
                         type="button"
                         className="btn-primary"
