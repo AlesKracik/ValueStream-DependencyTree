@@ -632,15 +632,12 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                         <button 
                                             className="btn-primary" 
                                             onClick={() => {
-                                                const defaultExpiry = new Date();
-                                                defaultExpiry.setDate(defaultExpiry.getDate() + 14);
-                                                
                                                 const newIssue: SupportIssue = {
                                                     id: generateId('issue'),
                                                     description: '',
                                                     status: 'to do',
                                                     related_jiras: [],
-                                                    expiration_date: defaultExpiry.toISOString().split('T')[0]
+                                                    expiration_date: undefined
                                                 };
                                                 const currentIssues = customer.support_issues || [];
                                                 updateCustomer(customer.id, { support_issues: [newIssue, ...currentIssues] });
@@ -691,7 +688,16 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                                 <label style={{ fontSize: '13px', color: '#94a3b8' }}>Status</label>
                                                                 <select 
                                                                     value={issue.status}
-                                                                    onChange={e => updateIssue({ status: e.target.value as any })}
+                                                                    onChange={e => {
+                                                                        const newStatus = e.target.value as any;
+                                                                        const updates: Partial<SupportIssue> = { status: newStatus };
+                                                                        if (newStatus === 'done' && !issue.expiration_date) {
+                                                                            const expiry = new Date();
+                                                                            expiry.setDate(expiry.getDate() + 5);
+                                                                            updates.expiration_date = expiry.toISOString().split('T')[0];
+                                                                        }
+                                                                        updateIssue(updates);
+                                                                    }}
                                                                     style={{ width: '100%' }}
                                                                 >
                                                                     <option value="to do">To Do</option>
