@@ -141,8 +141,7 @@
                                 "description": { "type": "string" },
                                 "status": { 
                                     "type": "string", 
-                                    "enum": ["to do", "work in progress", "noop", "waiting for customer", "waiting for other", "done"] 
-                                },
+                                    "enum": ["to do", "work in progress", "noop", "waiting for customer", "waiting for other party", "done"]                                },
                                 "related_jiras": {
                                     "type": "array",
                                     "items": { "type": "string" }

@@ -20,7 +20,7 @@ const STATUS_ORDER: Record<SupportIssue['status'], number> = {
     'work in progress': 1,
     'noop': 2,
     'waiting for customer': 3,
-    'waiting for other': 4,
+    'waiting for other party': 4,
     'done': 5
 };
 
@@ -71,7 +71,8 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             key: 'status', 
             getValue: (d) => {
                 const normalized = (d.status || '').trim().toLowerCase();
-                return STATUS_ORDER[normalized as SupportIssue['status']] ?? 99;
+                const order = STATUS_ORDER[normalized as SupportIssue['status']] ?? 99;
+                return order.toString().padStart(2, '0');
             }
         },
         { label: 'Updated', key: 'updated_at', getValue: (d) => d.updated_at || '' }

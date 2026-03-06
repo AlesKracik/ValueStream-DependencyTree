@@ -204,7 +204,7 @@ describe('SupportPage', () => {
                     existing_tcv: 200,
                     potential_tcv: 50,
                     support_issues: [
-                        { id: 's2', description: 'Todo B', status: 'to do' }
+                        { id: 's2', description: 'Waiting B', status: 'waiting for other party' }
                     ]
                 }
             ]
@@ -217,15 +217,15 @@ describe('SupportPage', () => {
         );
 
         const statusSortBtn = screen.getByRole('button', { name: /Status/i });
-        // Click once for ascending (Todo -> Done)
+        // Click once for ascending (Waiting -> Done)
         await act(async () => {
             fireEvent.click(statusSortBtn);
         });
 
-        const todoB = screen.getByText('Todo B').closest('div[class*="listItem"]');
+        const waitingB = screen.getByText('Waiting B').closest('div[class*="listItem"]');
         const doneA = screen.getByText('Done A').closest('div[class*="listItem"]');
 
-        // Todo B (Customer B) should be BEFORE Done A (Customer A)
-        expect(todoB!.compareDocumentPosition(doneA!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        // Waiting B (4) should be BEFORE Done A (5)
+        expect(waitingB!.compareDocumentPosition(doneA!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 });

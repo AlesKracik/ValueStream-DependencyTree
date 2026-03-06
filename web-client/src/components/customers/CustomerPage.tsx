@@ -662,7 +662,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                                     <option value="work in progress">Work in Progress</option>
                                                                     <option value="noop">Noop</option>
                                                                     <option value="waiting for customer">Waiting for Customer</option>
-                                                                    <option value="waiting for other">Waiting for Other</option>
+                                                                    <option value="waiting for other party">Waiting for Other Party</option>
                                                                     <option value="done">Done</option>
                                                                 </select>
                                                             </div>

@@ -9,7 +9,7 @@ export interface SupportIssue {
   id: string;
   description: string;
   related_jiras?: string[];
-  status: 'to do' | 'work in progress' | 'noop' | 'waiting for customer' | 'waiting for other' | 'done';
+  status: 'to do' | 'work in progress' | 'noop' | 'waiting for customer' | 'waiting for other party' | 'done';
   expiration_date?: string; // ISO date
   created_at?: string; // ISO datetime
   updated_at?: string; // ISO datetime
