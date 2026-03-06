@@ -408,10 +408,13 @@ describe('CustomerPage', () => {
     });
 
     it('focuses on a support issue when issueId is in query params', async () => {
+        const now = new Date().toISOString();
         const mockIssue: SupportIssue = {
             id: 'issue-123',
             description: 'Test Issue',
-            status: 'to do'
+            status: 'to do',
+            created_at: now,
+            updated_at: now
         };
         const dataWithIssue: ValueStreamData = {
             ...mockData,

@@ -11,6 +11,8 @@ export interface SupportIssue {
   related_jiras?: string[];
   status: 'to do' | 'work in progress' | 'noop' | 'waiting for customer' | 'waiting for other' | 'done';
   expiration_date?: string; // ISO date
+  created_at?: string; // ISO datetime
+  updated_at?: string; // ISO datetime
 }
 
 export interface Customer {

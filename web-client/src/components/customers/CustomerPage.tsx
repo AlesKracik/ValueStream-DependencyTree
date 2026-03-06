@@ -632,12 +632,15 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                         <button 
                                             className="btn-primary" 
                                             onClick={() => {
+                                                const now = new Date().toISOString();
                                                 const newIssue: SupportIssue = {
                                                     id: generateId('issue'),
                                                     description: '',
                                                     status: 'to do',
                                                     related_jiras: [],
-                                                    expiration_date: undefined
+                                                    expiration_date: undefined,
+                                                    created_at: now,
+                                                    updated_at: now
                                                 };
                                                 const currentIssues = customer.support_issues || [];
                                                 updateCustomer(customer.id, { support_issues: [newIssue, ...currentIssues] });
@@ -651,7 +654,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                         {(customer.support_issues || []).map((issue, idx) => {
                                             const updateIssue = (updates: Partial<SupportIssue>) => {
                                                 const newIssues = [...(customer.support_issues || [])];
-                                                newIssues[idx] = { ...issue, ...updates };
+                                                newIssues[idx] = { ...issue, ...updates, updated_at: new Date().toISOString() };
                                                 updateCustomer(customer.id, { support_issues: newIssues });
                                             };
 

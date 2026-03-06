@@ -40,7 +40,43 @@ export const SupportPage: React.FC<Props> = ({ data, loading }) => {
 
     const columns: ListColumn<SupportIssueWithCustomer>[] = useMemo(() => [
         { header: 'Customer', render: (d) => d.customerName, flex: 1.5 },
-        { header: 'Description', render: (d) => d.description, flex: 3 },
+        { 
+            header: 'Description', 
+            render: (d) => {
+                const today = new Date().toISOString().split('T')[0];
+                const isNewToday = d.created_at?.startsWith(today);
+                const isUpdatedToday = d.updated_at?.startsWith(today);
+                
+                return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>{d.description}</span>
+                        {isNewToday && (
+                            <span style={{ 
+                                fontSize: '10px', 
+                                backgroundColor: '#10b981', 
+                                color: 'white', 
+                                padding: '2px 6px', 
+                                borderRadius: '10px',
+                                fontWeight: 'bold',
+                                textTransform: 'uppercase'
+                            }}>New</span>
+                        )}
+                        {!isNewToday && isUpdatedToday && (
+                            <span style={{ 
+                                fontSize: '10px', 
+                                backgroundColor: '#3b82f6', 
+                                color: 'white', 
+                                padding: '2px 6px', 
+                                borderRadius: '10px',
+                                fontWeight: 'bold',
+                                textTransform: 'uppercase'
+                            }}>Updated</span>
+                        )}
+                    </div>
+                );
+            }, 
+            flex: 3 
+        },
         { 
             header: 'Status', 
             render: (d) => (
@@ -58,6 +94,11 @@ export const SupportPage: React.FC<Props> = ({ data, loading }) => {
                 </span>
             ), 
             flex: 1 
+        },
+        {
+            header: 'Updated',
+            render: (d) => d.updated_at ? new Date(d.updated_at).toLocaleDateString() : '-',
+            flex: 1
         }
     ], []);
 
