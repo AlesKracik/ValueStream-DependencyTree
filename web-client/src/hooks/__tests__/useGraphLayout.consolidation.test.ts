@@ -1,10 +1,10 @@
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { useGraphLayout } from '../useGraphLayout';
-import type { DashboardData, DashboardParameters } from '../../types/models';
+import type { ValueStreamData, ValueStreamParameters } from '../../types/models';
 
-const mockData: DashboardData = {
-    dashboards: [], settings: { jira_base_url: '', jira_api_version: '3' },
+const mockData: ValueStreamData = {
+    ValueStreams: [], settings: { jira_base_url: '', jira_api_version: '3' },
     customers: [
         { id: 'c1', name: 'Alpha Customer', existing_tcv: 100, potential_tcv: 0 },
         { id: 'c2', name: 'Beta Customer', existing_tcv: 100, potential_tcv: 0 }
@@ -27,7 +27,7 @@ const mockData: DashboardData = {
     metrics: { maxScore: 100, maxRoi: 10 }
 };
 
-const emptyParams: DashboardParameters = {
+const emptyParams: ValueStreamParameters = {
     customerFilter: '', workItemFilter: '', teamFilter: '', epicFilter: '',
     releasedFilter: 'all', minTcvFilter: '', minScoreFilter: ''
 };
@@ -75,7 +75,7 @@ describe('useGraphLayout - Filter Consolidation (Base vs Transient)', () => {
     });
 
     it('consolidates Released filters using Logical AND (most restrictive wins)', () => {
-        const releasedData: DashboardData = {
+        const releasedData: ValueStreamData = {
             ...mockData,
             workItems: [
                 { id: 'f1', name: 'Released', released_in_sprint_id: 's1', customer_targets: [], score: 10, total_effort_mds: 5 },
@@ -94,3 +94,6 @@ describe('useGraphLayout - Filter Consolidation (Base vs Transient)', () => {
         expect(res2.current.nodes.some(n => n.id.startsWith('workitem-'))).toBe(false);
     });
 });
+
+
+

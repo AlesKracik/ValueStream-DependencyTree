@@ -42,7 +42,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
   name: 'mock-data-persistence',
   configureServer(server: any) {
     server.middlewares.use(async (req: any, res: any, next: any) => {
-      const ALLOWED_COLLECTIONS = ['customers', 'workItems', 'teams', 'epics', 'sprints', 'dashboards'];
+      const ALLOWED_COLLECTIONS = ['customers', 'workItems', 'teams', 'epics', 'sprints', 'ValueStreams'];
       const MAX_PAYLOAD_SIZE = 5 * 1024 * 1024; // 5 MB limit
 
       function escapeRegex(string: string) {
@@ -331,7 +331,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
       if (req.url.startsWith('/api/loadData') && req.method === 'GET') {
         try {
           const url = new URL(req.url, `http://${req.headers.host}`);
-          const dashboardId = url.searchParams.get('dashboardId');
+          const ValueStreamId = url.searchParams.get('ValueStreamId');
           
           // Filters from query params
           const qCustomerFilter = url.searchParams.get('customerFilter') || '';
@@ -363,7 +363,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
             teams: [],
             epics: [],
             sprints: [],
-            dashboards: [],
+            ValueStreams: [],
             metrics: { maxScore: 1, maxRoi: 1 }
           };
 
@@ -371,18 +371,18 @@ const MockDataPersistencePlugin = (): Plugin => ({
             try {
               const db = await getDb(settings, true);
               
-              const dashboards = await db.collection('dashboards').find({}).toArray();
-              dbData.dashboards = dashboards.map(({ _id, ...rest }) => rest);
+              const ValueStreams = await db.collection('ValueStreams').find({}).toArray();
+              dbData.ValueStreams = ValueStreams.map(({ _id, ...rest }) => rest);
               
-              const activeDashboard = dashboardId ? dbData.dashboards.find((d: any) => d.id === dashboardId) : null;
+              const activeValueStream = ValueStreamId ? dbData.ValueStreams.find((d: any) => d.id === ValueStreamId) : null;
               
-              const customerFilter = qCustomerFilter || activeDashboard?.parameters?.customerFilter || '';
-              const workItemFilter = qWorkItemFilter || activeDashboard?.parameters?.workItemFilter || '';
-              const teamFilter = qTeamFilter || activeDashboard?.parameters?.teamFilter || '';
-              const epicFilter = qEpicFilter || activeDashboard?.parameters?.epicFilter || '';
-              const releasedFilter = qReleasedFilter !== 'all' ? qReleasedFilter : (activeDashboard?.parameters?.releasedFilter || 'all');
-              const minTcv = Math.max(qMinTcv, Number(activeDashboard?.parameters?.minTcvFilter) || 0);
-              const minScore = Math.max(qMinScore, Number(activeDashboard?.parameters?.minScoreFilter) || 0);
+              const customerFilter = qCustomerFilter || activeValueStream?.parameters?.customerFilter || '';
+              const workItemFilter = qWorkItemFilter || activeValueStream?.parameters?.workItemFilter || '';
+              const teamFilter = qTeamFilter || activeValueStream?.parameters?.teamFilter || '';
+              const epicFilter = qEpicFilter || activeValueStream?.parameters?.epicFilter || '';
+              const releasedFilter = qReleasedFilter !== 'all' ? qReleasedFilter : (activeValueStream?.parameters?.releasedFilter || 'all');
+              const minTcv = Math.max(qMinTcv, Number(activeValueStream?.parameters?.minTcvFilter) || 0);
+              const minScore = Math.max(qMinScore, Number(activeValueStream?.parameters?.minScoreFilter) || 0);
 
               const sprints = await db.collection('sprints').find({ is_archived: { $ne: true } }).sort({ start_date: 1 }).toArray();
               dbData.sprints = sprints.map(({ _id, ...rest }) => rest);
@@ -492,9 +492,9 @@ const MockDataPersistencePlugin = (): Plugin => ({
                     if (localData.teams?.length > 0) await db.collection('teams').insertMany(localData.teams);
                     if (localData.epics?.length > 0) await db.collection('epics').insertMany(localData.epics);
                     if (localData.sprints?.length > 0) await db.collection('sprints').insertMany(localData.sprints);
-                    const defaultDashboards = localData.dashboards || [{ id: 'main', name: 'Main Dashboard', parameters: {} }];
-                    await db.collection('dashboards').insertMany(defaultDashboards);
-                    dbData = { ...localData, settings, dashboards: defaultDashboards };
+                    const defaultValueStreams = localData.ValueStreams || [{ id: 'main', name: 'Main Value Stream', parameters: {} }];
+                    await db.collection('ValueStreams').insertMany(defaultValueStreams);
+                    dbData = { ...localData, settings, ValueStreams: defaultValueStreams };
                     // Recalculate scores for seeded data response
                     const seededW = applyScores(dbData.workItems, dbData.workItems, dbData.customers);
                     dbData.workItems = seededW;
@@ -703,7 +703,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
           const teams = await db.collection('teams').find({}).toArray();
           const epics = await db.collection('epics').find({}).toArray();
           const sprints = await db.collection('sprints').find({}).toArray();
-          const dashboards = await db.collection('dashboards').find({}).toArray();
+          const ValueStreams = await db.collection('ValueStreams').find({}).toArray();
           
           const stripId = (arr: any[]) => arr.map(doc => {
             const { _id, ...rest } = doc;
@@ -721,7 +721,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
                 teams: stripId(teams),
                 epics: stripId(epics),
                 sprints: stripId(sprints),
-                dashboards: stripId(dashboards),
+                ValueStreams: stripId(ValueStreams),
             } 
           }));
         } catch (e: any) {
@@ -753,7 +753,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
           if (importData.teams?.length > 0) await db.collection('teams').insertMany(importData.teams);
           if (importData.epics?.length > 0) await db.collection('epics').insertMany(importData.epics);
           if (importData.sprints?.length > 0) await db.collection('sprints').insertMany(importData.sprints);
-          if (importData.dashboards?.length > 0) await db.collection('dashboards').insertMany(importData.dashboards);
+          if (importData.ValueStreams?.length > 0) await db.collection('ValueStreams').insertMany(importData.ValueStreams);
 
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
@@ -1111,3 +1111,4 @@ export default defineConfig({
   server: { watch: { ignored: ['**/public/staticImport.json'] } },
   test: { environment: 'jsdom', globals: true }
 })
+

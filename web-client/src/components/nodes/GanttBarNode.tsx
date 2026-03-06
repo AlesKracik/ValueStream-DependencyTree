@@ -1,7 +1,7 @@
 import { memo, useState, useRef, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { addDays, format, parseISO } from 'date-fns';
-import { useDashboardContext } from '../../contexts/DashboardContext';
+import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import { sanitizeUrl } from '../../utils/security';
 import { calculateEpicEffortPerSprint } from '../../utils/businessLogic';
 
@@ -26,7 +26,7 @@ export interface GanttBarNodeData {
 const PIXELS_PER_DAY = 20;
 
 export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
-    const { data: dashboardData, updateEpic, showConfirm } = useDashboardContext();
+    const { data: ValueStreamData, updateEpic, showConfirm } = useValueStreamContext();
     const [dragState, setDragState] = useState<{ active: 'left' | 'right' | null, startX: number, currentDelta: number }>({
         active: null,
         startX: 0,
@@ -54,13 +54,13 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
     };
 
     const getActiveSprintStart = () => {
-        if (!dashboardData) return new Date();
+        if (!ValueStreamData) return new Date();
         const today = new Date();
-        const activeSprint = dashboardData.sprints.find(s => {
+        const activeSprint = ValueStreamData.sprints.find(s => {
             const start = parseISO(s.start_date);
             const end = parseISO(s.end_date);
             return today >= start && today <= end;
-        }) || dashboardData.sprints[0];
+        }) || ValueStreamData.sprints[0];
         return activeSprint ? parseISO(activeSprint.start_date) : new Date();
     };
 
@@ -98,8 +98,8 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
             }
 
             // Safety check for past work
-            if (dashboardData) {
-                const epic = dashboardData.epics.find(ep => ep.id === data.epicId);
+            if (ValueStreamData) {
+                const epic = ValueStreamData.epics.find(ep => ep.id === data.epicId);
                 if (epic) {
                     const activeSprintStart = getActiveSprintStart();
                     const isFutureEndShiftOnly = (newEndStr !== endStr) && (newStartStr === startStr) && parseISO(newEndStr) >= activeSprintStart;
@@ -110,7 +110,7 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
                     };
 
                     if (!isFutureEndShiftOnly) {
-                        const pastSprints = dashboardData.sprints.filter(s => parseISO(s.end_date) < activeSprintStart);
+                        const pastSprints = ValueStreamData.sprints.filter(s => parseISO(s.end_date) < activeSprintStart);
                         const hasPastWork = pastSprints.some(s => epic.sprint_effort_overrides?.[s.id] !== undefined);
 
                         if (hasPastWork) {
@@ -138,18 +138,18 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
     // Auto-freeze logic: If a sprint has passed and we don't have an override, 
     // snapshot the current calculated intensity as a permanent override.
     useEffect(() => {
-        if (!dashboardData) return;
+        if (!ValueStreamData) return;
 
-        const epic = dashboardData.epics.find(ep => ep.id === data.epicId);
+        const epic = ValueStreamData.epics.find(ep => ep.id === data.epicId);
         if (!epic) return;
 
         const activeSprintStart = getActiveSprintStart();
-        const pastSprints = dashboardData.sprints.filter(s => parseISO(s.end_date) < activeSprintStart);
+        const pastSprints = ValueStreamData.sprints.filter(s => parseISO(s.end_date) < activeSprintStart);
         
         let needsUpdate = false;
         const newOverrides = { ...(epic.sprint_effort_overrides || {}) };
 
-        const calculatedEffortPerSprint = calculateEpicEffortPerSprint(epic, dashboardData.sprints);
+        const calculatedEffortPerSprint = calculateEpicEffortPerSprint(epic, ValueStreamData.sprints);
 
         pastSprints.forEach(s => {
             if (newOverrides[s.id] === undefined && calculatedEffortPerSprint[s.id] !== undefined) {
@@ -161,7 +161,7 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
         if (needsUpdate) {
             updateEpic(data.epicId, { sprint_effort_overrides: newOverrides });
         }
-    }, [dashboardData, data.epicId, data.targetStart, data.targetEnd]);
+    }, [ValueStreamData, data.epicId, data.targetStart, data.targetEnd]);
 
     // Calculate visual dimensions based on drag state
     let visualWidth = data.width;
@@ -308,3 +308,6 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
 });
 
 export default GanttBarNode;
+
+
+

@@ -1,11 +1,11 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SprintPage } from '../SprintPage';
-import { DashboardProvider, NotificationProvider } from '../../../contexts/DashboardContext';
-import type { DashboardData } from '../../../types/models';
+import { ValueStreamProvider, NotificationProvider } from '../../../contexts/ValueStreamContext';
+import type { ValueStreamData } from '../../../types/models';
 
-const mockData: DashboardData = {
-    dashboards: [],
+const mockData: ValueStreamData = {
+    ValueStreams: [],
     settings: { jira_base_url: '', jira_api_version: '3', sprint_duration_days: 14 },
     customers: [],
     workItems: [],
@@ -33,9 +33,9 @@ describe('SprintPage', () => {
     it('renders the header title', () => {
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <SprintPage {...defaultProps} />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
         expect(screen.getByText('Sprint Management')).toBeDefined();
@@ -44,9 +44,9 @@ describe('SprintPage', () => {
     it('renders sprint name as an editable input', () => {
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <SprintPage {...defaultProps} />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
         const input = screen.getByDisplayValue('Sprint 1');
@@ -56,9 +56,9 @@ describe('SprintPage', () => {
     it('calls updateSprint when name is changed', () => {
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <SprintPage {...defaultProps} />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
         const input = screen.getByDisplayValue('Sprint 1');
@@ -69,9 +69,9 @@ describe('SprintPage', () => {
     it('starts creation flow when + Create Next Sprint is clicked', async () => {
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <SprintPage {...defaultProps} />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
         const startBtn = screen.getByText('+ Create Next Sprint');
@@ -85,9 +85,9 @@ describe('SprintPage', () => {
     it('calls addSprint when Save is clicked in draft row', async () => {
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <SprintPage {...defaultProps} />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
         fireEvent.click(screen.getByText('+ Create Next Sprint'));
@@ -103,9 +103,9 @@ describe('SprintPage', () => {
     it('prompts for confirmation before deleting a sprint', async () => {
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <SprintPage {...defaultProps} />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
         const deleteBtn = screen.getByText('Delete');
@@ -118,7 +118,7 @@ describe('SprintPage', () => {
     it('shows archive button on the first sprint only if it is in the past', async () => {
         // Provide mock data with two sprints to distinguish first/last
         // s1 is in the past, s2 is in the future (relative to any current date > 1970)
-        const twoSprintsData: DashboardData = {
+        const twoSprintsData: ValueStreamData = {
             ...mockData,
             sprints: [
                 { id: 's1', name: 'Sprint 1', start_date: '1970-01-01', end_date: '1970-01-14', quarter: 'FY1970 Q1' },
@@ -128,9 +128,9 @@ describe('SprintPage', () => {
         
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: twoSprintsData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: twoSprintsData, updateEpic: vi.fn() }}>
                     <SprintPage {...defaultProps} data={twoSprintsData} />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
         
@@ -149,7 +149,7 @@ describe('SprintPage', () => {
 
     it('hides archive button if the first sprint is not in the past', async () => {
         // s1 and s2 are both in the future
-        const futureSprintsData: DashboardData = {
+        const futureSprintsData: ValueStreamData = {
             ...mockData,
             sprints: [
                 { id: 's1', name: 'Sprint 1', start_date: '2099-01-01', end_date: '2099-01-14', quarter: 'FY2099 Q1' },
@@ -159,9 +159,9 @@ describe('SprintPage', () => {
         
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: futureSprintsData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: futureSprintsData, updateEpic: vi.fn() }}>
                     <SprintPage {...defaultProps} data={futureSprintsData} />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
         
@@ -174,9 +174,9 @@ describe('SprintPage', () => {
     it('renders quarter grouping labels', () => {
         const { container } = render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <SprintPage {...defaultProps} />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
         // Look for the text inside a div with the sectionHeader class
@@ -184,3 +184,6 @@ describe('SprintPage', () => {
         expect(qHeader?.textContent).toBe('FY2026 Q1');
     });
 });
+
+
+

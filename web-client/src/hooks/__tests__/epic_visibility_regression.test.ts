@@ -1,10 +1,10 @@
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { useGraphLayout } from '../useGraphLayout';
-import type { DashboardData } from '../../types/models';
+import type { ValueStreamData } from '../../types/models';
 
-const MOCK_DATA: DashboardData = {
-    dashboards: [], settings: { jira_base_url: "https://jira", jira_api_version: "3" },
+const MOCK_DATA: ValueStreamData = {
+    ValueStreams: [], settings: { jira_base_url: "https://jira", jira_api_version: "3" },
     customers: [
         { id: 'c1', name: 'Cust 1', existing_tcv: 100, potential_tcv: 0 }
     ],
@@ -55,7 +55,7 @@ describe('reproduce_epic_bug', () => {
     });
 
     it('should show a global work item even if no customers match the TCV filter but they are otherwise visible', () => {
-        const GLOBAL_DATA: DashboardData = {
+        const GLOBAL_DATA: ValueStreamData = {
             ...MOCK_DATA,
             workItems: [
                 {
@@ -93,3 +93,6 @@ describe('reproduce_epic_bug', () => {
         expect(f2Node, 'Global work item should be visible even if no customers match the TCV filter').toBeDefined();
     });
 });
+
+
+

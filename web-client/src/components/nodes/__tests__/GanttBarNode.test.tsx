@@ -1,8 +1,8 @@
 import { render, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { GanttBarNode } from '../GanttBarNode';
-import { DashboardProvider, NotificationProvider } from '../../../contexts/DashboardContext';
-import type { DashboardData } from '../../../types/models';
+import { ValueStreamProvider, NotificationProvider } from '../../../contexts/ValueStreamContext';
+import type { ValueStreamData } from '../../../types/models';
 
 // Mock React Flow components that don't play well with RTL
 vi.mock('@xyflow/react', () => ({
@@ -10,8 +10,8 @@ vi.mock('@xyflow/react', () => ({
     Position: { Left: 'left', Right: 'right' }
 }));
 
-const mockData: DashboardData = {
-    dashboards: [], settings: { jira_base_url: 'https://jira', jira_api_version: '3' },
+const mockData: ValueStreamData = {
+    ValueStreams: [], settings: { jira_base_url: 'https://jira', jira_api_version: '3' },
     customers: [],
     workItems: [],
     teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }],
@@ -56,9 +56,9 @@ describe('GanttBarNode Auto-Freeze', () => {
 
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
                     <GanttBarNode data={nodeData} />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
 
@@ -91,9 +91,9 @@ describe('GanttBarNode Auto-Freeze', () => {
 
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
                     <GanttBarNode data={nodeData} />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
 
@@ -119,3 +119,6 @@ describe('GanttBarNode Auto-Freeze', () => {
         vi.useRealTimers();
     });
 });
+
+
+

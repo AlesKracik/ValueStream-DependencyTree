@@ -131,7 +131,7 @@ export interface Settings {
   customer_mongo_custom_query?: string;
 }
 
-export interface DashboardParameters {
+export interface ValueStreamParameters {
   customerFilter: string;
   workItemFilter: string;
   releasedFilter: 'all' | 'released' | 'unreleased';
@@ -143,28 +143,28 @@ export interface DashboardParameters {
   endSprintId?: string;
 }
 
-export interface DashboardEntity {
+export interface ValueStreamEntity {
   id: string;
   name: string;
   description: string;
-  parameters: DashboardParameters;
+  parameters: ValueStreamParameters;
 }
 
-export interface DashboardData {
+export interface ValueStreamData {
   settings: Settings;
   customers: Customer[];
   workItems: WorkItem[];
   teams: Team[];
   epics: Epic[];
   sprints: Sprint[];
-  dashboards: DashboardEntity[];
+  ValueStreams: ValueStreamEntity[];
   metrics?: {
     maxScore: number;
     maxRoi: number;
   };
 }
 
-export interface DashboardViewState {
+export interface ValueStreamViewState {
   sprintOffset: number;
   customerFilter: string;
   workItemFilter: string;
@@ -179,3 +179,6 @@ export interface DashboardViewState {
   isInitialOffsetSet: boolean;
   viewport?: { x: number; y: number; zoom: number };
 }
+
+
+

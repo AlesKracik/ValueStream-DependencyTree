@@ -4,7 +4,7 @@
 The application uses a dual-mode persistence strategy to balance ease of local development with robust multi-user storage.
 
 ## Data Storage
-- **MongoDB:** Primary storage for production-like environments. Entities are stored in collections named after their logical types: `customers`, `workItems`, `teams`, `epics`, `sprints`, and `dashboards`.
+- **MongoDB:** Primary storage for production-like environments. Entities are stored in collections named after their logical types: `customers`, `workItems`, `teams`, `epics`, `sprints`, and `ValueStreams`.
 - **`staticImport.json`:** A fallback file-based storage used for seeding the database or sharing project state.
 
 ## The Vite Persistence Plugin
@@ -14,7 +14,7 @@ The "backend" logic resides in `web-client/vite.config.ts`. It utilizes `server.
 Fetches the project state, executes migrations, and performs server-side calculations.
 
 **Supported Query Parameters:**
-- `dashboardId`: (String) UUID of a persistent dashboard to load parameters from.
+- `ValueStreamId`: (String) UUID of a persistent ValueStream to load parameters from.
 - `customerFilter`: (String) Text-based search for customer names.
 - `workItemFilter`: (String) Text-based search for work item names.
 - `teamFilter`: (String) Text-based search for team names.
@@ -121,3 +121,7 @@ graph LR
 
 ## Seeding
 If the MongoDB database is empty on load, the plugin automatically reads `web-client/public/staticImport.json` and inserts the data into the corresponding collections.
+
+
+
+

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import type { DashboardData, Customer, WorkItem, Team, Epic, Settings, Sprint, DashboardEntity, DashboardParameters } from '../types/models';
+import type { ValueStreamData, Customer, WorkItem, Team, Epic, Settings, Sprint, ValueStreamEntity, ValueStreamParameters } from '../types/models';
 import { authorizedFetch, debounce } from '../utils/api';
 import { calculateQuarter } from '../utils/dateHelpers';
 
@@ -45,13 +45,13 @@ const persistSettings = async (settings: any, showAlert?: (title: string, messag
     }
 };
 
-export function useDashboardData(
-    dashboardId?: string, 
-    filters?: Partial<DashboardParameters>, 
+export function useValueStreamData(
+    ValueStreamId?: string, 
+    filters?: Partial<ValueStreamParameters>, 
     persistenceDebounceMs = 1000,
     showAlert?: (title: string, message: string) => Promise<void>
 ) {
-    const [data, setData] = useState<DashboardData | null>(null);
+    const [data, setData] = useState<ValueStreamData | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<Error | null>(null);
 
@@ -79,7 +79,7 @@ export function useDashboardData(
         try {
             setLoading(true);
             const params = new URLSearchParams();
-            if (dashboardId) params.append('dashboardId', dashboardId);
+            if (ValueStreamId) params.append('ValueStreamId', ValueStreamId);
             if (filters) {
                 Object.entries(filters).forEach(([key, value]) => {
                     if (value !== undefined && value !== null && value !== '') {
@@ -103,7 +103,7 @@ export function useDashboardData(
 
     useEffect(() => {
         fetchData();
-    }, [dashboardId, JSON.stringify(filters)]);
+    }, [ValueStreamId, JSON.stringify(filters)]);
 
     const refreshData = () => {
         fetchData();
@@ -396,16 +396,16 @@ export function useDashboardData(
         });
     };
 
-    const addDashboard = (dashboard: DashboardEntity) => {
-        persistEntity('dashboards', 'POST', dashboard, showAlert);
+    const addValueStream = (ValueStream: ValueStreamEntity) => {
+        persistEntity('ValueStreams', 'POST', ValueStream, showAlert);
         setData(prev => {
             if (!prev) return prev;
-            return { ...prev, dashboards: [...prev.dashboards, dashboard] };
+            return { ...prev, ValueStreams: [...prev.ValueStreams, ValueStream] };
         });
     };
 
-    const updateDashboard = async (id: string, updates: Partial<DashboardEntity>, immediate = false) => {
-        const existing = data?.dashboards.find(d => d.id === id);
+    const updateValueStream = async (id: string, updates: Partial<ValueStreamEntity>, immediate = false) => {
+        const existing = data?.ValueStreams.find(d => d.id === id);
         if (!existing) return;
         const updated = { ...existing, ...updates };
 
@@ -413,22 +413,22 @@ export function useDashboardData(
             if (!prev) return prev;
             return {
                 ...prev,
-                dashboards: prev.dashboards.map(d => d.id === id ? updated : d)
+                ValueStreams: prev.ValueStreams.map(d => d.id === id ? updated : d)
             };
         });
 
         if (immediate) {
-            await persistEntity('dashboards', 'POST', updated, showAlert);
+            await persistEntity('ValueStreams', 'POST', updated, showAlert);
         } else {
-            debouncedPersist('dashboards', 'POST', updated);
+            debouncedPersist('ValueStreams', 'POST', updated);
         }
     };
 
-    const deleteDashboard = (id: string) => {
-        persistEntity('dashboards', 'DELETE', { id }, showAlert);
+    const deleteValueStream = (id: string) => {
+        persistEntity('ValueStreams', 'DELETE', { id }, showAlert);
         setData(prev => {
             if (!prev) return prev;
-            return { ...prev, dashboards: prev.dashboards.filter(d => d.id !== id) };
+            return { ...prev, ValueStreams: prev.ValueStreams.filter(d => d.id !== id) };
         });
     };
 
@@ -453,8 +453,12 @@ export function useDashboardData(
         updateSprint,
         deleteSprint,
         updateSettings,
-        addDashboard,
-        updateDashboard,
-        deleteDashboard
+        addValueStream,
+        updateValueStream,
+        deleteValueStream
     };
 }
+
+
+
+

@@ -1,10 +1,10 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useDashboardData } from '../useDashboardData';
-import type { DashboardData } from '../../types/models';
+import { useValueStreamData } from '../useValueStreamData';
+import type { ValueStreamData } from '../../types/models';
 
-const mockData: DashboardData = {
-    dashboards: [], settings: { jira_base_url: 'https://jira.com', jira_api_version: '3' },
+const mockData: ValueStreamData = {
+    ValueStreams: [], settings: { jira_base_url: 'https://jira.com', jira_api_version: '3' },
     customers: [
         { id: 'c1', name: 'Cust 1', existing_tcv: 100, potential_tcv: 0 }
     ],
@@ -19,7 +19,7 @@ const mockData: DashboardData = {
     metrics: { maxScore: 100, maxRoi: 10 }
 };
 
-describe('useDashboardData', () => {
+describe('useValueStreamData', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         const fetchMock = vi.fn().mockImplementation((url) => {
@@ -35,7 +35,7 @@ describe('useDashboardData', () => {
     });
 
     it('loads initial data', async () => {
-        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 0));
         
         expect(result.current.loading).toBe(true);
         
@@ -43,13 +43,13 @@ describe('useDashboardData', () => {
         expect(result.current.data?.customers).toHaveLength(1);
     });
 
-    it('passes dashboardId and filters to the API', async () => {
+    it('passes ValueStreamId and filters to the API', async () => {
         const filters = { customerFilter: 'test', minTcvFilter: '100' };
-        renderHook(() => useDashboardData('dash123', filters, 0));
+        renderHook(() => useValueStreamData('dash123', filters, 0));
         
         await waitFor(() => {
             expect(fetch).toHaveBeenCalledWith(
-                expect.stringContaining('/api/loadData?dashboardId=dash123&customerFilter=test&minTcvFilter=100'),
+                expect.stringContaining('/api/loadData?ValueStreamId=dash123&customerFilter=test&minTcvFilter=100'),
                 expect.objectContaining({
                     headers: expect.objectContaining({
                         'Authorization': expect.stringContaining('Bearer')
@@ -69,10 +69,10 @@ describe('useDashboardData', () => {
             minTcvFilter: '500',
             minScoreFilter: '10'
         };
-        renderHook(() => useDashboardData('dash789', filters, 0));
+        renderHook(() => useValueStreamData('dash789', filters, 0));
         
         await waitFor(() => {
-            const expectedUrl = '/api/loadData?dashboardId=dash789&customerFilter=cust&workItemFilter=work&teamFilter=team&epicFilter=epic&releasedFilter=released&minTcvFilter=500&minScoreFilter=10';
+            const expectedUrl = '/api/loadData?ValueStreamId=dash789&customerFilter=cust&workItemFilter=work&teamFilter=team&epicFilter=epic&releasedFilter=released&minTcvFilter=500&minScoreFilter=10';
             expect(fetch).toHaveBeenCalledWith(
                 expect.stringContaining(expectedUrl),
                 expect.objectContaining({
@@ -85,7 +85,7 @@ describe('useDashboardData', () => {
     });
 
     it('adds a customer', async () => {
-        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         const newCust = { id: 'c2', name: 'Cust 2', existing_tcv: 0, potential_tcv: 50 };
@@ -107,7 +107,7 @@ describe('useDashboardData', () => {
     });
 
     it('deletes a sprint', async () => {
-        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         act(() => {
@@ -127,7 +127,7 @@ describe('useDashboardData', () => {
     });
 
     it('archives a sprint and filters it out from the data', async () => {
-        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         act(() => {
@@ -150,7 +150,7 @@ describe('useDashboardData', () => {
     });
 
     it('cascades deleteCustomer to workItem targets', async () => {
-        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         act(() => {
@@ -174,7 +174,7 @@ describe('useDashboardData', () => {
     });
 
     it('cascades deleteWorkItem to epics', async () => {
-        const dataWithEpic: DashboardData = {
+        const dataWithEpic: ValueStreamData = {
             ...mockData,
             epics: [{ id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', effort_md: 5, name: 'Epic 1' }]
         };
@@ -183,7 +183,7 @@ describe('useDashboardData', () => {
             return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
         }));
 
-        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         act(() => {
@@ -205,7 +205,7 @@ describe('useDashboardData', () => {
     });
 
     it('recomputes sprint quarters when fiscal year setting changes', async () => {
-        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         // Initial: FY starts in January (default). 2026-01-01 is FY2026 Q1
@@ -234,7 +234,7 @@ describe('useDashboardData', () => {
     });
 
     it('assigns sprint to the quarter in which it ends', async () => {
-        const dataWithCrossQuarterSprint: DashboardData = {
+        const dataWithCrossQuarterSprint: ValueStreamData = {
             ...mockData,
             settings: { ...mockData.settings, fiscal_year_start_month: 7 }, // July 1st FY start
             sprints: [
@@ -252,7 +252,7 @@ describe('useDashboardData', () => {
             return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
         }));
 
-        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         // FY starts July 1.
@@ -271,7 +271,7 @@ describe('useDashboardData', () => {
     });
 
     it('refreshes data when MongoDB connection settings change', async () => {
-        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         // Reset mock to track new calls
@@ -289,7 +289,7 @@ describe('useDashboardData', () => {
     });
 
     it('refreshes data when mongo_create_if_not_exists setting changes', async () => {
-        const { result } = renderHook(() => useDashboardData(undefined, {}, 0));
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         // Reset mock to track new calls
@@ -308,7 +308,7 @@ describe('useDashboardData', () => {
 
     it('shows an alert when an ID collision occurs (409 Conflict)', async () => {
         const mockAlert = vi.fn();
-        const { result } = renderHook(() => useDashboardData(undefined, {}, 0, mockAlert));
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 0, mockAlert));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         // Mock a 409 Conflict response for the next fetch
@@ -329,3 +329,6 @@ describe('useDashboardData', () => {
         });
     });
 });
+
+
+

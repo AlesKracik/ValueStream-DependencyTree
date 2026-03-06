@@ -1,6 +1,6 @@
-# Value Stream Dependency Tree
+# ValueStream Dependency Tree
 
-An interactive React dashboard designed to visualize the flow of value from customer demand to engineering execution. It maps Customers (and their Total Contract Value/TCV) through Work Items and Teams to a React Flow Gantt Timeline.
+An interactive React ValueStream designed to visualize the flow of value from customer demand to engineering execution. It maps Customers (and their Total Contract Value/TCV) through Work Items and Teams to a React Flow Gantt Timeline.
 
 ## 🚀 Getting Started
 
@@ -83,7 +83,7 @@ For a detailed deep-dive into the system components, data flow, and code pattern
 
 ## 📖 User Guide
 
-A comprehensive guide on how to use the dashboard, manage TCV, and synchronize with Jira can be found in the **[User Guide](./public/USER_GUIDE.md)** or accessed directly within the application via the "Documentation" link.
+A comprehensive guide on how to use the ValueStream, manage TCV, and synchronize with Jira can be found in the **[User Guide](./public/USER_GUIDE.md)** or accessed directly within the application via the "Documentation" link.
 
 ---
 
@@ -93,3 +93,8 @@ The application includes a built-in security layer:
 - **Authentication:** Enforced via `ADMIN_SECRET` environment variable.
 - **Secure Storage:** sensitive credentials are kept in a non-public `settings.json` on the server.
 - **Authorized Communication:** All API calls are protected by Bearer token validation.
+
+
+
+
+

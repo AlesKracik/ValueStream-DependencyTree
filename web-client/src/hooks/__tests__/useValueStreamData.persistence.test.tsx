@@ -1,10 +1,10 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { useDashboardData } from '../useDashboardData';
-import type { DashboardData } from '../../types/models';
+import { useValueStreamData } from '../useValueStreamData';
+import type { ValueStreamData } from '../../types/models';
 
-const mockData: DashboardData = {
-    dashboards: [], 
+const mockData: ValueStreamData = {
+    ValueStreams: [], 
     settings: { jira_base_url: 'https://jira.com', jira_api_version: '3' },
     customers: [],
     workItems: [],
@@ -17,7 +17,7 @@ const mockData: DashboardData = {
     metrics: { maxScore: 100, maxRoi: 10 }
 };
 
-describe('useDashboardData Persistence', () => {
+describe('useValueStreamData Persistence', () => {
     beforeEach(() => {
         const fetchMock = vi.fn().mockImplementation((url) => {
             if (url.startsWith('/api/loadData')) {
@@ -37,7 +37,7 @@ describe('useDashboardData Persistence', () => {
 
     it('debounces multiple updates to the SAME epic', async () => {
         // Use a small debounce for testing with real timers
-        const { result } = renderHook(() => useDashboardData(undefined, {}, 50));
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 50));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         vi.mocked(fetch).mockClear();
@@ -60,7 +60,7 @@ describe('useDashboardData Persistence', () => {
     });
 
     it('does NOT debounce updates to DIFFERENT epics (independent timers)', async () => {
-        const { result } = renderHook(() => useDashboardData(undefined, {}, 50));
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 50));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         vi.mocked(fetch).mockClear();
@@ -82,7 +82,7 @@ describe('useDashboardData Persistence', () => {
     });
 
     it('persists immediately when the immediate flag is set', async () => {
-        const { result } = renderHook(() => useDashboardData(undefined, {}, 1000));
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 1000));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         vi.mocked(fetch).mockClear();
@@ -113,7 +113,7 @@ describe('useDashboardData Persistence', () => {
             return fetchPromise;
         }));
 
-        const { result } = renderHook(() => useDashboardData(undefined, {}, 1000));
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 1000));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         let updateResolved = false;
@@ -132,7 +132,7 @@ describe('useDashboardData Persistence', () => {
     });
 
     it('supports immediate flag for updateSprint', async () => {
-        const dataWithSprint: DashboardData = {
+        const dataWithSprint: ValueStreamData = {
             ...mockData,
             sprints: [{ id: 's1', name: 'S1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'Q1' }]
         };
@@ -141,7 +141,7 @@ describe('useDashboardData Persistence', () => {
             return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true }) });
         }));
 
-        const { result } = renderHook(() => useDashboardData(undefined, {}, 1000));
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 1000));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         vi.mocked(fetch).mockClear();
@@ -159,3 +159,6 @@ describe('useDashboardData Persistence', () => {
         );
     });
 });
+
+
+

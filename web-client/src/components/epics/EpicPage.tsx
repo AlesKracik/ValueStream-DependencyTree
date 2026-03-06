@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { parseISO } from 'date-fns';
-import type { DashboardData, Epic } from '../../types/models';
+import type { ValueStreamData, Epic } from '../../types/models';
 import { syncJiraIssue } from "../../utils/api";
-import { useDashboardContext } from '../../contexts/DashboardContext';
+import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import styles from '../customers/CustomerPage.module.css';
 import { PageWrapper } from '../layout/PageWrapper';
 import { calculateEpicEffortPerSprint, parseJiraIssue } from '../../utils/businessLogic';
@@ -11,7 +11,7 @@ import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers'
 export interface EpicPageProps {
     epicId: string;
     onBack: () => void;
-    data: DashboardData | null;
+    data: ValueStreamData | null;
     loading: boolean;
     error: Error | null;
     updateEpic: (id: string, updates: Partial<Epic>, immediate?: boolean) => Promise<void>;
@@ -27,7 +27,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({
     updateEpic,
     deleteEpic
 }) => {
-    const { showAlert, showConfirm } = useDashboardContext();
+    const { showAlert, showConfirm } = useValueStreamContext();
     const [syncing, setSyncing] = useState<boolean>(false);
 
     const epic = data?.epics.find(e => e.id === epicId);
@@ -329,3 +329,6 @@ export const EpicPage: React.FC<EpicPageProps> = ({
         </PageWrapper>
     );
 };
+
+
+

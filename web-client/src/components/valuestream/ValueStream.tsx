@@ -5,7 +5,7 @@ import { parseISO, differenceInDays } from 'date-fns';
 import '@xyflow/react/dist/style.css';
 
 import { useGraphLayout } from '../../hooks/useGraphLayout';
-import type { DashboardData, Customer, WorkItem, Team, DashboardViewState, DashboardParameters } from '../../types/models';
+import type { ValueStreamData, Customer, WorkItem, Team, ValueStreamViewState, ValueStreamParameters } from '../../types/models';
 import { CustomerNode } from '../nodes/CustomerNode';
 import { WorkItemNode } from '../nodes/WorkItemNode';
 import { TeamNode } from '../nodes/TeamNode';
@@ -14,7 +14,7 @@ import { SprintCapacityNode } from '../nodes/SprintCapacityNode';
 import { TodayLineNode } from '../nodes/TodayLineNode';
 import { HeaderNode } from '../nodes/HeaderNode';
 import { EditNodeModal } from './EditNodeModal';
-import styles from './Dashboard.module.css';
+import styles from './ValueStream.module.css';
 
 // Register custom node types with React Flow
 const nodeTypes = {
@@ -27,13 +27,13 @@ const nodeTypes = {
     headerNode: HeaderNode,
 };
 
-interface DashboardControlsProps {
-    data: DashboardData | null;
+interface ValueStreamControlsProps {
+    data: ValueStreamData | null;
     nodes: Node[];
-    setViewState: React.Dispatch<React.SetStateAction<DashboardViewState>>;
+    setViewState: React.Dispatch<React.SetStateAction<ValueStreamViewState>>;
 }
 
-const DashboardControls: React.FC<DashboardControlsProps> = ({ data, nodes, setViewState }) => {
+const ValueStreamControls: React.FC<ValueStreamControlsProps> = ({ data, nodes, setViewState }) => {
     const { zoomIn, zoomOut, setViewport } = useReactFlow();
 
     const handleFitView = React.useCallback(() => {
@@ -116,52 +116,52 @@ const DashboardControls: React.FC<DashboardControlsProps> = ({ data, nodes, setV
     );
 };
 
-export interface DashboardProps {
-    data: DashboardData | null;
+export interface ValueStreamProps {
+    data: ValueStreamData | null;
     loading: boolean;
     error: Error | null;
     updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
     updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
     updateTeam: (id: string, updates: Partial<Team>, immediate?: boolean) => Promise<void>;
-    currentDashboardId?: string;
+    currentValueStreamId?: string;
     
-    viewState: DashboardViewState;
-    setViewState: React.Dispatch<React.SetStateAction<DashboardViewState>>;
+    viewState: ValueStreamViewState;
+    setViewState: React.Dispatch<React.SetStateAction<ValueStreamViewState>>;
     onNavigateToCustomer: (id: string) => void;
     onNavigateToWorkItem: (id: string) => void;
     onNavigateToTeam: (id: string) => void;
     onNavigateToEpic: (id: string) => void;
     onNavigateToSprint: (id: string) => void;
-    onNavigateToDashboardEdit: (id: string) => void;
+    onNavigateToValueStreamEdit: (id: string) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({
+export const ValueStream: React.FC<ValueStreamProps> = ({
     data, loading, error,
-    updateCustomer, updateWorkItem, updateTeam, currentDashboardId,
+    updateCustomer, updateWorkItem, updateTeam, currentValueStreamId,
      viewState, setViewState,
     onNavigateToCustomer,
     onNavigateToWorkItem,
     onNavigateToEpic,
     onNavigateToTeam,
     onNavigateToSprint,
-    onNavigateToDashboardEdit
+    onNavigateToValueStreamEdit
 }) => {
     const { setViewport } = useReactFlow();
     const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
     const [editingNode, setEditingNode] = React.useState<Node | null>(null);
 
-    const currentDashboard = data?.dashboards.find(d => d.id === currentDashboardId);
+    const currentValueStream = data?.ValueStreams.find(d => d.id === currentValueStreamId);
     
-    const baseParams: DashboardParameters = {
-        customerFilter: currentDashboard?.parameters?.customerFilter || '',
-        workItemFilter: currentDashboard?.parameters?.workItemFilter || '',
-        releasedFilter: currentDashboard?.parameters?.releasedFilter || 'all',
-        minTcvFilter: currentDashboard?.parameters?.minTcvFilter || '',
-        minScoreFilter: currentDashboard?.parameters?.minScoreFilter || '',
-        teamFilter: currentDashboard?.parameters?.teamFilter || '',
-        epicFilter: currentDashboard?.parameters?.epicFilter || '',
-        startSprintId: currentDashboard?.parameters?.startSprintId || '',
-        endSprintId: currentDashboard?.parameters?.endSprintId || ''
+    const baseParams: ValueStreamParameters = {
+        customerFilter: currentValueStream?.parameters?.customerFilter || '',
+        workItemFilter: currentValueStream?.parameters?.workItemFilter || '',
+        releasedFilter: currentValueStream?.parameters?.releasedFilter || 'all',
+        minTcvFilter: currentValueStream?.parameters?.minTcvFilter || '',
+        minScoreFilter: currentValueStream?.parameters?.minScoreFilter || '',
+        teamFilter: currentValueStream?.parameters?.teamFilter || '',
+        epicFilter: currentValueStream?.parameters?.epicFilter || '',
+        startSprintId: currentValueStream?.parameters?.startSprintId || '',
+        endSprintId: currentValueStream?.parameters?.endSprintId || ''
     };
 
     const { nodes, edges } = useGraphLayout(
@@ -317,7 +317,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         minScoreFilter: viewState.minScoreFilter
     });
 
-    // Update local filters when viewState changes (e.g. on initial load or dashboard switch)
+    // Update local filters when viewState changes (e.g. on initial load or ValueStream switch)
     React.useEffect(() => {
         setLocalFilters({
             customerFilter: viewState.customerFilter,
@@ -344,16 +344,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
         setLocalFilters(prev => ({ ...prev, [key]: value }));
     };
 
-    if (loading && !data) return <div>Loading dashboard...</div>;
+    if (loading && !data) return <div>Loading ValueStream...</div>;
     if (error) return <div>Error loading data: {error.message}</div>;
     if (!data && !loading) return <div>No data available</div>;
 
     return (
-        <div className={styles.dashboardContainer}>
+        <div className={styles.ValueStreamContainer}>
             <div className={styles.header}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-                        <h1>Value Stream Dashboard</h1>
+                        <h1>Value Stream</h1>
                         {loading && (
                             <div className={styles.loadingSpinner} title="Updating data..." />
                         )}
@@ -386,9 +386,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 &gt;
                             </button>
                         </div>
-                        {currentDashboardId && (
+                        {currentValueStreamId && (
                             <button
-                                onClick={() => onNavigateToDashboardEdit(currentDashboardId)}
+                                onClick={() => onNavigateToValueStreamEdit(currentValueStreamId)}
                                 className="btn-primary"
                                 style={{ height: '37px', padding: '0 12px', fontSize: '13px' }}
                             >
@@ -439,7 +439,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <select
                                 value={viewState.releasedFilter}
-                                onChange={e => setViewState((s: DashboardViewState) => ({ ...s, releasedFilter: e.target.value as any }))}
+                                onChange={e => setViewState((s: ValueStreamViewState) => ({ ...s, releasedFilter: e.target.value as any }))}
                                 style={{ width: '150px' }}
                             >
                                 <option value="all">Release: All</option>
@@ -476,7 +476,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 <input
                                     type="checkbox"
                                     checked={viewState.showDependencies}
-                                    onChange={e => setViewState((s: DashboardViewState) => ({ ...s, showDependencies: e.target.checked }))}
+                                    onChange={e => setViewState((s: ValueStreamViewState) => ({ ...s, showDependencies: e.target.checked }))}
                                 />
                                 Show Dependencies
                             </label>
@@ -484,7 +484,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 <input
                                     type="checkbox"
                                     checked={viewState.disableHoverHighlight}
-                                    onChange={e => setViewState((s: DashboardViewState) => ({ ...s, disableHoverHighlight: e.target.checked }))}
+                                    onChange={e => setViewState((s: ValueStreamViewState) => ({ ...s, disableHoverHighlight: e.target.checked }))}
                                 />
                                 Disable Hover Highlight
                             </label>
@@ -512,7 +512,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     proOptions={{ hideAttribution: true }}
                 >
                     <Background color="#1a1a1a" variant={BackgroundVariant.Lines} gap={100} />
-                    <DashboardControls data={data} nodes={nodes} setViewState={setViewState} />
+                    <ValueStreamControls data={data} nodes={nodes} setViewState={setViewState} />
                 </ReactFlow>
             </div>
 
@@ -530,3 +530,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
     );
 };
+
+
+
+
+

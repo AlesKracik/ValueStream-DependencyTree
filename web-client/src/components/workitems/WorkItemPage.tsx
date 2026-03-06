@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import type { DashboardData, WorkItem, Epic } from '../../types/models';
+import type { ValueStreamData, WorkItem, Epic } from '../../types/models';
 import { syncJiraIssue } from "../../utils/api";
 import { SearchableDropdown } from '../common/SearchableDropdown';
-import { useDashboardContext } from '../../contexts/DashboardContext';
+import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import styles from '../customers/CustomerPage.module.css';
 import { generateId } from '../../utils/security';
 import { calculateWorkItemEffort, calculateWorkItemTcv, parseJiraIssue } from '../../utils/businessLogic';
@@ -11,7 +11,7 @@ import { PageWrapper } from '../layout/PageWrapper';
 export interface WorkItemPageProps {
     workItemId: string;
     onBack: () => void;
-    data: DashboardData | null;
+    data: ValueStreamData | null;
     loading: boolean;
     error: Error | null;
     addWorkItem: (f: WorkItem) => void;
@@ -35,7 +35,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     deleteEpic,
     updateEpic
 }) => {
-    const { showAlert, showConfirm } = useDashboardContext();
+    const { showAlert, showConfirm } = useValueStreamContext();
     const isNew = workItemId === 'new';
 
     // Draft states for new workItem creation
@@ -613,3 +613,6 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
         </PageWrapper>
     );
 };
+
+
+

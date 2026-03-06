@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { Dashboard } from '../Dashboard';
+import { ValueStream } from '../ValueStream';
 import { ReactFlowProvider } from '@xyflow/react';
-import { DashboardProvider, NotificationProvider } from '../../../contexts/DashboardContext';
-import type { DashboardData, DashboardViewState } from '../../../types/models';
+import { ValueStreamProvider, NotificationProvider } from '../../../contexts/ValueStreamContext';
+import type { ValueStreamData, ValueStreamViewState } from '../../../types/models';
 
 // Mock ResizeObserver which is needed by React Flow
 vi.stubGlobal('ResizeObserver', class {
@@ -12,8 +12,8 @@ vi.stubGlobal('ResizeObserver', class {
     disconnect() {}
 });
 
-const mockData: DashboardData = {
-    dashboards: [],
+const mockData: ValueStreamData = {
+    ValueStreams: [],
     settings: { jira_base_url: '', jira_api_version: '3' },
     customers: [{ id: 'c1', name: 'Customer 1', existing_tcv: 100, potential_tcv: 50 }],
     workItems: [{ id: 'w1', name: 'Work Item 1', total_effort_mds: 10, score: 0, customer_targets: [] }],
@@ -22,7 +22,7 @@ const mockData: DashboardData = {
     sprints: [{ id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY2026 Q1' }]
 };
 
-const mockViewState: DashboardViewState = {
+const mockViewState: ValueStreamViewState = {
     sprintOffset: 0,
     customerFilter: '',
     workItemFilter: '',
@@ -36,7 +36,7 @@ const mockViewState: DashboardViewState = {
     isInitialOffsetSet: true
 };
 
-describe('Dashboard', () => {
+describe('Value Stream', () => {
     const onNavigateToSprint = vi.fn();
     const onNavigateToCustomer = vi.fn();
 
@@ -54,7 +54,7 @@ describe('Dashboard', () => {
         onNavigateToTeam: vi.fn(),
         onNavigateToEpic: vi.fn(),
         onNavigateToSprint,
-        onNavigateToDashboardEdit: vi.fn()
+        onNavigateToValueStreamEdit: vi.fn()
     };
 
     beforeEach(() => {
@@ -65,14 +65,14 @@ describe('Dashboard', () => {
         const onNavigateToTeam = vi.fn();
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <ReactFlowProvider>
-                        <Dashboard 
+                        <ValueStream 
                             {...defaultProps}
                             onNavigateToTeam={onNavigateToTeam}
                         />
                     </ReactFlowProvider>
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
 
@@ -85,13 +85,13 @@ describe('Dashboard', () => {
     it('navigates to customer page when customer node is clicked', () => {
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <ReactFlowProvider>
-                        <Dashboard 
+                        <ValueStream 
                             {...defaultProps}
                         />
                     </ReactFlowProvider>
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
         const customerNode = screen.getByText('Customer 1');
@@ -100,3 +100,8 @@ describe('Dashboard', () => {
         expect(onNavigateToCustomer).toHaveBeenCalledWith('c1');
     });
 });
+
+
+
+
+

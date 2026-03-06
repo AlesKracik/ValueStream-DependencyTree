@@ -1,10 +1,10 @@
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { useGraphLayout } from '../useGraphLayout';
-import type { DashboardData } from '../../types/models';
+import type { ValueStreamData } from '../../types/models';
 
-const MOCK_DATA: DashboardData = {
-    dashboards: [], settings: { jira_base_url: "https://jira", jira_api_version: "3" },
+const MOCK_DATA: ValueStreamData = {
+    ValueStreams: [], settings: { jira_base_url: "https://jira", jira_api_version: "3" },
     customers: [
         { id: 'c1', name: 'Cust 1', existing_tcv: 100, existing_tcv_valid_from: '2026-01-01', potential_tcv: 0 },
         { id: 'c2', name: 'Cust 2', existing_tcv: 1000, existing_tcv_valid_from: '2026-01-01', potential_tcv: 500 }
@@ -106,7 +106,7 @@ describe('useGraphLayout Math Engine', () => {
     });
 
     it('filters nodes based on persistent sprint range', () => {
-        const DATA_WITH_TIME: DashboardData = {
+        const DATA_WITH_TIME: ValueStreamData = {
             ...MOCK_DATA,
             sprints: [
                 { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' },
@@ -138,7 +138,7 @@ describe('useGraphLayout Math Engine', () => {
     });
 
     it('calculates hasUnestimatedEffort correctly', () => {
-        const TEST_DATA: DashboardData = {
+        const TEST_DATA: ValueStreamData = {
             ...MOCK_DATA,
             workItems: [
                 { id: 'f1', name: 'Estimated Feat', total_effort_mds: 10, score: 50, customer_targets: [] },
@@ -163,7 +163,7 @@ describe('useGraphLayout Math Engine', () => {
     });
 
     it('reflects team capacity overrides in sprint capacity nodes', () => {
-        const OVERRIDE_DATA: DashboardData = {
+        const OVERRIDE_DATA: ValueStreamData = {
             ...MOCK_DATA,
             teams: [
                 { 
@@ -183,7 +183,7 @@ describe('useGraphLayout Math Engine', () => {
     });
 
     it('calculates holiday impact on team capacity correctly', () => {
-        const HOLIDAY_DATA: DashboardData = {
+        const HOLIDAY_DATA: ValueStreamData = {
             ...MOCK_DATA,
             teams: [
                 { 
@@ -207,3 +207,6 @@ describe('useGraphLayout Math Engine', () => {
         expect((capNode?.data as any).totalCapacityMds).toBe(9);
     });
 });
+
+
+

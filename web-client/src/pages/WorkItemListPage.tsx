@@ -1,13 +1,13 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { DashboardData, WorkItem } from '../types/models';
+import type { ValueStreamData, WorkItem } from '../types/models';
 import { calculateWorkItemEffort, calculateWorkItemTcv } from '../utils/businessLogic';
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption } from '../components/common/GenericListPage';
 import { ListAttributeGrid, ListAttribute } from '../components/common/ListAttributeGrid';
 
 interface Props {
-    data: DashboardData | null;
+    data: ValueStreamData | null;
     loading: boolean;
 }
 
@@ -62,3 +62,6 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
         />
     );
 };
+
+
+

@@ -1,12 +1,12 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { DashboardData, Team } from '../types/models';
+import type { ValueStreamData, Team } from '../types/models';
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption } from '../components/common/GenericListPage';
 import { ListAttributeGrid, ListAttribute } from '../components/common/ListAttributeGrid';
 
 interface Props {
-    data: DashboardData | null;
+    data: ValueStreamData | null;
     loading: boolean;
 }
 
@@ -43,3 +43,6 @@ export const TeamListPage: React.FC<Props> = ({ data, loading }) => {
         />
     );
 };
+
+
+

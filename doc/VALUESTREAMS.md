@@ -1,18 +1,18 @@
-# Persistent Dashboards
+# Persistent ValueStreams
 
 ## Overview
-The system allows users to create multiple "views" of the project data using persistent dashboard definitions. Each dashboard stores a set of filter parameters that define the visible scope of the value stream.
+The system allows users to create multiple "views" of the project data using persistent ValueStream definitions. Each ValueStream stores a set of filter parameters that define the visible scope of the ValueStream.
 
 ## Data Model
 ```typescript
-export interface DashboardEntity {
+export interface ValueStreamEntity {
   id: string;
   name: string;
   description: string;
-  parameters: DashboardParameters;
+  parameters: ValueStreamParameters;
 }
 
-export interface DashboardParameters {
+export interface ValueStreamParameters {
   customerFilter: string;
   workItemFilter: string;
   releasedFilter: 'all' | 'released' | 'unreleased';
@@ -27,10 +27,10 @@ export interface DashboardParameters {
 
 ## Filtration Architecture
 
-The dashboard employs a multi-layered filtering system that combines **Server-Side Enforcement** (for persistent and heavy filters) and **Client-Side Transient Filters** (for live feedback).
+The ValueStream employs a multi-layered filtering system that combines **Server-Side Enforcement** (for persistent and heavy filters) and **Client-Side Transient Filters** (for live feedback).
 
 ### 1. The Hydration Phase (Server-Side)
-When a dashboard is loaded, the client requests data using the `dashboardId`. The backend (MongoDB or the Vite proxy) applies the **Persistent Filters** directly to the database query:
+When a ValueStream is loaded, the client requests data using the `ValueStreamId`. The backend (MongoDB or the Vite proxy) applies the **Persistent Filters** directly to the database query:
 - **Optimization:** Only the relevant subset of customers, work items, and epics is transmitted over the network.
 - **Scoring:** RICE scores are calculated on the full dataset before filtering to ensure accuracy.
 - **Global Metrics:** The server returns global max values (e.g., `maxScore`) so the UI remains consistently scaled even when only a few items are visible.
@@ -44,7 +44,7 @@ As users type in the filter bar, the `useGraphLayout` hook applies **Transient F
 
 | Step | Enforcement | Logic |
 | :--- | :--- | :--- |
-| **Initial Load** | Database | Fetches items matching Persistent Dashboard Parameters. |
+| **Initial Load** | Database | Fetches items matching Persistent ValueStream Parameters. |
 | **Numeric Thresholds** | Server & Client | `Math.max(Transient, Persistent)` - stricter wins. |
 | **Text Searches** | Server & Client | Logical AND - must match persistent criteria AND transient search string. |
 | **Intersection** | Client | Hides items that don't form a complete path (Customer -> WorkItem -> Epic). |
@@ -58,6 +58,10 @@ graph TD
 ```
 
 ## Configuration
-- Dashboards are managed via the **Dashboard List** page.
-- Parameters are edited via the **Edit Parameters** button located in the top-right corner of the active dashboard.
-- Parameters are stored in the MongoDB `dashboards` collection.
+- Value Streams are managed via the **ValueStream List** page.
+- Parameters are edited via the **Edit Parameters** button located in the top-right corner of the active ValueStream.
+- Parameters are stored in the MongoDB `ValueStreams` collection.
+
+
+
+

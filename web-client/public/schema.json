@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "Value Stream Dashboard API Payload",
-    "description": "JSON Schema defining the exact structure required for the Value Stream Dependency Tree visualization.",
+    "title": "ValueStream API Payload",
+    "description": "JSON Schema defining the exact structure required for the ValueStream Dependency Tree visualization.",
     "type": "object",
     "required": [
         "settings",
@@ -10,7 +10,7 @@
         "teams",
         "epics",
         "sprints",
-        "dashboards"
+        "ValueStreams"
     ],
     "properties": {
         "settings": {
@@ -383,7 +383,7 @@
                 }
             }
         },
-        "dashboards": {
+        "ValueStreams": {
             "type": "array",
             "items": {
                 "type": "object",
@@ -431,3 +431,8 @@
         }
     }
 }
+
+
+
+
+

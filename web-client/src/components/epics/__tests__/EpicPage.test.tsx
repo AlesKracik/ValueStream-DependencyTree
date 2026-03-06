@@ -1,8 +1,8 @@
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EpicPage } from '../EpicPage';
-import { DashboardProvider, NotificationProvider } from '../../../contexts/DashboardContext';
-import type { DashboardData } from '../../../types/models';
+import { ValueStreamProvider, NotificationProvider } from '../../../contexts/ValueStreamContext';
+import type { ValueStreamData } from '../../../types/models';
 import * as api from '../../../utils/api';
 
 vi.mock('../../../utils/api', async () => {
@@ -14,8 +14,8 @@ vi.mock('../../../utils/api', async () => {
     };
 });
 
-const mockData: DashboardData = {
-    dashboards: [], settings: { jira_base_url: 'https://jira', jira_api_version: '3' },
+const mockData: ValueStreamData = {
+    ValueStreams: [], settings: { jira_base_url: 'https://jira', jira_api_version: '3' },
     customers: [],
     workItems: [],
     teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }],
@@ -59,9 +59,9 @@ describe('EpicPage', () => {
         it('prompts user and clears past work when shifting dates if they confirm', async () => {
             render(
                 <NotificationProvider>
-                    <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                    <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
                         <EpicPage {...defaultProps} />
-                    </DashboardProvider>
+                    </ValueStreamProvider>
                 </NotificationProvider>
             );
             
@@ -89,9 +89,9 @@ describe('EpicPage', () => {
         it('aborts date shift if user cancels the confirmation', async () => {
             render(
                 <NotificationProvider>
-                    <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                    <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
                         <EpicPage {...defaultProps} />
-                    </DashboardProvider>
+                    </ValueStreamProvider>
                 </NotificationProvider>
             );
             
@@ -110,9 +110,9 @@ describe('EpicPage', () => {
         it('does NOT prompt when shifting end date into the future', async () => {
             render(
                 <NotificationProvider>
-                    <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                    <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
                         <EpicPage {...defaultProps} />
-                    </DashboardProvider>
+                    </ValueStreamProvider>
                 </NotificationProvider>
             );
             
@@ -131,9 +131,9 @@ describe('EpicPage', () => {
         it('shows an alert and prevents update if start date is not before end date', async () => {
             render(
                 <NotificationProvider>
-                    <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                    <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
                         <EpicPage {...defaultProps} />
-                    </DashboardProvider>
+                    </ValueStreamProvider>
                 </NotificationProvider>
             );
             
@@ -150,9 +150,9 @@ describe('EpicPage', () => {
         it('shows an alert and prevents update if start date is equal to end date', async () => {
             render(
                 <NotificationProvider>
-                    <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                    <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
                         <EpicPage {...defaultProps} />
-                    </DashboardProvider>
+                    </ValueStreamProvider>
                 </NotificationProvider>
             );
             
@@ -177,9 +177,9 @@ describe('EpicPage', () => {
 
             render(
                 <NotificationProvider>
-                    <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                    <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
                         <EpicPage {...defaultProps} />
-                    </DashboardProvider>
+                    </ValueStreamProvider>
                 </NotificationProvider>
             );
 
@@ -202,9 +202,9 @@ describe('EpicPage', () => {
 
             render(
                 <NotificationProvider>
-                    <DashboardProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                    <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
                         <EpicPage {...defaultProps} />
-                    </DashboardProvider>
+                    </ValueStreamProvider>
                 </NotificationProvider>
             );
 
@@ -224,7 +224,7 @@ describe('EpicPage', () => {
 
     describe('General Rendering', () => {
         it('filters the sprint effort distribution table to only show overlapping sprints', () => {
-            const extendedData: DashboardData = {
+            const extendedData: ValueStreamData = {
                 ...mockData,
                 sprints: [
                     ...mockData.sprints,
@@ -234,9 +234,9 @@ describe('EpicPage', () => {
 
             render(
                 <NotificationProvider>
-                    <DashboardProvider value={{ data: extendedData, updateEpic: updateEpicSpy }}>
+                    <ValueStreamProvider value={{ data: extendedData, updateEpic: updateEpicSpy }}>
                         <EpicPage {...defaultProps} data={extendedData} />
-                    </DashboardProvider>
+                    </ValueStreamProvider>
                 </NotificationProvider>
             );
 
@@ -256,3 +256,6 @@ describe('EpicPage', () => {
         vi.useRealTimers();
     });
 });
+
+
+

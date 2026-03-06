@@ -1,24 +1,24 @@
-# 📖 User Guide & Value Stream Concepts
+# 📖 User Guide & ValueStream Concepts
 
-### 1. The Interactive Dashboard
+### 1. The Interactive Value Stream
 
-![Dashboard View](images/dashboard.png)
+![ValueStream View](images/ValueStream.png)
 
 The main view provides a high-level map of value flow from Customers to Teams.
-- **Column Structure:** The dashboard is organized into four primary columns: **Customers**, **Work Items**, **Teams**, and the **Timeline** (Gantt Chart).
+- **Column Structure:** The ValueStream is organized into four primary columns: **Customers**, **Work Items**, **Teams**, and the **Timeline** (Gantt Chart).
 - **Unified Visual Identity:** All buttons and input fields across the application share a consistent visual style. Primary actions are blue, while destructive actions (Delete/Remove) are red.
 - **High-Performance Filtering:** The header contains a streamlined filter bar organized into logic groups. Filtering is now integrated with the database, allowing for lightning-fast searches even on large datasets.
     - **Search:** Quickly filter any column by typing names or partial strings.
     - **Status & Metrics:** Toggle visibility based on **Release Status** or set thresholds for **Min TCV** and **Min Score**.
-    - **Background Updates:** When you change a filter, the dashboard stays visible while it fetches updated data. A small circular spinner appears in the top header during these background updates.
+    - **Background Updates:** When you change a filter, the ValueStream stays visible while it fetches updated data. A small circular spinner appears in the top header during these background updates.
     - **Debounced Input:** Text fields wait briefly after you stop typing before refreshing, making it easy to enter long names without the screen jumping.
-- **Persistent Custom Dashboards:** You can create multiple named dashboards with specific filter parameters.
-    - **Edit Parameters:** Click the **"Edit Parameters"** button in the top-right corner of any dashboard to adjust its permanent filters, including **name**, **description**, and **structural filters**.
-    - **Sprint Range Filter:** Dashboards can be limited to a specific range of sprints. Only items connected to epics that fall within this time range will be displayed.
+- **Persistent Custom ValueStreams:** You can create multiple named Value Streams with specific filter parameters.
+    - **Edit Parameters:** Click the **"Edit Parameters"** button in the top-right corner of any ValueStream to adjust its permanent filters, including **name**, **description**, and **structural filters**.
+    - **Sprint Range Filter:** Value Streams can be limited to a specific range of sprints. Only items connected to epics that fall within this time range will be displayed.
 - **Enhanced Highlighting:** By default, hover-based highlighting is disabled to reduce visual noise. You can toggle this on/off using the **"Disable Hover Highlight"** checkbox.
 - **Dependency Tracing:** When highlighting is enabled (or via right-click), hovering over any node dims the rest of the graph and illuminates its direct upstream and downstream dependencies.
 - **Structural Filtering (Right-Click):** Right-click any node to **Filter and Reposition** the graph. This isolates just the dependency tree of that node and collapses empty space. Right-click again to clear the filter.
-- **Reset View:** Clicking **"Reset View"** in the bottom-right corner perfectly frames the dashboard, top-aligning the column headers and centering the Gantt chart on the **Active Sprint**.
+- **Reset View:** Clicking **"Reset View"** in the bottom-right corner perfectly frames the ValueStream, top-aligning the column headers and centering the Gantt chart on the **Active Sprint**.
 
 ### 2. Customer TCV Visualization
 Customers are represented by dual-layer additive circles:
@@ -53,7 +53,7 @@ Both Customers and Work Items feature tabbed detail pages for better organizatio
 ![Work Item Detail](images/workitem-detail.png)
 
 - **Work Item Details Section:** Edit the name, total man-day estimates, and release target.
-- **Description:** A dedicated textarea allows you to provide detailed context, requirements, or links for the work item. This description is displayed as a tooltip on the main dashboard when you hover over the item's node.
+- **Description:** A dedicated textarea allows you to provide detailed context, requirements, or links for the work item. This description is displayed as a tooltip on the main ValueStream when you hover over the item's node.
 - **Metrics Summary:** A highlighted summary box displays the **Total Calculated Effort**, **Total TCV Impact**, and the current **RICE Score**.
 - **Tabs:**
     - **Targeted Customers:** Define which customers this initiative benefits. You can target either the **"Latest Actual"** TCV or a specific **historical record** from the customer's timeline.
@@ -76,7 +76,7 @@ Both Customers and Work Items feature tabbed detail pages for better organizatio
     - **Add/Delete Teams:** Teams can be managed via the **Team List** page. The **Delete Team** function includes a confirmation dialog to prevent accidental data loss.
     - **Capacity Overrides:** Both Epics and Teams support **Manual Overrides** for sprint-specific values. 
     - **Calculated Baseline:** For teams, the baseline capacity automatically accounts for **Public Holidays** (excluding weekends). Sprints with holidays display a 🏝️ icon.
-    - **Visual Feedback:** All manual overrides (effort or capacity) are highlighted with a **blue background** and bold text in the detail tables. In the dashboard timeline, overridden sprint capacities are marked with a 🔒 icon. Click the **"×"** button next to any override to clear it and return to the automatic calculation.
+    - **Visual Feedback:** All manual overrides (effort or capacity) are highlighted with a **blue background** and bold text in the detail tables. In the ValueStream timeline, overridden sprint capacities are marked with a 🔒 icon. Click the **"×"** button next to any override to clear it and return to the automatic calculation.
 
 ### 5. Progress-Aware Gantt Timeline
 The Gantt chart distinguishes between what has happened and what is planned:
@@ -86,7 +86,7 @@ The Gantt chart distinguishes between what has happened and what is planned:
 - **Safety Prompts:** If you attempt to shift the **Start Date** of an Epic that has recorded historical work, the app will prompt you to confirm if you want to "unthaw" and overwrite those records.
 
 ### 6. Team & Sprint Capacity Management
-The dashboard allows you to manage team capacity and sprint-specific overrides directly from the timeline: 
+The ValueStream allows you to manage team capacity and sprint-specific overrides directly from the timeline: 
 - **Capacity Overrides:** Left-click any **Sprint Header** (the capacity markers above the Gantt lanes) to navigate directly to that **Team's Detail Page**. This is the primary location for entering manual capacity overrides for specific sprints.
 - **Sprint Management:** To manage the global sprint schedule (adding, renaming, or deleting sprints), use the **Sprints** link in the main navigation sidebar.
 - **Schedule Integrity:**
@@ -136,3 +136,7 @@ The application includes a simple but effective security layer to protect your s
 - **API Security:**
     - Every request to the backend is validated against the active session using a Bearer token. 
     - Attempting to access the API without a valid secret will result in an immediate session expiration and redirection to the login page.
+
+
+
+

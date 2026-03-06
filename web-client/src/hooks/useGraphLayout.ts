@@ -1,12 +1,12 @@
 import { useMemo } from 'react';
 import { differenceInDays, parseISO, min, max, format, isWeekend } from 'date-fns';
 import type { Node, Edge } from '@xyflow/react';
-import type { DashboardData, DashboardParameters } from '../types/models';
+import type { ValueStreamData, ValueStreamParameters } from '../types/models';
 import Holidays from 'date-holidays';
 import { calculateWorkItemEffort, calculateEpicEffortPerSprint, calculateEpicIntensityRatio } from '../utils/businessLogic';
 
 export function useGraphLayout(
-    data: DashboardData | null,
+    data: ValueStreamData | null,
     hoveredNodeId: string | null = null,
     sprintOffset: number = 0,
     customerFilter: string = '',
@@ -18,7 +18,7 @@ export function useGraphLayout(
     minTcv: number = 0,
     minScore: number = 0,
     selectedNodeId: string | null = null,
-    baseParams: DashboardParameters | null = null
+    baseParams: ValueStreamParameters | null = null
 ) {
     return useMemo(() => {
         if (!data) return { nodes: [], edges: [] };
@@ -1022,3 +1022,6 @@ export function useGraphLayout(
         return { nodes, edges };
     }, [data, hoveredNodeId, sprintOffset, customerFilter, workItemFilter, releasedFilter, teamFilter, epicFilter, showDependencies, minTcv, minScore, selectedNodeId, baseParams]);
 }
+
+
+

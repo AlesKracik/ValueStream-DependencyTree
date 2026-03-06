@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import type { DashboardData, Customer, WorkItem, TcvHistoryEntry, SupportIssue } from '../../types/models';
+import type { ValueStreamData, Customer, WorkItem, TcvHistoryEntry, SupportIssue } from '../../types/models';
 import { SearchableDropdown } from '../common/SearchableDropdown';
-import { useDashboardContext } from '../../contexts/DashboardContext';
+import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import styles from './CustomerPage.module.css';
 import { generateId } from '../../utils/security';
 import { calculateWorkItemEffort } from '../../utils/businessLogic';
@@ -13,7 +13,7 @@ import { authorizedFetch } from '../../utils/api';
 export interface CustomerPageProps {
     customerId: string;
     onBack: () => void;
-    data: DashboardData | null;
+    data: ValueStreamData | null;
     loading: boolean;
     error: Error | null;
     updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
@@ -33,7 +33,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     addCustomer,
     updateWorkItem
 }) => {
-    const { showConfirm } = useDashboardContext();
+    const { showConfirm } = useValueStreamContext();
     const isNew = customerId === 'new';
 
     // Draft states for new customer creation
@@ -1082,3 +1082,6 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         </PageWrapper>
     );
 };
+
+
+

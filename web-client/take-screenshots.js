@@ -13,10 +13,10 @@ if (!fs.existsSync(imageDir)) {
   const context = await browser.newContext({ viewport: { width: 1400, height: 900 }, deviceScaleFactor: 0.75 });
   const page = await context.newPage();
 
-  console.log('Taking screenshot of Dashboard...');
-  await page.goto('http://localhost:5173/dashboard/main', { waitUntil: 'networkidle' });
+  console.log('Taking screenshot of ValueStream...');
+  await page.goto('http://localhost:5173/ValueStream/main', { waitUntil: 'networkidle' });
   await page.waitForTimeout(2000); // Give React Flow time to render and layout
-  await page.screenshot({ path: `${imageDir}/dashboard.png` });
+  await page.screenshot({ path: `${imageDir}/ValueStream.png` });
 
   console.log('Taking screenshot of Customer List...');
   await page.goto('http://localhost:5173/customers', { waitUntil: 'networkidle' });
@@ -36,3 +36,8 @@ if (!fs.existsSync(imageDir)) {
   await browser.close();
   console.log('All screenshots taken successfully at 75% scale!');
 })();
+
+
+
+
+

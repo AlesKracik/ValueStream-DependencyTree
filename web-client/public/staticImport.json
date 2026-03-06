@@ -1399,7 +1399,7 @@
       "work_item_id": "UNASSIGNED",
       "team_id": "t5",
       "effort_md": 0,
-      "name": "Dashboard Metrics Stabilization",
+      "name": "ValueStream Metrics Stabilization",
       "target_start": "2026-02-03",
       "target_end": "2026-12-31",
       "sprint_effort_overrides": {
@@ -1579,10 +1579,10 @@
       "quarter": "FY2026 Q3"
     }
   ],
-  "dashboards": [
+  "ValueStreams": [
     {
       "id": "main",
-      "name": "Main Dependency Tree Dashboard",
+      "name": "Main Dependency Tree Value Stream",
       "description": "Visualizes customers, work items, and epics on a timeline.",
       "parameters": {
         "customerFilter": "",
@@ -1596,3 +1596,7 @@
     }
   ]
 }
+
+
+
+

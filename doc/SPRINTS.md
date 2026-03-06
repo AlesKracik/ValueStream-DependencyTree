@@ -33,9 +33,9 @@ graph TD
 To manage long-running project timelines without losing historical data, the system supports **Archiving**.
 
 ### Behavior
-- **Visibility:** Archived sprints are filtered out from the Sprint Management list and the Dashboard Gantt chart.
+- **Visibility:** Archived sprints are filtered out from the Sprint Management list and the ValueStream Gantt chart.
 - **Performance:** Archived sprints are not retrieved from the database during normal operations, reducing the payload size and computation overhead for the frontend.
-- **Oldest First:** Archiving is typically performed on the oldest visible sprint to maintain the "forward-looking" nature of the dashboard while keeping the database record intact.
+- **Oldest First:** Archiving is typically performed on the oldest visible sprint to maintain the "forward-looking" nature of the ValueStream while keeping the database record intact.
 
 ## Planning Configuration
 Users can define:
@@ -47,3 +47,6 @@ Users can define:
 - **Locking:** Sprints are locked for deletion unless they are the final sprint in the schedule, preserving historical continuity.
 - **Historical Freeze:** The "Active Sprint" is determined by current system date. All sprints ending before the active sprint's start date are considered "frozen".
 - **Archiving:** Only the oldest visible sprint can be archived, and only if it is in the past, to ensure the timeline remains continuous and focused on current/future planning.
+
+
+

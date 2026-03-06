@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { SettingsPage } from '../SettingsPage';
-import type { DashboardData, Settings } from '../../types/models';
+import type { ValueStreamData, Settings } from '../../types/models';
 import { MemoryRouter } from 'react-router-dom';
 
-// Mock DashboardContext
+// Mock ValueStreamContext
 const mockShowAlert = vi.fn();
 const mockShowConfirm = vi.fn();
 
-vi.mock('../../contexts/DashboardContext', () => ({
-    useDashboardContext: () => ({
+vi.mock('../../contexts/ValueStreamContext', () => ({
+    useValueStreamContext: () => ({
         showAlert: mockShowAlert,
         showConfirm: mockShowConfirm
     })
@@ -34,8 +34,8 @@ const mockSettings: Settings = {
     sprint_duration_days: 14
 };
 
-const mockData: DashboardData = {
-    dashboards: [],
+const mockData: ValueStreamData = {
+    ValueStreams: [],
     settings: mockSettings,
     customers: [],
     workItems: [],
@@ -609,3 +609,6 @@ describe('SettingsPage', () => {
         }));
     });
 });
+
+
+

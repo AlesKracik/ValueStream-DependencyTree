@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { TeamListPage } from '../TeamListPage';
 import { MemoryRouter } from 'react-router-dom';
-import type { DashboardData } from '../../types/models';
+import type { ValueStreamData } from '../../types/models';
 
-const mockData: DashboardData = {
-    dashboards: [],
+const mockData: ValueStreamData = {
+    ValueStreams: [],
     settings: { jira_base_url: '', jira_api_version: '3', fiscal_year_start_month: 1 },
     customers: [],
     workItems: [],
@@ -80,3 +80,6 @@ describe('TeamListPage', () => {
         expect(screen.getByText('+ New Team')).toBeDefined();
     });
 });
+
+
+

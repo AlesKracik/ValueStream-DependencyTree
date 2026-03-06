@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import type { Settings, DashboardData, Epic } from "../types/models";
+import type { Settings, ValueStreamData, Epic } from "../types/models";
 import styles from './List.module.css';
 import { authorizedFetch, syncJiraIssue } from "../utils/api";
 import { generateId } from '../utils/security';
-import { useDashboardContext } from "../contexts/DashboardContext";
+import { useValueStreamContext } from "../contexts/ValueStreamContext";
 import { PageWrapper } from "../components/layout/PageWrapper";
 import { parseJiraIssue } from "../utils/businessLogic";
 
 interface SettingsPageProps {
   settings: Settings;
   onUpdateSettings: (updates: Partial<Settings>) => void;
-  data: DashboardData | null;
+  data: ValueStreamData | null;
   loading?: boolean;
   error?: Error | null;
   updateEpic: (id: string, updates: Partial<Epic>, immediate?: boolean) => Promise<void>;
@@ -32,7 +32,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const activeSubTab = searchParams.get("subtab") || (activeTab === "persistence" ? "mongo" : activeTab === "jira" ? "common" : "");
   const activeSubSubTab = searchParams.get("subsubtab") || (activeTab === "persistence" && activeSubTab === "mongo" ? "application" : "");
 
-  const { showConfirm } = useDashboardContext();
+  const { showConfirm } = useValueStreamContext();
 
   const [localFormData, setFormData] = useState<Partial<Settings>>({});
   const [isTesting, setIsTesting] = useState(false);
@@ -652,7 +652,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                           <div style={{ flex: 1, position: 'relative' }}>
                             <input
                               type="text"
-                              placeholder="valueStream"
+                              placeholder="Value Stream"
                               list="mongo-dbs"
                               value={localFormData.mongo_db || ""}
                               onChange={(e) => setFormData({ ...localFormData, mongo_db: e.target.value })}
@@ -954,7 +954,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                           <div style={{ flex: 1, position: 'relative' }}>
                             <input
                               type="text"
-                              placeholder="valueStream"
+                              placeholder="Value Stream"
                               list="customer-mongo-dbs"
                               value={localFormData.customer_mongo_db || ""}
                               onChange={(e) => setFormData({ ...localFormData, customer_mongo_db: e.target.value })}
@@ -1518,3 +1518,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     </PageWrapper>
   );
 };
+
+
+
+

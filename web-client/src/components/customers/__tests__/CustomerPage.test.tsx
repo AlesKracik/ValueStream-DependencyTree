@@ -1,22 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import { CustomerPage } from '../CustomerPage';
-import { useDashboardContext } from '../../../contexts/DashboardContext';
-import type { DashboardData } from '../../../types/models';
+import { useValueStreamContext } from '../../../contexts/ValueStreamContext';
+import type { ValueStreamData } from '../../../types/models';
 import * as api from '../../../utils/api';
 
 // Mock the context
-vi.mock('../../../contexts/DashboardContext', () => ({
-    useDashboardContext: vi.fn(),
-    DashboardProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+vi.mock('../../../contexts/ValueStreamContext', () => ({
+    useValueStreamContext: vi.fn(),
+    ValueStreamProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
 }));
 
 vi.mock('../../../utils/api', () => ({
     authorizedFetch: vi.fn()
 }));
 
-const mockData: DashboardData = {
-    dashboards: [],
+const mockData: ValueStreamData = {
+    ValueStreams: [],
     settings: { 
         jira_base_url: 'https://jira.com', 
         jira_api_version: '3',
@@ -64,7 +64,7 @@ describe('CustomerPage', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        (useDashboardContext as any).mockReturnValue({
+        (useValueStreamContext as any).mockReturnValue({
             data: mockData,
             updateEpic: vi.fn(),
             showConfirm: mockShowConfirm,
@@ -261,7 +261,7 @@ describe('CustomerPage', () => {
     });
 
     it('shows TCV history selection when targeting Existing TCV', async () => {
-        const historyData: DashboardData = {
+        const historyData: ValueStreamData = {
             ...mockData,
             customers: [
                 {
@@ -370,5 +370,8 @@ describe('CustomerPage', () => {
         expect(screen.getByPlaceholderText('Search for a work item to add...')).toBeDefined();
     });
 });
+
+
+
 
 

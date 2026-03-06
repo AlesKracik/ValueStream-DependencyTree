@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { WorkItemPage } from './WorkItemPage';
-import { DashboardProvider, NotificationProvider } from '../../contexts/DashboardContext';
-import type { DashboardData } from '../../types/models';
+import { ValueStreamProvider, NotificationProvider } from '../../contexts/ValueStreamContext';
+import type { ValueStreamData } from '../../types/models';
 import * as api from '../../utils/api';
 
 vi.mock('../../utils/api', async () => {
@@ -14,8 +14,8 @@ vi.mock('../../utils/api', async () => {
     };
 });
 
-const mockData: DashboardData = {
-    dashboards: [], settings: {
+const mockData: ValueStreamData = {
+    ValueStreams: [], settings: {
         jira_base_url: 'https://jira.example.com',
         jira_api_token: 'token',
         jira_api_version: '3'
@@ -67,9 +67,9 @@ describe('WorkItemPage', () => {
     it('should show TCV history selection when targeting Existing TCV', () => {
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <WorkItemPage {...defaultProps} workItemId="f1" />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
 
@@ -90,9 +90,9 @@ describe('WorkItemPage', () => {
     it('should have Nice-to-have option in the priority dropdown for existing targets', () => {
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <WorkItemPage {...defaultProps} workItemId="f1" />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
 
@@ -104,9 +104,9 @@ describe('WorkItemPage', () => {
     it('should have Nice-to-have option in the priority dropdown when adding a new target', () => {
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <WorkItemPage {...defaultProps} workItemId="new" />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
 
@@ -124,7 +124,7 @@ describe('WorkItemPage', () => {
     });
 
     it('should include epics with "UNASSIGNED" work_item_id in the assignment dropdown', () => {
-        const dataWithUnassigned: DashboardData = {
+        const dataWithUnassigned: ValueStreamData = {
             ...mockData,
             epics: [
                 { id: 'e-unassigned', jira_key: 'PROJ-123', work_item_id: 'UNASSIGNED', team_id: 't1', effort_md: 5, name: 'Unassigned Epic' }
@@ -134,9 +134,9 @@ describe('WorkItemPage', () => {
 
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: dataWithUnassigned, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: dataWithUnassigned, updateEpic: vi.fn() }}>
                     <WorkItemPage {...defaultProps} data={dataWithUnassigned} workItemId="f1" />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
 
@@ -155,9 +155,9 @@ describe('WorkItemPage', () => {
     it('toggles global target row and hides individual customer search', () => {
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <WorkItemPage {...defaultProps} workItemId="f1" />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
 
@@ -177,7 +177,7 @@ describe('WorkItemPage', () => {
     });
 
     it('shows an alert and prevents epic update if start date is not before end date', async () => {
-        const dataWithEpic: DashboardData = {
+        const dataWithEpic: ValueStreamData = {
             ...mockData,
             epics: [
                 { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5, target_start: '2026-01-01', target_end: '2026-01-14' }
@@ -189,9 +189,9 @@ describe('WorkItemPage', () => {
 
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: dataWithEpic, updateEpic: updateEpicSpy }}>
+                <ValueStreamProvider value={{ data: dataWithEpic, updateEpic: updateEpicSpy }}>
                     <WorkItemPage {...defaultProps} data={dataWithEpic} workItemId="f1" />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
 
@@ -212,7 +212,7 @@ describe('WorkItemPage', () => {
     });
 
     it('shows warning icon for epics with missing dates', async () => {
-        const dataWithDatelessEpic: DashboardData = {
+        const dataWithDatelessEpic: ValueStreamData = {
             ...mockData,
             epics: [
                 { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5, target_start: undefined, target_end: undefined }
@@ -222,9 +222,9 @@ describe('WorkItemPage', () => {
 
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: dataWithDatelessEpic, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: dataWithDatelessEpic, updateEpic: vi.fn() }}>
                     <WorkItemPage {...defaultProps} data={dataWithDatelessEpic} workItemId="f1" />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
 
@@ -238,7 +238,7 @@ describe('WorkItemPage', () => {
     });
 
     it('renders and updates the description field', () => {
-        const dataWithDesc: DashboardData = {
+        const dataWithDesc: ValueStreamData = {
             ...mockData,
             workItems: [
                 { id: 'f1', name: 'Work Item A', description: 'Initial description', total_effort_mds: 10, score: 0, customer_targets: [] }
@@ -247,9 +247,9 @@ describe('WorkItemPage', () => {
 
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: dataWithDesc, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: dataWithDesc, updateEpic: vi.fn() }}>
                     <WorkItemPage {...defaultProps} data={dataWithDesc} workItemId="f1" />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
 
@@ -262,16 +262,16 @@ describe('WorkItemPage', () => {
     });
 
     it('renders core edit fields and handles updates', () => {
-        const dataWithSprint: DashboardData = {
+        const dataWithSprint: ValueStreamData = {
             ...mockData,
             sprints: [{ id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY26 Q1' }]
         };
 
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: dataWithSprint, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: dataWithSprint, updateEpic: vi.fn() }}>
                     <WorkItemPage {...defaultProps} data={dataWithSprint} workItemId="f1" />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
 
@@ -294,9 +294,9 @@ describe('WorkItemPage', () => {
     it('renders and saves a new work item', async () => {
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <WorkItemPage {...defaultProps} workItemId="new" />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
 
@@ -322,7 +322,7 @@ describe('WorkItemPage', () => {
     });
 
     it('shows error alert when syncEpic fails', async () => {
-        const dataWithEpic: DashboardData = {
+        const dataWithEpic: ValueStreamData = {
             ...mockData,
             epics: [
                 { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5 }
@@ -335,9 +335,9 @@ describe('WorkItemPage', () => {
 
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: dataWithEpic, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: dataWithEpic, updateEpic: vi.fn() }}>
                     <WorkItemPage {...defaultProps} data={dataWithEpic} workItemId="f1" />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
 
@@ -357,7 +357,7 @@ describe('WorkItemPage', () => {
     });
 
     it('shows error alert when syncEpic throws exception', async () => {
-        const dataWithEpic: DashboardData = {
+        const dataWithEpic: ValueStreamData = {
             ...mockData,
             epics: [
                 { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5 }
@@ -370,9 +370,9 @@ describe('WorkItemPage', () => {
 
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: dataWithEpic, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: dataWithEpic, updateEpic: vi.fn() }}>
                     <WorkItemPage {...defaultProps} data={dataWithEpic} workItemId="f1" />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
 
@@ -391,3 +391,6 @@ describe('WorkItemPage', () => {
         });
     });
 });
+
+
+

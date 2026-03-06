@@ -1,6 +1,6 @@
 import React from 'react';
-import type { DashboardData, Team } from '../../types/models';
-import { useDashboardContext } from '../../contexts/DashboardContext';
+import type { ValueStreamData, Team } from '../../types/models';
+import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import styles from '../customers/CustomerPage.module.css';
 import { PageWrapper } from '../layout/PageWrapper';
 import { calculateWorkingDays, getHolidayImpact, getCountryOptions } from '../../utils/dateHelpers';
@@ -9,7 +9,7 @@ import { SearchableDropdown } from '../common/SearchableDropdown';
 export interface TeamPageProps {
     teamId: string;
     onBack: () => void;
-    data: DashboardData | null;
+    data: ValueStreamData | null;
     loading: boolean;
     error: Error | null;
     updateTeam: (id: string, updates: Partial<Team>, immediate?: boolean) => Promise<void>;
@@ -27,7 +27,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({
     deleteTeam,
     addTeam
 }) => {
-    const { showConfirm } = useDashboardContext();
+    const { showConfirm } = useValueStreamContext();
     const isNew = teamId === 'new';
 
     const [newTeamDraft, setNewTeamDraft] = React.useState<Partial<Team>>({
@@ -247,6 +247,9 @@ export const TeamPage: React.FC<TeamPageProps> = ({
         </PageWrapper>
     );
 };
+
+
+
 
 
 

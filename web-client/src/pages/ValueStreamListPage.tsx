@@ -1,38 +1,43 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { DashboardData, DashboardEntity } from '../types/models';
+import type { ValueStreamData, ValueStreamEntity } from '../types/models';
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption } from '../components/common/GenericListPage';
 
 interface Props {
-    data: DashboardData | null;
+    data: ValueStreamData | null;
     loading: boolean;
 }
 
-export const DashboardListPage: React.FC<Props> = ({ data, loading }) => {
+export const ValueStreamListPage: React.FC<Props> = ({ data, loading }) => {
     const navigate = useNavigate();
 
-    const sortOptions: SortOption<DashboardEntity>[] = useMemo(() => [
+    const sortOptions: SortOption<ValueStreamEntity>[] = useMemo(() => [
         { label: 'Name', key: 'name', getValue: (d) => d.name }
     ], []);
 
     return (
-        <GenericListPage<DashboardEntity>
-            title="Dashboards"
-            items={data?.dashboards || []}
+        <GenericListPage<ValueStreamEntity>
+            title="Value Streams"
+            items={data?.ValueStreams || []}
             loading={loading}
-            filterPlaceholder="Filter dashboards..."
+            filterPlaceholder="Filter Value Streams..."
             filterPredicate={(d, query) => d.name.toLowerCase().includes(query.toLowerCase())}
             sortOptions={sortOptions}
-            onItemClick={(d) => navigate(`/dashboard/${d.id}`)}
+            onItemClick={(d) => navigate(`/ValueStream/${d.id}`)}
             renderItemTitle={(d) => d.name}
             renderItemDetails={(d) => d.description || "No description provided."}
             actionButton={{
-                label: "+ New Dashboard",
-                onClick: () => navigate('/dashboard/new')
+                label: "+ New Value Stream",
+                onClick: () => navigate('/ValueStream/new')
             }}
-            loadingMessage="Loading dashboards..."
-            emptyMessage="No dashboards found."
+            loadingMessage="Loading Value Streams..."
+            emptyMessage="No Value Streams found."
         />
     );
 };
+
+
+
+
+

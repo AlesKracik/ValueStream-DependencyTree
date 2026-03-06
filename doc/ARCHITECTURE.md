@@ -1,7 +1,7 @@
 # High-Level Technical Architecture
 
 ## Overview
-The Value Stream Dependency Tree is a React-based Single Page Application (SPA) designed to visualize the flow of value from customer demand to engineering execution. It uses a custom mathematical layout engine to map entities across a 4-stage pipeline: Customers, Work Items, Teams, and a Gantt Timeline.
+The ValueStream Dependency Tree is a React-based Single Page Application (SPA) designed to visualize the flow of value from customer demand to engineering execution. It uses a custom mathematical layout engine to map entities across a 4-stage pipeline: Customers, Work Items, Teams, and a Gantt Timeline.
 
 ## System Components
 
@@ -20,7 +20,7 @@ graph TD
 
 ### 1. Web Client (React + TypeScript)
 - **Framework:** React 19 with Vite.
-- **State Management:** Custom `DashboardContext` and `useDashboardData` hook.
+- **State Management:** Custom `ValueStreamContext` and `useValueStreamData` hook.
 - **Visualization:** `@xyflow/react` (React Flow) for graph rendering.
 - **Layout Engine:** `useGraphLayout.ts` - a deterministic engine that calculates X/Y coordinates based on logical relationships rather than force-directed algorithms.
 
@@ -32,7 +32,7 @@ graph TD
 
 ## Data Flow & State Management
 
-The application utilizes a hybrid state management strategy that combines server-side aggregation with client-side optimistic updates, primarily orchestrated via the `useDashboardData.ts` hook.
+The application utilizes a hybrid state management strategy that combines server-side aggregation with client-side optimistic updates, primarily orchestrated via the `useValueStreamData.ts` hook.
 
 ### 1. Authentication & Authorization
 The system supports an optional security layer via the `ADMIN_SECRET` environment variable.
@@ -41,10 +41,10 @@ The system supports an optional security layer via the `ADMIN_SECRET` environmen
 - **Authorized Fetch:** A custom `authorizedFetch` utility centrally manages the injection of the secret and handles session expiration (401 errors).
 
 ### 2. Hydration & Hybrid Filtering
-1.  **Global Hydration:** The top-level `App.tsx` calls `useDashboardData()` without filters to hydrate the entire system and injects the resulting `data` and mutation functions into the `DashboardProvider`.
-2.  **Scoped Re-fetching:** Visual components (like the Dashboard) call `useDashboardData(id, filters)` to trigger a server-side filtered re-fetch scoped to specific dashboard parameters.
+1.  **Global Hydration:** The top-level `App.tsx` calls `useValueStreamData()` without filters to hydrate the entire system and injects the resulting `data` and mutation functions into the `ValueStreamProvider`.
+2.  **Scoped Re-fetching:** Visual components (like the ValueStream) call `useValueStreamData(id, filters)` to trigger a server-side filtered re-fetch scoped to specific ValueStream parameters.
 3.  **Hybrid Filter Logic:**
-    -   **Base Filters:** Heavy searches and persistent dashboard parameters are applied at the database level to minimize network payload.
+    -   **Base Filters:** Heavy searches and persistent ValueStream parameters are applied at the database level to minimize network payload.
     -   **Transient Filters:** Live-typing search in the UI is applied client-side for instantaneous feedback on the already-filtered dataset.
 
 ### 3. Server-Side Processing
@@ -67,10 +67,10 @@ sequenceDiagram
     participant DB as MongoDB
     participant Jira as Atlassian Jira API
 
-    Note over UI, Jira: Scenario 1: Initial Dashboard Load
-    UI->>Vite: GET /api/loadData?dashboardId=main
+    Note over UI, Jira: Scenario 1: Initial ValueStream Load
+    UI->>Vite: GET /api/loadData?ValueStreamId=main
     Vite->>FS: Read settings.json (Mongo URI)
-    Vite->>DB: Fetch Dashboards, Customers, WorkItems, Epics
+    Vite->>DB: Fetch ValueStreams, Customers, WorkItems, Epics
     DB-->>Vite: Raw Data
     Note right of Vite: Calculate RICE Scores & Global Metrics
     Vite-->>UI: JSON Data (Aggregated & Scored)
@@ -123,12 +123,12 @@ The following patterns outline how components and logic are structurally decoupl
 ### 1. The Graph Layout Engine (`useGraphLayout.ts`)
 The core visualization is not physics-based (like traditional force-directed graphs) but is instead a highly deterministic layout engine.
 1. **Column Mapping:** The layout establishes fixed X-coordinates (`COL_CUSTOMER_X`, `COL_WORKITEM_X`, `COL_TEAM_X`) forming a left-to-right flow pipeline.
-2. **Hybrid Filtering (Logical AND):** The hook merges Base Parameters (persisted dashboard rules) and Transient Filters (live-typing from the UI) before determining node inclusion.
+2. **Hybrid Filtering (Logical AND):** The hook merges Base Parameters (persisted ValueStream rules) and Transient Filters (live-typing from the UI) before determining node inclusion.
 3. **Array Mutation:** It parses the `data` arrays into valid generic sets (`validCustomers`, `validWorkItems`, `validEpics`).
 4. **Coordinate Placement:** It dynamically loops through the sets, generating React Flow nodes (`{ id, position: {x,y}, data }`) and calculating specific Y offsets so nodes do not overlap, particularly protecting Epic Gantt bars within expanding Team vertical bounds.
 
 ### 2. React Flow Custom Nodes
-The dashboard relies on custom React Flow nodes (`src/components/nodes/`). All nodes follow a specific geometric and mathematical rendering pattern.
+The ValueStream relies on custom React Flow nodes (`src/components/nodes/`). All nodes follow a specific geometric and mathematical rendering pattern.
 
 **Pattern Template:**
 1. **Memoization:** Nodes are always exported wrapped in `React.memo` to prevent unnecessary re-renders during panning/zooming.
@@ -157,7 +157,7 @@ import React, { useState } from 'react';
 import styles from './MyPage.module.css';
 
 interface Props {
-    data: DashboardData | null;
+    data: ValueStreamData | null;
     loading: boolean;
     error?: Error | null;
 }
@@ -266,7 +266,7 @@ erDiagram
         date start_date
         date end_date
     }
-    DASHBOARD {
+    ValueStream {
         string id
         string name
         object parameters
@@ -278,9 +278,9 @@ erDiagram
     SPRINT ||--o{ WORK-ITEM : "release target"
     SPRINT ||--o{ EPIC : "contains"
     EPIC ||--o{ EPIC : "depends on"
-    DASHBOARD ||--o{ CUSTOMER : "filters"
-    DASHBOARD ||--o{ WORK-ITEM : "filters"
-    DASHBOARD ||--o{ TEAM : "filters"
+    ValueStream ||--o{ CUSTOMER : "filters"
+    ValueStream ||--o{ WORK-ITEM : "filters"
+    ValueStream ||--o{ TEAM : "filters"
 ```
 
 Detailed documentation for each system block:
@@ -289,6 +289,10 @@ Detailed documentation for each system block:
 - [Teams](TEAMS.md)
 - [Epics](EPICS.md)
 - [Sprints](SPRINTS.md)
-- [Dashboards](DASHBOARDS.md)
+- [ValueStreams](ValueStreams.md)
 - [Jira Integration](JIRA_INTEGRATION.md)
 - [Persistence & Migration](PERSISTENCE.md)
+
+
+
+

@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, useNavigate, useParams, Navigate } from '
 import { ReactFlowProvider } from '@xyflow/react';
 
 // Main entities
-import { Dashboard } from './components/dashboard/Dashboard';
+import { ValueStream } from './components/valuestream/ValueStream';
 import { CustomerPage } from './components/customers/CustomerPage';
 import { WorkItemPage } from './components/workitems/WorkItemPage';
 import { EpicPage } from './components/epics/EpicPage';
@@ -12,8 +12,8 @@ import { SprintPage } from './components/sprints/SprintPage';
 
 // Layout & List Pages
 import { Layout } from './components/layout/Layout';
-import { DashboardListPage } from './pages/DashboardListPage';
-import { DashboardEditPage } from './pages/DashboardEditPage';
+import { ValueStreamListPage } from './pages/ValueStreamListPage';
+import { ValueStreamEditPage } from './pages/ValueStreamEditPage';
 import { CustomerListPage } from './pages/CustomerListPage';
 import { WorkItemListPage } from './pages/WorkItemListPage';
 import { TeamListPage } from './pages/TeamListPage';
@@ -21,93 +21,93 @@ import { SettingsPage } from './pages/SettingsPage';
 import { DocumentationPage } from './pages/DocumentationPage';
 import { LoginPage } from './pages/LoginPage';
 
-import { useDashboardData } from './hooks/useDashboardData';
-import { DashboardProvider, NotificationProvider, useNotificationContext, useDashboardContext } from './contexts/DashboardContext';
+import { useValueStreamData } from './hooks/useValueStreamData';
+import { ValueStreamProvider, NotificationProvider, useNotificationContext, useValueStreamContext } from './contexts/ValueStreamContext';
 import { getAdminSecret } from './utils/api';
-import type { DashboardViewState } from './types/models';
+import type { ValueStreamViewState } from './types/models';
 import './App.css';
 
-function DashboardRouteWrapper({ dashboardViewState, setDashboardViewState }: any) {
+function ValueStreamRouteWrapper({ ValueStreamViewState, setValueStreamViewState }: any) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { showAlert } = useDashboardContext();
-  // Fetch specific dashboard data with server-side filtering
-  const dashboardState = useDashboardData(id, {
-    customerFilter: dashboardViewState.customerFilter,
-    workItemFilter: dashboardViewState.workItemFilter,
-    releasedFilter: dashboardViewState.releasedFilter,
-    minTcvFilter: dashboardViewState.minTcvFilter,
-    minScoreFilter: dashboardViewState.minScoreFilter,
-    teamFilter: dashboardViewState.teamFilter,
-    epicFilter: dashboardViewState.epicFilter
+  const { showAlert } = useValueStreamContext();
+  // Fetch specific ValueStream data with server-side filtering
+  const ValueStreamstate = useValueStreamData(id, {
+    customerFilter: ValueStreamViewState.customerFilter,
+    workItemFilter: ValueStreamViewState.workItemFilter,
+    releasedFilter: ValueStreamViewState.releasedFilter,
+    minTcvFilter: ValueStreamViewState.minTcvFilter,
+    minScoreFilter: ValueStreamViewState.minScoreFilter,
+    teamFilter: ValueStreamViewState.teamFilter,
+    epicFilter: ValueStreamViewState.epicFilter
   }, 1000, showAlert);
 
   return (
-    <Dashboard
-      {...dashboardState}
-      currentDashboardId={id}
-      viewState={dashboardViewState}
-      setViewState={setDashboardViewState}
+    <ValueStream
+      {...ValueStreamstate}
+      currentValueStreamId={id}
+      viewState={ValueStreamViewState}
+      setViewState={setValueStreamViewState}
       onNavigateToCustomer={(id) => navigate(`/customer/${id}`)}
       onNavigateToWorkItem={(id) => navigate(`/workitem/${id}`)}
       onNavigateToEpic={(id) => navigate(`/epic/${id}`)}
       onNavigateToTeam={(id) => navigate(`/team/${id}`)}
       onNavigateToSprint={(id) => id === 'list' ? navigate('/sprints') : navigate(`/sprint/${id}`)}
-      onNavigateToDashboardEdit={(id) => navigate(`/dashboard/edit/${id}`)}
+      onNavigateToValueStreamEdit={(id) => navigate(`/ValueStream/edit/${id}`)}
       />
       );
 }
 
-function CustomerPageRouteWrapper({ dashboardState }: any) {
+function CustomerPageRouteWrapper({ ValueStreamstate }: any) {
   const { id } = useParams();
   const navigate = useNavigate();
-  return <CustomerPage customerId={id!} onBack={() => navigate(-1)} addCustomer={dashboardState.addCustomer} {...dashboardState} />;
+  return <CustomerPage customerId={id!} onBack={() => navigate(-1)} addCustomer={ValueStreamstate.addCustomer} {...ValueStreamstate} />;
 }
 
-function WorkItemPageRouteWrapper({ dashboardState }: any) {
+function WorkItemPageRouteWrapper({ ValueStreamstate }: any) {
   const { id } = useParams();
   const navigate = useNavigate();
-  return <WorkItemPage workItemId={id!} onBack={() => navigate(-1)} {...dashboardState} />;
+  return <WorkItemPage workItemId={id!} onBack={() => navigate(-1)} {...ValueStreamstate} />;
 }
 
-function EpicPageRouteWrapper({ dashboardState }: any) {
+function EpicPageRouteWrapper({ ValueStreamstate }: any) {
   const { id } = useParams();
   const navigate = useNavigate();
-  return <EpicPage epicId={id!} onBack={() => navigate(-1)} {...dashboardState} />;
+  return <EpicPage epicId={id!} onBack={() => navigate(-1)} {...ValueStreamstate} />;
 }
 
-function TeamPageRouteWrapper({ dashboardState }: any) {
+function TeamPageRouteWrapper({ ValueStreamstate }: any) {
   const { id } = useParams();
   const navigate = useNavigate();
-  return <TeamPage teamId={id!} onBack={() => navigate(-1)} {...dashboardState} />;
+  return <TeamPage teamId={id!} onBack={() => navigate(-1)} {...ValueStreamstate} />;
 }
 
-function DashboardEditPageRouteWrapper({ dashboardState }: any) {
+function ValueStreamEditPageRouteWrapper({ ValueStreamstate }: any) {
   const { id } = useParams();
   const navigate = useNavigate();
-  return <DashboardEditPage dashboardId={id!} onBack={() => navigate(-1)} {...dashboardState} />;
+  return <ValueStreamEditPage ValueStreamId={id!} onBack={() => navigate(-1)} {...ValueStreamstate} />;
 }
 
-function SprintPageRouteWrapper({ dashboardState }: any) {
-  return <SprintPage {...dashboardState} />;
+function SprintPageRouteWrapper({ ValueStreamstate }: any) {
+  return <SprintPage {...ValueStreamstate} />;
 }
 
-function SettingsPageRouteWrapper({ dashboardState }: any) {
+function SettingsPageRouteWrapper({ ValueStreamstate }: any) {
   return (
     <SettingsPage 
-      settings={dashboardState.data?.settings || { jira_base_url: '', jira_api_version: '3' }} 
-      onUpdateSettings={dashboardState.updateSettings} 
-      data={dashboardState.data} 
-      loading={dashboardState.loading}
-      error={dashboardState.error}
-      updateEpic={dashboardState.updateEpic} 
-      addEpic={dashboardState.addEpic} 
+      settings={ValueStreamstate.data?.settings || { jira_base_url: '', jira_api_version: '3' }} 
+      onUpdateSettings={ValueStreamstate.updateSettings} 
+      data={ValueStreamstate.data} 
+      loading={ValueStreamstate.loading}
+      error={ValueStreamstate.error}
+      updateEpic={ValueStreamstate.updateEpic} 
+      addEpic={ValueStreamstate.addEpic} 
     />
   );
 }
 
 function MainAppContent() {
-  const [dashboardViewState, setDashboardViewState] = useState<DashboardViewState>({
+  const [ValueStreamViewState, setValueStreamViewState] = useState<ValueStreamViewState>({
     sprintOffset: 0,
     customerFilter: '',
     workItemFilter: '',
@@ -122,42 +122,42 @@ function MainAppContent() {
   });
 
   const { showAlert } = useNotificationContext();
-  const globalState = useDashboardData(undefined, undefined, 1000, showAlert);
+  const globalState = useValueStreamData(undefined, undefined, 1000, showAlert);
 
   return (
-    <DashboardProvider value={{ data: globalState.data, updateEpic: globalState.updateEpic }}>
+    <ValueStreamProvider value={{ data: globalState.data, updateEpic: globalState.updateEpic }}>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to="/dashboards" replace />} />
+          <Route path="/" element={<Navigate to="/ValueStreams" replace />} />
           
           <Route element={<Layout />}>
             {/* List Pages */}
-            <Route path="/dashboards" element={<DashboardListPage data={globalState.data} loading={globalState.loading} />} />
-            <Route path="/dashboard/new" element={<DashboardEditPage dashboardId="new" onBack={() => window.history.back()} {...globalState} />} />
+            <Route path="/ValueStreams" element={<ValueStreamListPage data={globalState.data} loading={globalState.loading} />} />
+            <Route path="/ValueStream/new" element={<ValueStreamEditPage ValueStreamId="new" onBack={() => window.history.back()} {...globalState} />} />
             <Route path="/customers" element={<CustomerListPage data={globalState.data} loading={globalState.loading} />} />
             <Route path="/workitems" element={<WorkItemListPage data={globalState.data} loading={globalState.loading} />} />
             <Route path="/teams" element={<TeamListPage data={globalState.data} loading={globalState.loading} />} />
-            <Route path="/sprints" element={<SprintPageRouteWrapper dashboardState={globalState} />} />
+            <Route path="/sprints" element={<SprintPageRouteWrapper ValueStreamstate={globalState} />} />
             
             {/* Other Pages */}
-            <Route path="/settings" element={<SettingsPageRouteWrapper dashboardState={globalState} />} />
+            <Route path="/settings" element={<SettingsPageRouteWrapper ValueStreamstate={globalState} />} />
             <Route path="/documentation" element={<DocumentationPage />} />
 
             {/* Entity Detail Pages */}
-            <Route path="/dashboard/:id" element={
+            <Route path="/ValueStream/:id" element={
               <ReactFlowProvider>
-                <DashboardRouteWrapper dashboardViewState={dashboardViewState} setDashboardViewState={setDashboardViewState} />
+                <ValueStreamRouteWrapper ValueStreamViewState={ValueStreamViewState} setValueStreamViewState={setValueStreamViewState} />
               </ReactFlowProvider>
             } />
-            <Route path="/dashboard/edit/:id" element={<DashboardEditPageRouteWrapper dashboardState={globalState} />} />
-            <Route path="/customer/:id" element={<CustomerPageRouteWrapper dashboardState={globalState} />} />
-            <Route path="/workitem/:id" element={<WorkItemPageRouteWrapper dashboardState={globalState} />} />
-            <Route path="/epic/:id" element={<EpicPageRouteWrapper dashboardState={globalState} />} />
-            <Route path="/team/:id" element={<TeamPageRouteWrapper dashboardState={globalState} />} />
+            <Route path="/ValueStream/edit/:id" element={<ValueStreamEditPageRouteWrapper ValueStreamstate={globalState} />} />
+            <Route path="/customer/:id" element={<CustomerPageRouteWrapper ValueStreamstate={globalState} />} />
+            <Route path="/workitem/:id" element={<WorkItemPageRouteWrapper ValueStreamstate={globalState} />} />
+            <Route path="/epic/:id" element={<EpicPageRouteWrapper ValueStreamstate={globalState} />} />
+            <Route path="/team/:id" element={<TeamPageRouteWrapper ValueStreamstate={globalState} />} />
           </Route>
         </Routes>
       </BrowserRouter>
-    </DashboardProvider>
+    </ValueStreamProvider>
   );
 }
 
@@ -210,3 +210,8 @@ function App() {
 }
 
 export default App;
+
+
+
+
+

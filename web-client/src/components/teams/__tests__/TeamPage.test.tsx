@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { TeamPage } from '../TeamPage';
-import { DashboardProvider, NotificationProvider, useDashboardContext } from '../../../contexts/DashboardContext';
-import type { DashboardData } from '../../../types/models';
+import { ValueStreamProvider, NotificationProvider, useValueStreamContext } from '../../../contexts/ValueStreamContext';
+import type { ValueStreamData } from '../../../types/models';
 
 // Mock date-holidays
 const mockIsHoliday = vi.fn().mockImplementation((date: Date) => {
@@ -30,17 +30,17 @@ vi.mock('date-holidays', () => {
     };
 });
 
-// Mock useDashboardContext
-vi.mock('../../../contexts/DashboardContext', async () => {
-    const actual = await vi.importActual('../../../contexts/DashboardContext');
+// Mock useValueStreamContext
+vi.mock('../../../contexts/ValueStreamContext', async () => {
+    const actual = await vi.importActual('../../../contexts/ValueStreamContext');
     return {
         ...actual as any,
-        useDashboardContext: vi.fn()
+        useValueStreamContext: vi.fn()
     };
 });
 
-const mockData: DashboardData = {
-    dashboards: [],
+const mockData: ValueStreamData = {
+    ValueStreams: [],
     settings: { jira_base_url: '', jira_api_version: '3' },
     customers: [],
     workItems: [],
@@ -67,7 +67,7 @@ describe('TeamPage', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        (useDashboardContext as any).mockReturnValue({
+        (useValueStreamContext as any).mockReturnValue({
             showConfirm: vi.fn().mockResolvedValue(true),
             showAlert: vi.fn().mockResolvedValue(undefined)
         });
@@ -76,9 +76,9 @@ describe('TeamPage', () => {
     it('renders team details', () => {
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <TeamPage {...defaultProps} />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
         expect(screen.getByDisplayValue('Team 1')).toBeDefined();
@@ -89,9 +89,9 @@ describe('TeamPage', () => {
     it('calls updateTeam when name changes', () => {
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <TeamPage {...defaultProps} />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
         const nameInput = screen.getByLabelText(/Team Name:/i);
@@ -102,9 +102,9 @@ describe('TeamPage', () => {
     it('calculates holiday impact and shows suggested capacity', () => {
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <TeamPage {...defaultProps} />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
         
@@ -125,9 +125,9 @@ describe('TeamPage', () => {
     it('handles capacity override change', () => {
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <TeamPage {...defaultProps} />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
         // Base capacity 2000, 1 holiday impact = (2000/10)*1 = 200. Calculated = 1800.
@@ -144,9 +144,9 @@ describe('TeamPage', () => {
     it('calls deleteTeam when delete button clicked', async () => {
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <TeamPage {...defaultProps} />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
         
@@ -159,7 +159,7 @@ describe('TeamPage', () => {
     });
 
     it('clears override', () => {
-        const dataWithOverride: DashboardData = {
+        const dataWithOverride: ValueStreamData = {
             ...mockData,
             teams: [{
                 ...mockData.teams[0],
@@ -169,9 +169,9 @@ describe('TeamPage', () => {
 
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: dataWithOverride, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: dataWithOverride, updateEpic: vi.fn() }}>
                     <TeamPage {...defaultProps} data={dataWithOverride} />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
         
@@ -186,9 +186,9 @@ describe('TeamPage', () => {
     it('renders and saves a new team', () => {
         render(
             <NotificationProvider>
-                <DashboardProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
                     <TeamPage {...defaultProps} teamId="new" />
-                </DashboardProvider>
+                </ValueStreamProvider>
             </NotificationProvider>
         );
 
@@ -206,3 +206,6 @@ describe('TeamPage', () => {
         expect(defaultProps.onBack).toHaveBeenCalled();
     });
 });
+
+
+

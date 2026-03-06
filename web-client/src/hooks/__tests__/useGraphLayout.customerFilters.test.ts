@@ -1,10 +1,10 @@
 import { renderHook } from '@testing-library/react';
 import { useGraphLayout } from '../useGraphLayout';
-import type { DashboardData } from '../../types/models';
+import type { ValueStreamData } from '../../types/models';
 import { describe, it, expect } from 'vitest';
 
-const mockData: DashboardData = {
-    dashboards: [], settings: {
+const mockData: ValueStreamData = {
+    ValueStreams: [], settings: {
         jira_base_url: '',
         jira_api_token: '',
         jira_api_version: '3'
@@ -51,3 +51,6 @@ describe('useGraphLayout - Customer Filters', () => {
         expect(hasC1).toBe(false);
     });
 });
+
+
+

@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { CustomerListPage } from '../CustomerListPage';
 import { MemoryRouter } from 'react-router-dom';
-import type { DashboardData } from '../../types/models';
+import type { ValueStreamData } from '../../types/models';
 
-const mockData: DashboardData = {
-    dashboards: [],
+const mockData: ValueStreamData = {
+    ValueStreams: [],
     settings: { jira_base_url: '', jira_api_version: '3', fiscal_year_start_month: 1 },
     customers: [
         { id: 'c1', name: 'Alpha Cust', existing_tcv: 5000, potential_tcv: 1000 },
@@ -89,3 +89,6 @@ describe('CustomerListPage', () => {
         expect(items[2].textContent).toContain('Gamma Cust');
     });
 });
+
+
+

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
-import type { DashboardData, Epic } from '../types/models';
+import type { ValueStreamData, Epic } from '../types/models';
 import { NotificationModal } from '../components/common/NotificationModal';
 
 interface NotificationConfig {
@@ -15,13 +15,13 @@ interface NotificationContextType {
     showConfirm: (title: string, message: string) => Promise<boolean>;
 }
 
-interface DashboardContextType extends NotificationContextType {
-    data: DashboardData | null;
+interface ValueStreamContextType extends NotificationContextType {
+    data: ValueStreamData | null;
     updateEpic: (id: string, updates: Partial<Epic>) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | null>(null);
-const DashboardContext = createContext<DashboardContextType | null>(null);
+const ValueStreamContext = createContext<ValueStreamContextType | null>(null);
 
 export const useNotificationContext = () => {
     const context = useContext(NotificationContext);
@@ -31,10 +31,10 @@ export const useNotificationContext = () => {
     return context;
 };
 
-export const useDashboardContext = () => {
-    const context = useContext(DashboardContext);
+export const useValueStreamContext = () => {
+    const context = useContext(ValueStreamContext);
     if (!context) {
-        throw new Error('useDashboardContext must be used within a DashboardProvider');
+        throw new Error('useValueStreamContext must be used within a ValueStreamProvider');
     }
     return context;
 };
@@ -91,15 +91,18 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     );
 };
 
-export const DashboardProvider: React.FC<{
+export const ValueStreamProvider: React.FC<{
     children: React.ReactNode;
-    value: { data: DashboardData | null; updateEpic: (id: string, updates: Partial<Epic>) => void };
+    value: { data: ValueStreamData | null; updateEpic: (id: string, updates: Partial<Epic>) => void };
 }> = ({ children, value }) => {
     const { showAlert, showConfirm } = useNotificationContext();
 
     return (
-        <DashboardContext.Provider value={{ ...value, showAlert, showConfirm }}>
+        <ValueStreamContext.Provider value={{ ...value, showAlert, showConfirm }}>
             {children}
-        </DashboardContext.Provider>
+        </ValueStreamContext.Provider>
     );
 };
+
+
+

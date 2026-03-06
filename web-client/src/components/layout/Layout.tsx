@@ -7,11 +7,11 @@ export const Layout: React.FC = () => {
         <div className={styles.layoutContainer}>
             <nav className={styles.sidebar}>
                 <div className={styles.logo}>
-                    <h2>ValueStream</h2>
+                    <h2>Value Stream</h2>
                 </div>
                 <div className={styles.navLinks}>
-                    <NavLink to="/dashboards" className={({ isActive }) => isActive ? `${styles.navItem} ${styles.active}` : styles.navItem}>
-                        Dashboards
+                    <NavLink to="/ValueStreams" className={({ isActive }) => isActive ? `${styles.navItem} ${styles.active}` : styles.navItem}>
+                        ValueStreams
                     </NavLink>
                     <NavLink to="/customers" className={({ isActive }) => isActive ? `${styles.navItem} ${styles.active}` : styles.navItem}>
                         Customers
@@ -41,3 +41,7 @@ export const Layout: React.FC = () => {
         </div>
     );
 };
+
+
+
+

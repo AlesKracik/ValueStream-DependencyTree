@@ -34,7 +34,7 @@ To change a customer's Actual TCV, the system uses a lifecycle-aware update proc
 3. **Strategic Impact:** This allows the system to tie Work Items to specific points in time, showing how an initiative delivered value against a specific contract value rather than just the latest one.
 
 ## Visual Representation
-In the dashboard, customers are rendered as `CustomerNode` types:
+In the ValueStream, customers are rendered as `CustomerNode` types:
 - **Inner Circle:** Solid blue, representing the latest `existing_tcv`.
 - **Outer Ring:** Dashed blue, representing `total_tcv` (`existing + potential`).
 - **Scaling:** The diameter scales proportionally based on the maximum TCV across all customers in the dataset.
@@ -58,3 +58,7 @@ erDiagram
 ## Logic & Filtering
 - **Min TCV Filter:** Global filter that hides customers (and their downstream trees) if their total TCV is below the threshold.
 - **Standalone Visibility:** Customers with no linked Work Items are only visible if no Work Item, Team, or Epic filters are active.
+
+
+
+

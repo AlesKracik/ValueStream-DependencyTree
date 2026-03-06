@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import type { Node } from '@xyflow/react';
-import type { DashboardData, Customer, WorkItem, Team } from '../../types/models';
+import type { ValueStreamData, Customer, WorkItem, Team } from '../../types/models';
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import { calculateWorkItemEffort } from '../../utils/businessLogic';
 
 interface EditNodeModalProps {
     node: Node;
     onClose: () => void;
-    data: DashboardData;
+    data: ValueStreamData;
     onUpdateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
     onUpdateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
     onUpdateTeam: (id: string, updates: Partial<Team>, immediate?: boolean) => Promise<void>;
@@ -393,3 +393,6 @@ const styles: Record<string, React.CSSProperties> = {
         fontWeight: 500
     }
 };
+
+
+

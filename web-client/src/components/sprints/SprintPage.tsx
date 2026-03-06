@@ -1,13 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { parseISO, addDays, format } from 'date-fns';
-import type { DashboardData, Sprint } from '../../types/models';
-import { useDashboardContext } from '../../contexts/DashboardContext';
+import type { ValueStreamData, Sprint } from '../../types/models';
+import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import styles from '../../pages/List.module.css';
 import { generateId } from '../../utils/security';
 import { PageWrapper } from '../layout/PageWrapper';
 
 export interface SprintPageProps {
-    data: DashboardData | null;
+    data: ValueStreamData | null;
     loading: boolean;
     error: Error | null;
     addSprint: (s: Sprint) => void;
@@ -23,7 +23,7 @@ export const SprintPage: React.FC<SprintPageProps> = ({
     updateSprint,
     deleteSprint
 }) => {
-    const { showConfirm } = useDashboardContext();
+    const { showConfirm } = useValueStreamContext();
     const [isCreating, setIsCreating] = useState(false);
 
     // Draft states for new sprint creation
@@ -85,7 +85,7 @@ export const SprintPage: React.FC<SprintPageProps> = ({
     };
 
     const handleArchive = async (id: string, name: string) => {
-        const confirmed = await showConfirm('Archive Sprint', `Are you sure you want to archive ${name}? It will no longer appear in the list or dashboard.`);
+        const confirmed = await showConfirm('Archive Sprint', `Are you sure you want to archive ${name}? It will no longer appear in the list or ValueStream.`);
         if (confirmed) {
             updateSprint(id, { is_archived: true });
         }
@@ -262,3 +262,7 @@ export const SprintPage: React.FC<SprintPageProps> = ({
         </PageWrapper>
     );
 };
+
+
+
+
