@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { CustomerPage } from '../CustomerPage';
 import { useValueStreamContext } from '../../../contexts/ValueStreamContext';
@@ -368,6 +368,100 @@ describe('CustomerPage', () => {
         // Since we are using CSS modules, the class name might be different in the output if not using a transformer
         // but vitest-jsdom usually handles it.
         expect(element?.className).toContain('highlightedIssue');
+    });
+
+    it('allows linking Jira issues to support issues', async () => {
+        (api.authorizedFetch as any).mockImplementation((_url: string, options: any) => {
+            const body = JSON.parse(options.body);
+            if (body.jql.includes('status = New')) {
+                return Promise.resolve({
+                    ok: true,
+                    json: async () => ({ 
+                        success: true, 
+                        data: { 
+                            issues: [
+                                { key: 'JIRA-123', fields: { summary: 'Problem summary', status: { name: 'New' }, priority: { name: 'High' } } }
+                            ] 
+                        } 
+                    })
+                });
+            }
+            return Promise.resolve({
+                ok: true,
+                json: async () => ({ success: true, data: { issues: [] } })
+            });
+        });
+
+        await act(async () => {
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} />
+                </MemoryRouter>
+            );
+        });
+        
+        const supportTab = screen.getByText(/Support/i);
+        await act(async () => {
+            fireEvent.click(supportTab);
+        });
+
+        await waitFor(() => {
+            expect(screen.getByText('JIRA-123')).toBeDefined();
+        });
+
+        const dropdown = screen.getByDisplayValue('Link to...');
+        
+        // Option 1: Create New
+        await act(async () => {
+            fireEvent.change(dropdown, { target: { value: 'NEW' } });
+        });
+
+        expect(defaultProps.updateCustomer).toHaveBeenCalledWith('c1', expect.objectContaining({
+            support_issues: [
+                expect.objectContaining({
+                    description: 'Problem summary',
+                    related_jiras: ['JIRA-123']
+                })
+            ]
+        }));
+
+        cleanup();
+
+        // Option 2: Link to existing
+        const dataWithIssue: ValueStreamData = {
+            ...mockData,
+            customers: [{
+                ...mockData.customers[0],
+                support_issues: [{ id: 'si-1', description: 'Existing Issue', status: 'to do', created_at: '', updated_at: '' }]
+            }]
+        };
+
+        await act(async () => {
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} data={dataWithIssue} />
+                </MemoryRouter>
+            );
+        });
+
+        const supportTab2 = screen.getByText(/Support/i);
+        await act(async () => {
+            fireEvent.click(supportTab2);
+        });
+
+        const dropdown2 = screen.getByDisplayValue('Link to...');
+        await act(async () => {
+            fireEvent.change(dropdown2, { target: { value: 'si-1' } });
+        });
+
+        expect(defaultProps.updateCustomer).toHaveBeenCalledWith('c1', expect.objectContaining({
+            support_issues: [
+                expect.objectContaining({
+                    id: 'si-1',
+                    related_jiras: ['JIRA-123']
+                })
+            ]
+        }));
     });
 });
 

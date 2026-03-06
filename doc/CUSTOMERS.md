@@ -59,6 +59,25 @@ erDiagram
 - **Min TCV Filter:** Global filter that hides customers (and their downstream trees) if their total TCV is below the threshold.
 - **Standalone Visibility:** Customers with no linked Work Items are only visible if no Work Item, Team, or Epic filters are active.
 
+## Support Issues & Jira Integration
+The system allows tracking customer support health through both manual entries and Jira integration.
+
+### 1. Manual Support Issues
+Users can manually add Support Issues to a customer. Each issue includes:
+- **Description:** Detailed explanation of the problem.
+- **Status:** Lifecycle state (To Do, Work In Progress, Done, etc.).
+- **Related Jiras:** A list of Jira keys that are associated with this manual issue.
+- **Expiration Date:** Automatic cleanup for resolved issues after a set period.
+
+### 2. Support Overview (Jira)
+When Jira integration is configured, the Customer Page displays a "Support Overview" tab that pulls live data from Jira.
+- **Unlinked Issues:** The system identifies Jira issues that are NOT yet linked to any manual Support Issue.
+- **Quick Link:** For these unlinked issues, users can use a dropdown to:
+    - **Link to Existing:** Add the Jira key to an existing manual Support Issue.
+    - **Create New:** Automatically create a new manual Support Issue using the Jira summary and link the key.
+
+This ensures that all relevant customer support activity is triaged and accounted for in the system's health tracking.
+
 
 
 

@@ -177,6 +177,38 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         }
     };
 
+    const handleLinkJira = async (jiraIssue: any, targetId: string) => {
+        if (!targetId || !customer) return;
+        
+        if (targetId === 'NEW') {
+            const now = new Date().toISOString();
+            const newIssue: SupportIssue = {
+                id: generateId('issue'),
+                description: jiraIssue.summary,
+                status: 'to do',
+                related_jiras: [jiraIssue.key],
+                created_at: now,
+                updated_at: now
+            };
+            const currentIssues = customer.support_issues || [];
+            await updateCustomer(customer.id, { support_issues: [newIssue, ...currentIssues] });
+        } else {
+            const currentIssues = [...(customer.support_issues || [])];
+            const issueIndex = currentIssues.findIndex(si => si.id === targetId);
+            if (issueIndex > -1) {
+                const existingJiras = currentIssues[issueIndex].related_jiras || [];
+                if (!existingJiras.includes(jiraIssue.key)) {
+                    currentIssues[issueIndex] = {
+                        ...currentIssues[issueIndex],
+                        related_jiras: [...existingJiras, jiraIssue.key],
+                        updated_at: new Date().toISOString()
+                    };
+                    await updateCustomer(customer.id, { support_issues: currentIssues });
+                }
+            }
+        }
+    };
+
     const renderValue = (val: any): React.ReactNode => {
         if (val === null || val === undefined) return <span style={{ color: '#64748b', fontStyle: 'italic' }}>null</span>;
         if (Array.isArray(val)) {
@@ -220,6 +252,13 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         }
         return String(val);
     };
+
+    const linkedJiraKeysMap = new Map<string, SupportIssue>();
+    (customer?.support_issues || []).forEach(si => {
+        (si.related_jiras || []).forEach(key => {
+            linkedJiraKeysMap.set(key, si);
+        });
+    });
 
     return (
         <PageWrapper 
@@ -703,6 +742,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                             <th>Summary</th>
                                                             <th>Status</th>
                                                             <th>Priority</th>
+                                                            <th>Link Status / Action</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -724,11 +764,34 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                                     </span>
                                                                 </td>
                                                                 <td>{issue.priority}</td>
+                                                                <td>
+                                                                    {linkedJiraKeysMap.has(issue.key) ? (
+                                                                        <div style={{ fontSize: '12px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }}></span>
+                                                                            Linked: {linkedJiraKeysMap.get(issue.key)?.description || linkedJiraKeysMap.get(issue.key)?.id}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <select 
+                                                                            style={{ fontSize: '12px', padding: '2px 4px', backgroundColor: '#1e293b' }}
+                                                                            onChange={(e) => {
+                                                                                handleLinkJira(issue, e.target.value);
+                                                                                e.target.value = ''; // reset
+                                                                            }}
+                                                                            value=""
+                                                                        >
+                                                                            <option value="" disabled>Link to...</option>
+                                                                            <option value="NEW">+ Create New Support Issue</option>
+                                                                            {(customer?.support_issues || []).map(si => (
+                                                                                <option key={si.id} value={si.id}>Link to: {si.description || si.id}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    )}
+                                                                </td>
                                                             </tr>
                                                         ))}
                                                         {healthData.newIssues.length === 0 && healthData.inProgressIssues.length === 0 && healthData.noopIssues.length === 0 && (
                                                             <tr>
-                                                                <td colSpan={4} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No issues found matching the JQL queries.</td>
+                                                                <td colSpan={5} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No issues found matching the JQL queries.</td>
                                                             </tr>
                                                         )}
                                                     </tbody>
