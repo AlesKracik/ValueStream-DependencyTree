@@ -81,9 +81,13 @@ export interface Settings {
   mongo_uri?: string;
   mongo_db?: string;
   mongo_auth_method?: 'scram' | 'aws' | 'oidc';
+  mongo_aws_auth_type?: 'static' | 'role';
   mongo_aws_access_key?: string;
   mongo_aws_secret_key?: string;
   mongo_aws_session_token?: string;
+  mongo_aws_role_arn?: string;
+  mongo_aws_external_id?: string;
+  mongo_aws_role_session_name?: string;
   mongo_oidc_token?: string;
   customer_jql_new?: string;
   customer_jql_in_progress?: string;
@@ -102,9 +106,13 @@ export interface Settings {
   customer_mongo_uri?: string;
   customer_mongo_db?: string;
   customer_mongo_auth_method?: 'scram' | 'aws' | 'oidc';
+  customer_mongo_aws_auth_type?: 'static' | 'role';
   customer_mongo_aws_access_key?: string;
   customer_mongo_aws_secret_key?: string;
   customer_mongo_aws_session_token?: string;
+  customer_mongo_aws_role_arn?: string;
+  customer_mongo_aws_external_id?: string;
+  customer_mongo_aws_role_session_name?: string;
   customer_mongo_oidc_token?: string;
   customer_mongo_use_ssh?: boolean;
   customer_mongo_ssh_host?: string;

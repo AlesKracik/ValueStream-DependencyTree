@@ -454,6 +454,99 @@ describe('SettingsPage', () => {
         }));
     });
 
+    it('shows AWS Assume Role configuration when AWS role auth type is selected', async () => {
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=persistence']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        // Switch to AWS auth method
+        const authSelect = screen.getByLabelText(/Authentication Method:/i);
+        await act(async () => {
+            fireEvent.change(authSelect, { target: { value: 'aws' } });
+        });
+
+        // Default type should be static
+        expect(screen.getByLabelText(/Access Key ID:/i)).toBeDefined();
+        
+        // Switch to Assume Role
+        const typeSelect = screen.getByLabelText(/AWS Authentication Type:/i);
+        await act(async () => {
+            fireEvent.change(typeSelect, { target: { value: 'role' } });
+        });
+
+        expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
+            mongo_aws_auth_type: 'role'
+        }));
+
+        expect(screen.getByLabelText(/Role ARN:/i)).toBeDefined();
+        expect(screen.getByLabelText(/External ID \(Optional\):/i)).toBeDefined();
+        expect(screen.getByLabelText(/Role Session Name \(Optional\):/i)).toBeDefined();
+
+        const arnInput = screen.getByLabelText(/Role ARN:/i);
+        await act(async () => {
+            fireEvent.change(arnInput, { target: { value: 'arn:aws:iam::123:role/MyRole' } });
+            fireEvent.blur(arnInput);
+        });
+
+        expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
+            mongo_aws_role_arn: 'arn:aws:iam::123:role/MyRole'
+        }));
+    });
+
+    it('shows Customer AWS Assume Role configuration when AWS role auth type is selected', async () => {
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=persistence&subsubtab=customer']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        // Switch to AWS auth method for customer
+        const authSelects = screen.getAllByLabelText(/Authentication Method:/i);
+        const customerAuthSelect = authSelects[0]; // In customer tab
+        await act(async () => {
+            fireEvent.change(customerAuthSelect, { target: { value: 'aws' } });
+        });
+
+        // Default type should be static
+        expect(screen.getByLabelText(/Access Key ID:/i)).toBeDefined();
+        
+        // Switch to Assume Role
+        const typeSelect = screen.getByLabelText(/AWS Authentication Type:/i);
+        await act(async () => {
+            fireEvent.change(typeSelect, { target: { value: 'role' } });
+        });
+
+        expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
+            customer_mongo_aws_auth_type: 'role'
+        }));
+
+        expect(screen.getByLabelText(/Role ARN:/i)).toBeDefined();
+        
+        const arnInput = screen.getByLabelText(/Role ARN:/i);
+        await act(async () => {
+            fireEvent.change(arnInput, { target: { value: 'arn:aws:iam::789:role/CustomerRole' } });
+            fireEvent.blur(arnInput);
+        });
+
+        expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
+            customer_mongo_aws_role_arn: 'arn:aws:iam::789:role/CustomerRole'
+        }));
+    });
+
     it('performs database discovery and shows existence badge on test', async () => {
         render(
             <MemoryRouter initialEntries={['/settings?tab=persistence']}>

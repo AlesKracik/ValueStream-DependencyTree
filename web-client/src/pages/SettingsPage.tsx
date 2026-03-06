@@ -60,9 +60,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         mongo_uri: settings.mongo_uri || "",
         mongo_db: settings.mongo_db || "",
         mongo_auth_method: settings.mongo_auth_method || "scram",
+        mongo_aws_auth_type: settings.mongo_aws_auth_type || "static",
         mongo_aws_access_key: settings.mongo_aws_access_key || "",
         mongo_aws_secret_key: settings.mongo_aws_secret_key || "",
         mongo_aws_session_token: settings.mongo_aws_session_token || "",
+        mongo_aws_role_arn: settings.mongo_aws_role_arn || "",
+        mongo_aws_external_id: settings.mongo_aws_external_id || "",
+        mongo_aws_role_session_name: settings.mongo_aws_role_session_name || "",
         mongo_oidc_token: settings.mongo_oidc_token || "",
         mongo_create_if_not_exists: settings.mongo_create_if_not_exists ?? false,
         mongo_use_ssh: settings.mongo_use_ssh ?? false,
@@ -70,12 +74,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         mongo_ssh_port: settings.mongo_ssh_port || 22,
         mongo_ssh_user: settings.mongo_ssh_user || "",
         mongo_ssh_key: settings.mongo_ssh_key || "",
-        customer_mongo_uri: settings.customer_mongo_uri || "",
         customer_mongo_db: settings.customer_mongo_db || "",
         customer_mongo_auth_method: settings.customer_mongo_auth_method || "scram",
+        customer_mongo_aws_auth_type: settings.customer_mongo_aws_auth_type || "static",
         customer_mongo_aws_access_key: settings.customer_mongo_aws_access_key || "",
         customer_mongo_aws_secret_key: settings.customer_mongo_aws_secret_key || "",
         customer_mongo_aws_session_token: settings.customer_mongo_aws_session_token || "",
+        customer_mongo_aws_role_arn: settings.customer_mongo_aws_role_arn || "",
+        customer_mongo_aws_external_id: settings.customer_mongo_aws_external_id || "",
+        customer_mongo_aws_role_session_name: settings.customer_mongo_aws_role_session_name || "",
         customer_mongo_oidc_token: settings.customer_mongo_oidc_token || "",
         customer_mongo_use_ssh: settings.customer_mongo_use_ssh ?? false,
         customer_mongo_ssh_host: settings.customer_mongo_ssh_host || "",
@@ -690,33 +697,85 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       {localFormData.mongo_auth_method === 'aws' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
                           <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>AWS IAM Credentials</div>
+                          
                           <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
-                            Access Key ID:
-                            <input
-                              type="text"
-                              value={localFormData.mongo_aws_access_key || ""}
-                              onChange={(e) => setFormData({ ...localFormData, mongo_aws_access_key: e.target.value })}
-                              onBlur={() => onUpdateSettings({ mongo_aws_access_key: localFormData.mongo_aws_access_key })}
-                            />
+                            AWS Authentication Type:
+                            <select
+                              value={localFormData.mongo_aws_auth_type || "static"}
+                              onChange={(e) => {
+                                  const val = e.target.value as any;
+                                  setFormData({ ...localFormData, mongo_aws_auth_type: val });
+                                  onUpdateSettings({ mongo_aws_auth_type: val });
+                              }}
+                            >
+                              <option value="static">Static Credentials</option>
+                              <option value="role">Assume Role</option>
+                            </select>
                           </label>
-                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
-                            Secret Access Key:
-                            <input
-                              type="password"
-                              value={localFormData.mongo_aws_secret_key || ""}
-                              onChange={(e) => setFormData({ ...localFormData, mongo_aws_secret_key: e.target.value })}
-                              onBlur={() => onUpdateSettings({ mongo_aws_secret_key: localFormData.mongo_aws_secret_key })}
-                            />
-                          </label>
-                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
-                            Session Token (Optional):
-                            <input
-                              type="password"
-                              value={localFormData.mongo_aws_session_token || ""}
-                              onChange={(e) => setFormData({ ...localFormData, mongo_aws_session_token: e.target.value })}
-                              onBlur={() => onUpdateSettings({ mongo_aws_session_token: localFormData.mongo_aws_session_token })}
-                            />
-                          </label>
+
+                          {localFormData.mongo_aws_auth_type === 'static' ? (
+                            <>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                                Access Key ID:
+                                <input
+                                  type="text"
+                                  value={localFormData.mongo_aws_access_key || ""}
+                                  onChange={(e) => setFormData({ ...localFormData, mongo_aws_access_key: e.target.value })}
+                                  onBlur={() => onUpdateSettings({ mongo_aws_access_key: localFormData.mongo_aws_access_key })}
+                                />
+                              </label>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                                Secret Access Key:
+                                <input
+                                  type="password"
+                                  value={localFormData.mongo_aws_secret_key || ""}
+                                  onChange={(e) => setFormData({ ...localFormData, mongo_aws_secret_key: e.target.value })}
+                                  onBlur={() => onUpdateSettings({ mongo_aws_secret_key: localFormData.mongo_aws_secret_key })}
+                                />
+                              </label>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                                Session Token (Optional):
+                                <input
+                                  type="password"
+                                  value={localFormData.mongo_aws_session_token || ""}
+                                  onChange={(e) => setFormData({ ...localFormData, mongo_aws_session_token: e.target.value })}
+                                  onBlur={() => onUpdateSettings({ mongo_aws_session_token: localFormData.mongo_aws_session_token })}
+                                />
+                              </label>
+                            </>
+                          ) : (
+                            <>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                                Role ARN:
+                                <input
+                                  type="text"
+                                  placeholder="arn:aws:iam::123456789012:role/MyRole"
+                                  value={localFormData.mongo_aws_role_arn || ""}
+                                  onChange={(e) => setFormData({ ...localFormData, mongo_aws_role_arn: e.target.value })}
+                                  onBlur={() => onUpdateSettings({ mongo_aws_role_arn: localFormData.mongo_aws_role_arn })}
+                                />
+                              </label>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                                External ID (Optional):
+                                <input
+                                  type="text"
+                                  value={localFormData.mongo_aws_external_id || ""}
+                                  onChange={(e) => setFormData({ ...localFormData, mongo_aws_external_id: e.target.value })}
+                                  onBlur={() => onUpdateSettings({ mongo_aws_external_id: localFormData.mongo_aws_external_id })}
+                                />
+                              </label>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                                Role Session Name (Optional):
+                                <input
+                                  type="text"
+                                  placeholder="ValueStreamSession"
+                                  value={localFormData.mongo_aws_role_session_name || ""}
+                                  onChange={(e) => setFormData({ ...localFormData, mongo_aws_role_session_name: e.target.value })}
+                                  onBlur={() => onUpdateSettings({ mongo_aws_role_session_name: localFormData.mongo_aws_role_session_name })}
+                                />
+                              </label>
+                            </>
+                          )}
                         </div>
                       )}
 
@@ -924,33 +983,85 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       {localFormData.customer_mongo_auth_method === 'aws' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
                           <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>AWS IAM Credentials (Customer)</div>
+                          
                           <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
-                            Access Key ID:
-                            <input
-                              type="text"
-                              value={localFormData.customer_mongo_aws_access_key || ""}
-                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_access_key: e.target.value })}
-                              onBlur={() => onUpdateSettings({ customer_mongo_aws_access_key: localFormData.customer_mongo_aws_access_key })}
-                            />
+                            AWS Authentication Type:
+                            <select
+                              value={localFormData.customer_mongo_aws_auth_type || "static"}
+                              onChange={(e) => {
+                                  const val = e.target.value as any;
+                                  setFormData({ ...localFormData, customer_mongo_aws_auth_type: val });
+                                  onUpdateSettings({ customer_mongo_aws_auth_type: val });
+                              }}
+                            >
+                              <option value="static">Static Credentials</option>
+                              <option value="role">Assume Role</option>
+                            </select>
                           </label>
-                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
-                            Secret Access Key:
-                            <input
-                              type="password"
-                              value={localFormData.customer_mongo_aws_secret_key || ""}
-                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_secret_key: e.target.value })}
-                              onBlur={() => onUpdateSettings({ customer_mongo_aws_secret_key: localFormData.customer_mongo_aws_secret_key })}
-                            />
-                          </label>
-                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
-                            Session Token (Optional):
-                            <input
-                              type="password"
-                              value={localFormData.customer_mongo_aws_session_token || ""}
-                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_session_token: e.target.value })}
-                              onBlur={() => onUpdateSettings({ customer_mongo_aws_session_token: localFormData.customer_mongo_aws_session_token })}
-                            />
-                          </label>
+
+                          {localFormData.customer_mongo_aws_auth_type === 'static' ? (
+                            <>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                                Access Key ID:
+                                <input
+                                  type="text"
+                                  value={localFormData.customer_mongo_aws_access_key || ""}
+                                  onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_access_key: e.target.value })}
+                                  onBlur={() => onUpdateSettings({ customer_mongo_aws_access_key: localFormData.customer_mongo_aws_access_key })}
+                                />
+                              </label>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                                Secret Access Key:
+                                <input
+                                  type="password"
+                                  value={localFormData.customer_mongo_aws_secret_key || ""}
+                                  onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_secret_key: e.target.value })}
+                                  onBlur={() => onUpdateSettings({ customer_mongo_aws_secret_key: localFormData.customer_mongo_aws_secret_key })}
+                                />
+                              </label>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                                Session Token (Optional):
+                                <input
+                                  type="password"
+                                  value={localFormData.customer_mongo_aws_session_token || ""}
+                                  onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_session_token: e.target.value })}
+                                  onBlur={() => onUpdateSettings({ customer_mongo_aws_session_token: localFormData.customer_mongo_aws_session_token })}
+                                />
+                              </label>
+                            </>
+                          ) : (
+                            <>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                                Role ARN:
+                                <input
+                                  type="text"
+                                  placeholder="arn:aws:iam::123456789012:role/MyRole"
+                                  value={localFormData.customer_mongo_aws_role_arn || ""}
+                                  onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_role_arn: e.target.value })}
+                                  onBlur={() => onUpdateSettings({ customer_mongo_aws_role_arn: localFormData.customer_mongo_aws_role_arn })}
+                                />
+                              </label>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                                External ID (Optional):
+                                <input
+                                  type="text"
+                                  value={localFormData.customer_mongo_aws_external_id || ""}
+                                  onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_external_id: e.target.value })}
+                                  onBlur={() => onUpdateSettings({ customer_mongo_aws_external_id: localFormData.customer_mongo_aws_external_id })}
+                                />
+                              </label>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                                Role Session Name (Optional):
+                                <input
+                                  type="text"
+                                  placeholder="ValueStreamSession"
+                                  value={localFormData.customer_mongo_aws_role_session_name || ""}
+                                  onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_role_session_name: e.target.value })}
+                                  onBlur={() => onUpdateSettings({ customer_mongo_aws_role_session_name: localFormData.customer_mongo_aws_role_session_name })}
+                                />
+                              </label>
+                            </>
+                          )}
                         </div>
                       )}
 
