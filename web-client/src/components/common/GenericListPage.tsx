@@ -19,7 +19,7 @@ interface GenericListPageProps<T> {
     defaultSortKey?: string;
     onItemClick: (item: T) => void;
     renderItemTitle: (item: T) => React.ReactNode;
-    renderItemDetails: (item: T) => React.ReactNode;
+    renderItemDetails?: (item: T) => React.ReactNode;
     renderItemRight?: (item: T) => React.ReactNode;
     actionButton?: {
         label: string;
@@ -133,7 +133,7 @@ export function GenericListPage<T extends { id: string }>({
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div>
                                 <div className={styles.itemTitle}>{renderItemTitle(item)}</div>
-                                <div className={styles.itemDetails}>{renderItemDetails(item)}</div>
+                                {renderItemDetails && <div className={styles.itemDetails}>{renderItemDetails(item)}</div>}
                             </div>
                             {renderItemRight && (
                                 <div>{renderItemRight(item)}</div>

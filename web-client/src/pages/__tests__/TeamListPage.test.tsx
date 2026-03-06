@@ -19,7 +19,7 @@ const mockData: DashboardData = {
 };
 
 describe('TeamListPage', () => {
-    it('renders the list of teams', () => {
+    it('renders the list of teams and their attributes', () => {
         render(
             <MemoryRouter>
                 <TeamListPage data={mockData} loading={false} />
@@ -29,6 +29,14 @@ describe('TeamListPage', () => {
         expect(screen.getByText('Alpha Team')).toBeDefined();
         expect(screen.getByText('Beta Team')).toBeDefined();
         expect(screen.getByText('Gamma Team')).toBeDefined();
+
+        // Check for attribute labels
+        const capacityLabels = screen.getAllByText('Capacity:');
+        expect(capacityLabels.length).toBe(3);
+
+        // Check for specific values
+        expect(screen.getByText('50 MDs')).toBeDefined();
+        expect(screen.getByText('100 MDs')).toBeDefined();
     });
 
     it('sorts teams by name', () => {

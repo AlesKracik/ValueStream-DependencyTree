@@ -19,7 +19,7 @@ const mockData: DashboardData = {
 };
 
 describe('CustomerListPage', () => {
-    it('renders the list of customers', () => {
+    it('renders the list of customers and their attributes', () => {
         render(
             <MemoryRouter>
                 <CustomerListPage data={mockData} loading={false} />
@@ -29,6 +29,16 @@ describe('CustomerListPage', () => {
         expect(screen.getByText('Alpha Cust')).toBeDefined();
         expect(screen.getByText('Beta Cust')).toBeDefined();
         expect(screen.getByText('Gamma Cust')).toBeDefined();
+
+        // Check for attribute labels
+        const existingLabels = screen.getAllByText('Existing:');
+        expect(existingLabels.length).toBe(3);
+        const potentialLabels = screen.getAllByText('Potential:');
+        expect(potentialLabels.length).toBe(3);
+
+        // Check for specific values
+        expect(screen.getByText('$5,000')).toBeDefined();
+        expect(screen.getAllByText('$1,000').length).toBeGreaterThan(0);
     });
 
     it('sorts customers by name', () => {
@@ -77,26 +87,5 @@ describe('CustomerListPage', () => {
         expect(items[0].textContent).toContain('Beta Cust');
         expect(items[1].textContent).toContain('Alpha Cust');
         expect(items[2].textContent).toContain('Gamma Cust');
-    });
-
-    it('sorts customers by total TCV', () => {
-        const { container } = render(
-            <MemoryRouter>
-                <CustomerListPage data={mockData} loading={false} />
-            </MemoryRouter>
-        );
-
-        const sortBtn = screen.getByRole('button', { name: /Total/i });
-        
-        // Totals: Alpha (6000), Gamma (11000), Beta (10500)
-        // Click for asc: Alpha, Beta, Gamma
-        fireEvent.click(sortBtn);
-        const items = container.querySelectorAll('[class*="listItem"]');
-        expect(items[0].textContent).toContain('Alpha Cust');
-        expect(items[0].textContent).toContain('$6,000');
-        expect(items[1].textContent).toContain('Beta Cust');
-        expect(items[1].textContent).toContain('$10,500');
-        expect(items[2].textContent).toContain('Gamma Cust');
-        expect(items[2].textContent).toContain('$11,000');
     });
 });

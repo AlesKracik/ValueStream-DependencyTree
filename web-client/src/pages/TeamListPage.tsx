@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { DashboardData, Team } from '../types/models';
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption } from '../components/common/GenericListPage';
+import { ListAttributeGrid, ListAttribute } from '../components/common/ListAttributeGrid';
 
 interface Props {
     data: DashboardData | null;
@@ -27,7 +28,12 @@ export const TeamListPage: React.FC<Props> = ({ data, loading }) => {
             sortOptions={sortOptions}
             onItemClick={(t) => navigate(`/team/${t.id}`)}
             renderItemTitle={(t) => t.name}
-            renderItemDetails={(t) => `Capacity (MDs): ${t.total_capacity_mds.toLocaleString()} | Country: ${t.country || 'N/A'}`}
+            renderItemDetails={(t) => (
+                <ListAttributeGrid>
+                    <ListAttribute label="Capacity" value={`${t.total_capacity_mds.toLocaleString()} MDs`} />
+                    <ListAttribute label="Country" value={t.country || 'N/A'} />
+                </ListAttributeGrid>
+            )}
             actionButton={{
                 label: "+ New Team",
                 onClick: () => navigate('/team/new')

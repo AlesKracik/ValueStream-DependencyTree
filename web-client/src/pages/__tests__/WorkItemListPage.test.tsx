@@ -21,7 +21,7 @@ const mockData: DashboardData = {
 };
 
 describe('WorkItemListPage', () => {
-    it('renders the list of work items', () => {
+    it('renders the list of work items and their attributes', () => {
         render(
             <MemoryRouter>
                 <WorkItemListPage data={mockData} loading={false} />
@@ -31,6 +31,18 @@ describe('WorkItemListPage', () => {
         expect(screen.getByText('Alpha Item')).toBeDefined();
         expect(screen.getByText('Beta Item')).toBeDefined();
         expect(screen.getByText('Gamma Item')).toBeDefined();
+
+        // Check for attribute labels
+        expect(screen.getAllByText('Score:').length).toBe(3);
+        expect(screen.getAllByText('Effort:').length).toBe(3);
+        expect(screen.getAllByText('TCV:').length).toBe(3);
+        expect(screen.getAllByText('Released:').length).toBe(3);
+
+        // Check for specific values
+        expect(screen.getByText('10')).toBeDefined();
+        expect(screen.getByText('50')).toBeDefined();
+        expect(screen.getByText('5 MDs')).toBeDefined();
+        expect(screen.getByText('$1,000')).toBeDefined();
     });
 
     it('filters work items by name', () => {

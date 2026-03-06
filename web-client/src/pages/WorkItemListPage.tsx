@@ -4,6 +4,7 @@ import type { DashboardData, WorkItem } from '../types/models';
 import { calculateWorkItemEffort, calculateWorkItemTcv } from '../utils/businessLogic';
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption } from '../components/common/GenericListPage';
+import { ListAttributeGrid, ListAttribute } from '../components/common/ListAttributeGrid';
 
 interface Props {
     data: DashboardData | null;
@@ -43,7 +44,14 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
                 const effort = calculateWorkItemEffort(w, data.epics);
                 const tcv = calculateWorkItemTcv(w, data.customers);
                 const sprint = data.sprints.find(s => s.id === w.released_in_sprint_id);
-                return `Score: ${Math.round(w.score || 0).toLocaleString()} | Effort: ${effort.toLocaleString()} MDs | TCV: $${tcv.toLocaleString()} | Released in: ${sprint?.name || 'Not Released'}`;
+                return (
+                    <ListAttributeGrid columns={4} columnWidth="180px">
+                        <ListAttribute label="Score" value={Math.round(w.score || 0).toLocaleString()} />
+                        <ListAttribute label="Effort" value={`${effort.toLocaleString()} MDs`} />
+                        <ListAttribute label="TCV" value={`$${tcv.toLocaleString()}`} />
+                        <ListAttribute label="Released" value={sprint?.name || 'Not Released'} />
+                    </ListAttributeGrid>
+                );
             }}
             actionButton={{
                 label: "+ New Work Item",
