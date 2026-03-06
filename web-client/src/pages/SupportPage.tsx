@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import type { ValueStreamData, SupportIssue } from '../types/models';
+import React, { useMemo, useEffect } from 'react';
+import type { ValueStreamData, SupportIssue, Customer } from '../types/models';
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption, ListColumn } from '../components/common/GenericListPage';
 import { useNavigate } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 interface Props {
     data: ValueStreamData | null;
     loading: boolean;
+    updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
 }
 
 interface SupportIssueWithCustomer extends SupportIssue {
@@ -14,8 +15,29 @@ interface SupportIssueWithCustomer extends SupportIssue {
     customerId: string;
 }
 
-export const SupportPage: React.FC<Props> = ({ data, loading }) => {
+export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) => {
     const navigate = useNavigate();
+
+    // Automatic cleanup of expired issues
+    useEffect(() => {
+        if (!data || loading) return;
+
+        const today = new Date().toISOString().split('T')[0];
+        
+        data.customers.forEach(customer => {
+            if (!customer.support_issues || customer.support_issues.length === 0) return;
+
+            const validIssues = customer.support_issues.filter(issue => {
+                if (!issue.expiration_date) return true;
+                return issue.expiration_date >= today;
+            });
+
+            if (validIssues.length !== customer.support_issues.length) {
+                console.log(`Cleaning up ${customer.support_issues.length - validIssues.length} expired issues for customer ${customer.name}`);
+                updateCustomer(customer.id, { support_issues: validIssues }, true);
+            }
+        });
+    }, [data, loading, updateCustomer]);
 
     const allIssues = useMemo(() => {
         if (!data) return [];

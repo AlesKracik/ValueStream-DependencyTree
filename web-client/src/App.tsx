@@ -138,7 +138,7 @@ function MainAppContent() {
             <Route path="/customers" element={<CustomerListPage data={globalState.data} loading={globalState.loading} />} />
             <Route path="/workitems" element={<WorkItemListPage data={globalState.data} loading={globalState.loading} />} />
             <Route path="/teams" element={<TeamListPage data={globalState.data} loading={globalState.loading} />} />
-            <Route path="/support" element={<SupportPage data={globalState.data} loading={globalState.loading} />} />
+            <Route path="/support" element={<SupportPage data={globalState.data} loading={globalState.loading} updateCustomer={globalState.updateCustomer} />} />
             <Route path="/sprints" element={<SprintPageRouteWrapper ValueStreamstate={globalState} />} />
             
             {/* Other Pages */}

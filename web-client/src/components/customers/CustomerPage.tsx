@@ -78,6 +78,24 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
 
     const customer = isNew ? newCustDraft as Customer : data?.customers.find(c => c.id === customerId);
 
+    // Automatic cleanup of expired issues for this customer
+    useEffect(() => {
+        if (!customer || isNew || activeTab !== 'support' || loading) return;
+
+        const today = new Date().toISOString().split('T')[0];
+        if (!customer.support_issues || customer.support_issues.length === 0) return;
+
+        const validIssues = customer.support_issues.filter(issue => {
+            if (!issue.expiration_date) return true;
+            return issue.expiration_date >= today;
+        });
+
+        if (validIssues.length !== customer.support_issues.length) {
+            console.log(`Cleaning up ${customer.support_issues.length - validIssues.length} expired issues for customer ${customer.name}`);
+            updateCustomer(customer.id, { support_issues: validIssues }, true);
+        }
+    }, [customer?.id, activeTab, loading, updateCustomer]);
+
     const healthData = useCustomerHealth(customer, data?.settings);
     const customFields = useCustomerCustomFields(customer, data?.settings);
 

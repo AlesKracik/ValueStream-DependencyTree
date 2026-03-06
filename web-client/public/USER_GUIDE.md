@@ -43,6 +43,7 @@ Both Customers and Work Items feature tabbed detail pages for better organizatio
     - **Targeted Work Items:** View and manage which strategic initiatives are delivering value to this customer. You can target either the **"Latest Actual"** TCV or a specific **historical record** from the customer's timeline. New targets can be added directly from this tab using the searchable dropdown at the bottom.
     - **TCV History:** A chronological audit trail of the customer's contract evolution. Historical entries are created automatically whenever you perform an "Update TCV" action.
     - **Support Health:** Displays the current status of Jira support tickets linked to the customer. 
+        - **Automatic Cleanup:** To keep the support list relevant, any manual support issue that has passed its **Expiration Date** is automatically removed from the system when you visit the Support page or the customer's Support tab.
         - **AI Health Assistant:** Click **"Generate AI Summary"** to analyze root causes and correlations across New, Active, and Blocked issues. 
         - **Real-Time Streaming:** The analysis is streamed word-by-word as it's generated for a more interactive experience.
         - **Follow-up Chat:** After the initial summary, you can continue the conversation by asking specific follow-up questions (e.g., "Which of these are high priority?" or "Are any related to our recent release?"). The AI maintains context of all previously discussed issues.

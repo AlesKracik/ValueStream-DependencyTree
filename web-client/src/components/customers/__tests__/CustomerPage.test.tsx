@@ -463,6 +463,35 @@ describe('CustomerPage', () => {
             ]
         }));
     });
+
+    it('cleans up expired support issues when support tab is active', async () => {
+        const dataWithExpiredIssue: ValueStreamData = {
+            ...mockData,
+            customers: [{
+                ...mockData.customers[0],
+                support_issues: [
+                    { id: 'i1', description: 'Active Issue', status: 'to do' },
+                    { id: 'i2', description: 'Expired Issue', status: 'done', expiration_date: '2020-01-01' }
+                ]
+            }]
+        };
+
+        await act(async () => {
+            render(
+                <MemoryRouter initialEntries={['/customer/c1?tab=support']}>
+                    <CustomerPage {...defaultProps} data={dataWithExpiredIssue} />
+                </MemoryRouter>
+            );
+        });
+
+        await waitFor(() => {
+            expect(defaultProps.updateCustomer).toHaveBeenCalledWith('c1', expect.objectContaining({
+                support_issues: [
+                    expect.objectContaining({ id: 'i1' })
+                ]
+            }), true);
+        });
+    });
 });
 
 

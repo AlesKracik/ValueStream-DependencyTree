@@ -67,7 +67,7 @@ Users can manually add Support Issues to a customer. Each issue includes:
 - **Description:** Detailed explanation of the problem.
 - **Status:** Lifecycle state (To Do, Work In Progress, Done, etc.).
 - **Related Jiras:** A list of Jira keys that are associated with this manual issue.
-- **Expiration Date:** Automatic cleanup for resolved issues after a set period.
+- **Expiration Date:** Support issues are automatically removed from the system once they pass their expiration date. This cleanup is triggered whenever a user visits the Support list page or the specific Customer's support tab.
 
 ### 2. Support Overview (Jira)
 When Jira integration is configured, the Customer Page displays a "Support Overview" tab that pulls live data from Jira.
