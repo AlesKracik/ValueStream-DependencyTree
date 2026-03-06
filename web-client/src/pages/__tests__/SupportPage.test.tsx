@@ -184,4 +184,48 @@ describe('SupportPage', () => {
         // Done should now be BEFORE Todo
         expect(doneIdx!.compareDocumentPosition(todoIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
+
+    it('sorts status globally across multiple customers', async () => {
+        const multiCustomerData: ValueStreamData = {
+            ...mockData,
+            customers: [
+                {
+                    id: 'c1',
+                    name: 'Customer A',
+                    existing_tcv: 100,
+                    potential_tcv: 50,
+                    support_issues: [
+                        { id: 's1', description: 'Done A', status: 'done' }
+                    ]
+                },
+                {
+                    id: 'c2',
+                    name: 'Customer B',
+                    existing_tcv: 200,
+                    potential_tcv: 50,
+                    support_issues: [
+                        { id: 's2', description: 'Todo B', status: 'to do' }
+                    ]
+                }
+            ]
+        };
+
+        render(
+            <MemoryRouter>
+                <SupportPage data={multiCustomerData} loading={false} updateCustomer={mockUpdateCustomer} />
+            </MemoryRouter>
+        );
+
+        const statusSortBtn = screen.getByRole('button', { name: /Status/i });
+        // Click once for ascending (Todo -> Done)
+        await act(async () => {
+            fireEvent.click(statusSortBtn);
+        });
+
+        const todoB = screen.getByText('Todo B').closest('div[class*="listItem"]');
+        const doneA = screen.getByText('Done A').closest('div[class*="listItem"]');
+
+        // Todo B (Customer B) should be BEFORE Done A (Customer A)
+        expect(todoB!.compareDocumentPosition(doneA!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
 });
