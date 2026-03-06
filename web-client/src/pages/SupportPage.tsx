@@ -35,7 +35,8 @@ export const SupportPage: React.FC<Props> = ({ data, loading }) => {
     const sortOptions: SortOption<SupportIssueWithCustomer>[] = useMemo(() => [
         { label: 'Customer', key: 'customerName', getValue: (d) => d.customerName },
         { label: 'Description', key: 'description', getValue: (d) => d.description },
-        { label: 'Status', key: 'status', getValue: (d) => d.status }
+        { label: 'Status', key: 'status', getValue: (d) => d.status },
+        { label: 'Updated', key: 'updated_at', getValue: (d) => d.updated_at || '' }
     ], []);
 
     const columns: ListColumn<SupportIssueWithCustomer>[] = useMemo(() => [
