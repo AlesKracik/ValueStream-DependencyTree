@@ -341,7 +341,7 @@ describe('SettingsPage', () => {
         }));
     });
 
-    it('handles the "Create if not exists" checkbox', async () => {
+    it('handles the "Create if not exists" checkbox and ensures it is only for application mongo', async () => {
         render(
             <MemoryRouter initialEntries={['/settings?tab=persistence']}>
                 <SettingsPage 
@@ -354,13 +354,103 @@ describe('SettingsPage', () => {
             </MemoryRouter>
         );
 
-        const checkbox = screen.getByLabelText(/Create database if it doesn't exist/i);
+        // Subtab "application" should be active by default
+        const appCheckbox = screen.getByLabelText(/Create database if it doesn't exist/i);
+        expect(appCheckbox).toBeDefined();
+
         await act(async () => {
-            fireEvent.click(checkbox);
+            fireEvent.click(appCheckbox);
         });
 
         expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
             mongo_create_if_not_exists: true
+        }));
+
+        // Switch to "customer" mongo
+        const customerBtn = screen.getByText('Customer');
+        await act(async () => {
+            fireEvent.click(customerBtn);
+        });
+
+        // The checkbox for "customer" mongo should NOT be present (per user request)
+        expect(screen.queryByLabelText(/Create database if it doesn't exist \(Customer\)/i)).toBeNull();
+    });
+
+    it('shows SSH tunnel configuration when SSH is enabled', async () => {
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=persistence']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        const sshCheckbox = screen.getByLabelText(/SSH with Identity File/i);
+        expect(screen.queryByText('SSH Tunnel Configuration')).toBeNull();
+
+        await act(async () => {
+            fireEvent.click(sshCheckbox);
+        });
+
+        expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
+            mongo_use_ssh: true
+        }));
+
+        expect(screen.getByText('SSH Tunnel Configuration')).toBeDefined();
+        expect(screen.getByLabelText(/SSH Host:/i)).toBeDefined();
+        expect(screen.getByLabelText(/SSH Port:/i)).toBeDefined();
+        expect(screen.getByLabelText(/SSH User:/i)).toBeDefined();
+        expect(screen.getByLabelText(/SSH Identity File \(Private Key\):/i)).toBeDefined();
+
+        const hostInput = screen.getByLabelText(/SSH Host:/i);
+        await act(async () => {
+            fireEvent.change(hostInput, { target: { value: 'ssh.server.com' } });
+            fireEvent.blur(hostInput);
+        });
+
+        expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
+            mongo_ssh_host: 'ssh.server.com'
+        }));
+    });
+
+    it('shows Customer SSH tunnel configuration when SSH is enabled for customer mongo', async () => {
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=persistence&subsubtab=customer']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        const sshCheckbox = screen.getByLabelText(/SSH with Identity File \(Customer\)/i);
+        expect(screen.queryByText('SSH Tunnel Configuration (Customer)')).toBeNull();
+
+        await act(async () => {
+            fireEvent.click(sshCheckbox);
+        });
+
+        expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
+            customer_mongo_use_ssh: true
+        }));
+
+        expect(screen.getByText('SSH Tunnel Configuration (Customer)')).toBeDefined();
+        
+        const hostInput = screen.getByLabelText(/SSH Host:/i);
+        await act(async () => {
+            fireEvent.change(hostInput, { target: { value: 'customer.ssh.com' } });
+            fireEvent.blur(hostInput);
+        });
+
+        expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
+            customer_mongo_ssh_host: 'customer.ssh.com'
         }));
     });
 

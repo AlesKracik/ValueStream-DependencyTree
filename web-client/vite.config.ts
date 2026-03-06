@@ -67,7 +67,23 @@ const MockDataPersistencePlugin = (): Plugin => ({
         return res.end();
       }
 
-      const SENSITIVE_FIELDS = ['jira_api_token', 'mongo_uri', 'mongo_aws_access_key', 'mongo_aws_secret_key', 'mongo_aws_session_token', 'mongo_oidc_token', 'llm_api_key'];
+      const SENSITIVE_FIELDS = [
+        'jira_api_token', 
+        'mongo_uri', 
+        'mongo_aws_access_key', 
+        'mongo_aws_secret_key', 
+        'mongo_aws_session_token', 
+        'mongo_oidc_token', 
+        'mongo_ssh_key',
+        'customer_mongo_uri', 
+        'customer_mongo_aws_access_key', 
+        'customer_mongo_aws_secret_key', 
+        'customer_mongo_aws_session_token', 
+        'customer_mongo_oidc_token', 
+        'customer_mongo_ssh_key',
+        'llm_api_key'
+      ];
+
       const MASK = '********';
 
       function maskSettings(settings: any) {

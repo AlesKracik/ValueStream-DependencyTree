@@ -65,6 +65,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         mongo_aws_session_token: settings.mongo_aws_session_token || "",
         mongo_oidc_token: settings.mongo_oidc_token || "",
         mongo_create_if_not_exists: settings.mongo_create_if_not_exists ?? false,
+        mongo_use_ssh: settings.mongo_use_ssh ?? false,
+        mongo_ssh_host: settings.mongo_ssh_host || "",
+        mongo_ssh_port: settings.mongo_ssh_port || 22,
+        mongo_ssh_user: settings.mongo_ssh_user || "",
+        mongo_ssh_key: settings.mongo_ssh_key || "",
         customer_mongo_uri: settings.customer_mongo_uri || "",
         customer_mongo_db: settings.customer_mongo_db || "",
         customer_mongo_auth_method: settings.customer_mongo_auth_method || "scram",
@@ -72,6 +77,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         customer_mongo_aws_secret_key: settings.customer_mongo_aws_secret_key || "",
         customer_mongo_aws_session_token: settings.customer_mongo_aws_session_token || "",
         customer_mongo_oidc_token: settings.customer_mongo_oidc_token || "",
+        customer_mongo_use_ssh: settings.customer_mongo_use_ssh ?? false,
+        customer_mongo_ssh_host: settings.customer_mongo_ssh_host || "",
+        customer_mongo_ssh_port: settings.customer_mongo_ssh_port || 22,
+        customer_mongo_ssh_user: settings.customer_mongo_ssh_user || "",
+        customer_mongo_ssh_key: settings.customer_mongo_ssh_key || "",
         customer_mongo_custom_query: settings.customer_mongo_custom_query || "",
         customer_jql_new: settings.customer_jql_new || "",
         customer_jql_in_progress: settings.customer_jql_in_progress || "",
@@ -119,6 +129,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     const skField = isCustomer ? 'customer_mongo_aws_secret_key' : 'mongo_aws_secret_key';
     const stField = isCustomer ? 'customer_mongo_aws_session_token' : 'mongo_aws_session_token';
     const otField = isCustomer ? 'customer_mongo_oidc_token' : 'mongo_oidc_token';
+    const useSshField = isCustomer ? 'customer_mongo_use_ssh' : 'mongo_use_ssh';
+    const sshHostField = isCustomer ? 'customer_mongo_ssh_host' : 'mongo_ssh_host';
+    const sshPortField = isCustomer ? 'customer_mongo_ssh_port' : 'mongo_ssh_port';
+    const sshUserField = isCustomer ? 'customer_mongo_ssh_user' : 'mongo_ssh_user';
+    const sshKeyField = isCustomer ? 'customer_mongo_ssh_key' : 'mongo_ssh_key';
 
     const mongo_uri = localFormData[uriField] || settings[uriField];
     const mongo_db = localFormData[dbField] || settings[dbField];
@@ -127,6 +142,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     const mongo_aws_secret_key = localFormData[skField] || settings[skField];
     const mongo_aws_session_token = localFormData[stField] || settings[stField];
     const mongo_oidc_token = localFormData[otField] || settings[otField];
+    const mongo_use_ssh = localFormData[useSshField] || settings[useSshField];
+    const mongo_ssh_host = localFormData[sshHostField] || settings[sshHostField];
+    const mongo_ssh_port = localFormData[sshPortField] || settings[sshPortField];
+    const mongo_ssh_user = localFormData[sshUserField] || settings[sshUserField];
+    const mongo_ssh_key = localFormData[sshKeyField] || settings[sshKeyField];
 
     if (!mongo_uri) {
       if (isCustomer) setCustomerMongoTestResult({ success: false, message: "MongoDB URI is required to test." });
@@ -153,7 +173,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           mongo_aws_access_key,
           mongo_aws_secret_key,
           mongo_aws_session_token,
-          mongo_oidc_token
+          mongo_oidc_token,
+          mongo_use_ssh,
+          mongo_ssh_host,
+          mongo_ssh_port,
+          mongo_ssh_user,
+          mongo_ssh_key
         }),
       });
       const dbData = await dbRes.json();
@@ -174,6 +199,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           mongo_aws_secret_key,
           mongo_aws_session_token,
           mongo_oidc_token,
+          mongo_use_ssh,
+          mongo_ssh_host,
+          mongo_ssh_port,
+          mongo_ssh_user,
+          mongo_ssh_key,
           mongo_create_if_not_exists: isCustomer ? false : (localFormData.mongo_create_if_not_exists || settings.mongo_create_if_not_exists)
         }),
       });
@@ -657,6 +687,68 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         Create database if it doesn't exist
                       </label>
 
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db", cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={localFormData.mongo_use_ssh || false}
+                          onChange={(e) => {
+                            const val = e.target.checked;
+                            setFormData({ ...localFormData, mongo_use_ssh: val });
+                            onUpdateSettings({ mongo_use_ssh: val });
+                          }}
+                        />
+                        SSH with Identity File
+                      </label>
+
+                      {localFormData.mongo_use_ssh && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>SSH Tunnel Configuration</div>
+                          <div style={{ display: 'flex', gap: '12px' }}>
+                            <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", flex: 3 }}>
+                              SSH Host:
+                              <input
+                                type="text"
+                                placeholder="ssh.example.com"
+                                value={localFormData.mongo_ssh_host || ""}
+                                onChange={(e) => setFormData({ ...localFormData, mongo_ssh_host: e.target.value })}
+                                onBlur={() => onUpdateSettings({ mongo_ssh_host: localFormData.mongo_ssh_host })}
+                              />
+                            </label>
+                            <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", flex: 1 }}>
+                              SSH Port:
+                              <input
+                                type="number"
+                                placeholder="22"
+                                value={localFormData.mongo_ssh_port || 22}
+                                onChange={(e) => setFormData({ ...localFormData, mongo_ssh_port: parseInt(e.target.value) })}
+                                onBlur={() => onUpdateSettings({ mongo_ssh_port: localFormData.mongo_ssh_port })}
+                              />
+                            </label>
+                          </div>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            SSH User:
+                            <input
+                              type="text"
+                              placeholder="username"
+                              value={localFormData.mongo_ssh_user || ""}
+                              onChange={(e) => setFormData({ ...localFormData, mongo_ssh_user: e.target.value })}
+                              onBlur={() => onUpdateSettings({ mongo_ssh_user: localFormData.mongo_ssh_user })}
+                            />
+                          </label>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            SSH Identity File (Private Key):
+                            <textarea
+                              placeholder="-----BEGIN RSA PRIVATE KEY-----..."
+                              value={localFormData.mongo_ssh_key || ""}
+                              onChange={(e) => setFormData({ ...localFormData, mongo_ssh_key: e.target.value })}
+                              onBlur={() => onUpdateSettings({ mongo_ssh_key: localFormData.mongo_ssh_key })}
+                              rows={5}
+                              style={{ fontFamily: 'monospace', fontSize: '12px' }}
+                            />
+                          </label>
+                        </div>
+                      )}
+
                       {localFormData.mongo_auth_method === 'aws' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
                           <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>AWS IAM Credentials</div>
@@ -709,7 +801,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       <button
                         type="button"
                         className="btn-primary"
-                        onClick={handleTestConnection}
+                        onClick={() => handleTestConnection('application')}
                         style={{ alignSelf: "flex-start", marginTop: "4px" }}
                         disabled={isTesting || (!localFormData.mongo_uri && !settings.mongo_uri)}
                       >
@@ -808,9 +900,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               value={localFormData.customer_mongo_db || ""}
                               onChange={(e) => setFormData({ ...localFormData, customer_mongo_db: e.target.value })}
                               onBlur={() => onUpdateSettings({ customer_mongo_db: localFormData.customer_mongo_db })}
-                              style={{
-                                borderColor: customerMongoTestResult?.success && !customerMongoTestResult.exists && !localFormData.customer_mongo_create_if_not_exists ? '#f59e0b' : undefined
-                              }}
                             />
                             <datalist id="customer-mongo-dbs">
                               {availableCustomerDbs.map(db => <option key={db} value={db} />)}
@@ -831,6 +920,68 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                           )}
                         </div>
                       </label>
+
+                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db", cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={localFormData.customer_mongo_use_ssh || false}
+                          onChange={(e) => {
+                            const val = e.target.checked;
+                            setFormData({ ...localFormData, customer_mongo_use_ssh: val });
+                            onUpdateSettings({ customer_mongo_use_ssh: val });
+                          }}
+                        />
+                        SSH with Identity File (Customer)
+                      </label>
+
+                      {localFormData.customer_mongo_use_ssh && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>SSH Tunnel Configuration (Customer)</div>
+                          <div style={{ display: 'flex', gap: '12px' }}>
+                            <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", flex: 3 }}>
+                              SSH Host:
+                              <input
+                                type="text"
+                                placeholder="ssh.customer.com"
+                                value={localFormData.customer_mongo_ssh_host || ""}
+                                onChange={(e) => setFormData({ ...localFormData, customer_mongo_ssh_host: e.target.value })}
+                                onBlur={() => onUpdateSettings({ customer_mongo_ssh_host: localFormData.customer_mongo_ssh_host })}
+                              />
+                            </label>
+                            <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", flex: 1 }}>
+                              SSH Port:
+                              <input
+                                type="number"
+                                placeholder="22"
+                                value={localFormData.customer_mongo_ssh_port || 22}
+                                onChange={(e) => setFormData({ ...localFormData, customer_mongo_ssh_port: parseInt(e.target.value) })}
+                                onBlur={() => onUpdateSettings({ customer_mongo_ssh_port: localFormData.customer_mongo_ssh_port })}
+                              />
+                            </label>
+                          </div>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            SSH User:
+                            <input
+                              type="text"
+                              placeholder="username"
+                              value={localFormData.customer_mongo_ssh_user || ""}
+                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_ssh_user: e.target.value })}
+                              onBlur={() => onUpdateSettings({ customer_mongo_ssh_user: localFormData.customer_mongo_ssh_user })}
+                            />
+                          </label>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            SSH Identity File (Private Key):
+                            <textarea
+                              placeholder="-----BEGIN RSA PRIVATE KEY-----..."
+                              value={localFormData.customer_mongo_ssh_key || ""}
+                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_ssh_key: e.target.value })}
+                              onBlur={() => onUpdateSettings({ customer_mongo_ssh_key: localFormData.customer_mongo_ssh_key })}
+                              rows={5}
+                              style={{ fontFamily: 'monospace', fontSize: '12px' }}
+                            />
+                          </label>
+                        </div>
+                      )}
 
                       {localFormData.customer_mongo_auth_method === 'aws' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>

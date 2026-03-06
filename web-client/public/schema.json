@@ -49,7 +49,25 @@
                 "llm_model": { "type": "string" },
                 "fiscal_year_start_month": { "type": "integer", "minimum": 1, "maximum": 12 },
                 "sprint_duration_days": { "type": "integer", "minimum": 1 },
-                "mongo_create_if_not_exists": { "type": "boolean" }
+                "mongo_create_if_not_exists": { "type": "boolean" },
+                "mongo_use_ssh": { "type": "boolean" },
+                "mongo_ssh_host": { "type": "string" },
+                "mongo_ssh_port": { "type": "integer" },
+                "mongo_ssh_user": { "type": "string" },
+                "mongo_ssh_key": { "type": "string" },
+                "customer_mongo_uri": { "type": "string" },
+                "customer_mongo_db": { "type": "string" },
+                "customer_mongo_auth_method": { "type": "string", "enum": ["scram", "aws", "oidc"] },
+                "customer_mongo_aws_access_key": { "type": "string" },
+                "customer_mongo_aws_secret_key": { "type": "string" },
+                "customer_mongo_aws_session_token": { "type": "string" },
+                "customer_mongo_oidc_token": { "type": "string" },
+                "customer_mongo_use_ssh": { "type": "boolean" },
+                "customer_mongo_ssh_host": { "type": "string" },
+                "customer_mongo_ssh_port": { "type": "integer" },
+                "customer_mongo_ssh_user": { "type": "string" },
+                "customer_mongo_ssh_key": { "type": "string" },
+                "customer_mongo_custom_query": { "type": "string" }
             }
         },
         "customers": {
