@@ -113,4 +113,75 @@ describe('SupportPage', () => {
         expect(todoIdx!.compareDocumentPosition(wipIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
         expect(wipIdx!.compareDocumentPosition(doneIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
+
+    it('sorts by status correctly with messy casing and spaces (normalization)', async () => {
+        const sortingData: ValueStreamData = {
+            ...mockData,
+            customers: [
+                {
+                    ...mockData.customers[0],
+                    support_issues: [
+                        { id: 's1', description: 'Done Upper', status: 'DONE' as any },
+                        { id: 's2', description: 'Todo Spaced', status: '  to do  ' as any },
+                        { id: 's3', description: 'WIP Mixed', status: 'Work in Progress' as any }
+                    ]
+                }
+            ]
+        };
+
+        render(
+            <MemoryRouter>
+                <SupportPage data={sortingData} loading={false} updateCustomer={mockUpdateCustomer} />
+            </MemoryRouter>
+        );
+
+        const statusSortBtn = screen.getByRole('button', { name: /Status/i });
+        await act(async () => {
+            fireEvent.click(statusSortBtn);
+        });
+
+        const todoIdx = screen.getByText('Todo Spaced').closest('div[class*="listItem"]');
+        const wipIdx = screen.getByText('WIP Mixed').closest('div[class*="listItem"]');
+        const doneIdx = screen.getByText('Done Upper').closest('div[class*="listItem"]');
+
+        expect(todoIdx!.compareDocumentPosition(wipIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(wipIdx!.compareDocumentPosition(doneIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('handles descending sort for status', async () => {
+        const sortingData: ValueStreamData = {
+            ...mockData,
+            customers: [
+                {
+                    ...mockData.customers[0],
+                    support_issues: [
+                        { id: 's1', description: 'Done Issue', status: 'done' },
+                        { id: 's2', description: 'Todo Issue', status: 'to do' }
+                    ]
+                }
+            ]
+        };
+
+        render(
+            <MemoryRouter>
+                <SupportPage data={sortingData} loading={false} updateCustomer={mockUpdateCustomer} />
+            </MemoryRouter>
+        );
+
+        const statusSortBtn = screen.getByRole('button', { name: /Status/i });
+        // Click once for ascending (Todo -> Done)
+        await act(async () => {
+            fireEvent.click(statusSortBtn);
+        });
+        // Click again for descending (Done -> Todo)
+        await act(async () => {
+            fireEvent.click(statusSortBtn);
+        });
+
+        const todoIdx = screen.getByText('Todo Issue').closest('div[class*="listItem"]');
+        const doneIdx = screen.getByText('Done Issue').closest('div[class*="listItem"]');
+
+        // Done should now be BEFORE Todo
+        expect(doneIdx!.compareDocumentPosition(todoIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
 });
