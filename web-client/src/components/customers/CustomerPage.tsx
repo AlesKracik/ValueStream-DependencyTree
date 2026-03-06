@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import type { ValueStreamData, Customer, WorkItem, TcvHistoryEntry, SupportIssue } from '../../types/models';
 import { SearchableDropdown } from '../common/SearchableDropdown';
@@ -52,12 +52,29 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
     const initialTab = queryParams.get('tab') as any;
+    const focusedIssueId = queryParams.get('issueId');
 
     const [activeTab, setActiveTab] = useState<'customFields' | 'workItems' | 'history' | 'support'>(
         (initialTab && ['customFields', 'workItems', 'history', 'support'].includes(initialTab)) 
             ? initialTab 
             : 'customFields'
     );
+
+    useEffect(() => {
+        if (focusedIssueId && activeTab === 'support' && !loading) {
+            const timer = setTimeout(() => {
+                const element = document.getElementById(`issue-${focusedIssueId}`);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    element.classList.add(styles.highlightedIssue);
+                    setTimeout(() => {
+                        element.classList.remove(styles.highlightedIssue);
+                    }, 3000);
+                }
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, [focusedIssueId, activeTab, loading]);
 
     const customer = isNew ? newCustDraft as Customer : data?.customers.find(c => c.id === customerId);
 
@@ -649,14 +666,15 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                             };
 
                                             return (
-                                                <div key={issue.id} style={{ 
+                                                <div key={issue.id} id={`issue-${issue.id}`} style={{ 
                                                     padding: '20px', 
                                                     backgroundColor: 'rgba(255,255,255,0.03)', 
                                                     border: '1px solid #334155', 
                                                     borderRadius: '8px',
                                                     display: 'flex',
                                                     flexDirection: 'column',
-                                                    gap: '16px'
+                                                    gap: '16px',
+                                                    transition: 'outline 0.3s ease'
                                                 }}>
                                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: '16px' }}>
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

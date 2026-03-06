@@ -72,7 +72,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading }) => {
                 d.customerName.toLowerCase().includes(query.toLowerCase())
             }
             sortOptions={sortOptions}
-            onItemClick={(d) => navigate(`/customer/${d.customerId}?tab=support`)}
+            onItemClick={(d) => navigate(`/customer/${d.customerId}?tab=support&issueId=${d.id}`)}
             columns={columns}
             emptyMessage="No manual support issues tracked."
             loadingMessage="Loading support issues..."

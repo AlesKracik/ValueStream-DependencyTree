@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { CustomerPage } from '../CustomerPage';
 import { useValueStreamContext } from '../../../contexts/ValueStreamContext';
-import type { ValueStreamData } from '../../../types/models';
+import type { ValueStreamData, SupportIssue } from '../../../types/models';
 import * as api from '../../../utils/api';
 
 // Mock the context
@@ -78,7 +79,11 @@ describe('CustomerPage', () => {
 
     it('renders customer details correctly and Actual TCV is readOnly', async () => {
         await act(async () => {
-            render(<CustomerPage {...defaultProps} />);
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} />
+                </MemoryRouter>
+            );
         });
 
         expect(screen.getByDisplayValue('Customer A')).toBeDefined();
@@ -92,7 +97,11 @@ describe('CustomerPage', () => {
 
     it('switches between Targeted Work Items, TCV History and Support tabs', async () => {
         await act(async () => {
-            render(<CustomerPage {...defaultProps} />);
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} />
+                </MemoryRouter>
+            );
         });
 
         // Default tab is Custom Fields now, switch to Work Items
@@ -142,7 +151,11 @@ describe('CustomerPage', () => {
         });
 
         await act(async () => {
-            render(<CustomerPage {...defaultProps} />);
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} />
+                </MemoryRouter>
+            );
         });
         
         const supportTab = screen.getByText(/Support/i);
@@ -181,7 +194,11 @@ describe('CustomerPage', () => {
         });
 
         await act(async () => {
-            render(<CustomerPage {...defaultProps} />);
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} />
+                </MemoryRouter>
+            );
         });
         
         await act(async () => {
@@ -233,7 +250,11 @@ describe('CustomerPage', () => {
 
     it('handles the Promote Potential TCV flow', async () => {
         await act(async () => {
-            render(<CustomerPage {...defaultProps} />);
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} />
+                </MemoryRouter>
+            );
         });
 
         const promoteBtn = screen.getByText('Promote to Actual');
@@ -282,7 +303,11 @@ describe('CustomerPage', () => {
         };
 
         await act(async () => {
-            render(<CustomerPage {...defaultProps} data={historyData} />);
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} data={historyData} />
+                </MemoryRouter>
+            );
         });
 
         const workItemsTab = screen.getByText(/Targeted Work Items/i);
@@ -312,7 +337,11 @@ describe('CustomerPage', () => {
 
     it('removes a work item target', async () => {
         await act(async () => {
-            render(<CustomerPage {...defaultProps} />);
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} />
+                </MemoryRouter>
+            );
         });
 
         const workItemsTab = screen.getByText(/Targeted Work Items/i);
@@ -332,7 +361,11 @@ describe('CustomerPage', () => {
 
     it('adds a new customer with initial validity date', async () => {
         await act(async () => {
-            render(<CustomerPage {...defaultProps} customerId="new" />);
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} customerId="new" />
+                </MemoryRouter>
+            );
         });
 
         const nameInput = screen.getByLabelText(/Name:/i);
@@ -358,7 +391,11 @@ describe('CustomerPage', () => {
 
     it('shows "Add Work Item Target" section even for existing customers', async () => {
         await act(async () => {
-            render(<CustomerPage {...defaultProps} />);
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} />
+                </MemoryRouter>
+            );
         });
 
         const workItemsTab = screen.getByText(/Targeted Work Items/i);
@@ -368,6 +405,45 @@ describe('CustomerPage', () => {
 
         expect(screen.getByText('Add Work Item Target')).toBeDefined();
         expect(screen.getByPlaceholderText('Search for a work item to add...')).toBeDefined();
+    });
+
+    it('focuses on a support issue when issueId is in query params', async () => {
+        const mockIssue: SupportIssue = {
+            id: 'issue-123',
+            description: 'Test Issue',
+            status: 'to do'
+        };
+        const dataWithIssue: ValueStreamData = {
+            ...mockData,
+            customers: [{
+                ...mockData.customers[0],
+                support_issues: [mockIssue]
+            }]
+        };
+
+        // Mock scrollIntoView
+        const scrollIntoViewMock = vi.fn();
+        window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
+
+        await act(async () => {
+            render(
+                <MemoryRouter initialEntries={['/customer/c1?tab=support&issueId=issue-123']}>
+                    <CustomerPage {...defaultProps} data={dataWithIssue} />
+                </MemoryRouter>
+            );
+        });
+
+        // The useEffect has a 300ms timeout
+        await act(async () => {
+            await new Promise(resolve => setTimeout(resolve, 400));
+        });
+
+        expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' });
+        const element = document.getElementById('issue-issue-123');
+        expect(element).not.toBeNull();
+        // Since we are using CSS modules, the class name might be different in the output if not using a transformer
+        // but vitest-jsdom usually handles it.
+        expect(element?.className).toContain('highlightedIssue');
     });
 });
 
