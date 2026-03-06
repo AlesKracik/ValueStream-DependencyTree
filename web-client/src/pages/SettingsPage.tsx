@@ -687,6 +687,55 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         Create database if it doesn't exist
                       </label>
 
+                      {localFormData.mongo_auth_method === 'aws' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>AWS IAM Credentials</div>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            Access Key ID:
+                            <input
+                              type="text"
+                              value={localFormData.mongo_aws_access_key || ""}
+                              onChange={(e) => setFormData({ ...localFormData, mongo_aws_access_key: e.target.value })}
+                              onBlur={() => onUpdateSettings({ mongo_aws_access_key: localFormData.mongo_aws_access_key })}
+                            />
+                          </label>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            Secret Access Key:
+                            <input
+                              type="password"
+                              value={localFormData.mongo_aws_secret_key || ""}
+                              onChange={(e) => setFormData({ ...localFormData, mongo_aws_secret_key: e.target.value })}
+                              onBlur={() => onUpdateSettings({ mongo_aws_secret_key: localFormData.mongo_aws_secret_key })}
+                            />
+                          </label>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            Session Token (Optional):
+                            <input
+                              type="password"
+                              value={localFormData.mongo_aws_session_token || ""}
+                              onChange={(e) => setFormData({ ...localFormData, mongo_aws_session_token: e.target.value })}
+                              onBlur={() => onUpdateSettings({ mongo_aws_session_token: localFormData.mongo_aws_session_token })}
+                            />
+                          </label>
+                        </div>
+                      )}
+
+                      {localFormData.mongo_auth_method === 'oidc' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>OIDC Configuration</div>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                            Access Token:
+                            <input
+                              type="password"
+                              placeholder="eyJhbG..."
+                              value={localFormData.mongo_oidc_token || ""}
+                              onChange={(e) => setFormData({ ...localFormData, mongo_oidc_token: e.target.value })}
+                              onBlur={() => onUpdateSettings({ mongo_oidc_token: localFormData.mongo_oidc_token })}
+                            />
+                          </label>
+                        </div>
+                      )}
+
                       <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db", cursor: 'pointer' }}>
                         <input
                           type="checkbox"
@@ -744,55 +793,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               onBlur={() => onUpdateSettings({ mongo_ssh_key: localFormData.mongo_ssh_key })}
                               rows={5}
                               style={{ fontFamily: 'monospace', fontSize: '12px' }}
-                            />
-                          </label>
-                        </div>
-                      )}
-
-                      {localFormData.mongo_auth_method === 'aws' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>AWS IAM Credentials</div>
-                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
-                            Access Key ID:
-                            <input
-                              type="text"
-                              value={localFormData.mongo_aws_access_key || ""}
-                              onChange={(e) => setFormData({ ...localFormData, mongo_aws_access_key: e.target.value })}
-                              onBlur={() => onUpdateSettings({ mongo_aws_access_key: localFormData.mongo_aws_access_key })}
-                            />
-                          </label>
-                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
-                            Secret Access Key:
-                            <input
-                              type="password"
-                              value={localFormData.mongo_aws_secret_key || ""}
-                              onChange={(e) => setFormData({ ...localFormData, mongo_aws_secret_key: e.target.value })}
-                              onBlur={() => onUpdateSettings({ mongo_aws_secret_key: localFormData.mongo_aws_secret_key })}
-                            />
-                          </label>
-                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
-                            Session Token (Optional):
-                            <input
-                              type="password"
-                              value={localFormData.mongo_aws_session_token || ""}
-                              onChange={(e) => setFormData({ ...localFormData, mongo_aws_session_token: e.target.value })}
-                              onBlur={() => onUpdateSettings({ mongo_aws_session_token: localFormData.mongo_aws_session_token })}
-                            />
-                          </label>
-                        </div>
-                      )}
-
-                      {localFormData.mongo_auth_method === 'oidc' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>OIDC Configuration</div>
-                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
-                            Access Token:
-                            <input
-                              type="password"
-                              placeholder="eyJhbG..."
-                              value={localFormData.mongo_oidc_token || ""}
-                              onChange={(e) => setFormData({ ...localFormData, mongo_oidc_token: e.target.value })}
-                              onBlur={() => onUpdateSettings({ mongo_oidc_token: localFormData.mongo_oidc_token })}
                             />
                           </label>
                         </div>
