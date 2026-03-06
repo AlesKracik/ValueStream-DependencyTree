@@ -130,6 +130,29 @@
                                 "duration_months": { "type": "number", "minimum": 0 }
                             }
                         }
+                    },
+                    "support_issues": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["id", "description", "status"],
+                            "properties": {
+                                "id": { "type": "string" },
+                                "description": { "type": "string" },
+                                "status": { 
+                                    "type": "string", 
+                                    "enum": ["to do", "done", "noop", "waiting for customer", "waiting for other party"] 
+                                },
+                                "related_jiras": {
+                                    "type": "array",
+                                    "items": { "type": "string" }
+                                },
+                                "expiration_date": {
+                                    "type": "string",
+                                    "format": "date"
+                                }
+                            }
+                        }
                     }
                 }
             }

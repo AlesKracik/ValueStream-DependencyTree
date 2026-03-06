@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { DashboardData, Customer, WorkItem, TcvHistoryEntry } from '../../types/models';
+import type { DashboardData, Customer, WorkItem, TcvHistoryEntry, SupportIssue } from '../../types/models';
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import { useDashboardContext } from '../../contexts/DashboardContext';
 import styles from './CustomerPage.module.css';
@@ -549,7 +549,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                             gap: '8px'
                                         }}
                                     >
-                                        Support Health
+                                        Support ({customer.support_issues?.length || 0})
                                         {healthData.healthStatus === 'New / Untriaged' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#ef4444' }}></span>}
                                         {healthData.healthStatus === 'Active Work' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#f59e0b' }}></span>}
                                         {healthData.healthStatus === 'Blocked / Pending' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#3b82f6' }}></span>}
@@ -599,9 +599,154 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                         )}
 
                         {activeTab === 'support' && !isNew && (
-                            <section className={styles.card}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                    <h2>Support Health Overview</h2>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                                <section className={styles.card}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                        <h2>Support Issues</h2>
+                                        <button 
+                                            className="btn-primary" 
+                                            onClick={() => {
+                                                const defaultExpiry = new Date();
+                                                defaultExpiry.setDate(defaultExpiry.getDate() + 14);
+                                                
+                                                const newIssue: SupportIssue = {
+                                                    id: generateId('issue'),
+                                                    description: '',
+                                                    status: 'to do',
+                                                    related_jiras: [],
+                                                    expiration_date: defaultExpiry.toISOString().split('T')[0]
+                                                };
+                                                const currentIssues = customer.support_issues || [];
+                                                updateCustomer(customer.id, { support_issues: [newIssue, ...currentIssues] });
+                                            }}
+                                        >
+                                            + Add Issue
+                                        </button>
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                        {(customer.support_issues || []).map((issue, idx) => {
+                                            const updateIssue = (updates: Partial<SupportIssue>) => {
+                                                const newIssues = [...(customer.support_issues || [])];
+                                                newIssues[idx] = { ...issue, ...updates };
+                                                updateCustomer(customer.id, { support_issues: newIssues });
+                                            };
+
+                                            const removeIssue = async () => {
+                                                const confirmed = await showConfirm('Remove Issue', 'Are you sure you want to remove this support issue?');
+                                                if (!confirmed) return;
+                                                const newIssues = (customer.support_issues || []).filter((_, i) => i !== idx);
+                                                updateCustomer(customer.id, { support_issues: newIssues });
+                                            };
+
+                                            return (
+                                                <div key={issue.id} style={{ 
+                                                    padding: '20px', 
+                                                    backgroundColor: 'rgba(255,255,255,0.03)', 
+                                                    border: '1px solid #334155', 
+                                                    borderRadius: '8px',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '16px'
+                                                }}>
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: '16px' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                            <label style={{ fontSize: '13px', color: '#94a3b8' }}>Description</label>
+                                                            <textarea 
+                                                                value={issue.description}
+                                                                onChange={e => updateIssue({ description: e.target.value })}
+                                                                placeholder="Describe the support issue..."
+                                                                style={{ minHeight: '80px', width: '100%', backgroundColor: '#0f172a', resize: 'vertical' }}
+                                                            />
+                                                        </div>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                <label style={{ fontSize: '13px', color: '#94a3b8' }}>Status</label>
+                                                                <select 
+                                                                    value={issue.status}
+                                                                    onChange={e => updateIssue({ status: e.target.value as any })}
+                                                                    style={{ width: '100%' }}
+                                                                >
+                                                                    <option value="to do">To Do</option>
+                                                                    <option value="done">Done</option>
+                                                                    <option value="noop">Noop</option>
+                                                                    <option value="waiting for customer">Waiting for Customer</option>
+                                                                    <option value="waiting for other party">Waiting for Other Party</option>
+                                                                </select>
+                                                            </div>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                    <label style={{ fontSize: '13px', color: '#94a3b8' }}>Expiration Date</label>
+                                                                    {issue.expiration_date && (
+                                                                        <button 
+                                                                            onClick={() => updateIssue({ expiration_date: undefined })}
+                                                                            style={{ 
+                                                                                fontSize: '11px', 
+                                                                                background: 'none', 
+                                                                                border: 'none', 
+                                                                                color: '#60a5fa', 
+                                                                                cursor: 'pointer',
+                                                                                padding: 0
+                                                                            }}
+                                                                        >
+                                                                            Never Expire
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                                <input 
+                                                                    type="date"
+                                                                    value={issue.expiration_date || ''}
+                                                                    onChange={e => updateIssue({ expiration_date: e.target.value || undefined })}
+                                                                    style={{ width: '100%' }}
+                                                                />
+                                                                {!issue.expiration_date && (
+                                                                    <div style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>No expiration</div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid #334155', paddingTop: '16px' }}>
+                                                        <div style={{ flex: 1, marginRight: '16px' }}>
+                                                            <label style={{ fontSize: '13px', color: '#94a3b8', display: 'block', marginBottom: '8px' }}>Related Jiras (comma separated keys)</label>
+                                                            <input 
+                                                                type="text"
+                                                                value={(issue.related_jiras || []).join(', ')}
+                                                                onChange={e => updateIssue({ related_jiras: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                                                                placeholder="e.g. PROJ-123, PROJ-456"
+                                                                style={{ width: '100%', backgroundColor: '#0f172a' }}
+                                                            />
+                                                            <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+                                                                {(issue.related_jiras || []).map(key => (
+                                                                    <a 
+                                                                        key={key}
+                                                                        href={`${data?.settings.jira_base_url}/browse/${key}`}
+                                                                        target="_blank"
+                                                                        rel="noreferrer"
+                                                                        style={{ fontSize: '12px', color: '#60a5fa', textDecoration: 'none', backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(59, 130, 246, 0.3)' }}
+                                                                    >
+                                                                        {key} ↗
+                                                                    </a>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        <button className="btn-danger" onClick={removeIssue} style={{ padding: '8px 16px' }}>Remove</button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+
+                                        {(customer.support_issues || []).length === 0 && (
+                                            <div style={{ color: '#9ca3af', textAlign: 'center', padding: '40px', backgroundColor: 'rgba(255,255,255,0.01)', borderRadius: '8px', border: '1px dashed #334155' }}>
+                                                No manual support issues tracked for this customer.
+                                            </div>
+                                        )}
+                                    </div>
+                                </section>
+
+                                <section className={styles.card}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                        <h2>Support Overview (Jira)</h2>
                                     {healthData.healthStatus !== 'Unknown' && (
                                         <div style={{ display: 'flex', gap: '16px' }}>
                                             <div style={{ textAlign: 'center', padding: '8px 16px', backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid #ef4444' }}>
@@ -751,9 +896,10 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                     </>
                                 )}
                             </section>
-                        )}
+                        </div>
+                    )}
 
-                        {activeTab === 'workItems' && (
+                    {activeTab === 'workItems' && (
                             <section className={styles.card}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                                     <h2>Targeted Work Items</h2>

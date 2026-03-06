@@ -90,7 +90,7 @@ describe('CustomerPage', () => {
         expect(screen.getByDisplayValue('2026-01-01')).toBeDefined();
     });
 
-    it('switches between Targeted Work Items, TCV History and Support Health tabs', async () => {
+    it('switches between Targeted Work Items, TCV History and Support tabs', async () => {
         await act(async () => {
             render(<CustomerPage {...defaultProps} />);
         });
@@ -111,15 +111,15 @@ describe('CustomerPage', () => {
         expect(screen.queryByText('Feature 1')).toBeNull();
         expect(screen.getByText(/No historical entries/i)).toBeDefined();
 
-        // Switch to Support Health tab
-        const supportTab = screen.getByText(/Support Health/i);
+        // Switch to Support tab
+        const supportTab = screen.getByText(/Support/i);
         await act(async () => {
             fireEvent.click(supportTab);
         });
-        expect(screen.getByText(/Support Health Overview/i)).toBeDefined();
+        expect(screen.getByText(/Support Overview/i)).toBeDefined();
     });
 
-    it('displays Jira issues in Support Health tab', async () => {
+    it('displays Jira issues in Support tab', async () => {
         (api.authorizedFetch as any).mockImplementation((_url: string, options: any) => {
             const body = JSON.parse(options.body);
             if (body.jql.includes('status = New')) {
@@ -145,7 +145,7 @@ describe('CustomerPage', () => {
             render(<CustomerPage {...defaultProps} />);
         });
         
-        const supportTab = screen.getByText(/Support Health/i);
+        const supportTab = screen.getByText(/Support/i);
         await act(async () => {
             fireEvent.click(supportTab);
         });
@@ -185,7 +185,7 @@ describe('CustomerPage', () => {
         });
         
         await act(async () => {
-            fireEvent.click(screen.getByText(/Support Health/i));
+            fireEvent.click(screen.getByText(/Support/i));
         });
         
         // Wait for Jira loading to finish

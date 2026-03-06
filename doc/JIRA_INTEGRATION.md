@@ -34,7 +34,7 @@ Users can define global JQL queries in the settings to categorize issues:
 - **In-Progress JQL:** Criteria for active issues.
 - **Noop JQL:** Criteria for closed or irrelevant issues.
 
-## AI Support Health Assistant
+## AI Support Assistant
 The application includes an AI-powered assistant that analyzes customer support tickets to identify root causes and correlations.
 
 ### Analysis Context

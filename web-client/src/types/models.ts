@@ -5,6 +5,14 @@ export interface TcvHistoryEntry {
   duration_months?: number;
 }
 
+export interface SupportIssue {
+  id: string;
+  description: string;
+  related_jiras?: string[];
+  status: 'to do' | 'done' | 'noop' | 'waiting for customer' | 'waiting for other party';
+  expiration_date?: string; // ISO date
+}
+
 export interface Customer {
   id: string;
   name: string;
@@ -16,6 +24,7 @@ export interface Customer {
   potential_tcv_valid_from?: string; // ISO date
   potential_tcv_duration_months?: number;
   tcv_history?: TcvHistoryEntry[];
+  support_issues?: SupportIssue[];
 }
 
 export interface WorkItem {
