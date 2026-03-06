@@ -608,6 +608,37 @@ describe('SettingsPage', () => {
             llm_api_key: 'new-api-key'
         }));
     });
+
+    it('loads and saves customer_mongo_uri from settings', async () => {
+        const customSettings = {
+            ...mockSettings,
+            customer_mongo_uri: 'mongodb://customer-host:27017'
+        };
+
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=persistence&subsubtab=customer']}>
+                <SettingsPage 
+                    settings={customSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        const uriInput = screen.getByLabelText(/Customer MongoDB URI:/i) as HTMLInputElement;
+        expect(uriInput.value).toBe('mongodb://customer-host:27017');
+
+        await act(async () => {
+            fireEvent.change(uriInput, { target: { value: 'mongodb://updated-customer:27017' } });
+            fireEvent.blur(uriInput);
+        });
+
+        expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
+            customer_mongo_uri: 'mongodb://updated-customer:27017'
+        }));
+    });
 });
 
 

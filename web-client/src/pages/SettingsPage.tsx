@@ -89,6 +89,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         customer_mongo_ssh_port: settings.customer_mongo_ssh_port || 22,
         customer_mongo_ssh_user: settings.customer_mongo_ssh_user || "",
         customer_mongo_ssh_key: settings.customer_mongo_ssh_key || "",
+        customer_mongo_uri: settings.customer_mongo_uri || "",
         customer_mongo_custom_query: settings.customer_mongo_custom_query || "",
         customer_jql_new: settings.customer_jql_new || "",
         customer_jql_in_progress: settings.customer_jql_in_progress || "",

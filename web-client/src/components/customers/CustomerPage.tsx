@@ -214,13 +214,13 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         if (Array.isArray(val)) {
             if (val.length === 0) return <span style={{ color: '#64748b' }}>[]</span>;
             return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px', width: '100%' }}>
                     {val.map((item, idx) => (
-                        <div key={idx} style={{ 
-                            padding: '12px', 
-                            backgroundColor: 'rgba(255,255,255,0.02)', 
-                            border: '1px solid #334155', 
-                            borderRadius: '6px' 
+                        <div key={idx} style={{
+                            padding: '12px',
+                            backgroundColor: 'rgba(255,255,255,0.02)',
+                            border: '1px solid #334155',
+                            borderRadius: '6px'
                         }}>
                             {renderValue(item)}
                         </div>
@@ -230,29 +230,45 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         }
         if (typeof val === 'object') {
             return (
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(120px, auto) 1fr', gap: '8px 16px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 24px', width: '100%' }}>
                     {Object.entries(val)
                         .filter(([k]) => {
                             const lower = k.toLowerCase();
                             // Skip IDs: exact 'id', '_id', or suffixes like '_id' or camelCase 'Id'
-                            const isId = lower === 'id' || 
-                                         lower === '_id' || 
-                                         lower.endsWith('_id') || 
+                            const isId = lower === 'id' ||
+                                         lower === '_id' ||
+                                         lower.endsWith('_id') ||
                                          (k.endsWith('Id') && k.length > 2);
                             return !isId;
                         })
-                        .map(([k, v]) => (
-                            <React.Fragment key={k}>
-                                <div style={{ fontWeight: 'bold', color: '#94a3b8', fontSize: '13px' }}>{k}:</div>
-                                <div style={{ fontSize: '14px', wordBreak: 'break-all' }}>{renderValue(v)}</div>
-                            </React.Fragment>
-                        ))}
+                        .map(([k, v]) => {
+                            const isComplex = v !== null && typeof v === 'object';
+                            return (
+                                <div key={k} style={{ 
+                                    display: 'flex', 
+                                    flexDirection: isComplex ? 'column' : 'row', 
+                                    gap: isComplex ? '4px' : '8px', 
+                                    alignItems: isComplex ? 'flex-start' : 'baseline', 
+                                    minWidth: isComplex ? '100%' : 'fit-content',
+                                    marginTop: isComplex ? '8px' : '0'
+                                }}>
+                                    <div style={{ fontWeight: 'bold', color: '#94a3b8', fontSize: '13px', whiteSpace: 'nowrap' }}>{k}:</div>
+                                    <div style={{ 
+                                        fontSize: '14px', 
+                                        wordBreak: 'break-all',
+                                        marginLeft: isComplex ? '20px' : '0',
+                                        width: isComplex ? 'calc(100% - 20px)' : 'auto'
+                                    }}>
+                                        {renderValue(v)}
+                                    </div>
+                                </div>
+                            );
+                        })}
                 </div>
             );
         }
         return String(val);
     };
-
     const linkedJiraKeysMap = new Map<string, SupportIssue>();
     (customer?.support_issues || []).forEach(si => {
         (si.related_jiras || []).forEach(key => {
