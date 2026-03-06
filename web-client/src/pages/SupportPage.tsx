@@ -66,7 +66,14 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
     const sortOptions: SortOption<SupportIssueWithCustomer>[] = useMemo(() => [
         { label: 'Customer', key: 'customerName', getValue: (d) => d.customerName },
         { label: 'Description', key: 'description', getValue: (d) => d.description },
-        { label: 'Status', key: 'status', getValue: (d) => STATUS_ORDER[d.status] ?? 99 },
+        { 
+            label: 'Status', 
+            key: 'status', 
+            getValue: (d) => {
+                const normalized = (d.status || '').trim().toLowerCase();
+                return STATUS_ORDER[normalized as SupportIssue['status']] ?? 99;
+            }
+        },
         { label: 'Updated', key: 'updated_at', getValue: (d) => d.updated_at || '' }
     ], []);
 
