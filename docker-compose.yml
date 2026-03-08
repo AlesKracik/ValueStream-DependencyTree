@@ -21,9 +21,17 @@ services:
 
   ssh-proxy:
     image: alpine/ssh
+    restart: unless-stopped
+    entrypoint: /bin/sh -c
     command: >
-      ssh -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -D 0.0.0.0:1080 
-      -N -i /root/.ssh/id_rsa $SSH_USER@$SSH_HOST
+      "if [ -z \"$$SSH_HOST\" ]; then
+        echo 'SSH_HOST not set. Sidecar tunnel is DISABLED. (Scenario A or C)';
+        sleep infinity;
+      else
+        echo 'Starting SOCKS5 Sidecar tunnel to $$SSH_HOST...';
+        ssh -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes 
+        -D 0.0.0.0:1080 -N -i /root/.ssh/id_rsa $$SSH_USER@$$SSH_HOST;
+      fi"
     environment:
       - SSH_USER=${SSH_USER}
       - SSH_HOST=${SSH_HOST}
