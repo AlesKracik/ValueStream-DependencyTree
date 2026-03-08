@@ -12,6 +12,7 @@ import tunnel from 'tunnel-ssh'
 const { createTunnel } = tunnel;
 
 const dnsLookup = promisify(dns.lookup);
+const dnsResolveSrv = promisify(dns.resolveSrv);
 
 // Map to store persistent Augment processes: sessionId -> { child, lastUsed }
 const augmentProcesses = new Map<string, { child: any, lastUsed: number }>();
@@ -244,16 +245,35 @@ const MockDataPersistencePlugin = (): Plugin => ({
           // Parse destination from URI
           let dstHost = '127.0.0.1';
           let dstPort = 27017;
+          let isSrv = uri.startsWith('mongodb+srv://');
+
           try {
-            const url = new URL(uri);
-            dstHost = url.hostname;
-            dstPort = parseInt(url.port || '27017');
+            if (isSrv) {
+               const url = new URL(uri);
+               const srvRecords = await dnsResolveSrv(`_mongodb._tcp.${url.hostname}`);
+               if (srvRecords && srvRecords.length > 0) {
+                 // Sort by priority and weight (simple pick first)
+                 const record = srvRecords.sort((a, b) => a.priority - b.priority || b.weight - a.weight)[0];
+                 dstHost = record.name;
+                 dstPort = record.port;
+               } else {
+                 throw new Error(`Could not resolve SRV records for ${url.hostname}`);
+               }
+            } else {
+              const url = new URL(uri);
+              dstHost = url.hostname;
+              dstPort = parseInt(url.port || '27017');
+            }
           } catch (e) {
-            // Fallback for URIs that might not parse well with URL
-            const match = uri.match(/@([^/:]+)(?::(\d+))?/);
-            if (match) {
-              dstHost = match[1];
-              dstPort = parseInt(match[2] || '27017');
+            // Fallback for URIs that might not parse well with URL (and aren't SRV)
+            if (!isSrv) {
+              const match = uri.match(/@([^/:]+)(?::(\d+))?/);
+              if (match) {
+                dstHost = match[1];
+                dstPort = parseInt(match[2] || '27017');
+              }
+            } else {
+              throw e; // Rethrow SRV resolution errors
             }
           }
 
@@ -280,14 +300,27 @@ const MockDataPersistencePlugin = (): Plugin => ({
           }
 
           // Update URI to use tunnel
-          try {
-            const url = new URL(uri);
-            url.hostname = '127.0.0.1';
-            url.port = tunnelInfo.localPort.toString();
-            uri = url.toString();
-          } catch (e) {
-            // Manual replacement if URL parsing failed
-            uri = uri.replace(new RegExp(`${dstHost}(?::${dstPort})?`), `127.0.0.1:${tunnelInfo.localPort}`);
+          if (isSrv) {
+            // mongodb+srv must be converted to mongodb when pointing to a local tunnel
+            try {
+              const url = new URL(uri);
+              const auth = url.username ? `${url.username}:${url.password}@` : '';
+              const search = url.search ? url.search : '';
+              uri = `mongodb://${auth}127.0.0.1:${tunnelInfo.localPort}${url.pathname}${search}`;
+            } catch (e) {
+               // Fallback if URL parsing failed
+               uri = `mongodb://127.0.0.1:${tunnelInfo.localPort}/`;
+            }
+          } else {
+            try {
+              const url = new URL(uri);
+              url.hostname = '127.0.0.1';
+              url.port = tunnelInfo.localPort.toString();
+              uri = url.toString();
+            } catch (e) {
+              // Manual replacement if URL parsing failed
+              uri = uri.replace(new RegExp(`${dstHost}(?::${dstPort})?`), `127.0.0.1:${tunnelInfo.localPort}`);
+            }
           }
         }
 
