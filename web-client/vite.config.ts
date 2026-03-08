@@ -1,5 +1,5 @@
 /// <reference types="vitest" />
-import { defineConfig } from 'vitest/config'
+import { defineConfig, loadEnv } from 'vite'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import fs from 'fs'
@@ -7,17 +7,11 @@ import path from 'path'
 import { MongoClient } from 'mongodb'
 import dns from 'node:dns'
 import { promisify } from 'node:util'
-import tunnel from 'tunnel-ssh'
-
-const { createTunnel } = tunnel;
 
 const dnsLookup = promisify(dns.lookup);
-const dnsResolveSrv = promisify(dns.resolveSrv);
 
 // Map to store persistent Augment processes: sessionId -> { child, lastUsed }
 const augmentProcesses = new Map<string, { child: any, lastUsed: number }>();
-// Map to store SSH tunnels: tunnelKey -> { server, sshConnection, localPort, lastUsed }
-const tunnels = new Map<string, { server: any, sshConnection: any, localPort: number, lastUsed: number }>();
 
 // Cleanup idle processes every minute
 setInterval(() => {
@@ -28,20 +22,9 @@ setInterval(() => {
       augmentProcesses.delete(_);
     }
   }
-  
-  // Cleanup idle SSH tunnels
-  for (const [key, item] of tunnels.entries()) {
-    if (now - item.lastUsed > 5 * 60 * 1000) { // 5 minutes idle
-      try {
-        item.server.close();
-        item.sshConnection.end();
-      } catch (e) { /* ignore */ }
-      tunnels.delete(key);
-    }
-  }
 }, 60000);
 
-// Ensure child processes and tunnels are killed when the main app process exits
+// Ensure child processes are killed when the main app process exits
 const cleanupAllProcesses = () => {
   for (const [_, item] of augmentProcesses.entries()) {
     try {
@@ -49,21 +32,13 @@ const cleanupAllProcesses = () => {
     } catch (e) { /* ignore */ }
   }
   augmentProcesses.clear();
-
-  for (const [_, item] of tunnels.entries()) {
-    try {
-      item.server.close();
-      item.sshConnection.end();
-    } catch (e) { /* ignore */ }
-  }
-  tunnels.clear();
 };
 
 process.on('SIGINT', () => { cleanupAllProcesses(); process.exit(); });
 process.on('SIGTERM', () => { cleanupAllProcesses(); process.exit(); });
 process.on('exit', cleanupAllProcesses);
 
-const MockDataPersistencePlugin = (): Plugin => ({
+const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
   name: 'mock-data-persistence',
   configureServer(server: any) {
     server.middlewares.use(async (req: any, res: any, next: any) => {
@@ -102,7 +77,6 @@ const MockDataPersistencePlugin = (): Plugin => ({
         'mongo_aws_external_id',
         'mongo_aws_role_session_name',
         'mongo_oidc_token', 
-        'mongo_ssh_key',
         'customer_mongo_uri', 
         'customer_mongo_aws_access_key', 
         'customer_mongo_aws_secret_key', 
@@ -111,7 +85,6 @@ const MockDataPersistencePlugin = (): Plugin => ({
         'customer_mongo_aws_external_id',
         'customer_mongo_aws_role_session_name',
         'customer_mongo_oidc_token', 
-        'customer_mongo_ssh_key',
         'llm_api_key'
       ];
 
@@ -136,7 +109,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
       }
 
       // Simple Authentication Check
-      const adminSecret = process.env.ADMIN_SECRET || server.config.env.ADMIN_SECRET;
+      const adminSecret = process.env.ADMIN_SECRET || server.config.env.ADMIN_SECRET || env.VITE_ADMIN_SECRET || env.ADMIN_SECRET;
       if (req.url === '/api/auth/status' && req.method === 'GET') {
         const authHeader = req.headers['authorization'];
         const hasSecret = !!adminSecret;
@@ -194,12 +167,12 @@ const MockDataPersistencePlugin = (): Plugin => ({
           const hostname = url.hostname;
           if (!hostname) return true; 
 
-          // Allow localhost/loopback for local development/integration
-          if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return true;
+          // Allow localhost/loopback and host.docker.internal for local development/integration
+          if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === 'host.docker.internal') return true;
 
           const { address } = await dnsLookup(hostname);
           
-          // Allow loopback address from DNS resolution too
+          // Allow loopback and host-gateway address from DNS resolution too
           if (address === '127.0.0.1' || address === '::1') return true;
 
           const parts = address.split('.').map(Number);
@@ -230,110 +203,26 @@ const MockDataPersistencePlugin = (): Plugin => ({
         const dbName = config[prefix + 'db'] || 'valueStream';
         const authMethod = config[prefix + 'auth_method'] || 'scram';
 
-        // SSH Tunnel Support
-        const useSsh = config[prefix + 'use_ssh'];
-        if (useSsh) {
-          const sshHost = config[prefix + 'ssh_host'];
-          const sshPort = config[prefix + 'ssh_port'] || 22;
-          const sshUser = config[prefix + 'ssh_user'];
-          const sshKey = config[prefix + 'ssh_key'];
-
-          if (!sshHost || !sshUser || !sshKey) {
-            throw new Error("SSH Host, User, and Identity File are required for SSH tunnel.");
-          }
-
-          // Parse destination from URI
-          let dstHost = '127.0.0.1';
-          let dstPort = 27017;
-          let isSrv = uri.startsWith('mongodb+srv://');
-
-          try {
-            if (isSrv) {
-               const url = new URL(uri);
-               const srvRecords = await dnsResolveSrv(`_mongodb._tcp.${url.hostname}`);
-               if (srvRecords && srvRecords.length > 0) {
-                 // Sort by priority and weight (simple pick first)
-                 const record = srvRecords.sort((a, b) => a.priority - b.priority || b.weight - a.weight)[0];
-                 dstHost = record.name;
-                 dstPort = record.port;
-               } else {
-                 throw new Error(`Could not resolve SRV records for ${url.hostname}`);
-               }
-            } else {
-              const url = new URL(uri);
-              dstHost = url.hostname;
-              dstPort = parseInt(url.port || '27017');
-            }
-          } catch (e) {
-            // Fallback for URIs that might not parse well with URL (and aren't SRV)
-            if (!isSrv) {
-              const match = uri.match(/@([^/:]+)(?::(\d+))?/);
-              if (match) {
-                dstHost = match[1];
-                dstPort = parseInt(match[2] || '27017');
-              }
-            } else {
-              throw e; // Rethrow SRV resolution errors
-            }
-          }
-
-          const tunnelKey = `${sshUser}@${sshHost}:${sshPort}->${dstHost}:${dstPort}`;
-          let tunnelInfo = tunnels.get(tunnelKey);
-
-          if (!tunnelInfo) {
-            try {
-              const [server, sshConnection] = await createTunnel(
-                { autoClose: false },
-                { port: 0, host: '127.0.0.1' }, // Explicitly bind to loopback
-                { host: sshHost, port: sshPort, username: sshUser, privateKey: sshKey },
-                { dstAddr: dstHost, dstPort: dstPort }
-              );
-              
-              const localPort = (server.address() as any).port;
-              tunnelInfo = { server, sshConnection, localPort, lastUsed: Date.now() };
-              tunnels.set(tunnelKey, tunnelInfo);
-            } catch (sshErr: any) {
-              throw new Error(`Failed to establish SSH tunnel: ${sshErr.message}`);
-            }
-          } else {
-            tunnelInfo.lastUsed = Date.now();
-          }
-
-          // Update URI to use tunnel
-          if (isSrv) {
-            // mongodb+srv must be converted to mongodb when pointing to a local tunnel
-            try {
-              const url = new URL(uri);
-              const auth = url.username ? `${url.username}:${url.password}@` : '';
-              const search = url.search ? url.search : '';
-              uri = `mongodb://${auth}127.0.0.1:${tunnelInfo.localPort}${url.pathname}${search}`;
-            } catch (e) {
-               // Fallback if URL parsing failed
-               uri = `mongodb://127.0.0.1:${tunnelInfo.localPort}/`;
-            }
-          } else {
-            try {
-              const url = new URL(uri);
-              url.hostname = '127.0.0.1';
-              url.port = tunnelInfo.localPort.toString();
-              uri = url.toString();
-            } catch (e) {
-              // Manual replacement if URL parsing failed
-              uri = uri.replace(new RegExp(`${dstHost}(?::${dstPort})?`), `127.0.0.1:${tunnelInfo.localPort}`);
-            }
-          }
-        }
-
         const options: any = {
-          serverSelectionTimeoutMS: 5000,
-          connectTimeoutMS: 5000,
+          serverSelectionTimeoutMS: 15000,
+          connectTimeoutMS: 15000,
         };
+
+        // SYSTEMATIC PROXYING: Use an external SOCKS proxy if configured AND enabled for this connection
+        const useProxy = config[prefix + 'use_proxy'];
+        const socksProxyHost = (process.env.SOCKS_PROXY_HOST || env.VITE_SOCKS_PROXY_HOST || env.SOCKS_PROXY_HOST);
+        const socksProxyPort = parseInt(process.env.SOCKS_PROXY_PORT || env.VITE_SOCKS_PROXY_PORT || env.SOCKS_PROXY_PORT || '1080');
+
+        if (useProxy && socksProxyHost) {
+          options.proxyHost = socksProxyHost;
+          options.proxyPort = socksProxyPort;
+        }
 
         const isSrv = config[prefix + 'uri']?.startsWith('mongodb+srv://');
         if (isSrv) {
           options.tls = true;
-          if (useSsh) {
-            // When tunneling to Atlas, we connect to 127.0.0.1, but the cert is for *.mongodb.net
+          if (options.proxyHost) {
+            // When proxying to Atlas, cert is for *.mongodb.net, driver connects to proxy IP
             options.tlsAllowInvalidHostnames = true;
           }
         }
@@ -430,7 +319,8 @@ const MockDataPersistencePlugin = (): Plugin => ({
             const totalEffort = Number(f.total_effort_mds || 0);
             const displayEffort = Math.max(epicMdsSum > 0 ? epicMdsSum : totalEffort, 1);
 
-            if (f.all_customers_target) {                const type = f.all_customers_target.tcv_type;
+            if (f.all_customers_target) {
+                const type = f.all_customers_target.tcv_type;
                 const priority = f.all_customers_target.priority || 'Must-have';
                 // Global workitems are always bound to latest actual existing TCV
                 let totalRelevantTcv = allCustomers.reduce((sum, c) => sum + Number(type === 'existing' ? (c.existing_tcv || 0) : (c.potential_tcv || 0)), 0);
@@ -1240,9 +1130,11 @@ const MockDataPersistencePlugin = (): Plugin => ({
   }
 });
 
-export default defineConfig({
-  plugins: [react(), MockDataPersistencePlugin()],
-  server: { watch: { ignored: ['**/public/staticImport.json'] } },
-  test: { environment: 'jsdom', globals: true }
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, path.resolve(__dirname, '..'), '');
+  return {
+    plugins: [react(), MockDataPersistencePlugin(env)],
+    server: { watch: { ignored: ['**/public/staticImport.json'] } },
+    test: { environment: 'jsdom', globals: true }
+  }
 })
-

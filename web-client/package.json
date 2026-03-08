@@ -19,7 +19,8 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-markdown": "^10.1.0",
-    "react-router-dom": "^7.13.1"
+    "react-router-dom": "^7.13.1",
+    "ssh2": "^1.17.0"
   },
   "devDependencies": {
     "@augmentcode/auggie": "^0.17.2",

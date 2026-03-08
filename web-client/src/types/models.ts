@@ -103,6 +103,7 @@ export interface Settings {
   mongo_uri?: string;
   mongo_db?: string;
   mongo_auth_method?: 'scram' | 'aws' | 'oidc';
+  mongo_use_proxy?: boolean;
   mongo_aws_auth_type?: 'static' | 'role';
   mongo_aws_access_key?: string;
   mongo_aws_secret_key?: string;
@@ -120,14 +121,10 @@ export interface Settings {
   fiscal_year_start_month?: number; // 1-12, default 1
   sprint_duration_days?: number; // default 14
   mongo_create_if_not_exists?: boolean;
-  mongo_use_ssh?: boolean;
-  mongo_ssh_host?: string;
-  mongo_ssh_port?: number;
-  mongo_ssh_user?: string;
-  mongo_ssh_key?: string;
   customer_mongo_uri?: string;
   customer_mongo_db?: string;
   customer_mongo_auth_method?: 'scram' | 'aws' | 'oidc';
+  customer_mongo_use_proxy?: boolean;
   customer_mongo_aws_auth_type?: 'static' | 'role';
   customer_mongo_aws_access_key?: string;
   customer_mongo_aws_secret_key?: string;
@@ -136,11 +133,6 @@ export interface Settings {
   customer_mongo_aws_external_id?: string;
   customer_mongo_aws_role_session_name?: string;
   customer_mongo_oidc_token?: string;
-  customer_mongo_use_ssh?: boolean;
-  customer_mongo_ssh_host?: string;
-  customer_mongo_ssh_port?: number;
-  customer_mongo_ssh_user?: string;
-  customer_mongo_ssh_key?: string;
   customer_mongo_custom_query?: string;
 }
 

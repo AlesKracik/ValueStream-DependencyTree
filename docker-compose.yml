@@ -10,8 +10,25 @@ services:
     environment:
       - NODE_ENV=development
       - ADMIN_SECRET=${ADMIN_SECRET}
+      - SOCKS_PROXY_HOST=${SOCKS_PROXY_HOST:-ssh-proxy}
+      - SOCKS_PROXY_PORT=${SOCKS_PROXY_PORT:-1080}
     env_file:
       - .env
+    networks:
+      - app-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  ssh-proxy:
+    image: alpine/ssh
+    command: >
+      ssh -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -D 0.0.0.0:1080 
+      -N -i /root/.ssh/id_rsa $SSH_USER@$SSH_HOST
+    environment:
+      - SSH_USER=${SSH_USER}
+      - SSH_HOST=${SSH_HOST}
+    volumes:
+      - ${SSH_KEY_PATH:-~/.ssh/id_rsa}:/root/.ssh/id_rsa:ro
     networks:
       - app-network
 
@@ -23,10 +40,14 @@ services:
       - mongo-data:/data/db
     networks:
       - app-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 networks:
   app-network:
     driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1400
 
 volumes:
   mongo-data:

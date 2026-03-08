@@ -229,6 +229,41 @@ Best for production-grade scaling, high availability, and multi-user environment
   2. Deploy storage and database manifests first.
   3. Deploy the application manifest, ensuring it points to the stable MongoDB service name.
 
+## Networking & SSH Tunneling
+
+To support MongoDB clusters (Atlas) behind secure SSH bastions, the application employs a **Systematic SOCKS5 Architecture**.
+
+### 1. SOCKS5 vs. Port Forwarding
+Standard SSH Port Forwarding (`-L`) fails with MongoDB SRV records because the driver "leaks" connection attempts to the real hostnames of the cluster members. SOCKS5 (`-D`) solves this by acting as a dynamic proxy that captures all traffic from the driver, including DNS lookups.
+
+### 2. Architecture Patterns
+
+| Environment | Pattern | Implementation |
+| :--- | :--- | :--- |
+| **Local Dev** | **External Proxy** | Start a tunnel via `./scripts/start-tunnel.ps1` (or `.sh`). |
+| **Docker (A)** | **Direct** | Set `SOCKS_PROXY_HOST=` for local/unprotected DBs. |
+| **Docker (B)** | **Service Sidecar** | The app connects to the `ssh-proxy` container in the bridge network. |
+| **Docker (C)** | **Host Workaround** | The app connects to `host.docker.internal` (Mac/PC host tunnel). |
+| **Kubernetes** | **Pod Sidecar** | An SSH container runs alongside the app in the same Pod, sharing `localhost`. |
+
+### 3. Systematic Discovery
+The application backend (`web-client/vite.config.ts`) checks for the following environment variables to define the available **Proxy Infrastructure**:
+- `SOCKS_PROXY_HOST`: The IP/Hostname of the SOCKS5 proxy.
+- `SOCKS_PROXY_PORT`: The port for the external proxy (defaults to `1080`).
+
+#### Granular Opt-In
+Setting these environment variables does **not** automatically force all traffic through the proxy. Instead, it enables the capability. Users must explicitly enable the **"Use SOCKS Proxy (from .env)"** checkbox in the Application or Customer MongoDB settings UI to route that specific connection through the tunnel.
+
+This allow for mixed environments (e.g., a local App Mongo container combined with a remote Customer Atlas cluster).
+
+#### The VPN Workaround (Scenario C)
+In highly restricted corporate environments, the Docker Desktop VM might be blocked from making outbound SSH connections. In this case, users can establish the SOCKS5 tunnel natively on their host (Mac/PC). The application inside Docker then connects to the host via the special DNS name `host.docker.internal`, effectively routing the database traffic through the host's authenticated SSH session.
+
+If these environment variables are not set, the application attempts a direct connection. This ensures the app logic remains decoupled from the specific tunneling infrastructure.
+
+### 4. MacOS & VPN Tuning (MTU)
+Docker Desktop on MacOS frequently experiences packet loss when connecting to SSH bastions over corporate VPNs. The application provides a systematic fix by setting the Docker Network MTU to `1400` in the `docker-compose.yml` to prevent fragmentation.
+
 ## Logical Blocks
 
 The system is composed of several core entities. The following Entity Relationship Diagram (ERD) illustrates the data model structure, including key attributes and the cardinality of relationships.

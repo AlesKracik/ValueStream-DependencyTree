@@ -376,7 +376,7 @@ describe('SettingsPage', () => {
         expect(screen.queryByLabelText(/Create database if it doesn't exist \(Customer\)/i)).toBeNull();
     });
 
-    it('shows SSH tunnel configuration when SSH is enabled', async () => {
+    it('handles the "Use SOCKS Proxy" toggle for application mongo', async () => {
         render(
             <MemoryRouter initialEntries={['/settings?tab=persistence']}>
                 <SettingsPage 
@@ -389,35 +389,19 @@ describe('SettingsPage', () => {
             </MemoryRouter>
         );
 
-        const sshCheckbox = screen.getByLabelText(/SSH with Identity File/i);
-        expect(screen.queryByText('SSH Tunnel Configuration')).toBeNull();
+        const proxyCheckbox = screen.getByLabelText(/Use SOCKS Proxy \(from .env\)/i);
+        expect(proxyCheckbox).toBeDefined();
 
         await act(async () => {
-            fireEvent.click(sshCheckbox);
+            fireEvent.click(proxyCheckbox);
         });
 
         expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
-            mongo_use_ssh: true
-        }));
-
-        expect(screen.getByText('SSH Tunnel Configuration')).toBeDefined();
-        expect(screen.getByLabelText(/SSH Host:/i)).toBeDefined();
-        expect(screen.getByLabelText(/SSH Port:/i)).toBeDefined();
-        expect(screen.getByLabelText(/SSH User:/i)).toBeDefined();
-        expect(screen.getByLabelText(/SSH Identity File \(Private Key\):/i)).toBeDefined();
-
-        const hostInput = screen.getByLabelText(/SSH Host:/i);
-        await act(async () => {
-            fireEvent.change(hostInput, { target: { value: 'ssh.server.com' } });
-            fireEvent.blur(hostInput);
-        });
-
-        expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
-            mongo_ssh_host: 'ssh.server.com'
+            mongo_use_proxy: true
         }));
     });
 
-    it('shows Customer SSH tunnel configuration when SSH is enabled for customer mongo', async () => {
+    it('handles the "Use SOCKS Proxy" toggle for customer mongo', async () => {
         render(
             <MemoryRouter initialEntries={['/settings?tab=persistence&subsubtab=customer']}>
                 <SettingsPage 
@@ -430,27 +414,15 @@ describe('SettingsPage', () => {
             </MemoryRouter>
         );
 
-        const sshCheckbox = screen.getByLabelText(/SSH with Identity File \(Customer\)/i);
-        expect(screen.queryByText('SSH Tunnel Configuration (Customer)')).toBeNull();
+        const proxyCheckbox = screen.getByLabelText(/Use SOCKS Proxy \(from .env\)/i);
+        expect(proxyCheckbox).toBeDefined();
 
         await act(async () => {
-            fireEvent.click(sshCheckbox);
+            fireEvent.click(proxyCheckbox);
         });
 
         expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
-            customer_mongo_use_ssh: true
-        }));
-
-        expect(screen.getByText('SSH Tunnel Configuration (Customer)')).toBeDefined();
-        
-        const hostInput = screen.getByLabelText(/SSH Host:/i);
-        await act(async () => {
-            fireEvent.change(hostInput, { target: { value: 'customer.ssh.com' } });
-            fireEvent.blur(hostInput);
-        });
-
-        expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
-            customer_mongo_ssh_host: 'customer.ssh.com'
+            customer_mongo_use_proxy: true
         }));
     });
 
