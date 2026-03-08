@@ -329,6 +329,15 @@ const MockDataPersistencePlugin = (): Plugin => ({
           connectTimeoutMS: 5000,
         };
 
+        const isSrv = config[prefix + 'uri']?.startsWith('mongodb+srv://');
+        if (isSrv) {
+          options.tls = true;
+          if (useSsh) {
+            // When tunneling to Atlas, we connect to 127.0.0.1, but the cert is for *.mongodb.net
+            options.tlsAllowInvalidHostnames = true;
+          }
+        }
+
         if (authMethod === 'aws') {
           const ak = config[prefix + 'aws_access_key'];
           const sk = config[prefix + 'aws_secret_key'];
