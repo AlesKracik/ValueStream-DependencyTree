@@ -38,13 +38,18 @@ export function useCustomerCustomFields(customerOrCustomers: Customer | Customer
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        mongo_uri: settings.customer_mongo_uri,
-                        mongo_db: settings.customer_mongo_db,
-                        mongo_auth_method: settings.customer_mongo_auth_method,
-                        mongo_aws_access_key: settings.customer_mongo_aws_access_key,
-                        mongo_aws_secret_key: settings.customer_mongo_aws_secret_key,
-                        mongo_aws_session_token: settings.customer_mongo_aws_session_token,
-                        mongo_oidc_token: settings.customer_mongo_oidc_token,
+                        customer_mongo_uri: settings.customer_mongo_uri,
+                        customer_mongo_db: settings.customer_mongo_db,
+                        customer_mongo_auth_method: settings.customer_mongo_auth_method,
+                        customer_mongo_aws_access_key: settings.customer_mongo_aws_access_key,
+                        customer_mongo_aws_secret_key: settings.customer_mongo_aws_secret_key,
+                        customer_mongo_aws_session_token: settings.customer_mongo_aws_session_token,
+                        customer_mongo_oidc_token: settings.customer_mongo_oidc_token,
+                        customer_mongo_use_ssh: settings.customer_mongo_use_ssh,
+                        customer_mongo_ssh_host: settings.customer_mongo_ssh_host,
+                        customer_mongo_ssh_port: settings.customer_mongo_ssh_port,
+                        customer_mongo_ssh_user: settings.customer_mongo_ssh_user,
+                        customer_mongo_ssh_key: settings.customer_mongo_ssh_key,
                         query: queryStr
                     })
                 });

@@ -143,25 +143,21 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     const sshUserField = isCustomer ? 'customer_mongo_ssh_user' : 'mongo_ssh_user';
     const sshKeyField = isCustomer ? 'customer_mongo_ssh_key' : 'mongo_ssh_key';
 
-    const mongo_uri = localFormData[uriField] || settings[uriField];
-    const mongo_db = localFormData[dbField] || settings[dbField];
-    const mongo_auth_method = localFormData[authField] || settings[authField];
-    const mongo_aws_access_key = localFormData[akField] || settings[akField];
-    const mongo_aws_secret_key = localFormData[skField] || settings[skField];
-    const mongo_aws_session_token = localFormData[stField] || settings[stField];
-    const mongo_oidc_token = localFormData[otField] || settings[otField];
-    const mongo_use_ssh = localFormData[useSshField] || settings[useSshField];
-    const mongo_ssh_host = localFormData[sshHostField] || settings[sshHostField];
-    const mongo_ssh_port = localFormData[sshPortField] || settings[sshPortField];
-    const mongo_ssh_user = localFormData[sshUserField] || settings[sshUserField];
-    const mongo_ssh_key = localFormData[sshKeyField] || settings[sshKeyField];
+    const body: any = { 
+      [uriField]: localFormData[uriField] || settings[uriField],
+      [dbField]: localFormData[dbField] || settings[dbField],
+      [authField]: localFormData[authField] || settings[authField],
+      [akField]: localFormData[akField] || settings[akField],
+      [skField]: localFormData[skField] || settings[skField],
+      [stField]: localFormData[stField] || settings[stField],
+      [otField]: localFormData[otField] || settings[otField],
+      [useSshField]: localFormData[useSshField] || settings[useSshField],
+      [sshHostField]: localFormData[sshHostField] || settings[sshHostField],
+      [sshPortField]: localFormData[sshPortField] || settings[sshPortField],
+      [sshUserField]: localFormData[sshUserField] || settings[sshUserField],
+      [sshKeyField]: localFormData[sshKeyField] || settings[sshKeyField]
+    };
 
-    if (!mongo_uri) {
-      if (isCustomer) setCustomerMongoTestResult({ success: false, message: "MongoDB URI is required to test." });
-      else setMongoTestResult({ success: false, message: "MongoDB URI is required to test." });
-      return;
-    }
-    
     if (isCustomer) {
         setIsTestingCustomer(true);
         setCustomerMongoTestResult(null);
@@ -175,19 +171,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       const dbRes = await authorizedFetch("/api/mongo/databases", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          mongo_uri, 
-          mongo_auth_method,
-          mongo_aws_access_key,
-          mongo_aws_secret_key,
-          mongo_aws_session_token,
-          mongo_oidc_token,
-          mongo_use_ssh,
-          mongo_ssh_host,
-          mongo_ssh_port,
-          mongo_ssh_user,
-          mongo_ssh_key
-        }),
+        body: JSON.stringify(body),
       });
       const dbData = await dbRes.json();
       if (dbRes.ok && dbData.success) {
@@ -196,24 +180,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       }
 
       // Test specific database
+      const testBody = {
+          ...body,
+          mongo_create_if_not_exists: isCustomer ? false : (localFormData.mongo_create_if_not_exists || settings.mongo_create_if_not_exists)
+      };
       const response = await authorizedFetch("/api/mongo/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          mongo_uri, 
-          mongo_db, 
-          mongo_auth_method,
-          mongo_aws_access_key,
-          mongo_aws_secret_key,
-          mongo_aws_session_token,
-          mongo_oidc_token,
-          mongo_use_ssh,
-          mongo_ssh_host,
-          mongo_ssh_port,
-          mongo_ssh_user,
-          mongo_ssh_key,
-          mongo_create_if_not_exists: isCustomer ? false : (localFormData.mongo_create_if_not_exists || settings.mongo_create_if_not_exists)
-        }),
+        body: JSON.stringify(testBody),
       });
       const resData = await response.json();
       if (response.ok && resData.success) {

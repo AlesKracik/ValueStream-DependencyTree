@@ -113,4 +113,32 @@ describe('useCustomerCustomFields', () => {
         expect(result.current.error).toBe('Database connection failed');
         expect(result.current.data).toEqual([]);
     });
+
+    it('passes SSH configuration to the API', async () => {
+        const customer = { customer_id: 'CUST-1', id: '1', name: 'Test' };
+        const settings = { 
+            customer_mongo_uri: 'mongodb://localhost',
+            customer_mongo_custom_query: '[{"$match": {"customer_id": "{{CUSTOMER_ID}}"}}]',
+            customer_mongo_use_ssh: true,
+            customer_mongo_ssh_host: 'ssh.host.com',
+            customer_mongo_ssh_user: 'ssh-user',
+            customer_mongo_ssh_key: 'ssh-key'
+        };
+
+        (authorizedFetch as any).mockResolvedValueOnce({
+            ok: true,
+            json: async () => ({ success: true, data: [] })
+        });
+
+        renderHook(() => useCustomerCustomFields(customer as any, settings as any));
+        
+        await waitFor(() => {
+            expect(authorizedFetch).toHaveBeenCalledWith('/api/mongo/query', expect.objectContaining({
+                body: expect.stringContaining('"customer_mongo_ssh_host":"ssh.host.com"')
+            }));
+            expect(authorizedFetch).toHaveBeenCalledWith('/api/mongo/query', expect.objectContaining({
+                body: expect.stringContaining('"customer_mongo_use_ssh":true')
+            }));
+        });
+    });
 });

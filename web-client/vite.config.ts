@@ -7,11 +7,16 @@ import path from 'path'
 import { MongoClient } from 'mongodb'
 import dns from 'node:dns'
 import { promisify } from 'node:util'
+import tunnel from 'tunnel-ssh'
+
+const { createTunnel } = tunnel;
 
 const dnsLookup = promisify(dns.lookup);
 
 // Map to store persistent Augment processes: sessionId -> { child, lastUsed }
 const augmentProcesses = new Map<string, { child: any, lastUsed: number }>();
+// Map to store SSH tunnels: tunnelKey -> { server, sshConnection, localPort, lastUsed }
+const tunnels = new Map<string, { server: any, sshConnection: any, localPort: number, lastUsed: number }>();
 
 // Cleanup idle processes every minute
 setInterval(() => {
@@ -22,9 +27,20 @@ setInterval(() => {
       augmentProcesses.delete(_);
     }
   }
+  
+  // Cleanup idle SSH tunnels
+  for (const [key, item] of tunnels.entries()) {
+    if (now - item.lastUsed > 5 * 60 * 1000) { // 5 minutes idle
+      try {
+        item.server.close();
+        item.sshConnection.end();
+      } catch (e) { /* ignore */ }
+      tunnels.delete(key);
+    }
+  }
 }, 60000);
 
-// Ensure child processes are killed when the main app process exits
+// Ensure child processes and tunnels are killed when the main app process exits
 const cleanupAllProcesses = () => {
   for (const [_, item] of augmentProcesses.entries()) {
     try {
@@ -32,6 +48,14 @@ const cleanupAllProcesses = () => {
     } catch (e) { /* ignore */ }
   }
   augmentProcesses.clear();
+
+  for (const [_, item] of tunnels.entries()) {
+    try {
+      item.server.close();
+      item.sshConnection.end();
+    } catch (e) { /* ignore */ }
+  }
+  tunnels.clear();
 };
 
 process.on('SIGINT', () => { cleanupAllProcesses(); process.exit(); });
@@ -186,15 +210,82 @@ const MockDataPersistencePlugin = (): Plugin => ({
       }
 
       // helper to connect to Mongo
-      async function getDb(settings: any, checkExists = false) {
-        const uri = settings.mongo_uri;
+      async function getDb(config: any, checkExists = false) {
+        // Support both application and customer mongo settings
+        // If config has customer_mongo_uri, we assume it's for the customer DB
+        const isCustomer = !!config.customer_mongo_uri && (!config.mongo_uri || config.customer_mongo_uri !== config.mongo_uri);
+        const prefix = isCustomer ? 'customer_mongo_' : 'mongo_';
+
+        let uri = config[prefix + 'uri'];
         if (!uri) throw new Error("Mongo URI not provided");
         if (!await isSafeUrl(uri)) {
           throw new Error("Invalid or unsafe MongoDB URI");
         }
         
-        const dbName = settings.mongo_db || 'valueStream';
-        const authMethod = settings.mongo_auth_method || 'scram';
+        const dbName = config[prefix + 'db'] || 'valueStream';
+        const authMethod = config[prefix + 'auth_method'] || 'scram';
+
+        // SSH Tunnel Support
+        const useSsh = config[prefix + 'use_ssh'];
+        if (useSsh) {
+          const sshHost = config[prefix + 'ssh_host'];
+          const sshPort = config[prefix + 'ssh_port'] || 22;
+          const sshUser = config[prefix + 'ssh_user'];
+          const sshKey = config[prefix + 'ssh_key'];
+
+          if (!sshHost || !sshUser || !sshKey) {
+            throw new Error("SSH Host, User, and Identity File are required for SSH tunnel.");
+          }
+
+          // Parse destination from URI
+          let dstHost = '127.0.0.1';
+          let dstPort = 27017;
+          try {
+            const url = new URL(uri);
+            dstHost = url.hostname;
+            dstPort = parseInt(url.port || '27017');
+          } catch (e) {
+            // Fallback for URIs that might not parse well with URL
+            const match = uri.match(/@([^/:]+)(?::(\d+))?/);
+            if (match) {
+              dstHost = match[1];
+              dstPort = parseInt(match[2] || '27017');
+            }
+          }
+
+          const tunnelKey = `${sshUser}@${sshHost}:${sshPort}->${dstHost}:${dstPort}`;
+          let tunnelInfo = tunnels.get(tunnelKey);
+
+          if (!tunnelInfo) {
+            try {
+              const [server, sshConnection] = await createTunnel(
+                { autoClose: false },
+                { port: 0, host: '127.0.0.1' }, // Explicitly bind to loopback
+                { host: sshHost, port: sshPort, username: sshUser, privateKey: sshKey },
+                { dstAddr: dstHost, dstPort: dstPort }
+              );
+              
+              const localPort = (server.address() as any).port;
+              tunnelInfo = { server, sshConnection, localPort, lastUsed: Date.now() };
+              tunnels.set(tunnelKey, tunnelInfo);
+            } catch (sshErr: any) {
+              throw new Error(`Failed to establish SSH tunnel: ${sshErr.message}`);
+            }
+          } else {
+            tunnelInfo.lastUsed = Date.now();
+          }
+
+          // Update URI to use tunnel
+          try {
+            const url = new URL(uri);
+            url.hostname = '127.0.0.1';
+            url.port = tunnelInfo.localPort.toString();
+            uri = url.toString();
+          } catch (e) {
+            // Manual replacement if URL parsing failed
+            uri = uri.replace(new RegExp(`${dstHost}(?::${dstPort})?`), `127.0.0.1:${tunnelInfo.localPort}`);
+          }
+        }
 
         const options: any = {
           serverSelectionTimeoutMS: 5000,
@@ -202,30 +293,35 @@ const MockDataPersistencePlugin = (): Plugin => ({
         };
 
         if (authMethod === 'aws') {
-          if (!settings.mongo_aws_access_key || !settings.mongo_aws_secret_key) {
+          const ak = config[prefix + 'aws_access_key'];
+          const sk = config[prefix + 'aws_secret_key'];
+          const st = config[prefix + 'aws_session_token'];
+          
+          if (!ak || !sk) {
             throw new Error("AWS Access Key and Secret Key are required for AWS IAM authentication.");
           }
           options.authMechanism = 'MONGODB-AWS';
           options.authMechanismProperties = {
-            AWS_ACCESS_KEY_ID: settings.mongo_aws_access_key,
-            AWS_SECRET_ACCESS_KEY: settings.mongo_aws_secret_key,
-            AWS_SESSION_TOKEN: settings.mongo_aws_session_token
+            AWS_ACCESS_KEY_ID: ak,
+            AWS_SECRET_ACCESS_KEY: sk,
+            AWS_SESSION_TOKEN: st
           };
           options.auth = { username: '', password: '' };
         } else if (authMethod === 'oidc') {
-          if (!settings.mongo_oidc_token) {
+          const token = config[prefix + 'oidc_token'];
+          if (!token) {
             throw new Error("Access Token is required for OIDC authentication.");
           }
           options.authMechanism = 'MONGODB-OIDC';
           options.authMechanismProperties = { ENVIRONMENT: 'test' };
-          options.auth = { username: settings.mongo_oidc_token, password: '' };
+          options.auth = { username: token, password: '' };
         }
 
         const client = new MongoClient(uri, options);
         await client.connect();
         const db = client.db(dbName);
 
-        if (checkExists && !settings.mongo_create_if_not_exists) {
+        if (checkExists && !config.mongo_create_if_not_exists && !config.customer_mongo_create_if_not_exists) {
           try {
             // Check existence by listing collections on the specific database.
             // This is safer than listDatabases on admin which requires cluster-wide permissions.
@@ -606,21 +702,14 @@ const MockDataPersistencePlugin = (): Plugin => ({
           const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
           const config = unmaskSettings(rawConfig, existingSettings);
 
-          if (!config.mongo_uri) {
-            throw new Error('Missing mongo_uri');
-          }
-          
-          const client = new MongoClient(config.mongo_uri, { serverSelectionTimeoutMS: 5000 });
-          await client.connect();
+          const db = await getDb(config);
           let databases: string[] = [];
           try {
-            const dbs = await client.db().admin().listDatabases();
+            const dbs = await db.admin().listDatabases();
             databases = dbs.databases.map((d: any) => d.name);
           } catch (err) {
-            // If listing fails, we can't provide the list, but we shouldn't fail the whole request
             console.warn("Could not list databases:", err);
           }
-          await client.close();
           
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
@@ -640,39 +729,27 @@ const MockDataPersistencePlugin = (): Plugin => ({
           const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
           const config = unmaskSettings(rawConfig, existingSettings);
 
-          if (!config.mongo_uri) {
-            throw new Error('Missing mongo_uri');
-          }
-          
-          const targetDb = config.mongo_db || 'valueStream';
-          const client = new MongoClient(config.mongo_uri, { serverSelectionTimeoutMS: 5000 });
-          await client.connect();
+          const targetDb = config.mongo_db || config.customer_mongo_db || 'valueStream';
+          const db = await getDb(config);
           
           let exists = false;
           try {
-              // Try the specific DB first (more likely to have permissions)
-              const collections = await client.db(targetDb).listCollections().toArray();
+              const collections = await db.listCollections().toArray();
               exists = collections.length > 0;
               
               if (!exists) {
-                  // Fallback to listDatabases if possible to be absolutely sure
                   try {
-                      const dbs = await client.db().admin().listDatabases();
+                      const dbs = await db.admin().listDatabases();
                       exists = dbs.databases.some((d: any) => d.name === targetDb);
-                  } catch (adminErr) {
-                      // Skip if no admin permissions
-                  }
+                  } catch (adminErr) { /* ignore */ }
               }
-          } catch (err) {
-              // If we can't even list collections, it might not exist or we might not have access
-          }
-          await client.close();
+          } catch (err) { /* ignore */ }
 
           let message = exists 
             ? `Connection successful! Database '${targetDb}' exists.` 
             : `Connection successful, but database '${targetDb}' does not exist yet.`;
           
-          if (!exists && config.mongo_create_if_not_exists) {
+          if (!exists && (config.mongo_create_if_not_exists || config.customer_mongo_create_if_not_exists)) {
               message = `Connection successful! Database '${targetDb}' does not exist yet, but will be created automatically.`;
           }
 
