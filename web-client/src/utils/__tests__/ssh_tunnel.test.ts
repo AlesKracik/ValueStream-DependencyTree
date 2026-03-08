@@ -70,6 +70,29 @@ describe('SSH Tunnel API Integration', () => {
         }));
     });
 
+    it('handles mongodb+srv:// URIs in SSH configuration', async () => {
+        const srvConfig = {
+            mongo_uri: 'mongodb+srv://cluster.abcde.mongodb.net/',
+            mongo_use_ssh: true,
+            mongo_ssh_host: 'jump.example.com',
+            mongo_ssh_user: 'srv-user',
+            mongo_ssh_key: 'srv-key'
+        };
+
+        await authorizedFetch('/api/mongo/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(srvConfig)
+        });
+
+        expect(fetch).toHaveBeenCalledWith('/api/mongo/test', expect.objectContaining({
+            body: expect.stringContaining('"mongo_uri":"mongodb+srv://cluster.abcde.mongodb.net/"'),
+        }));
+        expect(fetch).toHaveBeenCalledWith('/api/mongo/test', expect.objectContaining({
+            body: expect.stringContaining('"mongo_ssh_host":"jump.example.com"'),
+        }));
+    });
+
     it('includes SSH config when testing databases', async () => {
         const config = {
             mongo_uri: 'mongodb://localhost:27017',
