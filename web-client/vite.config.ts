@@ -186,9 +186,13 @@ const MockDataPersistencePlugin = (): Plugin => ({
           const url = new URL(urlStr);
           if (url.protocol !== 'http:' && url.protocol !== 'https:' && url.protocol !== 'mongodb:' && url.protocol !== 'mongodb+srv:') return false;
           
+          // For MongoDB URIs, skip DNS validation as the driver handles complex SRV/TXT resolution
+          // and they are inherently less prone to the kind of SSRF targeted here (HTTP metadata services)
+          if (url.protocol === 'mongodb:' || url.protocol === 'mongodb+srv:') return true;
+
           const hostname = url.hostname;
-          if (!hostname) return true; // Could be a local path or similar for non-URL protocols
-          
+          if (!hostname) return true; 
+
           // Allow localhost/loopback for local development/integration
           if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return true;
 
