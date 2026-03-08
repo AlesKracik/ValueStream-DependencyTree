@@ -450,7 +450,8 @@ const MockDataPersistencePlugin = (): Plugin => ({
             fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
           }
 
-          const mongoUri = settings.mongo_uri;
+          const mongoUri = settings.mongo_uri || settings.customer_mongo_uri;
+          const isCustomer = !!settings.customer_mongo_uri && (!settings.mongo_uri || settings.customer_mongo_uri !== settings.mongo_uri);
 
           let dbData: any = {
             settings: maskSettings(settings),
@@ -484,7 +485,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
               dbData.sprints = sprints.map(({ _id, ...rest }) => rest);
 
               const sprintsToUpdate = dbData.sprints.filter((s: any) => !s.quarter);
-              if (sprintsToUpdate.length > 0) {
+              if (sprintsToUpdate.length > 0 && !isCustomer) {
                 for (const sprint of sprintsToUpdate) {
                   const quarter = calculateQuarter(sprint.end_date, settings.fiscal_year_start_month || 1);
                   await db.collection('sprints').updateOne({ id: sprint.id }, { $set: { quarter } });
@@ -580,7 +581,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
               dbData.epics = epics.map(({ _id, ...rest }) => rest);
 
               // Seeding logic...
-              if (dbData.customers.length === 0 && !customerFilter && minTcv === 0 && fs.existsSync(mockDataPath)) {
+              if (!isCustomer && dbData.customers.length === 0 && !customerFilter && minTcv === 0 && fs.existsSync(mockDataPath)) {
                  const localData = JSON.parse(fs.readFileSync(mockDataPath, 'utf-8'));
                  if (localData.customers && localData.customers.length > 0) {
                     await db.collection('customers').insertMany(localData.customers);
@@ -666,8 +667,13 @@ const MockDataPersistencePlugin = (): Plugin => ({
           const settingsPath = path.resolve(__dirname, 'settings.json');
           const settings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
 
-          if (!settings.mongo_uri) {
+          if (!settings.mongo_uri && !settings.customer_mongo_uri) {
               throw new Error("No MongoDB URI configured.");
+          }
+
+          const isCustomer = !!settings.customer_mongo_uri && (!settings.mongo_uri || settings.customer_mongo_uri !== settings.mongo_uri);
+          if (isCustomer) {
+              throw new Error("Customer database is read-only.");
           }
           
           const db = await getDb(settings, true);
@@ -771,7 +777,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
           const settingsPath = path.resolve(__dirname, 'settings.json');
           if (!fs.existsSync(settingsPath)) throw new Error("Settings file not found.");
           const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-          if (!settings.mongo_uri) throw new Error("MongoDB URI not configured.");
+          if (!settings.mongo_uri && !settings.customer_mongo_uri) throw new Error("MongoDB URI not configured.");
 
           const db = await getDb(settings, true);
           
@@ -815,7 +821,12 @@ const MockDataPersistencePlugin = (): Plugin => ({
           const settingsPath = path.resolve(__dirname, 'settings.json');
           if (!fs.existsSync(settingsPath)) throw new Error("Settings file not found.");
           const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-          if (!settings.mongo_uri) throw new Error("MongoDB URI not configured.");
+          if (!settings.mongo_uri && !settings.customer_mongo_uri) throw new Error("MongoDB URI not configured.");
+
+          const isCustomer = !!settings.customer_mongo_uri && (!settings.mongo_uri || settings.customer_mongo_uri !== settings.mongo_uri);
+          if (isCustomer) {
+              throw new Error("Customer database is read-only.");
+          }
 
           const db = await getDb(settings, false);
 
@@ -850,7 +861,7 @@ const MockDataPersistencePlugin = (): Plugin => ({
           const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
           const config = unmaskSettings(rawConfig, existingSettings);
 
-          if (!config.mongo_uri) throw new Error("MongoDB URI not provided.");
+          if (!config.mongo_uri && !config.customer_mongo_uri) throw new Error("MongoDB URI not provided.");
           if (!config.query) throw new Error("Query not provided.");
 
           const db = await getDb(config);
