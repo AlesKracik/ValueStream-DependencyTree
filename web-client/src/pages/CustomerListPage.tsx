@@ -19,16 +19,18 @@ export const CustomerListPage: React.FC<Props> = ({ data, loading }) => {
     ], []);
 
     const columns: ListColumn<Customer>[] = useMemo(() => [
-        { header: 'Name', render: (c) => c.name, flex: 2 },
+        { header: 'Name', render: (c) => c.name, flex: 2, sortKey: 'name' },
         { 
             header: 'Existing TCV', 
             render: (c) => `$${c.existing_tcv.toLocaleString()}${c.existing_tcv_duration_months ? ` (${c.existing_tcv_duration_months}mo)` : ''}`,
-            flex: 1.5 
+            flex: 1.5,
+            sortKey: 'existing'
         },
         { 
             header: 'Potential TCV', 
             render: (c) => `$${c.potential_tcv.toLocaleString()}${c.potential_tcv_duration_months ? ` (${c.potential_tcv_duration_months}mo)` : ''}`,
-            flex: 1.5
+            flex: 1.5,
+            sortKey: 'potential'
         }
     ], []);
 

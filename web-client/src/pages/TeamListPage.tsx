@@ -14,13 +14,14 @@ export const TeamListPage: React.FC<Props> = ({ data, loading }) => {
 
     const sortOptions: SortOption<Team>[] = useMemo(() => [
         { label: 'Name', key: 'name', getValue: (t) => t.name },
-        { label: 'Capacity', key: 'capacity', getValue: (t) => t.total_capacity_mds || 0 }
+        { label: 'Capacity', key: 'capacity', getValue: (t) => t.total_capacity_mds || 0 },
+        { label: 'Country', key: 'country', getValue: (t) => t.country || '' }
     ], []);
 
     const columns: ListColumn<Team>[] = useMemo(() => [
-        { header: 'Name', render: (t) => t.name, flex: 2 },
-        { header: 'Capacity', render: (t) => `${t.total_capacity_mds.toLocaleString()} MDs`, flex: 1 },
-        { header: 'Country', render: (t) => t.country || 'N/A', flex: 1 }
+        { header: 'Name', render: (t) => t.name, flex: 2, sortKey: 'name' },
+        { header: 'Capacity', render: (t) => `${t.total_capacity_mds.toLocaleString()} MDs`, flex: 1, sortKey: 'capacity' },
+        { header: 'Country', render: (t) => t.country || 'N/A', flex: 1, sortKey: 'country' }
     ], []);
 
     return (

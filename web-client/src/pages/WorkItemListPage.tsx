@@ -25,30 +25,39 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
             label: 'Effort', 
             key: 'effort', 
             getValue: (w) => data ? calculateWorkItemEffort(w, data.epics) : 0 
+        },
+        {
+            label: 'Released',
+            key: 'released',
+            getValue: (w) => data?.sprints.find(s => s.id === w.released_in_sprint_id)?.name || 'Not Released'
         }
     ], [data]);
 
     const columns: ListColumn<WorkItem>[] = useMemo(() => [
-        { header: 'Name', render: (w) => w.name, flex: 2 },
+        { header: 'Name', render: (w) => w.name, flex: 2, sortKey: 'name' },
         { 
             header: 'Score', 
             render: (w) => Math.round(w.score || 0).toLocaleString(),
-            flex: 1 
+            flex: 1,
+            sortKey: 'score'
         },
         { 
             header: 'Effort', 
             render: (w) => data ? `${calculateWorkItemEffort(w, data.epics).toLocaleString()} MDs` : '0 MDs',
-            flex: 1
+            flex: 1,
+            sortKey: 'effort'
         },
         { 
             header: 'TCV', 
             render: (w) => data ? `$${calculateWorkItemTcv(w, data.customers).toLocaleString()}` : '$0',
-            flex: 1
+            flex: 1,
+            sortKey: 'tcv'
         },
         { 
             header: 'Released', 
             render: (w) => data?.sprints.find(s => s.id === w.released_in_sprint_id)?.name || 'Not Released',
-            flex: 1.5
+            flex: 1.5,
+            sortKey: 'released'
         }
     ], [data]);
 

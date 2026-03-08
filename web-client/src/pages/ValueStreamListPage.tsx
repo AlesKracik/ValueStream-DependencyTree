@@ -17,7 +17,7 @@ export const ValueStreamListPage: React.FC<Props> = ({ data, loading }) => {
     ], []);
 
     const columns: ListColumn<ValueStreamEntity>[] = useMemo(() => [
-        { header: 'Name', render: (d) => d.name, flex: 1 },
+        { header: 'Name', render: (d) => d.name, flex: 1, sortKey: 'name' },
         { header: 'Description', render: (d) => d.description || "No description provided.", flex: 3 }
     ], []);
 

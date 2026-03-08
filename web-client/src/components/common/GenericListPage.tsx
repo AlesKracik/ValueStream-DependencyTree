@@ -12,6 +12,7 @@ export type ListColumn<T> = {
     header: string;
     render: (item: T) => React.ReactNode;
     flex?: number | string;
+    sortKey?: string;
 };
 
 interface GenericListPageProps<T> {
@@ -122,29 +123,51 @@ export function GenericListPage<T extends { id: string }>({
                     className={styles.filterInput}
                     style={{ flex: 1, minWidth: '200px' }}
                 />
-                
-                {sortOptions.length > 0 && (
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '14px', color: '#9ca3af' }}>
-                        Sort by:
-                        {sortOptions.map(option => (
-                            <button
-                                key={option.key}
-                                onClick={() => toggleSort(option.key)}
-                                className={sortBy === option.key ? styles.activeSort : styles.sortBtn}
-                            >
-                                {option.label} {sortBy === option.key && (sortOrder === 'asc' ? '↑' : '↓')}
-                            </button>
-                        ))}
-                    </div>
-                )}
             </div>
 
             <div className={styles.list}>
                 {columns && (
                     <div className={styles.listHeader} style={{ display: 'grid', gridTemplateColumns, gap: '16px', padding: '0 16px 8px 16px' }}>
-                        {columns.map((col, i) => (
-                            <div key={i} className={styles.columnHeader}>{col.header}</div>
-                        ))}
+                        {columns.map((col, i) => {
+                            const isSortable = !!col.sortKey;
+                            const isActive = sortBy === col.sortKey;
+                            if (isSortable) {
+                                return (
+                                    <button
+                                        key={i}
+                                        className={`${styles.columnHeader} ${styles.sortableColumnHeader}`}
+                                        onClick={() => toggleSort(col.sortKey!)}
+                                        style={{ 
+                                            cursor: 'pointer', 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '4px',
+                                            background: 'none',
+                                            border: 'none',
+                                            padding: 0,
+                                            textAlign: 'left',
+                                            justifyContent: 'flex-start',
+                                            width: '100%',
+                                            fontFamily: 'inherit',
+                                            outline: 'none'
+                                        }}
+                                    >
+                                        {col.header}
+                                        {isActive && (
+                                            <span style={{ fontSize: '10px' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
+                                        )}
+                                    </button>
+                                );
+                            }
+                            return (
+                                <div 
+                                    key={i} 
+                                    className={styles.columnHeader}
+                                >
+                                    {col.header}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
 

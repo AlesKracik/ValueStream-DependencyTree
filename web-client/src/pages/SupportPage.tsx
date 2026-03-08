@@ -146,7 +146,8 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                     </span>
                 </div>
             ), 
-            flex: 1.5 
+            flex: 1.5,
+            sortKey: 'customerName'
         },
         {
             header: 'Activity',
@@ -165,7 +166,8 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                     }}>{isNew ? 'New' : 'Updated'}</span>
                 );
             },
-            flex: 0.6
+            flex: 0.6,
+            sortKey: 'activity'
         },
         { 
             header: 'Description', 
@@ -210,7 +212,8 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                     )}
                 </div>
             ), 
-            flex: 3 
+            flex: 3,
+            sortKey: 'description'
         },
         { 
             header: 'Status', 
@@ -231,7 +234,8 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                     </span>
                 );
             }, 
-            flex: 1 
+            flex: 1,
+            sortKey: 'status'
         }
     ], []);
 

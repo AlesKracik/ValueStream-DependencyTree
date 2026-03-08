@@ -95,6 +95,11 @@
     color: #60a5fa;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    transition: color 0.2s;
+}
+
+.sortableColumnHeader:hover {
+    color: #93c5fd;
 }
 
 .itemColumn {
