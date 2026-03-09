@@ -162,7 +162,8 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         const allFetchedIssues = [
             ...healthData.newIssues,
             ...healthData.inProgressIssues,
-            ...healthData.noopIssues
+            ...healthData.noopIssues,
+            ...healthData.linkedIssues
         ];
 
         const existingJiraIssues = customer.jira_support_issues || [];

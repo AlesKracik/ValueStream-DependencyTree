@@ -93,4 +93,67 @@ describe('useCustomerHealth', () => {
         // Looking at the implementation, it catches errors and sets error state.
         expect(result.current.error).toBeDefined();
     });
+
+    it('should fetch additional Jira issues mentioned in support_issues that were missed by JQL', async () => {
+        const customerWithSupport: Customer = {
+            ...mockCustomer,
+            support_issues: [
+                { id: 'i1', description: 'Problem', status: 'Active', related_jiras: ['MISSING-101', 'ALREADY-FOUND'] }
+            ]
+        };
+
+        (api.authorizedFetch as any).mockImplementation(async (url: string, options: any) => {
+            const body = JSON.parse(options.body);
+            const jql = body.jql;
+
+            if (jql.includes('status = New')) {
+                return {
+                    ok: true,
+                    json: async () => ({
+                        success: true,
+                        data: {
+                            issues: [{ key: 'ALREADY-FOUND', fields: { summary: 'Found by JQL', status: { name: 'New' } } }]
+                        }
+                    })
+                };
+            }
+
+            if (jql.includes('key IN ("MISSING-101")')) {
+                return {
+                    ok: true,
+                    json: async () => ({
+                        success: true,
+                        data: {
+                            issues: [{ key: 'MISSING-101', fields: { summary: 'Fetched by Key', status: { name: 'In Progress' } } }]
+                        }
+                    })
+                };
+            }
+
+            // Default for other JQLs (InProgress, Noop)
+            return {
+                ok: true,
+                json: async () => ({ success: true, data: { issues: [] } })
+            };
+        });
+
+        const { result } = renderHook(() => useCustomerHealth(customerWithSupport, mockSettings));
+
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        // Should have found ALREADY-FOUND in newIssues
+        expect(result.current.newIssues.some(i => i.key === 'ALREADY-FOUND')).toBe(true);
+
+        // Should have fetched MISSING-101 separately and put it in linkedIssues
+        expect(result.current.linkedIssues.some(i => i.key === 'MISSING-101')).toBe(true);
+        expect(result.current.linkedIssues.find(i => i.key === 'MISSING-101')?.summary).toBe('Fetched by Key');
+        
+        // noopIssues should be empty in this mock scenario
+        expect(result.current.noopIssues).toHaveLength(0);
+
+        // Check that the specific key fetch was actually called
+        expect(api.authorizedFetch).toHaveBeenCalledWith('/api/jira/search', expect.objectContaining({
+            body: expect.stringContaining('"jql":"key IN (\\"MISSING-101\\")"')
+        }));
+    });
 });

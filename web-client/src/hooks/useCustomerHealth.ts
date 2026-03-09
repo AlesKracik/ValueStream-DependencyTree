@@ -6,6 +6,7 @@ export interface CustomerHealthData {
     newIssues: JiraIssue[];
     inProgressIssues: JiraIssue[];
     noopIssues: JiraIssue[];
+    linkedIssues: JiraIssue[];
     healthStatus: 'Healthy' | 'Blocked / Pending' | 'Active Work' | 'New / Untriaged' | 'Unknown';
     loading: boolean;
     error: string | null;
@@ -16,6 +17,7 @@ export const useCustomerHealth = (customer: Customer | undefined, settings: Sett
         newIssues: [],
         inProgressIssues: [],
         noopIssues: [],
+        linkedIssues: [],
         healthStatus: 'Unknown',
         loading: false,
         error: null,
@@ -89,12 +91,33 @@ export const useCustomerHealth = (customer: Customer | undefined, settings: Sett
                 }
             };
 
+            const fetchByKeys = async (keys: string[]): Promise<JiraIssue[]> => {
+                if (keys.length === 0) return [];
+                // JQL to fetch specific keys: key IN ("KEY-1", "KEY-2")
+                const jql = `key IN (${keys.map(k => `"${k}"`).join(',')})`;
+                return fetchIssues(jql, 'noop'); // Category 'noop' is fine for the JiraIssue object itself
+            };
+
             try {
                 const [newIssues, inProgressIssues, noopIssues] = await Promise.all([
                     fetchIssues(jqlNew, 'new'),
                     fetchIssues(jqlInProgress, 'in_progress'),
                     fetchIssues(jqlNoop, 'noop')
                 ]);
+
+                // Collect all keys from support_issues that aren't in any of the fetched results
+                const fetchedKeys = new Set([
+                    ...newIssues.map(i => i.key),
+                    ...inProgressIssues.map(i => i.key),
+                    ...noopIssues.map(i => i.key)
+                ]);
+
+                const missingKeys = (customer.support_issues || [])
+                    .flatMap(issue => issue.related_jiras || [])
+                    .filter(key => key && key !== 'TBD' && !fetchedKeys.has(key));
+
+                const uniqueMissingKeys = Array.from(new Set(missingKeys));
+                const linkedIssues = await fetchByKeys(uniqueMissingKeys);
 
                 let healthStatus: CustomerHealthData['healthStatus'] = 'Healthy';
                 if (newIssues.length > 0) {
@@ -109,6 +132,7 @@ export const useCustomerHealth = (customer: Customer | undefined, settings: Sett
                     newIssues,
                     inProgressIssues,
                     noopIssues,
+                    linkedIssues,
                     healthStatus,
                     loading: false,
                     error: null
@@ -123,7 +147,7 @@ export const useCustomerHealth = (customer: Customer | undefined, settings: Sett
         };
 
         fetchHealth();
-    }, [customer?.customer_id, settings]); // Reduced dependency surface
+    }, [customer?.customer_id, customer?.support_issues, settings]); // Reduced dependency surface
 
     return healthData;
 };
