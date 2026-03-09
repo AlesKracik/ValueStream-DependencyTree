@@ -10,37 +10,54 @@ The application uses a dual-mode persistence strategy to balance ease of local d
 ## The Vite Persistence Plugin
 The "backend" logic resides in `web-client/vite.config.ts`. It utilizes `server.middlewares` to provide API endpoints:
 
-### 1. `GET /api/loadData`
-Fetches the project state, executes migrations, and performs server-side calculations.
+## The Vite Backend Plugin
+The "backend" logic resides in `web-client/vite.config.ts`. It provides a comprehensive set of REST endpoints for data management, integration, and security.
 
-**Supported Query Parameters:**
-- `ValueStreamId`: (String) UUID of a persistent ValueStream to load parameters from.
-- `customerFilter`: (String) Text-based search for customer names.
-- `workItemFilter`: (String) Text-based search for work item names.
-- `teamFilter`: (String) Text-based search for team names.
-- `epicFilter`: (String) Text-based search for epic names.
-- `releasedFilter`: (`all` | `released` | `unreleased`) Filter by work item status.
-- `minTcv`: (Number) Minimum total TCV for customers.
-- `minScore`: (Number) Minimum RICE score for work items.
+### Core Data Endpoints
 
-**Response Structure:**
-The response includes standard entities plus a **`metrics`** object used for consistent frontend rendering:
-- `metrics.maxScore`: The global maximum RICE score across the *entire* dataset.
-- `metrics.maxRoi`: The global maximum Return on Investment (TCV/Effort) for edge scaling.
+#### 1. `GET /api/loadData`
+The primary hydration endpoint. It fetches all entities, applies migrations, calculates RICE scores, and aggregates global metrics.
+- **Parameters:** Supports `ValueStreamId` and various filters (`customerFilter`, `minTcv`, etc.).
+- **Logic:** Performs complex joins (e.g., Epic effort summed into Work Items) and ROI calculations.
 
-### 2. `POST /api/entity/{collection}`
-Handles Upsert operations. 
-- **Debouncing:** Client-side updates are debounced by 1000ms to prevent excessive database writes during rapid UI interactions (e.g., typing in text areas).
-- **Recalculation:** When a Work Item or Customer is updated, the backend automatically recalculates all affected RICE scores on the next `loadData` call.
+#### 2. `POST /api/entity/{collection}`
+Upserts a single document into one of the allowed collections (`customers`, `workItems`, etc.).
+- **Debouncing:** Frontend calls are debounced by 1000ms.
+- **Validation:** Ensures a unique index on the `id` field.
 
-### 3. `DELETE /api/entity/{collection}/{id}`
-Handles record removal. The entity ID is passed as a URL parameter.
+#### 3. `DELETE /api/entity/{collection}/{id}`
+Removes a specific document by its unique ID.
 
-### 4. POST /api/mongo/databases
-Fetches a list of all databases available on the configured MongoDB cluster. Used for the Database Discovery feature in the UI.
+#### 4. `POST /api/settings`
+Updates the `settings.json` file. It automatically masks/unmasks sensitive fields (API tokens, URIs) during the round-trip to the UI.
 
-### 5. POST /api/mongo/test
-Tests connection to a specific URI and Database. Returns an `exists` boolean flag to indicate if the targeted database is already initialized on the server.
+### Database Management & Portability
+
+#### 5. `POST /api/mongo/test`
+Validates connectivity to a MongoDB URI. Returns whether the targeted database exists and provides descriptive feedback based on the "Create if not exists" safety rail.
+
+#### 6. `POST /api/mongo/databases`
+Lists all databases on a cluster to assist with UI-based discovery.
+
+#### 7. `POST /api/mongo/export`
+Aggregates the entire database state into a single portable JSON object.
+
+#### 8. `POST /api/mongo/import`
+Wipes the current database and re-populates it from a provided JSON export.
+
+#### 9. `POST /api/mongo/query`
+A pass-through interface for executing raw MongoDB queries or aggregation pipelines. primarily used for fetching "Customer Custom Data" from secondary clusters.
+
+### Security & Integration
+
+#### 10. `GET /api/auth/status`
+Checks if the `ADMIN_SECRET` environment variable is set and if the current session is authorized.
+
+#### 11. `POST /api/jira/*`
+Proxies requests to the Atlassian Jira API (`/test`, `/issue`, `/search`) to bypass CORS and inject credentials securely.
+
+#### 12. `POST /api/llm/generate`
+A unified gateway for multiple AI providers (OpenAI, Gemini, Anthropic, Augment). Supports Server-Sent Events (SSE) for real-time response streaming.
 
 ## MongoDB Authentication & Safety
 

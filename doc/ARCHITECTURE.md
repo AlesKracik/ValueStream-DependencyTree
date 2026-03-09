@@ -1,34 +1,44 @@
 # High-Level Technical Architecture
 
 ## Overview
-The ValueStream Dependency Tree is a React-based Single Page Application (SPA) designed to visualize the flow of value from customer demand to engineering execution. It uses a custom mathematical layout engine to map entities across a 4-stage pipeline: Customers, Work Items, Teams, and a Gantt Timeline.
+The ValueStream Dependency Tree is a React-based Single Page Application (SPA) designed to visualize the flow of value from customer demand to engineering execution. It uses a custom mathematical layout engine to map entities across a 4-stage pipeline: Customers, Work Items, Teams, and a Gantt Timeline. The system features a robust, embedded backend within the Vite dev server, supporting complex MongoDB aggregations, Jira integrations, and multi-provider AI capabilities.
 
 ## System Components
 
 ```mermaid
 graph TD
     Client[Web Client - React/Vite]
-    Proxy[Vite Dev Server Proxy]
+    Backend[Vite Server Backend - Plugin]
     Mongo[(MongoDB)]
     Jira[Atlassian Jira API]
+    AI[AI Providers - OpenAI, Gemini, Anthropic, Augment]
 
-    Client -->|API Requests| Proxy
-    Proxy -->|Persistence| Mongo
-    Proxy -->|Integration| Jira
+    Client -->|API Requests| Backend
+    Backend -->|Persistence & Aggregation| Mongo
+    Backend -->|Integration| Jira
+    Backend -->|AI Generation| AI
     Client -->|Local Fallback| Static[staticImport.json]
+    
+    subgraph "Networking Infrastructure"
+        Proxy[SOCKS5 Proxy / SSH Tunnel]
+        Backend -.->|Optional Tunneling| Proxy
+        Proxy -.-> Mongo
+    end
 ```
 
 ### 1. Web Client (React + TypeScript)
 - **Framework:** React 19 with Vite.
-- **State Management:** Custom `ValueStreamContext` and `useValueStreamData` hook.
+- **State Management:** Custom `ValueStreamContext` and `useValueStreamData` hook featuring optimistic updates and debounced persistence.
 - **Visualization:** `@xyflow/react` (React Flow) for graph rendering.
-- **Layout Engine:** `useGraphLayout.ts` - a deterministic engine that calculates X/Y coordinates based on logical relationships rather than force-directed algorithms.
+- **Layout Engine:** `useGraphLayout.ts` - a deterministic engine that calculates X/Y coordinates based on logical relationships, featuring reachability analysis for hover-based highlighting.
 
 ### 2. Backend & Persistence
-- **Mock Persistence Plugin:** A Vite server-side plugin (`vite.config.ts`) that intercepts `/api` calls. It includes a True Backend engine that performs complex data joins and numeric calculations.
-- **Database:** MongoDB for persistent storage of all entities. It utilizes MongoDB Aggregation Pipelines for high-performance score calculation.
+- **Embedded Backend Plugin:** A Vite server-side plugin (`vite.config.ts`) that handles all `/api` calls. It includes a high-performance engine that performs complex data joins, RICE score calculations, and metrics aggregation.
+- **Database Support:** Dual-database architecture supporting both primary Application storage and secondary Customer data integration.
+- **Connectivity:** Systematic SOCKS5 proxy support for connecting to MongoDB clusters (like Atlas) behind secure SSH bastions.
+- **AI Integration:** Multi-provider support for LLMs including OpenAI, Gemini, Anthropic, and localized execution via the Augment (`auggie`) CLI.
 - **Schema Validation:** Draft-07 JSON schema at `public/schema.json`.
-- **Seeding:** Automatically seeds from `public/staticImport.json` if the database is empty.
+- **Seeding:** Automatic seeding from `public/staticImport.json` if the primary database is empty.
 
 ## Data Flow & State Management
 
@@ -50,14 +60,26 @@ The system supports an optional security layer via the `ADMIN_SECRET` environmen
 ### 3. Server-Side Processing
 The backend fetches raw entities and performs the "heavy lifting":
 -   **Joins:** It joins Work Items with Epics to calculate effort and with Customers to calculate RICE scores.
--   **Metrics:** It returns a `metrics` object with global maximums (e.g., `maxScore`) to ensure consistent visual scaling across all filtered views.
+-   **Metrics:** It returns a `metrics` object with global maximums (e.g., `maxScore`, `maxRoi`) to ensure consistent visual scaling across all filtered views.
+-   **Fiscal Logic:** Sprints are automatically tagged with a fiscal quarter (e.g., `FY2026 Q1`) based on the `fiscal_year_start_month` setting.
 
-### 4. Mutations & Reactivity
+### 4. AI & LLM Integration
+The system provides a unified interface for AI generation, supporting multiple providers:
+- **Cloud Providers:** OpenAI (GPT models), Gemini (1.5 Pro/Flash), and Anthropic (Claude).
+- **Local Execution:** Integration with the Augment CLI (`auggie`) for localized reasoning and code-aware tasks.
+- **Streaming Support:** The API supports Server-Sent Events (SSE) for real-time text generation from OpenAI and Gemini.
+
+### 5. Mutations & Reactivity
 User actions (updates, deletes, adds) trigger local state changes via mutation functions (`addEpic`, `updateWorkItem`, etc.) which:
 -   **Optimistic Updates:** Immediately execute a local update on the React state array for zero-latency UI feedback.
--   **Debounced Persistence:** Update operations are debounced by 1000ms. This bundles rapid changes (like typing a description) into a single API call to reduce server load and MongoDB write frequency.
--   **Asynchronous Persistence:** Fire off background background `fetch` requests (via `authorizedFetch`) to the `/api/entity` endpoints.
--   **Non-Blocking:** These operations do not block the UI thread waiting for server confirmation.
+-   **Cascading Logic:** Deleting a Customer automatically removes it from all Work Item targets; deleting a Team clears associations from its Epics.
+-   **Debounced Persistence:** Update operations are debounced by 1000ms. This bundles rapid changes (like typing a description) into a single API call.
+-   **Asynchronous Persistence:** Fire off background `fetch` requests (via `authorizedFetch`) to the `/api/entity` endpoints.
+
+### 6. Data Management & Seeding
+- **Export/Import:** The system allows exporting the entire database state to a JSON file and importing it back, facilitating environment migration.
+- **Auto-Seeding:** If the database is empty on load, it automatically seeds from `public/staticImport.json`.
+- **Query Engine:** A pass-through MongoDB query interface allows for advanced debugging and data exploration directly from the UI.
 
 ```mermaid
 sequenceDiagram
@@ -124,18 +146,16 @@ The following patterns outline how components and logic are structurally decoupl
 The core visualization is not physics-based (like traditional force-directed graphs) but is instead a highly deterministic layout engine.
 1. **Column Mapping:** The layout establishes fixed X-coordinates (`COL_CUSTOMER_X`, `COL_WORKITEM_X`, `COL_TEAM_X`) forming a left-to-right flow pipeline.
 2. **Hybrid Filtering (Logical AND):** The hook merges Base Parameters (persisted ValueStream rules) and Transient Filters (live-typing from the UI) before determining node inclusion.
-3. **Array Mutation:** It parses the `data` arrays into valid generic sets (`validCustomers`, `validWorkItems`, `validEpics`).
-4. **Coordinate Placement:** It dynamically loops through the sets, generating React Flow nodes (`{ id, position: {x,y}, data }`) and calculating specific Y offsets so nodes do not overlap, particularly protecting Epic Gantt bars within expanding Team vertical bounds.
+3. **Reachability Analysis:** When a node is selected, the engine performs a recursive trace upstream (to root causes/customers) and downstream (to execution/teams) to filter the visible graph to only show relevant paths.
+4. **Coordinate Placement:** It dynamically loops through the sets, generating React Flow nodes and calculating specific Y offsets so nodes do not overlap, particularly protecting Epic Gantt bars within expanding Team vertical bounds.
+5. **Holiday-Aware Capacity:** Team capacity for each sprint is automatically adjusted based on public holidays in the team's configured country (using `date-holidays`).
 
 ### 2. React Flow Custom Nodes
-The ValueStream relies on custom React Flow nodes (`src/components/nodes/`). All nodes follow a specific geometric and mathematical rendering pattern.
-
-**Pattern Template:**
-1. **Memoization:** Nodes are always exported wrapped in `React.memo` to prevent unnecessary re-renders during panning/zooming.
-2. **Size Calculations:** Node dimensions are dynamically calculated using a base size and a ratio derived from the entity's relative metric weight against a global maximum provided by the backend (e.g., `data.maxScore`, `data.maxTcv`).
-3. **Inline Styling:** Most structural, shape, and shadow logic is applied via inline React `style={{}}` objects to support dynamic dimension calculation (`outerSize`, `innerSize`).
-4. **Handles:** Invisible `<Handle>` components (from `@xyflow/react`) are positioned absolutely on the left/right edges to allow for programmatic edge connections.
-5. **Tooltips:** Nodes use the standard `title` attribute to provide contextual information (e.g., WorkItem description) on hover.
+The ValueStream relies on custom React Flow nodes (`src/components/nodes/`).
+- **Progress-Aware Coloring:** Gantt bars are colored based on their temporal relationship to the "Active Sprint" (Slate Blue for past/frozen, Purple for future).
+- **Heatmap Intensity:** Gantt segments use heat-mapping to visualize effort intensity relative to a baseline, highlighting over-allocated periods.
+- **Memoization:** Nodes are wrapped in `React.memo` to ensure performance during rapid panning.
+- **Dynamic Scaling:** Node sizes are scaled linearly between a `baseSize` and `maxSize` using the global metrics provided by the backend.
 
 ```mermaid
 graph LR
@@ -324,7 +344,7 @@ Detailed documentation for each system block:
 - [Teams](TEAMS.md)
 - [Epics](EPICS.md)
 - [Sprints](SPRINTS.md)
-- [valueStreams](valueStreams.md)
+- [ValueStreams](VALUESTREAMS.md)
 - [Jira Integration](JIRA_INTEGRATION.md)
 - [Persistence & Migration](PERSISTENCE.md)
 

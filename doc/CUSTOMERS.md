@@ -74,7 +74,7 @@ When Jira integration is configured, the Customer Page displays a "Support Overv
 
 - **Automatic Synchronization:** The system automatically fetches Jira issues matching the global JQL queries defined in settings. These issues are categorized as **New / Untriaged**, **Active Work**, or **Blocked / Pending**.
 - **Linked Issue Persistence:** Any Jira issues explicitly mentioned in a customer's manual Support Issues (under "Related Jiras") are also automatically fetched by their specific keys. This ensures that even if a linked Jira doesn't match the current JQL filters (e.g., it was closed or moved to a different project), its latest status and summary are still tracked.
-- **Database Caching:** All fetched Jira data (summaries, statuses, priorities) is persisted in the local database. This provides a consistent view for other parts of the system (like the Support Page and AI Assistant) without requiring constant real-time Jira API calls.
+- **Database Caching:** All fetched Jira data (summaries, statuses, priorities) is persisted in the local database. This provides a consistent view for other parts of the system (like the Support Page) without requiring constant real-time Jira API calls.
 - **Quick Link:** For unlinked Jira issues found via JQL, users can use a dropdown to:
     - **Link to Existing:** Add the Jira key to an existing manual Support Issue.
     - **Create New:** Automatically create a new manual Support Issue using the Jira summary and link the key.
