@@ -54,8 +54,14 @@ export async function getDb(config: any, type: 'app' | 'customer' = 'app', check
   const cached = mongoClients.get(cacheKey);
   if (cached) {
     cached.lastUsed = Date.now();
+    // MONGO_DEBUG: Log cache hit
+    console.log(`[MONGO_DEBUG] Cache HIT for key: ${cacheKey.substring(0, 50)}...`);
     return cached.client.db(dbName);
   }
+
+  // MONGO_DEBUG: Log cache miss / new connection
+  console.log(`[MONGO_DEBUG] Cache MISS for key: ${cacheKey.substring(0, 50)}... - Creating new connection`);
+  const startTime = Date.now();
 
   const options: any = {
     serverSelectionTimeoutMS: 15000,
@@ -73,6 +79,8 @@ export async function getDb(config: any, type: 'app' | 'customer' = 'app', check
   if (useProxy && config.proxyHost) {
     options.proxyHost = config.proxyHost;
     options.proxyPort = config.proxyPort;
+    // MONGO_DEBUG: Log proxy usage
+    console.log(`[MONGO_DEBUG] Using SOCKS proxy: ${config.proxyHost}:${config.proxyPort}`);
   }
 
   const isSrv = uri.startsWith('mongodb+srv://');
@@ -111,6 +119,9 @@ export async function getDb(config: any, type: 'app' | 'customer' = 'app', check
   const client = new MongoClient(uri, options);
   await client.connect();
   
+  // MONGO_DEBUG: Log connection time
+  console.log(`[MONGO_DEBUG] MongoDB connection established in ${Date.now() - startTime}ms`);
+
   mongoClients.set(cacheKey, { client, lastUsed: Date.now() });
 
   const db = client.db(dbName);

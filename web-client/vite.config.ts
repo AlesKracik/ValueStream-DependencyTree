@@ -45,6 +45,195 @@ process.on('exit', cleanupAllProcesses);
 const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
   name: 'mock-data-persistence',
   configureServer(server: any) {
+    // SSRF Protection: Check if URL is internal/private
+    async function isSafeUrl(urlStr: string) {
+      try {
+        const url = new URL(urlStr);
+        if (url.protocol !== 'http:' && url.protocol !== 'https:' && url.protocol !== 'mongodb:' && url.protocol !== 'mongodb+srv:') return false;
+        
+        // For MongoDB URIs, skip DNS validation as the driver handles complex SRV/TXT resolution
+        // and they are inherently less prone to the kind of SSRF targeted here (HTTP metadata services)
+        if (url.protocol === 'mongodb:' || url.protocol === 'mongodb+srv:') return true;
+
+        const hostname = url.hostname;
+        if (!hostname) return true; 
+
+        // Allow localhost/loopback and host.docker.internal for local development/integration
+        if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === 'host.docker.internal') return true;
+
+        const { address } = await dnsLookup(hostname);
+        
+        // Allow loopback and host-gateway address from DNS resolution too
+        if (address === '127.0.0.1' || address === '::1') return true;
+
+        const parts = address.split('.').map(Number);
+
+        // SSRF protection for this tool should primarily block cloud metadata services
+        // blocking 10.x, 172.x, 192.x is too aggressive for self-hosted integration tools
+        if (parts[0] === 169 && parts[1] === 254) return false; // Link-local / Metadata service
+
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    // Map to store persistent Mongo clients: cacheKey -> { client, lastUsed }
+    const mongoClients = new Map<string, { client: MongoClient, lastUsed: number }>();
+
+    // Cleanup idle Mongo clients every 5 minutes
+    setInterval(() => {
+      const now = Date.now();
+      for (const [key, item] of mongoClients.entries()) {
+        if (now - item.lastUsed > 30 * 60 * 1000) { // 30 minutes idle
+          item.client.close().catch(() => {});
+          mongoClients.delete(key);
+        }
+      }
+    }, 300000);
+
+    // helper to connect to Mongo
+    async function getDb(config: any, type: 'app' | 'customer' = 'app', checkExists = false) {
+      // Support both application and customer mongo settings
+      const prefix = type === 'customer' ? 'customer_mongo_' : 'mongo_';
+
+      let uri = config[prefix + 'uri'];
+      if (!uri) throw new Error(`Mongo ${type} URI not provided`);
+      if (!await isSafeUrl(uri)) {
+        throw new Error(`Invalid or unsafe MongoDB ${type} URI`);
+      }
+      
+      const dbName = config[prefix + 'db'] || (type === 'customer' ? 'customer' : 'valueStream');
+      const authMethod = config[prefix + 'auth_method'] || 'scram';
+      const useProxy = config[prefix + 'use_proxy'];
+
+      // Create a cache key for this specific connection
+      const cacheKey = `${type}:${uri}:${dbName}:${authMethod}:${useProxy}:${config[prefix + 'aws_access_key'] || ''}`;
+      
+      const cached = mongoClients.get(cacheKey);
+      if (cached) {
+          cached.lastUsed = Date.now();
+          // MONGO_DEBUG: Log cache hit
+          console.log(`[MONGO_DEBUG] Cache HIT for key: ${cacheKey.substring(0, 50)}...`);
+          return cached.client.db(dbName);
+      }
+
+      // MONGO_DEBUG: Log cache miss / new connection
+      console.log(`[MONGO_DEBUG] Cache MISS for key: ${cacheKey.substring(0, 50)}... - Creating new connection`);
+      const startTime = Date.now();
+
+      const options: any = {
+        serverSelectionTimeoutMS: 15000,
+        connectTimeoutMS: 15000,
+        // Connection pooling options
+        maxPoolSize: 10,
+        minPoolSize: 1,
+      };
+
+      // SYSTEMATIC PROXYING: Use an external SOCKS proxy if configured AND enabled for this connection
+      const socksProxyHost = (process.env.SOCKS_PROXY_HOST || env.VITE_SOCKS_PROXY_HOST || env.SOCKS_PROXY_HOST);
+      const socksProxyPort = parseInt(process.env.SOCKS_PROXY_PORT || env.VITE_SOCKS_PROXY_PORT || env.SOCKS_PROXY_PORT || '1080');
+
+      if (useProxy && socksProxyHost) {
+        options.proxyHost = socksProxyHost;
+        options.proxyPort = socksProxyPort;
+        // MONGO_DEBUG: Log proxy usage
+        console.log(`[MONGO_DEBUG] Using SOCKS proxy: ${socksProxyHost}:${socksProxyPort}`);
+      }
+
+      const isSrv = uri?.startsWith('mongodb+srv://');
+      if (isSrv) {
+        options.tls = true;
+        if (options.proxyHost) {
+          // When proxying to Atlas, cert is for *.mongodb.net, driver connects to proxy IP
+          options.tlsAllowInvalidHostnames = true;
+        }
+      }
+
+      if (authMethod === 'aws') {
+        const ak = config[prefix + 'aws_access_key'];
+        const sk = config[prefix + 'aws_secret_key'];
+        const st = config[prefix + 'aws_session_token'];
+        
+        if (!ak || !sk) {
+          throw new Error(`AWS Access Key and Secret Key are required for AWS IAM authentication on ${type} DB.`);
+        }
+        options.authMechanism = 'MONGODB-AWS';
+        options.authMechanismProperties = {
+          AWS_ACCESS_KEY_ID: ak,
+          AWS_SECRET_ACCESS_KEY: sk,
+          AWS_SESSION_TOKEN: st
+        };
+        options.auth = { username: '', password: '' };
+      } else if (authMethod === 'oidc') {
+        const token = config[prefix + 'oidc_token'];
+        if (!token) {
+          throw new Error(`Access Token is required for OIDC authentication on ${type} DB.`);
+        }
+        options.authMechanism = 'MONGODB-OIDC';
+        options.authMechanismProperties = { ENVIRONMENT: 'test' };
+        options.auth = { username: token, password: '' };
+      }
+
+      const client = new MongoClient(uri, options);
+      await client.connect();
+      
+      // MONGO_DEBUG: Log connection time
+      console.log(`[MONGO_DEBUG] MongoDB connection established in ${Date.now() - startTime}ms`);
+
+      // Cache the client for future use
+      mongoClients.set(cacheKey, { client, lastUsed: Date.now() });
+
+      const db = client.db(dbName);
+
+      if (checkExists && !config[prefix + 'create_if_not_exists']) {
+        try {
+          // Check existence by listing collections on the specific database.
+          // This is safer than listDatabases on admin which requires cluster-wide permissions.
+          const collections = await db.listCollections().toArray();
+          if (collections.length === 0) {
+            // In MongoDB, a database without collections technically "doesn't exist" in listDatabases.
+            // So if it's empty, we should check listDatabases IF we have permission, 
+            // but if not, we assume it's missing if create_if_not_exists is false.
+            try {
+              const dbs = await client.db().admin().listDatabases();
+              const exists = dbs.databases.some((d: any) => d.name === dbName);
+              if (!exists) {
+                 // Don't close the client if it's in the cache, but since we just added it 
+                 // and it failed a check, we might want to remove it if it's "bad".
+                 // However, the connection itself is valid, just the DB is missing.
+                 throw new Error(`Database '${dbName}' does not exist and 'Create if not exists' is disabled.`);
+              }
+            } catch (adminErr) {
+              // If we can't listDatabases, we rely on the fact that listCollections was empty.
+              // It's safer to throw here to avoid silent failure when the user explicitly said "don't create".
+              throw new Error(`Database '${dbName}' has no collections and cluster-wide database listing is restricted. Please check the name or enable 'Create if not exists'.`);
+            }
+          }
+        } catch (err: any) {
+          if (err.message.includes('Database') && err.message.includes('does not exist')) throw err;
+          // Connectivity error - remove from cache
+          mongoClients.delete(cacheKey);
+          await client.close();
+          throw err;
+        }
+      }
+
+      return db;
+    }
+
+    async function logQuery<T>(name: string, collection: string, operation: string, promise: Promise<T>): Promise<T> {
+      const start = Date.now();
+      try {
+        const result = await promise;
+        console.log(`[MONGO_DEBUG] Query ${name} on ${collection}.${operation} took ${Date.now() - start}ms`);
+        return result;
+      } catch (e) {
+        console.error(`[MONGO_DEBUG] Query ${name} on ${collection}.${operation} FAILED after ${Date.now() - start}ms:`, e);
+        throw e;
+      }
+    }
+
     server.middlewares.use(async (req: any, res: any, next: any) => {
       const ALLOWED_COLLECTIONS = ['customers', 'workItems', 'teams', 'epics', 'sprints', 'valueStreams'];
       const MAX_PAYLOAD_SIZE = 5 * 1024 * 1024; // 5 MB limit
@@ -157,172 +346,6 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
           request.on('error', reject);
         });
       };
-
-      // SSRF Protection: Check if URL is internal/private
-      async function isSafeUrl(urlStr: string) {
-        try {
-          const url = new URL(urlStr);
-          if (url.protocol !== 'http:' && url.protocol !== 'https:' && url.protocol !== 'mongodb:' && url.protocol !== 'mongodb+srv:') return false;
-          
-          // For MongoDB URIs, skip DNS validation as the driver handles complex SRV/TXT resolution
-          // and they are inherently less prone to the kind of SSRF targeted here (HTTP metadata services)
-          if (url.protocol === 'mongodb:' || url.protocol === 'mongodb+srv:') return true;
-
-          const hostname = url.hostname;
-          if (!hostname) return true; 
-
-          // Allow localhost/loopback and host.docker.internal for local development/integration
-          if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === 'host.docker.internal') return true;
-
-          const { address } = await dnsLookup(hostname);
-          
-          // Allow loopback and host-gateway address from DNS resolution too
-          if (address === '127.0.0.1' || address === '::1') return true;
-
-          const parts = address.split('.').map(Number);
-
-          // SSRF protection for this tool should primarily block cloud metadata services
-          // blocking 10.x, 172.x, 192.x is too aggressive for self-hosted integration tools
-          if (parts[0] === 169 && parts[1] === 254) return false; // Link-local / Metadata service
-
-          return true;
-        } catch {
-          return false;
-        }
-      }
-
-      // Map to store persistent Mongo clients: cacheKey -> { client, lastUsed }
-      const mongoClients = new Map<string, { client: MongoClient, lastUsed: number }>();
-
-      // Cleanup idle Mongo clients every 5 minutes
-      setInterval(() => {
-        const now = Date.now();
-        for (const [key, item] of mongoClients.entries()) {
-          if (now - item.lastUsed > 30 * 60 * 1000) { // 30 minutes idle
-            item.client.close().catch(() => {});
-            mongoClients.delete(key);
-          }
-        }
-      }, 300000);
-
-      // helper to connect to Mongo
-      async function getDb(config: any, type: 'app' | 'customer' = 'app', checkExists = false) {
-        // Support both application and customer mongo settings
-        const prefix = type === 'customer' ? 'customer_mongo_' : 'mongo_';
-
-        let uri = config[prefix + 'uri'];
-        if (!uri) throw new Error(`Mongo ${type} URI not provided`);
-        if (!await isSafeUrl(uri)) {
-          throw new Error(`Invalid or unsafe MongoDB ${type} URI`);
-        }
-        
-        const dbName = config[prefix + 'db'] || (type === 'customer' ? 'customer' : 'valueStream');
-        const authMethod = config[prefix + 'auth_method'] || 'scram';
-        const useProxy = config[prefix + 'use_proxy'];
-
-        // Create a cache key for this specific connection
-        const cacheKey = `${type}:${uri}:${dbName}:${authMethod}:${useProxy}:${config[prefix + 'aws_access_key'] || ''}`;
-        
-        const cached = mongoClients.get(cacheKey);
-        if (cached) {
-            cached.lastUsed = Date.now();
-            return cached.client.db(dbName);
-        }
-
-        const options: any = {
-          serverSelectionTimeoutMS: 15000,
-          connectTimeoutMS: 15000,
-          // Connection pooling options
-          maxPoolSize: 10,
-          minPoolSize: 1,
-        };
-
-        // SYSTEMATIC PROXYING: Use an external SOCKS proxy if configured AND enabled for this connection
-        const socksProxyHost = (process.env.SOCKS_PROXY_HOST || env.VITE_SOCKS_PROXY_HOST || env.SOCKS_PROXY_HOST);
-        const socksProxyPort = parseInt(process.env.SOCKS_PROXY_PORT || env.VITE_SOCKS_PROXY_PORT || env.SOCKS_PROXY_PORT || '1080');
-
-        if (useProxy && socksProxyHost) {
-          options.proxyHost = socksProxyHost;
-          options.proxyPort = socksProxyPort;
-        }
-
-        const isSrv = uri?.startsWith('mongodb+srv://');
-        if (isSrv) {
-          options.tls = true;
-          if (options.proxyHost) {
-            // When proxying to Atlas, cert is for *.mongodb.net, driver connects to proxy IP
-            options.tlsAllowInvalidHostnames = true;
-          }
-        }
-
-        if (authMethod === 'aws') {
-          const ak = config[prefix + 'aws_access_key'];
-          const sk = config[prefix + 'aws_secret_key'];
-          const st = config[prefix + 'aws_session_token'];
-          
-          if (!ak || !sk) {
-            throw new Error(`AWS Access Key and Secret Key are required for AWS IAM authentication on ${type} DB.`);
-          }
-          options.authMechanism = 'MONGODB-AWS';
-          options.authMechanismProperties = {
-            AWS_ACCESS_KEY_ID: ak,
-            AWS_SECRET_ACCESS_KEY: sk,
-            AWS_SESSION_TOKEN: st
-          };
-          options.auth = { username: '', password: '' };
-        } else if (authMethod === 'oidc') {
-          const token = config[prefix + 'oidc_token'];
-          if (!token) {
-            throw new Error(`Access Token is required for OIDC authentication on ${type} DB.`);
-          }
-          options.authMechanism = 'MONGODB-OIDC';
-          options.authMechanismProperties = { ENVIRONMENT: 'test' };
-          options.auth = { username: token, password: '' };
-        }
-
-        const client = new MongoClient(uri, options);
-        await client.connect();
-        
-        // Cache the client for future use
-        mongoClients.set(cacheKey, { client, lastUsed: Date.now() });
-
-        const db = client.db(dbName);
-
-        if (checkExists && !config[prefix + 'create_if_not_exists']) {
-          try {
-            // Check existence by listing collections on the specific database.
-            // This is safer than listDatabases on admin which requires cluster-wide permissions.
-            const collections = await db.listCollections().toArray();
-            if (collections.length === 0) {
-              // In MongoDB, a database without collections technically "doesn't exist" in listDatabases.
-              // So if it's empty, we should check listDatabases IF we have permission, 
-              // but if not, we assume it's missing if create_if_not_exists is false.
-              try {
-                const dbs = await client.db().admin().listDatabases();
-                const exists = dbs.databases.some((d: any) => d.name === dbName);
-                if (!exists) {
-                   // Don't close the client if it's in the cache, but since we just added it 
-                   // and it failed a check, we might want to remove it if it's "bad".
-                   // However, the connection itself is valid, just the DB is missing.
-                   throw new Error(`Database '${dbName}' does not exist and 'Create if not exists' is disabled.`);
-                }
-              } catch (adminErr) {
-                // If we can't listDatabases, we rely on the fact that listCollections was empty.
-                // It's safer to throw here to avoid silent failure when the user explicitly said "don't create".
-                throw new Error(`Database '${dbName}' has no collections and cluster-wide database listing is restricted. Please check the name or enable 'Create if not exists'.`);
-              }
-            }
-          } catch (err: any) {
-            if (err.message.includes('Database') && err.message.includes('does not exist')) throw err;
-            // Connectivity error - remove from cache
-            mongoClients.delete(cacheKey);
-            await client.close();
-            throw err;
-          }
-        }
-
-        return db;
-      }
 
       function calculateQuarter(dateStr: string, fiscalStartMonth: number) {
         const date = new Date(dateStr);
@@ -437,7 +460,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
             try {
               const db = await getDb(settings, 'app', true);
               
-              const ValueStreams = await db.collection('valueStreams').find({}).toArray();
+              const ValueStreams = await logQuery('ValueStreams', 'valueStreams', 'find', db.collection('valueStreams').find({}).toArray());
               dbData.valueStreams = ValueStreams.map(({ _id, ...rest }) => rest);
               
               const activeValueStream = valueStreamId ? dbData.valueStreams.find((d: any) => d.id === valueStreamId) : null;
@@ -450,14 +473,14 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
               const minTcv = Math.max(qMinTcv, Number(activeValueStream?.parameters?.minTcvFilter) || 0);
               const minScore = Math.max(qMinScore, Number(activeValueStream?.parameters?.minScoreFilter) || 0);
 
-              const sprints = await db.collection('sprints').find({ is_archived: { $ne: true } }).sort({ start_date: 1 }).toArray();
+              const sprints = await logQuery('Sprints', 'sprints', 'find', db.collection('sprints').find({ is_archived: { $ne: true } }).sort({ start_date: 1 }).toArray());
               dbData.sprints = sprints.map(({ _id, ...rest }) => rest);
 
               const sprintsToUpdate = dbData.sprints.filter((s: any) => !s.quarter);
               if (sprintsToUpdate.length > 0) {
                 for (const sprint of sprintsToUpdate) {
                   const quarter = calculateQuarter(sprint.end_date, settings.fiscal_year_start_month || 1);
-                  await db.collection('sprints').updateOne({ id: sprint.id }, { $set: { quarter } });
+                  await logQuery('UpdateSprintQuarter', 'sprints', 'updateOne', db.collection('sprints').updateOne({ id: sprint.id }, { $set: { quarter } }));
                   sprint.quarter = quarter;
                 }
               }
@@ -466,7 +489,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
               if (teamFilter) {
                 teamQuery.name = { $regex: escapeRegex(teamFilter), $options: 'i' };
               }
-              const teams = await db.collection('teams').find(teamQuery).toArray();
+              const teams = await logQuery('Teams', 'teams', 'find', db.collection('teams').find(teamQuery).toArray());
               dbData.teams = teams.map(({ _id, ...rest }) => rest);
               const visibleTeamIds = new Set(dbData.teams.map((t: any) => t.id));
 
@@ -474,7 +497,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
               if (customerFilter) {
                 customerQuery.name = { $regex: escapeRegex(customerFilter), $options: 'i' };
               }
-              const customers = await db.collection('customers').find(customerQuery).toArray();
+              const customers = await logQuery('CustomersFiltered', 'customers', 'find', db.collection('customers').find(customerQuery).toArray());
               dbData.customers = customers.map(({ _id, ...rest }) => rest)
                 .filter((c: any) => (Number(c.existing_tcv || 0) + Number(c.potential_tcv || 0)) >= minTcv);
 
@@ -507,9 +530,9 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
                 workItemPipeline.unshift({ $match: workItemMatch });
               }
 
-              const workItemsRaw = await db.collection('workItems').aggregate(workItemPipeline).toArray();
-              const fullCustomers = await db.collection('customers').find({}).toArray();
-              const fullWorkItems = await db.collection('workItems').find({}).toArray();
+              const workItemsRaw = await logQuery('WorkItemsAggregated', 'workItems', 'aggregate', db.collection('workItems').aggregate(workItemPipeline).toArray());
+              const fullCustomers = await logQuery('FullCustomers', 'customers', 'find', db.collection('customers').find({}).toArray());
+              const fullWorkItems = await logQuery('FullWorkItems', 'workItems', 'find', db.collection('workItems').find({}).toArray());
 
               // Calculate scores for ALL work items to find global max and consistent scores
               const allWorkItemsWithScores = applyScores(fullWorkItems, fullWorkItems, fullCustomers);
@@ -546,20 +569,20 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
                 // If team filter is active, only show epics for visible teams
                 epicQuery.team_id = { $in: Array.from(visibleTeamIds) };
               }
-              const epics = await db.collection('epics').find(epicQuery).toArray();
+              const epics = await logQuery('Epics', 'epics', 'find', db.collection('epics').find(epicQuery).toArray());
               dbData.epics = epics.map(({ _id, ...rest }) => rest);
 
               // Seeding logic (only for Application DB)
               if (dbData.customers.length === 0 && !customerFilter && minTcv === 0 && fs.existsSync(mockDataPath)) {
                  const localData = JSON.parse(fs.readFileSync(mockDataPath, 'utf-8'));
                  if (localData.customers && localData.customers.length > 0) {
-                    await db.collection('customers').insertMany(localData.customers);
-                    if (localData.workItems?.length > 0) await db.collection('workItems').insertMany(localData.workItems);
-                    if (localData.teams?.length > 0) await db.collection('teams').insertMany(localData.teams);
-                    if (localData.epics?.length > 0) await db.collection('epics').insertMany(localData.epics);
-                    if (localData.sprints?.length > 0) await db.collection('sprints').insertMany(localData.sprints);
+                    await logQuery('SeedCustomers', 'customers', 'insertMany', db.collection('customers').insertMany(localData.customers));
+                    if (localData.workItems?.length > 0) await logQuery('SeedWorkItems', 'workItems', 'insertMany', db.collection('workItems').insertMany(localData.workItems));
+                    if (localData.teams?.length > 0) await logQuery('SeedTeams', 'teams', 'insertMany', db.collection('teams').insertMany(localData.teams));
+                    if (localData.epics?.length > 0) await logQuery('SeedEpics', 'epics', 'insertMany', db.collection('epics').insertMany(localData.epics));
+                    if (localData.sprints?.length > 0) await logQuery('SeedSprints', 'sprints', 'insertMany', db.collection('sprints').insertMany(localData.sprints));
                     const defaultValueStreams = localData.valueStreams || [{ id: 'main', name: 'Main Value Stream', parameters: {} }];
-                    await db.collection('valueStreams').insertMany(defaultValueStreams);
+                    await logQuery('SeedValueStreams', 'valueStreams', 'insertMany', db.collection('valueStreams').insertMany(defaultValueStreams));
                     dbData = { ...localData, settings, valueStreams: defaultValueStreams };
                     // Recalculate scores for seeded data response
                     const seededW = applyScores(dbData.workItems, dbData.workItems, dbData.customers);
@@ -746,12 +769,12 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
 
           const db = await getDb(settings, 'app', true);
           
-          const customers = await db.collection('customers').find({}).toArray();
-          const workItems = await db.collection('workItems').find({}).toArray();
-          const teams = await db.collection('teams').find({}).toArray();
-          const epics = await db.collection('epics').find({}).toArray();
-          const sprints = await db.collection('sprints').find({}).toArray();
-          const ValueStreams = await db.collection('valueStreams').find({}).toArray();
+          const customers = await logQuery('ExportCustomers', 'customers', 'find', db.collection('customers').find({}).toArray());
+          const workItems = await logQuery('ExportWorkItems', 'workItems', 'find', db.collection('workItems').find({}).toArray());
+          const teams = await logQuery('ExportTeams', 'teams', 'find', db.collection('teams').find({}).toArray());
+          const epics = await logQuery('ExportEpics', 'epics', 'find', db.collection('epics').find({}).toArray());
+          const sprints = await logQuery('ExportSprints', 'sprints', 'find', db.collection('sprints').find({}).toArray());
+          const ValueStreams = await logQuery('ExportValueStreams', 'valueStreams', 'find', db.collection('valueStreams').find({}).toArray());
           
           const stripId = (arr: any[]) => arr.map(doc => {
             const { _id, ...rest } = doc;
@@ -840,9 +863,9 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
 
           let results;
           if (Array.isArray(query)) {
-            results = await collection.aggregate(query).toArray();
+            results = await logQuery('CustomAggregate', collectionName, 'aggregate', collection.aggregate(query).toArray());
           } else {
-            results = await collection.find(query).toArray();
+            results = await logQuery('CustomFind', collectionName, 'find', collection.find(query).toArray());
           }
 
           res.setHeader('Content-Type', 'application/json');
