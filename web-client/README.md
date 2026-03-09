@@ -50,7 +50,9 @@ If your MongoDB is directly accessible or you're running it in a container.
 
 #### Scenario B: Sidecar (Standard Sidecar) - RECOMMENDED
 The most systematic way to run with an SSH tunnel.
-- **Config:** Set `SOCKS_PROXY_HOST=ssh-proxy` in `.env`.
+- **Config:** 
+  - Set `SOCKS_PROXY_HOST=ssh-proxy` in `.env`.
+  - Set `COMPOSE_PROFILES=ssh-proxy` in `.env` to enable the sidecar container.
 - **Pre-requisites:** Fill in `SSH_USER`, `SSH_HOST`, and `SSH_KEY_PATH` in `.env`.
 - **Command:** `docker-compose up`. The `ssh-proxy` sidecar handles the tunnel automatically.
 
@@ -59,18 +61,20 @@ Use this if your corporate VPN blocks the Docker VM from making outbound SSH con
 1. **Start Tunnel on Host:** 
    - Windows: `powershell ./scripts/start-tunnel.ps1`
    - MacOS/Linux: `bash ./scripts/start-tunnel.sh`
-2. **Config:** Set `SOCKS_PROXY_HOST=host.docker.internal` in `.env`.
-3. **Command:** `docker-compose up`. The app routes traffic through the tunnel running on your Mac host.
+2. **Config:** 
+  - Set `SOCKS_PROXY_HOST=host.docker.internal` in `.env`.
+  - Ensure `COMPOSE_PROFILES` is empty or not set in `.env`.
+3. **Command:** `docker-compose up`. The app routes traffic through the tunnel running on your Mac host. The sidecar container will not start.
 
 ### ☸️ Kubernetes Deployment
 
 For enterprise-grade scaling using the **Sidecar Pattern**:
 
 1.  **SSH Sidecar:** 
-    Add a lightweight SSH container (e.g., `alpine/ssh`) to your Application Pod.
+    Add a lightweight SSH container (e.g., a custom `alpine` image with `openssh-client`) to your Application Pod.
     ```yaml
     - name: ssh-proxy
-      image: alpine/ssh
+      image: custom-ssh-proxy # built from alpine with openssh-client
       command: ["ssh", "-D", "1080", "-N", "..."]
     ```
 2.  **App Configuration:** 

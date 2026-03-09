@@ -76,7 +76,7 @@ Enables authentication via external identity providers like Azure AD, Okta, or P
 For databases behind an SSH bastion (common with MongoDB Atlas + Private Link), the application supports SOCKS5 dynamic forwarding provided by the **Infrastructure (Sidecar/Proxy)**.
 
 - **Local Dev:** Use the provided scripts (`scripts/start-tunnel.ps1`) to start a tunnel on your host.
-- **Docker/K8s:** Use a dedicated sidecar container (e.g., `alpine/ssh`) in the same network/pod.
+- **Docker/K8s:** Use a dedicated sidecar container (e.g., a custom `alpine` image with `openssh-client`) in the same network/pod.
 - **Application Logic:** The app is configured via `SOCKS_PROXY_HOST` and `SOCKS_PROXY_PORT`, but the proxy is only used if the **"Use SOCKS Proxy (from .env)"** toggle is enabled for a specific connection in the Settings UI. This allows for mixed connection types.
 
 ```mermaid
