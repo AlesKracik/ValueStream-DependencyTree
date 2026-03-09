@@ -9,7 +9,6 @@ import { calculateWorkItemEffort } from '../../utils/businessLogic';
 import { PageWrapper } from '../layout/PageWrapper';
 import { useCustomerHealth } from '../../hooks/useCustomerHealth';
 import { useCustomerCustomFields } from '../../hooks/useCustomerCustomFields';
-import { authorizedFetch } from '../../utils/api';
 
 export interface CustomerPageProps {
     customerId: string;
@@ -334,7 +333,12 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         }
         if (typeof val === 'object') {
             return (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 24px', width: '100%' }}>
+                <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
+                    gap: '12px 24px', 
+                    width: '100%' 
+                }}>
                     {Object.entries(val)
                         .filter(([k]) => {
                             const lower = k.toLowerCase();
@@ -353,7 +357,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                     flexDirection: isComplex ? 'column' : 'row', 
                                     gap: isComplex ? '4px' : '8px', 
                                     alignItems: isComplex ? 'flex-start' : 'baseline', 
-                                    minWidth: isComplex ? '100%' : 'fit-content',
+                                    gridColumn: isComplex ? '1 / -1' : 'auto',
                                     marginTop: isComplex ? '8px' : '0'
                                 }}>
                                     <div style={{ fontWeight: 'bold', color: '#94a3b8', fontSize: '13px', whiteSpace: 'nowrap' }}>{k}:</div>
