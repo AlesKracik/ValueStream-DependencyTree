@@ -38,7 +38,7 @@ describe('ValueStreamEditPage', () => {
         render(
             <NotificationProvider>
                 <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                    <ValueStreamEditPage {...defaultProps} ValueStreamId="new" />
+                    <ValueStreamEditPage {...defaultProps} valueStreamId="new" />
                 </ValueStreamProvider>
             </NotificationProvider>
         );
@@ -53,7 +53,7 @@ describe('ValueStreamEditPage', () => {
         render(
             <NotificationProvider>
                 <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                    <ValueStreamEditPage {...defaultProps} ValueStreamId="new" />
+                    <ValueStreamEditPage {...defaultProps} valueStreamId="new" />
                 </ValueStreamProvider>
             </NotificationProvider>
         );
@@ -74,7 +74,7 @@ describe('ValueStreamEditPage', () => {
         render(
             <NotificationProvider>
                 <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                    <ValueStreamEditPage {...defaultProps} ValueStreamId="d1" />
+                    <ValueStreamEditPage {...defaultProps} valueStreamId="d1" />
                 </ValueStreamProvider>
             </NotificationProvider>
         );
@@ -87,7 +87,7 @@ describe('ValueStreamEditPage', () => {
         render(
             <NotificationProvider>
                 <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                    <ValueStreamEditPage {...defaultProps} ValueStreamId="invalid" />
+                    <ValueStreamEditPage {...defaultProps} valueStreamId="invalid" />
                 </ValueStreamProvider>
             </NotificationProvider>
         );
@@ -99,7 +99,7 @@ describe('ValueStreamEditPage', () => {
         render(
             <NotificationProvider>
                 <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                    <ValueStreamEditPage {...defaultProps} ValueStreamId="new" />
+                    <ValueStreamEditPage {...defaultProps} valueStreamId="new" />
                 </ValueStreamProvider>
             </NotificationProvider>
         );

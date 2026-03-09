@@ -539,14 +539,49 @@ describe('SettingsPage', () => {
         });
 
         // Should call both endpoints
-        expect(fetch).toHaveBeenCalledWith('/api/mongo/databases', expect.anything());
-        expect(fetch).toHaveBeenCalledWith('/api/mongo/test', expect.anything());
+        expect(fetch).toHaveBeenCalledWith('/api/mongo/databases', expect.objectContaining({
+            body: expect.stringContaining('"connection_type":"app"')
+        }));
+        expect(fetch).toHaveBeenCalledWith('/api/mongo/test', expect.objectContaining({
+            body: expect.stringContaining('"connection_type":"app"')
+        }));
 
         // Should show the "Exists" badge and the connection message
         await waitFor(() => {
             expect(screen.getByText('Connection successful!')).toBeDefined();
             expect(screen.getByText('Exists')).toBeDefined();
         });
+    });
+
+    it('sends connection_type: customer when testing customer mongo', async () => {
+        const settingsWithCustomer = {
+            ...mockSettings,
+            customer_mongo_uri: 'mongodb://customer-host'
+        };
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=persistence&subsubtab=customer']}>
+                <SettingsPage 
+                    settings={settingsWithCustomer} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        const testBtn = screen.getByText('Test Customer Mongo Connection');
+        
+        await act(async () => {
+            fireEvent.click(testBtn);
+        });
+
+        expect(fetch).toHaveBeenCalledWith('/api/mongo/databases', expect.objectContaining({
+            body: expect.stringContaining('"connection_type":"customer"')
+        }));
+        expect(fetch).toHaveBeenCalledWith('/api/mongo/test', expect.objectContaining({
+            body: expect.stringContaining('"connection_type":"customer"')
+        }));
     });
 
     it('switches to AI tab and shows LLM settings', async () => {

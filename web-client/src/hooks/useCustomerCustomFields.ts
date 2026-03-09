@@ -45,11 +45,8 @@ export function useCustomerCustomFields(customerOrCustomers: Customer | Customer
                         customer_mongo_aws_secret_key: settings.customer_mongo_aws_secret_key,
                         customer_mongo_aws_session_token: settings.customer_mongo_aws_session_token,
                         customer_mongo_oidc_token: settings.customer_mongo_oidc_token,
-                        customer_mongo_use_ssh: settings.customer_mongo_use_ssh,
-                        customer_mongo_ssh_host: settings.customer_mongo_ssh_host,
-                        customer_mongo_ssh_port: settings.customer_mongo_ssh_port,
-                        customer_mongo_ssh_user: settings.customer_mongo_ssh_user,
-                        customer_mongo_ssh_key: settings.customer_mongo_ssh_key,
+                        customer_mongo_use_proxy: settings.customer_mongo_use_proxy,
+                        connection_type: 'customer',
                         query: queryStr
                     })
                 });

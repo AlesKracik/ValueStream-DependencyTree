@@ -114,15 +114,12 @@ describe('useCustomerCustomFields', () => {
         expect(result.current.data).toEqual([]);
     });
 
-    it('passes SSH configuration to the API', async () => {
+    it('passes proxy configuration and connection_type to the API', async () => {
         const customer = { customer_id: 'CUST-1', id: '1', name: 'Test' };
         const settings = { 
             customer_mongo_uri: 'mongodb://localhost',
             customer_mongo_custom_query: '[{"$match": {"customer_id": "{{CUSTOMER_ID}}"}}]',
-            customer_mongo_use_ssh: true,
-            customer_mongo_ssh_host: 'ssh.host.com',
-            customer_mongo_ssh_user: 'ssh-user',
-            customer_mongo_ssh_key: 'ssh-key'
+            customer_mongo_use_proxy: true,
         };
 
         (authorizedFetch as any).mockResolvedValueOnce({
@@ -133,12 +130,11 @@ describe('useCustomerCustomFields', () => {
         renderHook(() => useCustomerCustomFields(customer as any, settings as any));
         
         await waitFor(() => {
-            expect(authorizedFetch).toHaveBeenCalledWith('/api/mongo/query', expect.objectContaining({
-                body: expect.stringContaining('"customer_mongo_ssh_host":"ssh.host.com"')
-            }));
-            expect(authorizedFetch).toHaveBeenCalledWith('/api/mongo/query', expect.objectContaining({
-                body: expect.stringContaining('"customer_mongo_use_ssh":true')
-            }));
+            const fetchCall = (authorizedFetch as any).mock.calls[0];
+            const body = JSON.parse(fetchCall[1].body);
+            expect(body.connection_type).toBe('customer');
+            expect(body.customer_mongo_use_proxy).toBe(true);
+            expect(body.customer_mongo_uri).toBe('mongodb://localhost');
         });
     });
 });

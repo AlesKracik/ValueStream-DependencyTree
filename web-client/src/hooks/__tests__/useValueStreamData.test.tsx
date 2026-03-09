@@ -49,7 +49,7 @@ describe('useValueStreamData', () => {
         
         await waitFor(() => {
             expect(fetch).toHaveBeenCalledWith(
-                expect.stringContaining('/api/loadData?ValueStreamId=dash123&customerFilter=test&minTcvFilter=100'),
+                expect.stringContaining('/api/loadData?valueStreamId=dash123&customerFilter=test&minTcvFilter=100'),
                 expect.objectContaining({
                     headers: expect.objectContaining({
                         'Authorization': expect.stringContaining('Bearer')
@@ -72,7 +72,7 @@ describe('useValueStreamData', () => {
         renderHook(() => useValueStreamData('dash789', filters, 0));
         
         await waitFor(() => {
-            const expectedUrl = '/api/loadData?ValueStreamId=dash789&customerFilter=cust&workItemFilter=work&teamFilter=team&epicFilter=epic&releasedFilter=released&minTcvFilter=500&minScoreFilter=10';
+            const expectedUrl = '/api/loadData?valueStreamId=dash789&customerFilter=cust&workItemFilter=work&teamFilter=team&epicFilter=epic&releasedFilter=released&minTcvFilter=500&minScoreFilter=10';
             expect(fetch).toHaveBeenCalledWith(
                 expect.stringContaining(expectedUrl),
                 expect.objectContaining({

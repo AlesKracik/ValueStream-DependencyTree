@@ -5,8 +5,12 @@ import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
 import { MongoClient } from 'mongodb'
+import { getDb, startMongoCleanup } from './src/utils/mongoServer'
 import dns from 'node:dns'
 import { promisify } from 'node:util'
+
+// Start idle connection cleanup for MongoDB connections
+startMongoCleanup();
 
 const dnsLookup = promisify(dns.lookup);
 
@@ -187,29 +191,53 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
         }
       }
 
+      // Map to store persistent Mongo clients: cacheKey -> { client, lastUsed }
+      const mongoClients = new Map<string, { client: MongoClient, lastUsed: number }>();
+
+      // Cleanup idle Mongo clients every 5 minutes
+      setInterval(() => {
+        const now = Date.now();
+        for (const [key, item] of mongoClients.entries()) {
+          if (now - item.lastUsed > 30 * 60 * 1000) { // 30 minutes idle
+            item.client.close().catch(() => {});
+            mongoClients.delete(key);
+          }
+        }
+      }, 300000);
+
       // helper to connect to Mongo
-      async function getDb(config: any, checkExists = false) {
+      async function getDb(config: any, type: 'app' | 'customer' = 'app', checkExists = false) {
         // Support both application and customer mongo settings
-        // If config has customer_mongo_uri, we assume it's for the customer DB
-        const isCustomer = !!config.customer_mongo_uri && (!config.mongo_uri || config.customer_mongo_uri !== config.mongo_uri);
-        const prefix = isCustomer ? 'customer_mongo_' : 'mongo_';
+        const prefix = type === 'customer' ? 'customer_mongo_' : 'mongo_';
 
         let uri = config[prefix + 'uri'];
-        if (!uri) throw new Error("Mongo URI not provided");
+        if (!uri) throw new Error(`Mongo ${type} URI not provided`);
         if (!await isSafeUrl(uri)) {
-          throw new Error("Invalid or unsafe MongoDB URI");
+          throw new Error(`Invalid or unsafe MongoDB ${type} URI`);
         }
         
-        const dbName = config[prefix + 'db'] || 'valueStream';
+        const dbName = config[prefix + 'db'] || (type === 'customer' ? 'customer' : 'valueStream');
         const authMethod = config[prefix + 'auth_method'] || 'scram';
+        const useProxy = config[prefix + 'use_proxy'];
+
+        // Create a cache key for this specific connection
+        const cacheKey = `${type}:${uri}:${dbName}:${authMethod}:${useProxy}:${config[prefix + 'aws_access_key'] || ''}`;
+        
+        const cached = mongoClients.get(cacheKey);
+        if (cached) {
+            cached.lastUsed = Date.now();
+            return cached.client.db(dbName);
+        }
 
         const options: any = {
           serverSelectionTimeoutMS: 15000,
           connectTimeoutMS: 15000,
+          // Connection pooling options
+          maxPoolSize: 10,
+          minPoolSize: 1,
         };
 
         // SYSTEMATIC PROXYING: Use an external SOCKS proxy if configured AND enabled for this connection
-        const useProxy = config[prefix + 'use_proxy'];
         const socksProxyHost = (process.env.SOCKS_PROXY_HOST || env.VITE_SOCKS_PROXY_HOST || env.SOCKS_PROXY_HOST);
         const socksProxyPort = parseInt(process.env.SOCKS_PROXY_PORT || env.VITE_SOCKS_PROXY_PORT || env.SOCKS_PROXY_PORT || '1080');
 
@@ -218,7 +246,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
           options.proxyPort = socksProxyPort;
         }
 
-        const isSrv = config[prefix + 'uri']?.startsWith('mongodb+srv://');
+        const isSrv = uri?.startsWith('mongodb+srv://');
         if (isSrv) {
           options.tls = true;
           if (options.proxyHost) {
@@ -233,7 +261,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
           const st = config[prefix + 'aws_session_token'];
           
           if (!ak || !sk) {
-            throw new Error("AWS Access Key and Secret Key are required for AWS IAM authentication.");
+            throw new Error(`AWS Access Key and Secret Key are required for AWS IAM authentication on ${type} DB.`);
           }
           options.authMechanism = 'MONGODB-AWS';
           options.authMechanismProperties = {
@@ -245,7 +273,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
         } else if (authMethod === 'oidc') {
           const token = config[prefix + 'oidc_token'];
           if (!token) {
-            throw new Error("Access Token is required for OIDC authentication.");
+            throw new Error(`Access Token is required for OIDC authentication on ${type} DB.`);
           }
           options.authMechanism = 'MONGODB-OIDC';
           options.authMechanismProperties = { ENVIRONMENT: 'test' };
@@ -254,9 +282,13 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
 
         const client = new MongoClient(uri, options);
         await client.connect();
+        
+        // Cache the client for future use
+        mongoClients.set(cacheKey, { client, lastUsed: Date.now() });
+
         const db = client.db(dbName);
 
-        if (checkExists && !config.mongo_create_if_not_exists && !config.customer_mongo_create_if_not_exists) {
+        if (checkExists && !config[prefix + 'create_if_not_exists']) {
           try {
             // Check existence by listing collections on the specific database.
             // This is safer than listDatabases on admin which requires cluster-wide permissions.
@@ -269,19 +301,21 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
                 const dbs = await client.db().admin().listDatabases();
                 const exists = dbs.databases.some((d: any) => d.name === dbName);
                 if (!exists) {
-                   await client.close();
+                   // Don't close the client if it's in the cache, but since we just added it 
+                   // and it failed a check, we might want to remove it if it's "bad".
+                   // However, the connection itself is valid, just the DB is missing.
                    throw new Error(`Database '${dbName}' does not exist and 'Create if not exists' is disabled.`);
                 }
               } catch (adminErr) {
                 // If we can't listDatabases, we rely on the fact that listCollections was empty.
                 // It's safer to throw here to avoid silent failure when the user explicitly said "don't create".
-                await client.close();
                 throw new Error(`Database '${dbName}' has no collections and cluster-wide database listing is restricted. Please check the name or enable 'Create if not exists'.`);
               }
             }
           } catch (err: any) {
             if (err.message.includes('Database') && err.message.includes('does not exist')) throw err;
-            // Connectivity error
+            // Connectivity error - remove from cache
+            mongoClients.delete(cacheKey);
             await client.close();
             throw err;
           }
@@ -386,8 +420,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
             fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
           }
 
-          const mongoUri = settings.mongo_uri || settings.customer_mongo_uri;
-          const isCustomer = !!settings.customer_mongo_uri && (!settings.mongo_uri || settings.customer_mongo_uri !== settings.mongo_uri);
+          const hasAppDb = !!settings.mongo_uri;
 
           let dbData: any = {
             settings: maskSettings(settings),
@@ -400,9 +433,9 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
             metrics: { maxScore: 1, maxRoi: 1 }
           };
 
-          if (mongoUri) {
+          if (hasAppDb) {
             try {
-              const db = await getDb(settings, true);
+              const db = await getDb(settings, 'app', true);
               
               const ValueStreams = await db.collection('valueStreams').find({}).toArray();
               dbData.valueStreams = ValueStreams.map(({ _id, ...rest }) => rest);
@@ -421,7 +454,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
               dbData.sprints = sprints.map(({ _id, ...rest }) => rest);
 
               const sprintsToUpdate = dbData.sprints.filter((s: any) => !s.quarter);
-              if (sprintsToUpdate.length > 0 && !isCustomer) {
+              if (sprintsToUpdate.length > 0) {
                 for (const sprint of sprintsToUpdate) {
                   const quarter = calculateQuarter(sprint.end_date, settings.fiscal_year_start_month || 1);
                   await db.collection('sprints').updateOne({ id: sprint.id }, { $set: { quarter } });
@@ -516,8 +549,8 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
               const epics = await db.collection('epics').find(epicQuery).toArray();
               dbData.epics = epics.map(({ _id, ...rest }) => rest);
 
-              // Seeding logic...
-              if (!isCustomer && dbData.customers.length === 0 && !customerFilter && minTcv === 0 && fs.existsSync(mockDataPath)) {
+              // Seeding logic (only for Application DB)
+              if (dbData.customers.length === 0 && !customerFilter && minTcv === 0 && fs.existsSync(mockDataPath)) {
                  const localData = JSON.parse(fs.readFileSync(mockDataPath, 'utf-8'));
                  if (localData.customers && localData.customers.length > 0) {
                     await db.collection('customers').insertMany(localData.customers);
@@ -538,6 +571,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
               console.error("MongoDB Error loading data:", e);
             }
           } else if (fs.existsSync(mockDataPath)) {
+
              const localData = JSON.parse(fs.readFileSync(mockDataPath, 'utf-8'));
              const fullW = applyScores(localData.workItems || [], localData.workItems || [], localData.customers || []);
              dbData = { 
@@ -603,16 +637,11 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
           const settingsPath = path.resolve(__dirname, 'settings.json');
           const settings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
 
-          if (!settings.mongo_uri && !settings.customer_mongo_uri) {
-              throw new Error("No MongoDB URI configured.");
-          }
-
-          const isCustomer = !!settings.customer_mongo_uri && (!settings.mongo_uri || settings.customer_mongo_uri !== settings.mongo_uri);
-          if (isCustomer) {
-              throw new Error("Customer database is read-only.");
+          if (!settings.mongo_uri) {
+              throw new Error("Application MongoDB URI not configured (mongo_uri). Writing to customer database is not allowed.");
           }
           
-          const db = await getDb(settings, true);
+          const db = await getDb(settings, 'app', true);
 
           if (req.method === 'POST') {
               if (!id) throw new Error("Missing entity id");
@@ -644,7 +673,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
           const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
           const config = unmaskSettings(rawConfig, existingSettings);
 
-          const db = await getDb(config);
+          const db = await getDb(config, config.connection_type || 'app');
           let databases: string[] = [];
           try {
             const dbs = await db.admin().listDatabases();
@@ -672,7 +701,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
           const config = unmaskSettings(rawConfig, existingSettings);
 
           const targetDb = config.mongo_db || config.customer_mongo_db || 'valueStream';
-          const db = await getDb(config);
+          const db = await getDb(config, config.connection_type || 'app');
           
           let exists = false;
           try {
@@ -715,7 +744,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
           const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
           if (!settings.mongo_uri && !settings.customer_mongo_uri) throw new Error("MongoDB URI not configured.");
 
-          const db = await getDb(settings, true);
+          const db = await getDb(settings, 'app', true);
           
           const customers = await db.collection('customers').find({}).toArray();
           const workItems = await db.collection('workItems').find({}).toArray();
@@ -757,14 +786,12 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
           const settingsPath = path.resolve(__dirname, 'settings.json');
           if (!fs.existsSync(settingsPath)) throw new Error("Settings file not found.");
           const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-          if (!settings.mongo_uri && !settings.customer_mongo_uri) throw new Error("MongoDB URI not configured.");
 
-          const isCustomer = !!settings.customer_mongo_uri && (!settings.mongo_uri || settings.customer_mongo_uri !== settings.mongo_uri);
-          if (isCustomer) {
-              throw new Error("Customer database is read-only.");
+          if (!settings.mongo_uri) {
+              throw new Error("Application MongoDB URI not configured (mongo_uri). Importing to customer database is not allowed.");
           }
 
-          const db = await getDb(settings, false);
+          const db = await getDb(settings, 'app', false);
 
           // Delete all collections
           for (const collectionName of ALLOWED_COLLECTIONS) {
@@ -800,7 +827,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
           if (!config.mongo_uri && !config.customer_mongo_uri) throw new Error("MongoDB URI not provided.");
           if (!config.query) throw new Error("Query not provided.");
 
-          const db = await getDb(config);
+          const db = await getDb(config, config.connection_type || 'customer');
           const collection = db.collection('Customers'); // Default to Customers for customer-specific queries
           
           let query;

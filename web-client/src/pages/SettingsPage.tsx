@@ -140,6 +140,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       [skField]: localFormData[skField] || settings[skField],
       [stField]: localFormData[stField] || settings[stField],
       [otField]: localFormData[otField] || settings[otField],
+      connection_type: isCustomer ? 'customer' : 'app',
     };
 
     if (isCustomer) {
