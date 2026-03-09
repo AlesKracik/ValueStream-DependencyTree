@@ -23,6 +23,62 @@ export interface CustomerPageProps {
     updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
 }
 
+interface JiraKeysInputProps {
+    value: string[];
+    onChange: (newValue: string[]) => void;
+    jiraBaseUrl?: string;
+}
+
+const JiraKeysInput: React.FC<JiraKeysInputProps> = ({ value, onChange, jiraBaseUrl }) => {
+    const [inputValue, setInputValue] = useState(value.join(', '));
+
+    // Update local state if prop changes from outside
+    useEffect(() => {
+        const joined = value.join(', ');
+        if (joined !== inputValue && !inputValue.endsWith(',') && !inputValue.endsWith(', ')) {
+            setInputValue(joined);
+        }
+    }, [value]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        setInputValue(val);
+        // Only trigger parent update if it looks like a valid list (not ending in comma)
+        // or just let it be and use onBlur for final sync.
+        // Actually, updating on every change is better for immediate feedback (like the links below),
+        // but we must NOT filter out the empty strings if we want to preserve the comma in the string.
+        // But the parent expects string[].
+        const keys = val.split(',').map(s => s.trim()).filter(Boolean);
+        onChange(keys);
+    };
+
+    return (
+        <div style={{ flex: 1, marginRight: '16px' }}>
+            <label style={{ fontSize: '13px', color: '#94a3b8', display: 'block', marginBottom: '8px' }}>Related Jiras (comma separated keys)</label>
+            <input 
+                type="text"
+                value={inputValue}
+                onChange={handleChange}
+                placeholder="e.g. PROJ-123, PROJ-456"
+                style={{ width: '100%', backgroundColor: '#0f172a' }}
+            />
+            <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+                {value.map(key => (
+                    <a 
+                        key={key}
+                        href={`${jiraBaseUrl}/browse/${key}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ fontSize: '12px', color: '#60a5fa', textDecoration: 'none', backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(59, 130, 246, 0.3)' }}
+                    >
+                        {key} ↗
+                    </a>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 export const CustomerPage: React.FC<CustomerPageProps> = ({
     customerId,
     onBack,
@@ -728,29 +784,11 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                     </div>
                                                     
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid #334155', paddingTop: '16px' }}>
-                                                        <div style={{ flex: 1, marginRight: '16px' }}>
-                                                            <label style={{ fontSize: '13px', color: '#94a3b8', display: 'block', marginBottom: '8px' }}>Related Jiras (comma separated keys)</label>
-                                                            <input 
-                                                                type="text"
-                                                                value={(issue.related_jiras || []).join(', ')}
-                                                                onChange={e => updateIssue({ related_jiras: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
-                                                                placeholder="e.g. PROJ-123, PROJ-456"
-                                                                style={{ width: '100%', backgroundColor: '#0f172a' }}
-                                                            />
-                                                            <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
-                                                                {(issue.related_jiras || []).map(key => (
-                                                                    <a 
-                                                                        key={key}
-                                                                        href={`${data?.settings.jira_base_url}/browse/${key}`}
-                                                                        target="_blank"
-                                                                        rel="noreferrer"
-                                                                        style={{ fontSize: '12px', color: '#60a5fa', textDecoration: 'none', backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(59, 130, 246, 0.3)' }}
-                                                                    >
-                                                                        {key} ↗
-                                                                    </a>
-                                                                ))}
-                                                            </div>
-                                                        </div>
+                                                        <JiraKeysInput 
+                                                            value={issue.related_jiras || []} 
+                                                            onChange={keys => updateIssue({ related_jiras: keys })}
+                                                            jiraBaseUrl={data?.settings.jira_base_url}
+                                                        />
                                                         <button className="btn-danger" onClick={removeIssue} style={{ padding: '8px 16px' }}>Remove</button>
                                                     </div>
                                                 </div>
