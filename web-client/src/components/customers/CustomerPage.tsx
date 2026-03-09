@@ -637,7 +637,15 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                 )}
                                 {!customFields.loading && !customFields.error && (
                                     <>
-                                        {customFields.data.length === 0 ? (
+                                        {!customer?.customer_id ? (
+                                            <div style={{ color: '#9ca3af', textAlign: 'center', padding: '40px', backgroundColor: '#1e293b', borderRadius: '8px', border: '1px dashed #334155' }}>
+                                                <div style={{ fontSize: '16px', marginBottom: '8px', color: '#e2e8f0' }}>Customer ID Not Defined</div>
+                                                <p style={{ margin: 0, fontSize: '14px' }}>
+                                                    This customer does not have a <strong>Customer ID</strong> defined. 
+                                                    Please set the Customer ID in the Customer Details section above to fetch custom MongoDB data.
+                                                </p>
+                                            </div>
+                                        ) : customFields.data.length === 0 ? (
                                             <div style={{ color: '#9ca3af', textAlign: 'center', padding: '40px', backgroundColor: '#1e293b', borderRadius: '8px', border: '1px dashed #334155' }}>
                                                 <div style={{ fontSize: '16px', marginBottom: '8px', color: '#e2e8f0' }}>No Data Found</div>
                                                 <p style={{ margin: 0, fontSize: '14px' }}>

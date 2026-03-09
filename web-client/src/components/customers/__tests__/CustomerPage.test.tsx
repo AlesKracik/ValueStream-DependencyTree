@@ -492,6 +492,30 @@ describe('CustomerPage', () => {
             }), true);
         });
     });
+
+    it('shows "Customer ID Not Defined" in Custom Fields tab if customer_id is missing', async () => {
+        const dataWithoutId: ValueStreamData = {
+            ...mockData,
+            customers: [
+                { 
+                    ...mockData.customers[0],
+                    customer_id: undefined
+                }
+            ]
+        };
+
+        await act(async () => {
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} data={dataWithoutId} />
+                </MemoryRouter>
+            );
+        });
+
+        // Custom Fields tab is default
+        expect(screen.getByText(/Customer ID Not Defined/i)).toBeDefined();
+        expect(screen.getByText(/Please set the Customer ID in the Customer Details section above/i)).toBeDefined();
+    });
 });
 
 
