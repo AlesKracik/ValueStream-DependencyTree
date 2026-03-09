@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, useNavigate, useParams, Navigate } from '
 import { ReactFlowProvider } from '@xyflow/react';
 
 // Main entities
-import { ValueStream } from './components/valueStream/ValueStream';
+import { ValueStream } from './components/valuestream/ValueStream';
 import { CustomerPage } from './components/customers/CustomerPage';
 import { WorkItemPage } from './components/workitems/WorkItemPage';
 import { EpicPage } from './components/epics/EpicPage';
