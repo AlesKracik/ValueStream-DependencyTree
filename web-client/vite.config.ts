@@ -828,7 +828,8 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
           if (!config.query) throw new Error("Query not provided.");
 
           const db = await getDb(config, config.connection_type || 'customer');
-          const collection = db.collection('Customers'); // Default to Customers for customer-specific queries
+          const collectionName = config.customer_mongo_collection || 'Customers';
+          const collection = db.collection(collectionName);
           
           let query;
           try {

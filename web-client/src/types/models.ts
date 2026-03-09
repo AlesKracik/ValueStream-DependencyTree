@@ -133,6 +133,7 @@ export interface Settings {
   customer_mongo_aws_external_id?: string;
   customer_mongo_aws_role_session_name?: string;
   customer_mongo_oidc_token?: string;
+  customer_mongo_collection?: string;
   customer_mongo_custom_query?: string;
 }
 

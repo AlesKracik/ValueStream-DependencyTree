@@ -82,6 +82,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         customer_mongo_aws_role_session_name: settings.customer_mongo_aws_role_session_name || "",
         customer_mongo_oidc_token: settings.customer_mongo_oidc_token || "",
         customer_mongo_uri: settings.customer_mongo_uri || "",
+        customer_mongo_collection: settings.customer_mongo_collection || "",
         customer_mongo_custom_query: settings.customer_mongo_custom_query || "",
         customer_jql_new: settings.customer_jql_new || "",
         customer_jql_in_progress: settings.customer_jql_in_progress || "",
@@ -902,6 +903,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                             </span>
                           )}
                         </div>
+                      </label>
+
+                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                        Customer MongoDB Collection:
+                        <input
+                          type="text"
+                          placeholder="Customers"
+                          value={localFormData.customer_mongo_collection || ""}
+                          onChange={(e) => setFormData({ ...localFormData, customer_mongo_collection: e.target.value })}
+                          onBlur={() => onUpdateSettings({ customer_mongo_collection: localFormData.customer_mongo_collection })}
+                        />
                       </label>
 
                       {localFormData.customer_mongo_auth_method === 'aws' && (
