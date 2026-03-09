@@ -370,4 +370,30 @@ describe('SupportPage', () => {
         // In this mockData, there's no "Updated" label.
         expect(headers.length).toBe(0);
     });
+
+    it('preserves multiline formatting in description', () => {
+        const multilineData: ValueStreamData = {
+            ...mockData,
+            customers: [
+                {
+                    ...mockData.customers[0],
+                    support_issues: [
+                        { id: 'm1', description: 'Line 1\nLine 2', status: 'to do' }
+                    ]
+                }
+            ]
+        };
+
+        render(
+            <MemoryRouter>
+                <SupportPage data={multilineData} loading={false} updateCustomer={mockUpdateCustomer} />
+            </MemoryRouter>
+        );
+
+        // Using a regex to find the text which might be normalized in some environments
+        const descriptionElement = screen.getByText(/Line 1/);
+        expect(descriptionElement.textContent).toContain('Line 1');
+        expect(descriptionElement.textContent).toContain('Line 2');
+        expect(window.getComputedStyle(descriptionElement).whiteSpace).toBe('pre-wrap');
+    });
 });

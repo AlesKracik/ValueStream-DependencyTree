@@ -875,7 +875,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                                 <td>{issue.priority}</td>
                                                                 <td>
                                                                     {linkedJiraKeysMap.has(issue.key) ? (
-                                                                        <div style={{ fontSize: '12px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                        <div style={{ fontSize: '12px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'pre-wrap' }}>
                                                                             <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }}></span>
                                                                             Linked: {linkedJiraKeysMap.get(issue.key)?.description || linkedJiraKeysMap.get(issue.key)?.id}
                                                                         </div>

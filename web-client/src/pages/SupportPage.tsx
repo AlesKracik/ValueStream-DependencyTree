@@ -173,7 +173,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             header: 'Description', 
             render: (d) => (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <span style={{ fontWeight: 'normal' }}>{d.description}</span>
+                    <span style={{ fontWeight: 'normal', whiteSpace: 'pre-wrap' }}>{d.description}</span>
                     {d.linkedJiras && (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                             {d.linkedJiras.map(jira => (
