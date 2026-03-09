@@ -69,10 +69,13 @@ Users can manually add Support Issues to a customer. Each issue includes:
 - **Related Jiras:** A list of Jira keys that are associated with this manual issue.
 - **Expiration Date:** Support issues are automatically removed from the system once they pass their expiration date. This cleanup is triggered whenever a user visits the Support list page or the specific Customer's support tab.
 
-### 2. Support Overview (Jira)
+### 2. Support Overview & Jira Synchronization
 When Jira integration is configured, the Customer Page displays a "Support Overview" tab that pulls live data from Jira.
-- **Unlinked Issues:** The system identifies Jira issues that are NOT yet linked to any manual Support Issue.
-- **Quick Link:** For these unlinked issues, users can use a dropdown to:
+
+- **Automatic Synchronization:** The system automatically fetches Jira issues matching the global JQL queries defined in settings. These issues are categorized as **New / Untriaged**, **Active Work**, or **Blocked / Pending**.
+- **Linked Issue Persistence:** Any Jira issues explicitly mentioned in a customer's manual Support Issues (under "Related Jiras") are also automatically fetched by their specific keys. This ensures that even if a linked Jira doesn't match the current JQL filters (e.g., it was closed or moved to a different project), its latest status and summary are still tracked.
+- **Database Caching:** All fetched Jira data (summaries, statuses, priorities) is persisted in the local database. This provides a consistent view for other parts of the system (like the Support Page and AI Assistant) without requiring constant real-time Jira API calls.
+- **Quick Link:** For unlinked Jira issues found via JQL, users can use a dropdown to:
     - **Link to Existing:** Add the Jira key to an existing manual Support Issue.
     - **Create New:** Automatically create a new manual Support Issue using the Jira summary and link the key.
 

@@ -30,9 +30,18 @@ The system maps the following fields from Jira to the local model:
 
 ## Customer Issue Tracking
 Users can define global JQL queries in the settings to categorize issues:
-- **New JQL:** Criteria for unstarted issues.
+- **New JQL:** Criteria for unstarted issues (Untriaged).
 - **In-Progress JQL:** Criteria for active issues.
-- **Noop JQL:** Criteria for closed or irrelevant issues.
+- **Noop JQL:** Criteria for blocked or pending issues.
+
+### Automated Sync & Persistence
+The system maintains customer support health using a hybrid synchronization model:
+1. **JQL Fetch:** Periodic fetches based on global JQL settings to identify trending issues.
+2. **Key-based Fetch:** Automatic fetch of all Jira keys explicitly linked to manual **Support Issues**, even if they no longer match the global JQL filters. This ensures status-aware tracking of specifically prioritized issues.
+3. **Database Caching:** All fetched Jira metadata (summary, status, priority, url) is merged into the customer document's `jira_support_issues` field. This allows for:
+   - Consistent data availability even when offline or Jira is unreachable.
+   - High-performance analysis by the AI Support Assistant.
+   - Simplified reporting in the Support Dashboard.
 
 ## AI Support Assistant
 The application includes an AI-powered assistant that analyzes customer support tickets to identify root causes and correlations.
