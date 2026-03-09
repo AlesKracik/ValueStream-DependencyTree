@@ -11,7 +11,7 @@ vi.mock('@xyflow/react', () => ({
 }));
 
 const mockData: ValueStreamData = {
-    ValueStreams: [], settings: { jira_base_url: 'https://jira', jira_api_version: '3' },
+    valueStreams: [], settings: { jira_base_url: 'https://jira', jira_api_version: '3' },
     customers: [],
     workItems: [],
     teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }],

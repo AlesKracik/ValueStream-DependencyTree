@@ -70,7 +70,7 @@ sequenceDiagram
     Note over UI, Jira: Scenario 1: Initial ValueStream Load
     UI->>Vite: GET /api/loadData?ValueStreamId=main
     Vite->>FS: Read settings.json (Mongo URI)
-    Vite->>DB: Fetch ValueStreams, Customers, WorkItems, Epics
+    Vite->>DB: Fetch valueStreams, Customers, WorkItems, Epics
     DB-->>Vite: Raw Data
     Note right of Vite: Calculate RICE Scores & Global Metrics
     Vite-->>UI: JSON Data (Aggregated & Scored)
@@ -324,7 +324,7 @@ Detailed documentation for each system block:
 - [Teams](TEAMS.md)
 - [Epics](EPICS.md)
 - [Sprints](SPRINTS.md)
-- [ValueStreams](ValueStreams.md)
+- [valueStreams](valueStreams.md)
 - [Jira Integration](JIRA_INTEGRATION.md)
 - [Persistence & Migration](PERSISTENCE.md)
 

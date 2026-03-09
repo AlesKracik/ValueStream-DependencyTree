@@ -4,7 +4,7 @@
 The application uses a dual-mode persistence strategy to balance ease of local development with robust multi-user storage.
 
 ## Data Storage
-- **MongoDB:** Primary storage for production-like environments. Entities are stored in collections named after their logical types: `customers`, `workItems`, `teams`, `epics`, `sprints`, and `ValueStreams`.
+- **MongoDB:** Primary storage for production-like environments. Entities are stored in collections named after their logical types: `customers`, `workItems`, `teams`, `epics`, `sprints`, and `valueStreams`.
 - **`staticImport.json`:** A fallback file-based storage used for seeding the database or sharing project state.
 
 ## The Vite Persistence Plugin

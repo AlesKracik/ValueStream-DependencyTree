@@ -6,7 +6,7 @@ import { generateId } from '../utils/security';
 import { PageWrapper } from '../components/layout/PageWrapper';
 
 export interface ValueStreamEditPageProps {
-    ValueStreamId: string;
+    valueStreamId: string;
     onBack: () => void;
     data: ValueStreamData | null;
     loading: boolean;
@@ -17,7 +17,7 @@ export interface ValueStreamEditPageProps {
 }
 
 export const ValueStreamEditPage: React.FC<ValueStreamEditPageProps> = ({
-    ValueStreamId,
+    valueStreamId,
     onBack,
     data,
     loading,
@@ -27,7 +27,7 @@ export const ValueStreamEditPage: React.FC<ValueStreamEditPageProps> = ({
     deleteValueStream
 }) => {
     const { showConfirm } = useValueStreamContext();
-    const isNew = ValueStreamId === 'new';
+    const isNew = valueStreamId === 'new';
 
     const [draft, setDraft] = useState<Partial<ValueStreamEntity>>({
         name: '',
@@ -45,7 +45,7 @@ export const ValueStreamEditPage: React.FC<ValueStreamEditPageProps> = ({
         }
     });
 
-    const ValueStream = isNew ? draft as ValueStreamEntity : data?.ValueStreams.find(d => d.id === ValueStreamId);
+    const ValueStream = isNew ? draft as ValueStreamEntity : data?.valueStreams.find(d => d.id === valueStreamId);
 
     const handleSave = () => {
         if (!data) return;

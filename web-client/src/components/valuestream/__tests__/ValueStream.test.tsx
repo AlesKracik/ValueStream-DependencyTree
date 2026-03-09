@@ -13,7 +13,7 @@ vi.stubGlobal('ResizeObserver', class {
 });
 
 const mockData: ValueStreamData = {
-    ValueStreams: [],
+    valueStreams: [],
     settings: { jira_base_url: '', jira_api_version: '3' },
     customers: [{ id: 'c1', name: 'Customer 1', existing_tcv: 100, potential_tcv: 50 }],
     workItems: [{ id: 'w1', name: 'Work Item 1', total_effort_mds: 10, score: 0, customer_targets: [] }],

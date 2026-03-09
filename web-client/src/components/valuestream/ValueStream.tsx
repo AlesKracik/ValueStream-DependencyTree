@@ -150,7 +150,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
     const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
     const [editingNode, setEditingNode] = React.useState<Node | null>(null);
 
-    const currentValueStream = data?.ValueStreams.find(d => d.id === currentValueStreamId);
+    const currentValueStream = data?.valueStreams.find(d => d.id === currentValueStreamId);
     
     const baseParams: ValueStreamParameters = {
         customerFilter: currentValueStream?.parameters?.customerFilter || '',

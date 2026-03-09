@@ -35,7 +35,7 @@ const mockSettings: Settings = {
 };
 
 const mockData: ValueStreamData = {
-    ValueStreams: [],
+    valueStreams: [],
     settings: mockSettings,
     customers: [],
     workItems: [],

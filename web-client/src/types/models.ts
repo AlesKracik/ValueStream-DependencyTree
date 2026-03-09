@@ -156,14 +156,14 @@ export interface ValueStreamEntity {
 }
 
 export interface ValueStreamData {
-  settings: Settings;
+  settings: AppSettings;
   customers: Customer[];
   workItems: WorkItem[];
   teams: Team[];
   epics: Epic[];
   sprints: Sprint[];
-  ValueStreams: ValueStreamEntity[];
-  metrics?: {
+  valueStreams: ValueStreamEntity[];
+  metrics: {
     maxScore: number;
     maxRoi: number;
   };

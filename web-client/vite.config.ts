@@ -42,7 +42,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
   name: 'mock-data-persistence',
   configureServer(server: any) {
     server.middlewares.use(async (req: any, res: any, next: any) => {
-      const ALLOWED_COLLECTIONS = ['customers', 'workItems', 'teams', 'epics', 'sprints', 'ValueStreams'];
+      const ALLOWED_COLLECTIONS = ['customers', 'workItems', 'teams', 'epics', 'sprints', 'valueStreams'];
       const MAX_PAYLOAD_SIZE = 5 * 1024 * 1024; // 5 MB limit
 
       function escapeRegex(string: string) {
@@ -363,7 +363,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
       if (req.url.startsWith('/api/loadData') && req.method === 'GET') {
         try {
           const url = new URL(req.url, `http://${req.headers.host}`);
-          const ValueStreamId = url.searchParams.get('ValueStreamId');
+          const valueStreamId = url.searchParams.get('valueStreamId');
           
           // Filters from query params
           const qCustomerFilter = url.searchParams.get('customerFilter') || '';
@@ -396,7 +396,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
             teams: [],
             epics: [],
             sprints: [],
-            ValueStreams: [],
+            valueStreams: [],
             metrics: { maxScore: 1, maxRoi: 1 }
           };
 
@@ -404,10 +404,10 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
             try {
               const db = await getDb(settings, true);
               
-              const ValueStreams = await db.collection('ValueStreams').find({}).toArray();
-              dbData.ValueStreams = ValueStreams.map(({ _id, ...rest }) => rest);
+              const ValueStreams = await db.collection('valueStreams').find({}).toArray();
+              dbData.valueStreams = ValueStreams.map(({ _id, ...rest }) => rest);
               
-              const activeValueStream = ValueStreamId ? dbData.ValueStreams.find((d: any) => d.id === ValueStreamId) : null;
+              const activeValueStream = valueStreamId ? dbData.valueStreams.find((d: any) => d.id === valueStreamId) : null;
               
               const customerFilter = qCustomerFilter || activeValueStream?.parameters?.customerFilter || '';
               const workItemFilter = qWorkItemFilter || activeValueStream?.parameters?.workItemFilter || '';
@@ -525,9 +525,9 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
                     if (localData.teams?.length > 0) await db.collection('teams').insertMany(localData.teams);
                     if (localData.epics?.length > 0) await db.collection('epics').insertMany(localData.epics);
                     if (localData.sprints?.length > 0) await db.collection('sprints').insertMany(localData.sprints);
-                    const defaultValueStreams = localData.ValueStreams || [{ id: 'main', name: 'Main Value Stream', parameters: {} }];
-                    await db.collection('ValueStreams').insertMany(defaultValueStreams);
-                    dbData = { ...localData, settings, ValueStreams: defaultValueStreams };
+                    const defaultValueStreams = localData.valueStreams || [{ id: 'main', name: 'Main Value Stream', parameters: {} }];
+                    await db.collection('valueStreams').insertMany(defaultValueStreams);
+                    dbData = { ...localData, settings, valueStreams: defaultValueStreams };
                     // Recalculate scores for seeded data response
                     const seededW = applyScores(dbData.workItems, dbData.workItems, dbData.customers);
                     dbData.workItems = seededW;
@@ -722,7 +722,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
           const teams = await db.collection('teams').find({}).toArray();
           const epics = await db.collection('epics').find({}).toArray();
           const sprints = await db.collection('sprints').find({}).toArray();
-          const ValueStreams = await db.collection('ValueStreams').find({}).toArray();
+          const ValueStreams = await db.collection('valueStreams').find({}).toArray();
           
           const stripId = (arr: any[]) => arr.map(doc => {
             const { _id, ...rest } = doc;
@@ -740,7 +740,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
                 teams: stripId(teams),
                 epics: stripId(epics),
                 sprints: stripId(sprints),
-                ValueStreams: stripId(ValueStreams),
+                valueStreams: stripId(ValueStreams),
             } 
           }));
         } catch (e: any) {
@@ -777,7 +777,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
           if (importData.teams?.length > 0) await db.collection('teams').insertMany(importData.teams);
           if (importData.epics?.length > 0) await db.collection('epics').insertMany(importData.epics);
           if (importData.sprints?.length > 0) await db.collection('sprints').insertMany(importData.sprints);
-          if (importData.ValueStreams?.length > 0) await db.collection('ValueStreams').insertMany(importData.ValueStreams);
+          if (importData.valueStreams?.length > 0) await db.collection('valueStreams').insertMany(importData.valueStreams);
 
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;

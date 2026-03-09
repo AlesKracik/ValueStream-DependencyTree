@@ -40,7 +40,7 @@ vi.mock('../../../contexts/ValueStreamContext', async () => {
 });
 
 const mockData: ValueStreamData = {
-    ValueStreams: [],
+    valueStreams: [],
     settings: { jira_base_url: '', jira_api_version: '3' },
     customers: [],
     workItems: [],

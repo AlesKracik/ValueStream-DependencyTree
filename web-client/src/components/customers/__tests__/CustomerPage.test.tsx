@@ -17,7 +17,7 @@ vi.mock('../../../utils/api', () => ({
 }));
 
 const mockData: ValueStreamData = {
-    ValueStreams: [],
+    valueStreams: [],
     settings: { 
         jira_base_url: 'https://jira.com', 
         jira_api_version: '3',

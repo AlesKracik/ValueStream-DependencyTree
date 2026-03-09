@@ -1,4 +1,4 @@
-# Persistent ValueStreams
+# Persistent valueStreams
 
 ## Overview
 The system allows users to create multiple "views" of the project data using persistent ValueStream definitions. Each ValueStream stores a set of filter parameters that define the visible scope of the ValueStream.
@@ -60,7 +60,7 @@ graph TD
 ## Configuration
 - Value Streams are managed via the **ValueStream List** page.
 - Parameters are edited via the **Edit Parameters** button located in the top-right corner of the active ValueStream.
-- Parameters are stored in the MongoDB `ValueStreams` collection.
+- Parameters are stored in the MongoDB `valueStreams` collection.
 
 
 

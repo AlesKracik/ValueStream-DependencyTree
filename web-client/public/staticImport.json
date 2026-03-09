@@ -1641,7 +1641,7 @@
       "quarter": "FY2026 Q3"
     }
   ],
-  "ValueStreams": [
+  "valueStreams": [
     {
       "id": "main",
       "name": "Main Dependency Tree Value Stream",

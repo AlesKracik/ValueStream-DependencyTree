@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, useNavigate, useParams, Navigate } from '
 import { ReactFlowProvider } from '@xyflow/react';
 
 // Main entities
-import { ValueStream } from './components/valuestream/ValueStream';
+import { ValueStream } from './components/valueStream/ValueStream';
 import { CustomerPage } from './components/customers/CustomerPage';
 import { WorkItemPage } from './components/workitems/WorkItemPage';
 import { EpicPage } from './components/epics/EpicPage';
@@ -33,7 +33,7 @@ function ValueStreamRouteWrapper({ ValueStreamViewState, setValueStreamViewState
   const navigate = useNavigate();
   const { showAlert } = useValueStreamContext();
   // Fetch specific ValueStream data with server-side filtering
-  const ValueStreamstate = useValueStreamData(id, {
+  const valueStreamState = useValueStreamData(id, {
     customerFilter: ValueStreamViewState.customerFilter,
     workItemFilter: ValueStreamViewState.workItemFilter,
     releasedFilter: ValueStreamViewState.releasedFilter,
@@ -45,8 +45,8 @@ function ValueStreamRouteWrapper({ ValueStreamViewState, setValueStreamViewState
 
   return (
     <ValueStream
-      {...ValueStreamstate}
-      currentValueStreamId={id}
+      {...valueStreamState}
+      currentvalueStreamId={id}
       viewState={ValueStreamViewState}
       setViewState={setValueStreamViewState}
       onNavigateToCustomer={(id) => navigate(`/customer/${id}`)}
@@ -54,55 +54,55 @@ function ValueStreamRouteWrapper({ ValueStreamViewState, setValueStreamViewState
       onNavigateToEpic={(id) => navigate(`/epic/${id}`)}
       onNavigateToTeam={(id) => navigate(`/team/${id}`)}
       onNavigateToSprint={(id) => id === 'list' ? navigate('/sprints') : navigate(`/sprint/${id}`)}
-      onNavigateToValueStreamEdit={(id) => navigate(`/ValueStream/edit/${id}`)}
+      onNavigateToValueStreamEdit={(id) => navigate(`/valueStream/edit/${id}`)}
       />
       );
 }
 
-function CustomerPageRouteWrapper({ ValueStreamstate }: any) {
+function CustomerPageRouteWrapper({ valueStreamState }: any) {
   const { id } = useParams();
   const navigate = useNavigate();
-  return <CustomerPage customerId={id!} onBack={() => navigate(-1)} addCustomer={ValueStreamstate.addCustomer} {...ValueStreamstate} />;
+  return <CustomerPage customerId={id!} onBack={() => navigate(-1)} addCustomer={valueStreamState.addCustomer} {...valueStreamState} />;
 }
 
-function WorkItemPageRouteWrapper({ ValueStreamstate }: any) {
+function WorkItemPageRouteWrapper({ valueStreamState }: any) {
   const { id } = useParams();
   const navigate = useNavigate();
-  return <WorkItemPage workItemId={id!} onBack={() => navigate(-1)} {...ValueStreamstate} />;
+  return <WorkItemPage workItemId={id!} onBack={() => navigate(-1)} {...valueStreamState} />;
 }
 
-function EpicPageRouteWrapper({ ValueStreamstate }: any) {
+function EpicPageRouteWrapper({ valueStreamState }: any) {
   const { id } = useParams();
   const navigate = useNavigate();
-  return <EpicPage epicId={id!} onBack={() => navigate(-1)} {...ValueStreamstate} />;
+  return <EpicPage epicId={id!} onBack={() => navigate(-1)} {...valueStreamState} />;
 }
 
-function TeamPageRouteWrapper({ ValueStreamstate }: any) {
+function TeamPageRouteWrapper({ valueStreamState }: any) {
   const { id } = useParams();
   const navigate = useNavigate();
-  return <TeamPage teamId={id!} onBack={() => navigate(-1)} {...ValueStreamstate} />;
+  return <TeamPage teamId={id!} onBack={() => navigate(-1)} {...valueStreamState} />;
 }
 
-function ValueStreamEditPageRouteWrapper({ ValueStreamstate }: any) {
+function ValueStreamEditPageRouteWrapper({ valueStreamState }: any) {
   const { id } = useParams();
   const navigate = useNavigate();
-  return <ValueStreamEditPage ValueStreamId={id!} onBack={() => navigate(-1)} {...ValueStreamstate} />;
+  return <ValueStreamEditPage valueStreamId={id!} onBack={() => navigate(-1)} {...valueStreamState} />;
 }
 
-function SprintPageRouteWrapper({ ValueStreamstate }: any) {
-  return <SprintPage {...ValueStreamstate} />;
+function SprintPageRouteWrapper({ valueStreamState }: any) {
+  return <SprintPage {...valueStreamState} />;
 }
 
-function SettingsPageRouteWrapper({ ValueStreamstate }: any) {
+function SettingsPageRouteWrapper({ valueStreamState }: any) {
   return (
     <SettingsPage 
-      settings={ValueStreamstate.data?.settings || { jira_base_url: '', jira_api_version: '3' }} 
-      onUpdateSettings={ValueStreamstate.updateSettings} 
-      data={ValueStreamstate.data} 
-      loading={ValueStreamstate.loading}
-      error={ValueStreamstate.error}
-      updateEpic={ValueStreamstate.updateEpic} 
-      addEpic={ValueStreamstate.addEpic} 
+      settings={valueStreamState.data?.settings || { jira_base_url: '', jira_api_version: '3' }} 
+      onUpdateSettings={valueStreamState.updateSettings} 
+      data={valueStreamState.data} 
+      loading={valueStreamState.loading}
+      error={valueStreamState.error}
+      updateEpic={valueStreamState.updateEpic} 
+      addEpic={valueStreamState.addEpic} 
     />
   );
 }
@@ -129,33 +129,33 @@ function MainAppContent() {
     <ValueStreamProvider value={{ data: globalState.data, updateEpic: globalState.updateEpic }}>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to="/ValueStreams" replace />} />
+          <Route path="/" element={<Navigate to="/valueStreams" replace />} />
           
           <Route element={<Layout />}>
             {/* List Pages */}
-            <Route path="/ValueStreams" element={<ValueStreamListPage data={globalState.data} loading={globalState.loading} />} />
-            <Route path="/ValueStream/new" element={<ValueStreamEditPage ValueStreamId="new" onBack={() => window.history.back()} {...globalState} />} />
+            <Route path="/valueStreams" element={<ValueStreamListPage data={globalState.data} loading={globalState.loading} />} />
+            <Route path="/valueStream/new" element={<ValueStreamEditPage valueStreamId="new" onBack={() => window.history.back()} {...globalState} />} />
             <Route path="/customers" element={<CustomerListPage data={globalState.data} loading={globalState.loading} />} />
             <Route path="/workitems" element={<WorkItemListPage data={globalState.data} loading={globalState.loading} />} />
             <Route path="/teams" element={<TeamListPage data={globalState.data} loading={globalState.loading} />} />
             <Route path="/support" element={<SupportPage data={globalState.data} loading={globalState.loading} updateCustomer={globalState.updateCustomer} />} />
-            <Route path="/sprints" element={<SprintPageRouteWrapper ValueStreamstate={globalState} />} />
+            <Route path="/sprints" element={<SprintPageRouteWrapper valueStreamState={globalState} />} />
             
             {/* Other Pages */}
-            <Route path="/settings" element={<SettingsPageRouteWrapper ValueStreamstate={globalState} />} />
+            <Route path="/settings" element={<SettingsPageRouteWrapper valueStreamState={globalState} />} />
             <Route path="/documentation" element={<DocumentationPage />} />
 
             {/* Entity Detail Pages */}
-            <Route path="/ValueStream/:id" element={
+            <Route path="/valueStream/:id" element={
               <ReactFlowProvider>
                 <ValueStreamRouteWrapper ValueStreamViewState={ValueStreamViewState} setValueStreamViewState={setValueStreamViewState} />
               </ReactFlowProvider>
             } />
-            <Route path="/ValueStream/edit/:id" element={<ValueStreamEditPageRouteWrapper ValueStreamstate={globalState} />} />
-            <Route path="/customer/:id" element={<CustomerPageRouteWrapper ValueStreamstate={globalState} />} />
-            <Route path="/workitem/:id" element={<WorkItemPageRouteWrapper ValueStreamstate={globalState} />} />
-            <Route path="/epic/:id" element={<EpicPageRouteWrapper ValueStreamstate={globalState} />} />
-            <Route path="/team/:id" element={<TeamPageRouteWrapper ValueStreamstate={globalState} />} />
+            <Route path="/valueStream/edit/:id" element={<ValueStreamEditPageRouteWrapper valueStreamState={globalState} />} />
+            <Route path="/customer/:id" element={<CustomerPageRouteWrapper valueStreamState={globalState} />} />
+            <Route path="/workitem/:id" element={<WorkItemPageRouteWrapper valueStreamState={globalState} />} />
+            <Route path="/epic/:id" element={<EpicPageRouteWrapper valueStreamState={globalState} />} />
+            <Route path="/team/:id" element={<TeamPageRouteWrapper valueStreamState={globalState} />} />
           </Route>
         </Routes>
       </BrowserRouter>

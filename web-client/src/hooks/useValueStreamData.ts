@@ -46,7 +46,7 @@ const persistSettings = async (settings: any, showAlert?: (title: string, messag
 };
 
 export function useValueStreamData(
-    ValueStreamId?: string, 
+    valueStreamId?: string, 
     filters?: Partial<ValueStreamParameters>, 
     persistenceDebounceMs = 1000,
     showAlert?: (title: string, message: string) => Promise<void>
@@ -79,7 +79,7 @@ export function useValueStreamData(
         try {
             setLoading(true);
             const params = new URLSearchParams();
-            if (ValueStreamId) params.append('ValueStreamId', ValueStreamId);
+            if (valueStreamId) params.append('valueStreamId', valueStreamId);
             if (filters) {
                 Object.entries(filters).forEach(([key, value]) => {
                     if (value !== undefined && value !== null && value !== '') {
@@ -103,7 +103,7 @@ export function useValueStreamData(
 
     useEffect(() => {
         fetchData();
-    }, [ValueStreamId, JSON.stringify(filters)]);
+    }, [valueStreamId, JSON.stringify(filters)]);
 
     const refreshData = () => {
         fetchData();
@@ -396,16 +396,16 @@ export function useValueStreamData(
         });
     };
 
-    const addValueStream = (ValueStream: ValueStreamEntity) => {
-        persistEntity('ValueStreams', 'POST', ValueStream, showAlert);
+    const addValueStream = (valueStream: ValueStreamEntity) => {
+        persistEntity('valueStreams', 'POST', valueStream, showAlert);
         setData(prev => {
             if (!prev) return prev;
-            return { ...prev, ValueStreams: [...prev.ValueStreams, ValueStream] };
+            return { ...prev, valueStreams: [...prev.valueStreams, valueStream] };
         });
     };
 
     const updateValueStream = async (id: string, updates: Partial<ValueStreamEntity>, immediate = false) => {
-        const existing = data?.ValueStreams.find(d => d.id === id);
+        const existing = data?.valueStreams.find(d => d.id === id);
         if (!existing) return;
         const updated = { ...existing, ...updates };
 
@@ -413,22 +413,22 @@ export function useValueStreamData(
             if (!prev) return prev;
             return {
                 ...prev,
-                ValueStreams: prev.ValueStreams.map(d => d.id === id ? updated : d)
+                valueStreams: prev.valueStreams.map(d => d.id === id ? updated : d)
             };
         });
 
         if (immediate) {
-            await persistEntity('ValueStreams', 'POST', updated, showAlert);
+            await persistEntity('valueStreams', 'POST', updated, showAlert);
         } else {
-            debouncedPersist('ValueStreams', 'POST', updated);
+            debouncedPersist('valueStreams', 'POST', updated);
         }
     };
 
     const deleteValueStream = (id: string) => {
-        persistEntity('ValueStreams', 'DELETE', { id }, showAlert);
+        persistEntity('valueStreams', 'DELETE', { id }, showAlert);
         setData(prev => {
             if (!prev) return prev;
-            return { ...prev, ValueStreams: prev.ValueStreams.filter(d => d.id !== id) };
+            return { ...prev, valueStreams: prev.valueStreams.filter(d => d.id !== id) };
         });
     };
 

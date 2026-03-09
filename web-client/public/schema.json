@@ -10,7 +10,7 @@
         "teams",
         "epics",
         "sprints",
-        "ValueStreams"
+        "valueStreams"
     ],
     "properties": {
         "settings": {
@@ -382,7 +382,7 @@
                 }
             }
         },
-        "ValueStreams": {
+        "valueStreams": {
             "type": "array",
             "items": {
                 "type": "object",

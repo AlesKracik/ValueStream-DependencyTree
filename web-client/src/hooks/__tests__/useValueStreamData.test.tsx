@@ -4,7 +4,7 @@ import { useValueStreamData } from '../useValueStreamData';
 import type { ValueStreamData } from '../../types/models';
 
 const mockData: ValueStreamData = {
-    ValueStreams: [], settings: { jira_base_url: 'https://jira.com', jira_api_version: '3' },
+    valueStreams: [], settings: { jira_base_url: 'https://jira.com', jira_api_version: '3' },
     customers: [
         { id: 'c1', name: 'Cust 1', existing_tcv: 100, potential_tcv: 0 }
     ],

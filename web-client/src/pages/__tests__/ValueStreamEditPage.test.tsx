@@ -5,7 +5,7 @@ import { ValueStreamProvider, NotificationProvider } from '../../contexts/ValueS
 import type { ValueStreamData } from '../../types/models';
 
 const mockData: ValueStreamData = {
-    ValueStreams: [
+    valueStreams: [
         { id: 'd1', name: 'Existing Value Stream', description: 'Desc', parameters: { customerFilter: '', workItemFilter: '', releasedFilter: 'all', minTcvFilter: '', minScoreFilter: '', teamFilter: '', epicFilter: '', startSprintId: '', endSprintId: '' } }
     ],
     settings: { jira_base_url: '', jira_api_version: '3' },

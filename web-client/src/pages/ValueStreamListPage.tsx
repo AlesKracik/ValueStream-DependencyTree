@@ -24,16 +24,16 @@ export const ValueStreamListPage: React.FC<Props> = ({ data, loading }) => {
     return (
         <GenericListPage<ValueStreamEntity>
             title="Value Streams"
-            items={data?.ValueStreams || []}
+            items={data?.valueStreams || []}
             loading={loading}
             filterPlaceholder="Filter Value Streams..."
             filterPredicate={(d, query) => d.name.toLowerCase().includes(query.toLowerCase())}
             sortOptions={sortOptions}
-            onItemClick={(d) => navigate(`/ValueStream/${d.id}`)}
+            onItemClick={(d) => navigate(`/valueStream/${d.id}`)}
             columns={columns}
             actionButton={{
                 label: "+ New Value Stream",
-                onClick: () => navigate('/ValueStream/new')
+                onClick: () => navigate('/valueStream/new')
             }}
             loadingMessage="Loading Value Streams..."
             emptyMessage="No Value Streams found."

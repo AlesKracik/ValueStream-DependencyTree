@@ -4,7 +4,7 @@ import type { ValueStreamData } from '../../types/models';
 import { describe, it, expect } from 'vitest';
 
 const mockData: ValueStreamData = {
-    ValueStreams: [], settings: {
+    valueStreams: [], settings: {
         jira_base_url: '',
         jira_api_token: '',
         jira_api_version: '3'

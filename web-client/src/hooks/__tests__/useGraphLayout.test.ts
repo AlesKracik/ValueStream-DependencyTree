@@ -4,7 +4,7 @@ import { useGraphLayout } from '../useGraphLayout';
 import type { ValueStreamData } from '../../types/models';
 
 const MOCK_DATA: ValueStreamData = {
-    ValueStreams: [], settings: { jira_base_url: "https://jira", jira_api_version: "3" },
+    valueStreams: [], settings: { jira_base_url: "https://jira", jira_api_version: "3" },
     customers: [
         { id: 'c1', name: 'Cust 1', existing_tcv: 100, existing_tcv_valid_from: '2026-01-01', potential_tcv: 0 },
         { id: 'c2', name: 'Cust 2', existing_tcv: 1000, existing_tcv_valid_from: '2026-01-01', potential_tcv: 500 }

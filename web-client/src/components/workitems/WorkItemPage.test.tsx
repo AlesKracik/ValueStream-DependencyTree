@@ -15,7 +15,7 @@ vi.mock('../../utils/api', async () => {
 });
 
 const mockData: ValueStreamData = {
-    ValueStreams: [], settings: {
+    valueStreams: [], settings: {
         jira_base_url: 'https://jira.example.com',
         jira_api_token: 'token',
         jira_api_version: '3'
