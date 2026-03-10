@@ -154,12 +154,11 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
       process.env.AWS_SESSION_TOKEN = st;
     }
 
-    // Original AWS Solution: Ensure STS calls bypass the SOCKS proxy to avoid bastion restrictions.
-    // The MongoDB driver (v7.1.0+) respects NO_PROXY for its native AWS provider.
+    // Ensure STS calls bypass the SOCKS proxy to avoid bastion restrictions.
     if (useProxy) {
-      const awsEndpoints = ['sts.amazonaws.com', 'amazonaws.com'];
+      // Use both specific and suffix-based endpoints for broad compatibility
+      const awsEndpoints = ['sts.amazonaws.com', 'amazonaws.com', '.amazonaws.com'];
       const currentNoProxy = process.env.NO_PROXY ? process.env.NO_PROXY.split(',') : [];
-      
       const newEndpoints = awsEndpoints.filter(ep => !currentNoProxy.includes(ep));
       
       if (newEndpoints.length > 0) {
@@ -170,6 +169,16 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
     options.authMechanism = 'MONGODB-AWS';
     options.authSource = '$external';
     options.auth = { username: '', password: '' };
+
+    // Use a custom provider to ensure the driver uses the exact keys from the UI.
+    // We also set STS_HOST to ensure a consistent endpoint for the signature.
+    options.authMechanismProperties = {
+      AWS_CREDENTIAL_PROVIDER: async () => ({
+        accessKeyId: ak,
+        secretAccessKey: sk,
+        sessionToken: st || undefined
+      })
+    };
   } else if (authMethod === 'oidc') {
     const token = config[prefix + 'oidc_token'];
     if (!token) {

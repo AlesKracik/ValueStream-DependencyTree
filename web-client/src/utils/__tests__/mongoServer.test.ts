@@ -103,6 +103,7 @@ describe('mongoServer utility', () => {
     expect(process.env.AWS_SECRET_ACCESS_KEY).toBe('SK-test');
     expect(process.env.AWS_SESSION_TOKEN).toBe('ST-test');
     expect(process.env.NO_PROXY).toContain('sts.amazonaws.com');
+    expect(process.env.NO_PROXY).toContain('.amazonaws.com');
     
     // Call again to ensure no duplicates are added
     await getDb(config, 'app');
@@ -113,8 +114,19 @@ describe('mongoServer utility', () => {
     expect(MongoClient).toHaveBeenCalledWith('mongodb://host', expect.objectContaining({
         authMechanism: 'MONGODB-AWS',
         authSource: '$external',
-        auth: { username: '', password: '' }
+        auth: { username: '', password: '' },
+        authMechanismProperties: expect.objectContaining({
+          AWS_CREDENTIAL_PROVIDER: expect.any(Function)
+        })
     }));
+
+    // Verify provider returns correct credentials
+    const lastCall = (MongoClient as any).mock.calls[(MongoClient as any).mock.calls.length - 1];
+    const provider = lastCall[1].authMechanismProperties.AWS_CREDENTIAL_PROVIDER;
+    const creds = await provider();
+    expect(creds.accessKeyId).toBe('AK-test');
+    expect(creds.secretAccessKey).toBe('SK-test');
+    expect(creds.sessionToken).toBe('ST-test');
   });
 
   describe('isSafeUrl', () => {
