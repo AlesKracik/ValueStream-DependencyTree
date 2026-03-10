@@ -164,6 +164,7 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
     }
 
     options.authMechanism = 'MONGODB-AWS';
+    options.authSource = '$external';
     options.auth = { username: '', password: '' };
   } else if (authMethod === 'oidc') {
     const token = config[prefix + 'oidc_token'];

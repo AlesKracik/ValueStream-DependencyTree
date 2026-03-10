@@ -106,6 +106,7 @@ describe('mongoServer utility', () => {
     
     expect(MongoClient).toHaveBeenCalledWith('mongodb://host', expect.objectContaining({
         authMechanism: 'MONGODB-AWS',
+        authSource: '$external',
         auth: { username: '', password: '' }
     }));
   });
