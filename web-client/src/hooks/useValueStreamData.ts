@@ -321,9 +321,7 @@ export function useValueStreamData(
             // Check if we need to refresh data (critical connection settings changed)
             const needsRefresh = (
                 updates.mongo_uri !== undefined || 
-                updates.mongo_db !== undefined || 
-                updates.mongo_auth_method !== undefined ||
-                updates.mongo_create_if_not_exists !== undefined ||
+                updates.mongo_db !== undefined ||
                 updates.jira_base_url !== undefined || 
                 updates.jira_api_token !== undefined
             );

@@ -69,7 +69,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         mongo_aws_external_id: settings.mongo_aws_external_id || "",
         mongo_aws_role_session_name: settings.mongo_aws_role_session_name || "",
         mongo_oidc_token: settings.mongo_oidc_token || "",
-        mongo_create_if_not_exists: settings.mongo_create_if_not_exists ?? false,
         customer_mongo_db: settings.customer_mongo_db || "",
         customer_mongo_auth_method: settings.customer_mongo_auth_method || "scram",
         customer_mongo_use_proxy: settings.customer_mongo_use_proxy ?? false,
@@ -168,7 +167,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       // Test specific database
       const testBody = {
           ...body,
-          mongo_create_if_not_exists: isCustomer ? false : (localFormData.mongo_create_if_not_exists || settings.mongo_create_if_not_exists)
       };
       const response = await authorizedFetch("/api/mongo/test", {
         method: "POST",
@@ -632,7 +630,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               onChange={(e) => setFormData({ ...localFormData, mongo_db: e.target.value })}
                               onBlur={() => onUpdateSettings({ mongo_db: localFormData.mongo_db })}
                               style={{
-                                borderColor: mongoTestResult?.success && !mongoTestResult.exists && !localFormData.mongo_create_if_not_exists ? '#f59e0b' : undefined
+                                borderColor: mongoTestResult?.success && !mongoTestResult.exists ? '#f59e0b' : undefined
                               }}
                             />
                             <datalist id="mongo-dbs">
@@ -653,19 +651,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                             </span>
                           )}
                         </div>
-                      </label>
-
-                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db", cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={localFormData.mongo_create_if_not_exists || false}
-                          onChange={(e) => {
-                            const val = e.target.checked;
-                            setFormData({ ...localFormData, mongo_create_if_not_exists: val });
-                            onUpdateSettings({ mongo_create_if_not_exists: val });
-                          }}
-                        />
-                        Create database if it doesn't exist
                       </label>
 
                       {localFormData.mongo_auth_method === 'aws' && (

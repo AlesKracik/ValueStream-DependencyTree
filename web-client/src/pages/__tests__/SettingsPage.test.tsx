@@ -26,7 +26,6 @@ const mockSettings: Settings = {
     mongo_aws_secret_key: '',
     mongo_aws_session_token: '',
     mongo_oidc_token: '',
-    mongo_create_if_not_exists: false,
     customer_jql_new: '',
     customer_jql_in_progress: '',
     customer_jql_noop: '',
@@ -339,41 +338,6 @@ describe('SettingsPage', () => {
         expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
             mongo_uri: 'mongodb://new-host:27017'
         }));
-    });
-
-    it('handles the "Create if not exists" checkbox and ensures it is only for application mongo', async () => {
-        render(
-            <MemoryRouter initialEntries={['/settings?tab=persistence']}>
-                <SettingsPage 
-                    settings={mockSettings} 
-                    onUpdateSettings={onUpdateSettings}
-                    data={mockData}
-                    updateEpic={updateEpic}
-                    addEpic={addEpic}
-                />
-            </MemoryRouter>
-        );
-
-        // Subtab "application" should be active by default
-        const appCheckbox = screen.getByLabelText(/Create database if it doesn't exist/i);
-        expect(appCheckbox).toBeDefined();
-
-        await act(async () => {
-            fireEvent.click(appCheckbox);
-        });
-
-        expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
-            mongo_create_if_not_exists: true
-        }));
-
-        // Switch to "customer" mongo
-        const customerBtn = screen.getByText('Customer');
-        await act(async () => {
-            fireEvent.click(customerBtn);
-        });
-
-        // The checkbox for "customer" mongo should NOT be present (per user request)
-        expect(screen.queryByLabelText(/Create database if it doesn't exist \(Customer\)/i)).toBeNull();
     });
 
     it('handles the "Use SOCKS Proxy" toggle for application mongo', async () => {

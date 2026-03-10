@@ -5,7 +5,6 @@
   "mongo_uri": "mongodb://localhost:27017",
   "mongo_db": "valueStream",
   "mongo_auth_method": "scram",
-  "mongo_create_if_not_exists": true,
   "mongo_oidc_token": "",
   "customer_mongo_uri": "mongodb://localhost:27017",
   "customer_mongo_db": "customers",

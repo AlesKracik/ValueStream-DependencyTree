@@ -79,26 +79,6 @@ describe('mongoServer utility', () => {
     }));
   });
 
-  it('enforces checkExists correctly', async () => {
-    const config = { mongo_uri: 'mongodb://host', mongo_db: 'missing-db', mongo_create_if_not_exists: false };
-    
-    // Mock db.listCollections to return empty, and admin.listDatabases to not include missing-db
-    const mockDbInstance = {
-        listCollections: vi.fn().mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) }),
-        admin: vi.fn().mockReturnValue({
-            listDatabases: vi.fn().mockResolvedValue({ databases: [{ name: 'other' }] })
-        })
-    };
-    
-    vi.mocked(MongoClient).mockImplementationOnce(function() {
-        this.connect = vi.fn().mockResolvedValue({});
-        this.db = vi.fn().mockReturnValue(mockDbInstance);
-        this.close = vi.fn().mockResolvedValue({});
-    } as any);
-
-    await expect(getDb(config, 'app', true)).rejects.toThrow(/has no collections and cluster-wide database listing is restricted/);
-  });
-
   it('sets environment variables for MONGODB-AWS authentication', async () => {
     const config = { 
         mongo_uri: 'mongodb://host', 

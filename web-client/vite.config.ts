@@ -568,11 +568,7 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
 
           let message = exists 
             ? `Connection successful! Database '${targetDb}' exists.` 
-            : `Connection successful, but database '${targetDb}' does not exist yet.`;
-          
-          if (!exists && (config.mongo_create_if_not_exists || config.customer_mongo_create_if_not_exists)) {
-              message = `Connection successful! Database '${targetDb}' does not exist yet, but will be created automatically.`;
-          }
+            : `Connection successful! Database '${targetDb}' does not exist yet, but will be created automatically.`;
 
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;

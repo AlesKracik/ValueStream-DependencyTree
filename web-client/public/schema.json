@@ -53,7 +53,6 @@
                 "llm_model": { "type": "string" },
                 "fiscal_year_start_month": { "type": "integer", "minimum": 1, "maximum": 12 },
                 "sprint_duration_days": { "type": "integer", "minimum": 1 },
-                "mongo_create_if_not_exists": { "type": "boolean" },
                 "mongo_use_ssh": { "type": "boolean" },
                 "mongo_ssh_host": { "type": "string" },
                 "mongo_ssh_port": { "type": "integer" },

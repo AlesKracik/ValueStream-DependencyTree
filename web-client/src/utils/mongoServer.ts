@@ -178,27 +178,6 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
 
   const db = client.db(dbName);
 
-  if (checkExists && !config[prefix + 'create_if_not_exists']) {
-    try {
-      const collections = await db.listCollections().toArray();
-      if (collections.length === 0) {
-        try {
-          const dbs = await client.db().admin().listDatabases();
-          const exists = dbs.databases.some((d: any) => d.name === dbName);
-          if (!exists) {
-             throw new Error(`Database '${dbName}' does not exist and 'Create if not exists' is disabled.`);
-          }
-        } catch (adminErr) {
-          throw new Error(`Database '${dbName}' has no collections and cluster-wide database listing is restricted. Please check the name or enable 'Create if not exists'.`);
-        }
-      }
-    } catch (err: any) {
-      if (err.message.includes('Database') && err.message.includes('does not exist')) throw err;
-      mongoClients.delete(cacheKey);
-      await client.close();
-      throw err;
-    }
-  }
-
+  // No need to check if database exists as MongoDB creates it on first write
   return db;
 }
