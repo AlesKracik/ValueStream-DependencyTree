@@ -1,4 +1,41 @@
 import { MongoClient, ServerApiVersion } from 'mongodb';
+import dns from 'node:dns';
+import { promisify } from 'node:util';
+
+const dnsLookup = promisify(dns.lookup);
+
+// SSRF Protection: Check if URL is internal/private
+export async function isSafeUrl(urlStr: string) {
+  try {
+    const url = new URL(urlStr);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:' && url.protocol !== 'mongodb:' && url.protocol !== 'mongodb+srv:') return false;
+    
+    // For MongoDB URIs, skip DNS validation as the driver handles complex SRV/TXT resolution
+    // and they are inherently less prone to the kind of SSRF targeted here (HTTP metadata services)
+    if (url.protocol === 'mongodb:' || url.protocol === 'mongodb+srv:') return true;
+
+    const hostname = url.hostname;
+    if (!hostname) return true; 
+
+    // Allow localhost/loopback and host.docker.internal for local development/integration
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === 'host.docker.internal') return true;
+
+    const { address } = await dnsLookup(hostname);
+    
+    // Allow loopback and host-gateway address from DNS resolution too
+    if (address === '127.0.0.1' || address === '::1') return true;
+
+    const parts = address.split('.').map(Number);
+
+    // SSRF protection for this tool should primarily block cloud metadata services
+    // blocking 10.x, 172.x, 192.x is too aggressive for self-hosted integration tools
+    if (parts[0] === 169 && parts[1] === 254) return false; // Link-local / Metadata service
+
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 // Map to store persistent Mongo clients: cacheKey -> { client, lastUsed }
 const mongoClients = new Map<string, { client: MongoClient, lastUsed: number }>();
@@ -38,11 +75,21 @@ export function getMongoClientCount() {
   return mongoClients.size;
 }
 
-export async function getDb(config: any, type: 'app' | 'customer' = 'app', checkExists = false) {
+export interface MongoConfig {
+  [key: string]: any;
+  proxyHost?: string;
+  proxyPort?: number;
+}
+
+export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app', checkExists = false) {
   const prefix = type === 'customer' ? 'customer_mongo_' : 'mongo_';
 
   const uri = config[prefix + 'uri'];
   if (!uri) throw new Error(`Mongo ${type} URI not provided`);
+  
+  if (!await isSafeUrl(uri)) {
+    throw new Error(`Invalid or unsafe MongoDB ${type} URI`);
+  }
   
   const dbName = config[prefix + 'db'] || (type === 'customer' ? 'customer' : 'valueStream');
   const authMethod = config[prefix + 'auth_method'] || 'scram';
@@ -75,7 +122,7 @@ export async function getDb(config: any, type: 'app' | 'customer' = 'app', check
     }
   };
 
-  // Proxy settings (passed from env in vite.config.ts)
+  // Proxy settings (passed from env in vite.config.ts or direct config)
   if (useProxy && config.proxyHost) {
     options.proxyHost = config.proxyHost;
     options.proxyPort = config.proxyPort;
@@ -99,13 +146,18 @@ export async function getDb(config: any, type: 'app' | 'customer' = 'app', check
     if (!ak || !sk) {
       throw new Error(`AWS Access Key and Secret Key are required for AWS IAM authentication on ${type} DB.`);
     }
+
+    // Set environment variables for AWS SDK to pick up
+    process.env.AWS_ACCESS_KEY_ID = ak;
+    process.env.AWS_SECRET_ACCESS_KEY = sk;
+    if (st) {
+      process.env.AWS_SESSION_TOKEN = st;
+    }
+
     options.authMechanism = 'MONGODB-AWS';
-    options.authMechanismProperties = {
-      AWS_ACCESS_KEY_ID: ak,
-      AWS_SECRET_ACCESS_KEY: sk,
-      AWS_SESSION_TOKEN: st
-    };
     options.auth = { username: '', password: '' };
+    // DO NOT provide AWS_SESSION_TOKEN in authMechanismProperties as the driver 
+    // explicitly forbids it when using MONGODB-AWS and expects it via SDK/Env.
   } else if (authMethod === 'oidc') {
     const token = config[prefix + 'oidc_token'];
     if (!token) {

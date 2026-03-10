@@ -99,6 +99,48 @@ describe('mongoServer utility', () => {
     await expect(getDb(config, 'app', true)).rejects.toThrow(/has no collections and cluster-wide database listing is restricted/);
   });
 
+  it('sets environment variables for MONGODB-AWS authentication', async () => {
+    const config = { 
+        mongo_uri: 'mongodb://host', 
+        mongo_auth_method: 'aws',
+        mongo_aws_access_key: 'AK-test',
+        mongo_aws_secret_key: 'SK-test',
+        mongo_aws_session_token: 'ST-test'
+    };
+    
+    // Clear relevant env vars
+    delete process.env.AWS_ACCESS_KEY_ID;
+    delete process.env.AWS_SECRET_ACCESS_KEY;
+    delete process.env.AWS_SESSION_TOKEN;
+
+    await getDb(config, 'app');
+    
+    expect(process.env.AWS_ACCESS_KEY_ID).toBe('AK-test');
+    expect(process.env.AWS_SECRET_ACCESS_KEY).toBe('SK-test');
+    expect(process.env.AWS_SESSION_TOKEN).toBe('ST-test');
+    
+    expect(MongoClient).toHaveBeenCalledWith('mongodb://host', expect.objectContaining({
+        authMechanism: 'MONGODB-AWS',
+        auth: { username: '', password: '' }
+    }));
+  });
+
+  describe('isSafeUrl', () => {
+    it('allows safe public and localhost URLs', async () => {
+      const { isSafeUrl } = await import('../mongoServer');
+      expect(await isSafeUrl('https://google.com')).toBe(true);
+      expect(await isSafeUrl('mongodb://localhost:27017')).toBe(true);
+      expect(await isSafeUrl('mongodb+srv://atlas-cluster.mongodb.net')).toBe(true);
+      expect(await isSafeUrl('http://127.0.0.1')).toBe(true);
+    });
+
+    it('blocks cloud metadata services', async () => {
+      const { isSafeUrl } = await import('../mongoServer');
+      // 169.254.x.x is the AWS/GCP/Azure metadata service
+      expect(await isSafeUrl('http://169.254.169.254')).toBe(false);
+    });
+  });
+
   it('cleans up idle connections', async () => {
     const config = { mongo_uri: 'mongodb://host' };
     await getDb(config, 'app');

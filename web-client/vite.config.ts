@@ -4,15 +4,10 @@ import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
-import { MongoClient } from 'mongodb'
-import { getDb, startMongoCleanup } from './src/utils/mongoServer'
-import dns from 'node:dns'
-import { promisify } from 'node:util'
+import { getDb, startMongoCleanup, isSafeUrl } from './src/utils/mongoServer'
 
 // Start idle connection cleanup for MongoDB connections
 startMongoCleanup();
-
-const dnsLookup = promisify(dns.lookup);
 
 // Map to store persistent Augment processes: sessionId -> { child, lastUsed }
 const augmentProcesses = new Map<string, { child: any, lastUsed: number }>();
@@ -42,186 +37,9 @@ process.on('SIGINT', () => { cleanupAllProcesses(); process.exit(); });
 process.on('SIGTERM', () => { cleanupAllProcesses(); process.exit(); });
 process.on('exit', cleanupAllProcesses);
 
-const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
-  name: 'mock-data-persistence',
+const PersistencePlugin = (env: Record<string, string>): Plugin => ({
+  name: 'persistence',
   configureServer(server: any) {
-    // SSRF Protection: Check if URL is internal/private
-    async function isSafeUrl(urlStr: string) {
-      try {
-        const url = new URL(urlStr);
-        if (url.protocol !== 'http:' && url.protocol !== 'https:' && url.protocol !== 'mongodb:' && url.protocol !== 'mongodb+srv:') return false;
-        
-        // For MongoDB URIs, skip DNS validation as the driver handles complex SRV/TXT resolution
-        // and they are inherently less prone to the kind of SSRF targeted here (HTTP metadata services)
-        if (url.protocol === 'mongodb:' || url.protocol === 'mongodb+srv:') return true;
-
-        const hostname = url.hostname;
-        if (!hostname) return true; 
-
-        // Allow localhost/loopback and host.docker.internal for local development/integration
-        if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === 'host.docker.internal') return true;
-
-        const { address } = await dnsLookup(hostname);
-        
-        // Allow loopback and host-gateway address from DNS resolution too
-        if (address === '127.0.0.1' || address === '::1') return true;
-
-        const parts = address.split('.').map(Number);
-
-        // SSRF protection for this tool should primarily block cloud metadata services
-        // blocking 10.x, 172.x, 192.x is too aggressive for self-hosted integration tools
-        if (parts[0] === 169 && parts[1] === 254) return false; // Link-local / Metadata service
-
-        return true;
-      } catch {
-        return false;
-      }
-    }
-
-    // Map to store persistent Mongo clients: cacheKey -> { client, lastUsed }
-    const mongoClients = new Map<string, { client: MongoClient, lastUsed: number }>();
-
-    // Cleanup idle Mongo clients every 5 minutes
-    setInterval(() => {
-      const now = Date.now();
-      for (const [key, item] of mongoClients.entries()) {
-        if (now - item.lastUsed > 30 * 60 * 1000) { // 30 minutes idle
-          item.client.close().catch(() => {});
-          mongoClients.delete(key);
-        }
-      }
-    }, 300000);
-
-    // helper to connect to Mongo
-    async function getDb(config: any, type: 'app' | 'customer' = 'app', checkExists = false) {
-      // Support both application and customer mongo settings
-      const prefix = type === 'customer' ? 'customer_mongo_' : 'mongo_';
-
-      let uri = config[prefix + 'uri'];
-      if (!uri) throw new Error(`Mongo ${type} URI not provided`);
-      if (!await isSafeUrl(uri)) {
-        throw new Error(`Invalid or unsafe MongoDB ${type} URI`);
-      }
-      
-      const dbName = config[prefix + 'db'] || (type === 'customer' ? 'customer' : 'valueStream');
-      const authMethod = config[prefix + 'auth_method'] || 'scram';
-      const useProxy = config[prefix + 'use_proxy'];
-
-      // Create a cache key for this specific connection
-      const cacheKey = `${type}:${uri}:${dbName}:${authMethod}:${useProxy}:${config[prefix + 'aws_access_key'] || ''}`;
-      
-      const cached = mongoClients.get(cacheKey);
-      if (cached) {
-          cached.lastUsed = Date.now();
-          // MONGO_DEBUG: Log cache hit
-          console.log(`[MONGO_DEBUG] Cache HIT for key: ${cacheKey.substring(0, 50)}...`);
-          return cached.client.db(dbName);
-      }
-
-      // MONGO_DEBUG: Log cache miss / new connection
-      console.log(`[MONGO_DEBUG] Cache MISS for key: ${cacheKey.substring(0, 50)}... - Creating new connection`);
-      const startTime = Date.now();
-
-      const options: any = {
-        serverSelectionTimeoutMS: 15000,
-        connectTimeoutMS: 15000,
-        // Connection pooling options
-        maxPoolSize: 10,
-        minPoolSize: 1,
-      };
-
-      // SYSTEMATIC PROXYING: Use an external SOCKS proxy if configured AND enabled for this connection
-      const socksProxyHost = (process.env.SOCKS_PROXY_HOST || env.VITE_SOCKS_PROXY_HOST || env.SOCKS_PROXY_HOST);
-      const socksProxyPort = parseInt(process.env.SOCKS_PROXY_PORT || env.VITE_SOCKS_PROXY_PORT || env.SOCKS_PROXY_PORT || '1080');
-
-      if (useProxy && socksProxyHost) {
-        options.proxyHost = socksProxyHost;
-        options.proxyPort = socksProxyPort;
-        // MONGO_DEBUG: Log proxy usage
-        console.log(`[MONGO_DEBUG] Using SOCKS proxy: ${socksProxyHost}:${socksProxyPort}`);
-      }
-
-      const isSrv = uri?.startsWith('mongodb+srv://');
-      if (isSrv) {
-        options.tls = true;
-        if (options.proxyHost) {
-          // When proxying to Atlas, cert is for *.mongodb.net, driver connects to proxy IP
-          options.tlsAllowInvalidHostnames = true;
-        }
-      }
-
-      if (authMethod === 'aws') {
-        const ak = config[prefix + 'aws_access_key'];
-        const sk = config[prefix + 'aws_secret_key'];
-        const st = config[prefix + 'aws_session_token'];
-        
-        if (!ak || !sk) {
-          throw new Error(`AWS Access Key and Secret Key are required for AWS IAM authentication on ${type} DB.`);
-        }
-        options.authMechanism = 'MONGODB-AWS';
-        options.authMechanismProperties = {
-          AWS_ACCESS_KEY_ID: ak,
-          AWS_SECRET_ACCESS_KEY: sk,
-          AWS_SESSION_TOKEN: st
-        };
-        options.auth = { username: '', password: '' };
-      } else if (authMethod === 'oidc') {
-        const token = config[prefix + 'oidc_token'];
-        if (!token) {
-          throw new Error(`Access Token is required for OIDC authentication on ${type} DB.`);
-        }
-        options.authMechanism = 'MONGODB-OIDC';
-        options.authMechanismProperties = { ENVIRONMENT: 'test' };
-        options.auth = { username: token, password: '' };
-      }
-
-      const client = new MongoClient(uri, options);
-      await client.connect();
-      
-      // MONGO_DEBUG: Log connection time
-      console.log(`[MONGO_DEBUG] MongoDB connection established in ${Date.now() - startTime}ms`);
-
-      // Cache the client for future use
-      mongoClients.set(cacheKey, { client, lastUsed: Date.now() });
-
-      const db = client.db(dbName);
-
-      if (checkExists && !config[prefix + 'create_if_not_exists']) {
-        try {
-          // Check existence by listing collections on the specific database.
-          // This is safer than listDatabases on admin which requires cluster-wide permissions.
-          const collections = await db.listCollections().toArray();
-          if (collections.length === 0) {
-            // In MongoDB, a database without collections technically "doesn't exist" in listDatabases.
-            // So if it's empty, we should check listDatabases IF we have permission, 
-            // but if not, we assume it's missing if create_if_not_exists is false.
-            try {
-              const dbs = await client.db().admin().listDatabases();
-              const exists = dbs.databases.some((d: any) => d.name === dbName);
-              if (!exists) {
-                 // Don't close the client if it's in the cache, but since we just added it 
-                 // and it failed a check, we might want to remove it if it's "bad".
-                 // However, the connection itself is valid, just the DB is missing.
-                 throw new Error(`Database '${dbName}' does not exist and 'Create if not exists' is disabled.`);
-              }
-            } catch (adminErr) {
-              // If we can't listDatabases, we rely on the fact that listCollections was empty.
-              // It's safer to throw here to avoid silent failure when the user explicitly said "don't create".
-              throw new Error(`Database '${dbName}' has no collections and cluster-wide database listing is restricted. Please check the name or enable 'Create if not exists'.`);
-            }
-          }
-        } catch (err: any) {
-          if (err.message.includes('Database') && err.message.includes('does not exist')) throw err;
-          // Connectivity error - remove from cache
-          mongoClients.delete(cacheKey);
-          await client.close();
-          throw err;
-        }
-      }
-
-      return db;
-    }
-
     async function logQuery<T>(name: string, collection: string, operation: string, promise: Promise<T>): Promise<T> {
       const start = Date.now();
       try {
@@ -417,6 +235,15 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
         });
       }
 
+      // Helper to augment config with plugin-level env (proxy, etc)
+      const augmentConfig = (config: any) => {
+        return {
+          ...config,
+          proxyHost: process.env.SOCKS_PROXY_HOST || env.VITE_SOCKS_PROXY_HOST || env.SOCKS_PROXY_HOST,
+          proxyPort: parseInt(process.env.SOCKS_PROXY_PORT || env.VITE_SOCKS_PROXY_PORT || env.SOCKS_PROXY_PORT || '1080')
+        };
+      };
+
       if (req.url.startsWith('/api/loadData') && req.method === 'GET') {
         try {
           const url = new URL(req.url, `http://${req.headers.host}`);
@@ -458,7 +285,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
 
           if (hasAppDb) {
             try {
-              const db = await getDb(settings, 'app', true);
+              const db = await getDb(augmentConfig(settings), 'app', true);
               
               const ValueStreams = await logQuery('ValueStreams', 'valueStreams', 'find', db.collection('valueStreams').find({}).toArray());
               dbData.valueStreams = ValueStreams.map(({ _id, ...rest }) => rest);
@@ -664,7 +491,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
               throw new Error("Application MongoDB URI not configured (mongo_uri). Writing to customer database is not allowed.");
           }
           
-          const db = await getDb(settings, 'app', true);
+          const db = await getDb(augmentConfig(settings), 'app', true);
 
           if (req.method === 'POST') {
               if (!id) throw new Error("Missing entity id");
@@ -696,7 +523,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
           const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
           const config = unmaskSettings(rawConfig, existingSettings);
 
-          const db = await getDb(config, config.connection_type || 'app');
+          const db = await getDb(augmentConfig(config), config.connection_type || 'app');
           let databases: string[] = [];
           try {
             const dbs = await db.admin().listDatabases();
@@ -724,7 +551,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
           const config = unmaskSettings(rawConfig, existingSettings);
 
           const targetDb = config.mongo_db || config.customer_mongo_db || 'valueStream';
-          const db = await getDb(config, config.connection_type || 'app');
+          const db = await getDb(augmentConfig(config), config.connection_type || 'app');
           
           let exists = false;
           try {
@@ -767,7 +594,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
           const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
           if (!settings.mongo_uri && !settings.customer_mongo_uri) throw new Error("MongoDB URI not configured.");
 
-          const db = await getDb(settings, 'app', true);
+          const db = await getDb(augmentConfig(settings), 'app', true);
           
           const customers = await logQuery('ExportCustomers', 'customers', 'find', db.collection('customers').find({}).toArray());
           const workItems = await logQuery('ExportWorkItems', 'workItems', 'find', db.collection('workItems').find({}).toArray());
@@ -814,7 +641,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
               throw new Error("Application MongoDB URI not configured (mongo_uri). Importing to customer database is not allowed.");
           }
 
-          const db = await getDb(settings, 'app', false);
+          const db = await getDb(augmentConfig(settings), 'app', false);
 
           // Delete all collections
           for (const collectionName of ALLOWED_COLLECTIONS) {
@@ -850,7 +677,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
           if (!config.mongo_uri && !config.customer_mongo_uri) throw new Error("MongoDB URI not provided.");
           if (!config.query) throw new Error("Query not provided.");
 
-          const db = await getDb(config, config.connection_type || 'customer');
+          const db = await getDb(augmentConfig(config), config.connection_type || 'customer');
           const collectionName = config.customer_mongo_collection || 'Customers';
           const collection = db.collection(collectionName);
           
@@ -1184,7 +1011,7 @@ const MockDataPersistencePlugin = (env: Record<string, string>): Plugin => ({
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, path.resolve(__dirname, '..'), '');
   return {
-    plugins: [react(), MockDataPersistencePlugin(env)],
+    plugins: [react(), PersistencePlugin(env)],
     server: { watch: { ignored: ['**/public/staticImport.json'] } },
     test: { environment: 'jsdom', globals: true }
   }
