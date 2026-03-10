@@ -79,25 +79,30 @@ describe('mongoServer utility', () => {
     }));
   });
 
-  it('sets environment variables for MONGODB-AWS authentication', async () => {
+  it('sets environment variables and NO_PROXY for MONGODB-AWS authentication', async () => {
     const config = { 
         mongo_uri: 'mongodb://host', 
         mongo_auth_method: 'aws',
         mongo_aws_access_key: 'AK-test',
         mongo_aws_secret_key: 'SK-test',
-        mongo_aws_session_token: 'ST-test'
+        mongo_aws_session_token: 'ST-test',
+        mongo_use_proxy: true,
+        proxyHost: 'proxy-host',
+        proxyPort: 1080
     };
     
     // Clear relevant env vars
     delete process.env.AWS_ACCESS_KEY_ID;
     delete process.env.AWS_SECRET_ACCESS_KEY;
     delete process.env.AWS_SESSION_TOKEN;
+    delete process.env.NO_PROXY;
 
     await getDb(config, 'app');
     
     expect(process.env.AWS_ACCESS_KEY_ID).toBe('AK-test');
     expect(process.env.AWS_SECRET_ACCESS_KEY).toBe('SK-test');
     expect(process.env.AWS_SESSION_TOKEN).toBe('ST-test');
+    expect(process.env.NO_PROXY).toContain('sts.amazonaws.com');
     
     expect(MongoClient).toHaveBeenCalledWith('mongodb://host', expect.objectContaining({
         authMechanism: 'MONGODB-AWS',

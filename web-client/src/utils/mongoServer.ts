@@ -154,10 +154,17 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
       process.env.AWS_SESSION_TOKEN = st;
     }
 
+    // Original AWS Solution: Ensure STS calls bypass the SOCKS proxy to avoid bastion restrictions.
+    // The MongoDB driver (v7.1.0+) respects NO_PROXY for its native AWS provider.
+    if (useProxy) {
+      const awsEndpoints = 'sts.amazonaws.com,amazonaws.com';
+      process.env.NO_PROXY = process.env.NO_PROXY 
+        ? `${process.env.NO_PROXY},${awsEndpoints}` 
+        : awsEndpoints;
+    }
+
     options.authMechanism = 'MONGODB-AWS';
     options.auth = { username: '', password: '' };
-    // DO NOT provide AWS_SESSION_TOKEN in authMechanismProperties as the driver 
-    // explicitly forbids it when using MONGODB-AWS and expects it via SDK/Env.
   } else if (authMethod === 'oidc') {
     const token = config[prefix + 'oidc_token'];
     if (!token) {

@@ -82,6 +82,7 @@ Allows connection to Amazon DocumentDB or MongoDB Atlas using AWS Identity and A
     - `Secret Access Key`
     - `Session Token` (Optional)
 - **Driver Logic:** Uses `MONGODB-AWS` mechanism.
+- **SOCKS Compatibility:** When a SOCKS proxy is active, the application automatically sets the `NO_PROXY` environment variable for AWS endpoints (`sts.amazonaws.com`, `amazonaws.com`). This ensures the driver's native AWS provider bypasses the tunnel for authentication calls, avoiding bastion restrictions while still using the tunnel for the database traffic itself.
 
 ### 3. OIDC (OpenID Connect)
 Enables authentication via external identity providers like Azure AD, Okta, or Ping.
