@@ -157,10 +157,14 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
     // Original AWS Solution: Ensure STS calls bypass the SOCKS proxy to avoid bastion restrictions.
     // The MongoDB driver (v7.1.0+) respects NO_PROXY for its native AWS provider.
     if (useProxy) {
-      const awsEndpoints = 'sts.amazonaws.com,amazonaws.com';
-      process.env.NO_PROXY = process.env.NO_PROXY 
-        ? `${process.env.NO_PROXY},${awsEndpoints}` 
-        : awsEndpoints;
+      const awsEndpoints = ['sts.amazonaws.com', 'amazonaws.com'];
+      const currentNoProxy = process.env.NO_PROXY ? process.env.NO_PROXY.split(',') : [];
+      
+      const newEndpoints = awsEndpoints.filter(ep => !currentNoProxy.includes(ep));
+      
+      if (newEndpoints.length > 0) {
+        process.env.NO_PROXY = currentNoProxy.concat(newEndpoints).join(',');
+      }
     }
 
     options.authMechanism = 'MONGODB-AWS';

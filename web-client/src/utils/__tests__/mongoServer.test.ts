@@ -104,6 +104,12 @@ describe('mongoServer utility', () => {
     expect(process.env.AWS_SESSION_TOKEN).toBe('ST-test');
     expect(process.env.NO_PROXY).toContain('sts.amazonaws.com');
     
+    // Call again to ensure no duplicates are added
+    await getDb(config, 'app');
+    const parts = process.env.NO_PROXY.split(',');
+    const stsCount = parts.filter(p => p === 'sts.amazonaws.com').length;
+    expect(stsCount).toBe(1);
+    
     expect(MongoClient).toHaveBeenCalledWith('mongodb://host', expect.objectContaining({
         authMechanism: 'MONGODB-AWS',
         authSource: '$external',
