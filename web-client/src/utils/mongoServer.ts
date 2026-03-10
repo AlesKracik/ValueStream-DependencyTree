@@ -1,4 +1,5 @@
 import { MongoClient, ServerApiVersion } from 'mongodb';
+import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
 import dns from 'node:dns';
 import { promisify } from 'node:util';
 
@@ -152,6 +153,8 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
     process.env.AWS_SECRET_ACCESS_KEY = sk;
     if (st) {
       process.env.AWS_SESSION_TOKEN = st;
+    } else {
+      delete process.env.AWS_SESSION_TOKEN;
     }
 
     // Ensure STS calls bypass the SOCKS proxy to avoid bastion restrictions.
@@ -170,14 +173,12 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
     options.authSource = '$external';
     options.auth = { username: '', password: '' };
 
-    // Use a custom provider to ensure the driver uses the exact keys from the UI.
-    // We also set STS_HOST to ensure a consistent endpoint for the signature.
+    // Use the official AWS SDK provider chain. This supports:
+    // 1. Environment variables (set from UI above)
+    // 2. IAM Roles (EC2/ECS/EKS)
+    // 3. AWS Config files / SSO
     options.authMechanismProperties = {
-      AWS_CREDENTIAL_PROVIDER: async () => ({
-        accessKeyId: ak,
-        secretAccessKey: sk,
-        sessionToken: st || undefined
-      })
+      AWS_CREDENTIAL_PROVIDER: fromNodeProviderChain()
     };
   } else if (authMethod === 'oidc') {
     const token = config[prefix + 'oidc_token'];

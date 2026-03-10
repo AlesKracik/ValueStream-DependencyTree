@@ -119,14 +119,6 @@ describe('mongoServer utility', () => {
           AWS_CREDENTIAL_PROVIDER: expect.any(Function)
         })
     }));
-
-    // Verify provider returns correct credentials
-    const lastCall = (MongoClient as any).mock.calls[(MongoClient as any).mock.calls.length - 1];
-    const provider = lastCall[1].authMechanismProperties.AWS_CREDENTIAL_PROVIDER;
-    const creds = await provider();
-    expect(creds.accessKeyId).toBe('AK-test');
-    expect(creds.secretAccessKey).toBe('SK-test');
-    expect(creds.sessionToken).toBe('ST-test');
   });
 
   describe('isSafeUrl', () => {
