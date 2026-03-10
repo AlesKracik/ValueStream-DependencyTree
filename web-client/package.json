@@ -12,6 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@aws-sdk/credential-providers": "^3.1005.0",
     "@xyflow/react": "^12.10.1",
     "date-fns": "^4.1.0",
     "date-holidays": "^3.26.8",
