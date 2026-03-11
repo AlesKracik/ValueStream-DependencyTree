@@ -609,31 +609,34 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         />
                       </label>
 
-                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db", cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={localFormData.mongo_use_proxy || false}
-                          onChange={(e) => {
-                            const val = e.target.checked;
-                            setFormData({ ...localFormData, mongo_use_proxy: val });
-                            onUpdateSettings({ mongo_use_proxy: val });
-                          }}
-                        />
-                        Use SOCKS Proxy (from .env)
-                      </label>
-
-                      {localFormData.mongo_use_proxy && (
-                        <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
-                          Tunnel Name:
+                      <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db", cursor: 'pointer' }}>
                           <input
-                            type="text"
-                            placeholder="app"
-                            value={localFormData.mongo_tunnel_name || ""}
-                            onChange={(e) => setFormData({ ...localFormData, mongo_tunnel_name: e.target.value })}
-                            onBlur={() => onUpdateSettings({ mongo_tunnel_name: localFormData.mongo_tunnel_name })}
+                            type="checkbox"
+                            checked={localFormData.mongo_use_proxy || false}
+                            onChange={(e) => {
+                              const val = e.target.checked;
+                              setFormData({ ...localFormData, mongo_use_proxy: val });
+                              onUpdateSettings({ mongo_use_proxy: val });
+                            }}
                           />
+                          Use SOCKS Proxy (from .env)
                         </label>
-                      )}
+
+                        {localFormData.mongo_use_proxy && (
+                          <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db" }}>
+                            Tunnel Name:
+                            <input
+                              type="text"
+                              placeholder="app"
+                              value={localFormData.mongo_tunnel_name || ""}
+                              onChange={(e) => setFormData({ ...localFormData, mongo_tunnel_name: e.target.value })}
+                              onBlur={() => onUpdateSettings({ mongo_tunnel_name: localFormData.mongo_tunnel_name })}
+                              style={{ width: '120px', padding: '4px 8px' }}
+                            />
+                          </label>
+                        )}
+                      </div>
 
                       <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                         MongoDB Database Name:
@@ -862,31 +865,34 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         />
                       </label>
 
-                      <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db", cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={localFormData.customer_mongo_use_proxy || false}
-                          onChange={(e) => {
-                            const val = e.target.checked;
-                            setFormData({ ...localFormData, customer_mongo_use_proxy: val });
-                            onUpdateSettings({ customer_mongo_use_proxy: val });
-                          }}
-                        />
-                        Use SOCKS Proxy (from .env)
-                      </label>
-
-                      {localFormData.customer_mongo_use_proxy && (
-                        <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
-                          Tunnel Name:
+                      <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db", cursor: 'pointer' }}>
                           <input
-                            type="text"
-                            placeholder="customer"
-                            value={localFormData.customer_mongo_tunnel_name || ""}
-                            onChange={(e) => setFormData({ ...localFormData, customer_mongo_tunnel_name: e.target.value })}
-                            onBlur={() => onUpdateSettings({ customer_mongo_tunnel_name: localFormData.customer_mongo_tunnel_name })}
+                            type="checkbox"
+                            checked={localFormData.customer_mongo_use_proxy || false}
+                            onChange={(e) => {
+                              const val = e.target.checked;
+                              setFormData({ ...localFormData, customer_mongo_use_proxy: val });
+                              onUpdateSettings({ customer_mongo_use_proxy: val });
+                            }}
                           />
+                          Use SOCKS Proxy (from .env)
                         </label>
-                      )}
+
+                        {localFormData.customer_mongo_use_proxy && (
+                          <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db" }}>
+                            Tunnel Name:
+                            <input
+                              type="text"
+                              placeholder="customer"
+                              value={localFormData.customer_mongo_tunnel_name || ""}
+                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_tunnel_name: e.target.value })}
+                              onBlur={() => onUpdateSettings({ customer_mongo_tunnel_name: localFormData.customer_mongo_tunnel_name })}
+                              style={{ width: '120px', padding: '4px 8px' }}
+                            />
+                          </label>
+                        )}
+                      </div>
 
                       <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                         Customer MongoDB Database Name:
