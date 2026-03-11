@@ -1,6 +1,5 @@
 import { MongoClient, ServerApiVersion } from 'mongodb';
 import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
-import { SocksClient } from 'socks';
 import dns from 'node:dns';
 import { promisify } from 'node:util';
 
@@ -127,7 +126,6 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
   };
 
   // SOCKS proxy implementation with dynamic tunnel support
-  let proxyContext: { host: string; port: number } | null = null;
   if (useProxy) {
     let effectiveHost = config.proxyHost;
     let effectivePort = config.proxyPort;
@@ -143,11 +141,9 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
     }
 
     if (effectiveHost && effectivePort) {
-      proxyContext = {
-        host: effectiveHost,
-        port: Number(effectivePort)
-      };
-      console.log(`[MONGO_DEBUG] Proxy context prepared: ${effectiveHost}:${effectivePort}`);
+      options.proxyHost = effectiveHost;
+      options.proxyPort = Number(effectivePort);
+      console.log(`[MONGO_DEBUG] Proxy options applied: ${effectiveHost}:${effectivePort}`);
     }
   }
 
@@ -157,42 +153,6 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
     if (useProxy && config.proxyHost) {
       options.tlsAllowInvalidHostnames = true;
     }
-  }
-
-  // Inject SOCKS connection strategy if proxy is active
-  if (proxyContext) {
-    options.connectionStrategy = {
-      connect: async (opts: any, callback: any) => {
-        try {
-          const { host, port } = opts;
-          const { socket } = await SocksClient.createConnection({
-            proxy: {
-              host: proxyContext!.host,
-              port: proxyContext!.port,
-              type: 5
-            },
-            command: 'connect',
-            destination: { host, port }
-          });
-          
-          if (options.tls) {
-            const tls = await import('node:tls');
-            const tlsSocket = tls.connect({
-              socket,
-              servername: host,
-              rejectUnauthorized: !options.tlsAllowInvalidHostnames
-            }, () => {
-              callback(null, tlsSocket);
-            });
-            tlsSocket.on('error', (err) => callback(err));
-          } else {
-            callback(null, socket);
-          }
-        } catch (err) {
-          callback(err);
-        }
-      }
-    };
   }
 
   if (authMethod === 'aws') {
