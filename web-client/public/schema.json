@@ -16,65 +16,66 @@
         "settings": {
             "type": "object",
             "required": [
-                "jira_base_url",
-                "jira_api_version"
+                "general",
+                "persistence",
+                "jira",
+                "ai"
             ],
             "properties": {
-                "jira_base_url": {
-                    "type": "string",
-                    "format": "uri"
+                "general": {
+                    "type": "object",
+                    "required": ["fiscal_year_start_month", "sprint_duration_days"],
+                    "properties": {
+                        "fiscal_year_start_month": { "type": "integer", "minimum": 1, "maximum": 12 },
+                        "sprint_duration_days": { "type": "integer", "minimum": 1 }
+                    }
                 },
-                "jira_api_version": {
-                    "type": "string",
-                    "enum": [
-                        "2",
-                        "3"
-                    ]
+                "persistence": {
+                    "type": "object",
+                    "required": ["mongo"],
+                    "properties": {
+                        "mongo": {
+                            "type": "object",
+                            "required": ["app", "customer"],
+                            "properties": {
+                                "app": { "$ref": "#/definitions/mongoConfig" },
+                                "customer": { 
+                                    "allOf": [
+                                        { "$ref": "#/definitions/mongoConfig" },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "collection": { "type": "string" },
+                                                "custom_query": { "type": "string" }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
                 },
-                "jira_api_token": {
-                    "type": "string"
+                "jira": {
+                    "type": "object",
+                    "required": ["base_url", "api_version"],
+                    "properties": {
+                        "base_url": { "type": "string", "format": "uri" },
+                        "api_version": { "type": "string", "enum": ["2", "3"] },
+                        "api_token": { "type": "string" },
+                        "customer_jql_new": { "type": "string" },
+                        "customer_jql_in_progress": { "type": "string" },
+                        "customer_jql_noop": { "type": "string" }
+                    }
                 },
-                "mongo_uri": { "type": "string" },
-                "mongo_db": { "type": "string" },
-                "mongo_auth_method": { "type": "string", "enum": ["scram", "aws", "oidc"] },
-                "mongo_aws_auth_type": { "type": "string", "enum": ["static", "role"] },
-                "mongo_aws_access_key": { "type": "string" },
-                "mongo_aws_secret_key": { "type": "string" },
-                "mongo_aws_session_token": { "type": "string" },
-                "mongo_aws_role_arn": { "type": "string" },
-                "mongo_aws_external_id": { "type": "string" },
-                "mongo_aws_role_session_name": { "type": "string" },
-                "mongo_oidc_token": { "type": "string" },
-                "customer_jql_new": { "type": "string" },
-                "customer_jql_in_progress": { "type": "string" },
-                "customer_jql_noop": { "type": "string" },
-                "llm_provider": { "type": "string", "enum": ["openai", "gemini", "anthropic"] },
-                "llm_api_key": { "type": "string" },
-                "llm_model": { "type": "string" },
-                "fiscal_year_start_month": { "type": "integer", "minimum": 1, "maximum": 12 },
-                "sprint_duration_days": { "type": "integer", "minimum": 1 },
-                "mongo_use_ssh": { "type": "boolean" },
-                "mongo_ssh_host": { "type": "string" },
-                "mongo_ssh_port": { "type": "integer" },
-                "mongo_ssh_user": { "type": "string" },
-                "mongo_ssh_key": { "type": "string" },
-                "customer_mongo_uri": { "type": "string" },
-                "customer_mongo_db": { "type": "string" },
-                "customer_mongo_auth_method": { "type": "string", "enum": ["scram", "aws", "oidc"] },
-                "customer_mongo_aws_auth_type": { "type": "string", "enum": ["static", "role"] },
-                "customer_mongo_aws_access_key": { "type": "string" },
-                "customer_mongo_aws_secret_key": { "type": "string" },
-                "customer_mongo_aws_session_token": { "type": "string" },
-                "customer_mongo_aws_role_arn": { "type": "string" },
-                "customer_mongo_aws_external_id": { "type": "string" },
-                "customer_mongo_aws_role_session_name": { "type": "string" },
-                "customer_mongo_oidc_token": { "type": "string" },
-                "customer_mongo_use_ssh": { "type": "boolean" },
-                "customer_mongo_ssh_host": { "type": "string" },
-                "customer_mongo_ssh_port": { "type": "integer" },
-                "customer_mongo_ssh_user": { "type": "string" },
-                "customer_mongo_ssh_key": { "type": "string" },
-                "customer_mongo_custom_query": { "type": "string" }
+                "ai": {
+                    "type": "object",
+                    "required": ["provider"],
+                    "properties": {
+                        "provider": { "type": "string", "enum": ["openai", "gemini", "anthropic", "augment"] },
+                        "api_key": { "type": "string" },
+                        "model": { "type": "string" }
+                    }
+                }
             }
         },
         "customers": {
@@ -88,35 +89,14 @@
                     "potential_tcv"
                 ],
                 "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "customer_id": {
-                        "type": "string"
-                    },
-                    "existing_tcv": {
-                        "type": "number",
-                        "minimum": 0
-                    },
-                    "existing_tcv_valid_from": {
-                        "type": "string",
-                        "format": "date"
-                    },
-                    "existing_tcv_duration_months": {
-                        "type": "number",
-                        "minimum": 0
-                    },
-                    "potential_tcv": {
-                        "type": "number",
-                        "minimum": 0
-                    },
-                    "potential_tcv_duration_months": {
-                        "type": "number",
-                        "minimum": 0
-                    },
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "customer_id": { "type": "string" },
+                    "existing_tcv": { "type": "number", "minimum": 0 },
+                    "existing_tcv_valid_from": { "type": "string", "format": "date" },
+                    "existing_tcv_duration_months": { "type": "number", "minimum": 0 },
+                    "potential_tcv": { "type": "number", "minimum": 0 },
+                    "potential_tcv_duration_months": { "type": "number", "minimum": 0 },
                     "tcv_history": {
                         "type": "array",
                         "items": {
@@ -167,78 +147,30 @@
                     "score"
                 ],
                 "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
-                    "total_effort_mds": {
-                        "type": "number",
-                        "minimum": 0
-                    },
-                    "score": {
-                        "type": "number"
-                    },
-                    "released_in_sprint_id": {
-                        "type": "string"
-                    },
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "description": { "type": "string" },
+                    "total_effort_mds": { "type": "number", "minimum": 0 },
+                    "score": { "type": "number" },
+                    "released_in_sprint_id": { "type": "string" },
                     "all_customers_target": {
                         "type": "object",
-                        "required": [
-                            "tcv_type"
-                        ],
+                        "required": ["tcv_type"],
                         "properties": {
-                            "tcv_type": {
-                                "type": "string",
-                                "enum": [
-                                    "existing",
-                                    "potential"
-                                ]
-                            },
-                            "priority": {
-                                "type": "string",
-                                "enum": [
-                                    "Must-have",
-                                    "Should-have",
-                                    "Nice-to-have"
-                                ]
-                            }
+                            "tcv_type": { "type": "string", "enum": ["existing", "potential"] },
+                            "priority": { "type": "string", "enum": ["Must-have", "Should-have", "Nice-to-have"] }
                         }
                     },
                     "customer_targets": {
                         "type": "array",
                         "items": {
                             "type": "object",
-                            "required": [
-                                "customer_id",
-                                "tcv_type"
-                            ],
+                            "required": ["customer_id", "tcv_type"],
                             "properties": {
-                                "customer_id": {
-                                    "type": "string"
-                                },
-                                "tcv_type": {
-                                    "type": "string",
-                                    "enum": [
-                                        "existing",
-                                        "potential"
-                                    ]
-                                },
-                                "priority": {
-                                    "type": "string",
-                                    "enum": [
-                                        "Must-have",
-                                        "Should-have",
-                                        "Nice-to-have"
-                                    ]
-                                },
-                                "tcv_history_id": {
-                                    "type": "string"
-                                }
+                                "customer_id": { "type": "string" },
+                                "tcv_type": { "type": "string", "enum": ["existing", "potential"] },
+                                "priority": { "type": "string", "enum": ["Must-have", "Should-have", "Nice-to-have"] },
+                                "tcv_history_id": { "type": "string" }
                             }
                         }
                     }
@@ -249,34 +181,16 @@
             "type": "array",
             "items": {
                 "type": "object",
-                "required": [
-                    "id",
-                    "name",
-                    "total_capacity_mds"
-                ],
+                "required": ["id", "name", "total_capacity_mds"],
                 "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "total_capacity_mds": {
-                        "type": "number",
-                        "minimum": 0
-                    },
-                    "country": {
-                        "type": "string"
-                    },
-                    "jira_team_id": {
-                        "type": "string"
-                    },
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "total_capacity_mds": { "type": "number", "minimum": 0 },
+                    "country": { "type": "string" },
+                    "jira_team_id": { "type": "string" },
                     "sprint_capacity_overrides": {
                         "type": "object",
-                        "additionalProperties": {
-                            "type": "number",
-                            "minimum": 0
-                        }
+                        "additionalProperties": { "type": "number", "minimum": 0 }
                     }
                 }
             }
@@ -285,67 +199,29 @@
             "type": "array",
             "items": {
                 "type": "object",
-                "required": [
-                    "id",
-                    "jira_key",
-                    "team_id",
-                    "effort_md"
-                ],
+                "required": ["id", "jira_key", "team_id", "effort_md"],
                 "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "jira_key": {
-                        "type": "string"
-                    },
-                    "work_item_id": {
-                        "type": "string"
-                    },
-                    "team_id": {
-                        "type": "string"
-                    },
-                    "effort_md": {
-                        "type": "number",
-                        "minimum": 0
-                    },
-                    "target_start": {
-                        "type": "string",
-                        "format": "date"
-                    },
-                    "target_end": {
-                        "type": "string",
-                        "format": "date"
-                    },
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "jira_key": { "type": "string" },
+                    "work_item_id": { "type": "string" },
+                    "team_id": { "type": "string" },
+                    "effort_md": { "type": "number", "minimum": 0 },
+                    "target_start": { "type": "string", "format": "date" },
+                    "target_end": { "type": "string", "format": "date" },
                     "sprint_effort_overrides": {
                         "type": "object",
-                        "additionalProperties": {
-                            "type": "number",
-                            "minimum": 0
-                        }
+                        "additionalProperties": { "type": "number", "minimum": 0 }
                     },
                     "dependencies": {
                         "type": "array",
                         "items": {
                             "type": "object",
+                            "required": ["epic_id", "dependency_type"],
                             "properties": {
-                                "epic_id": {
-                                    "type": "string"
-                                },
-                                "dependency_type": {
-                                    "type": "string",
-                                    "enum": [
-                                        "FS",
-                                        "FF"
-                                    ]
-                                }
-                            },
-                            "required": [
-                                "epic_id",
-                                "dependency_type"
-                            ]
+                                "epic_id": { "type": "string" },
+                                "dependency_type": { "type": "string", "enum": ["FS", "FF"] }
+                            }
                         }
                     }
                 }
@@ -355,27 +231,12 @@
             "type": "array",
             "items": {
                 "type": "object",
-                "required": [
-                    "id",
-                    "name",
-                    "start_date",
-                    "end_date"
-                ],
+                "required": ["id", "name", "start_date", "end_date"],
                 "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "start_date": {
-                        "type": "string",
-                        "format": "date"
-                    },
-                    "end_date": {
-                        "type": "string",
-                        "format": "date"
-                    },
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "start_date": { "type": "string", "format": "date" },
+                    "end_date": { "type": "string", "format": "date" },
                     "quarter": { "type": "string" },
                     "is_archived": { "type": "boolean" }
                 }
@@ -385,32 +246,16 @@
             "type": "array",
             "items": {
                 "type": "object",
-                "required": [
-                    "id",
-                    "name",
-                    "description",
-                    "parameters"
-                ],
+                "required": ["id", "name", "description", "parameters"],
                 "properties": {
-                    "id": {
-                        "type": "string"
-                    },
-                    "name": {
-                        "type": "string"
-                    },
-                    "description": {
-                        "type": "string"
-                    },
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "description": { "type": "string" },
                     "parameters": {
                         "type": "object",
                         "required": [
-                            "customerFilter",
-                            "workItemFilter",
-                            "releasedFilter",
-                            "minTcvFilter",
-                            "minScoreFilter",
-                            "teamFilter",
-                            "epicFilter"
+                            "customerFilter", "workItemFilter", "releasedFilter", 
+                            "minTcvFilter", "minScoreFilter", "teamFilter", "epicFilter"
                         ],
                         "properties": {
                             "customerFilter": { "type": "string" },
@@ -427,10 +272,37 @@
                 }
             }
         }
+    },
+    "definitions": {
+        "mongoConfig": {
+            "type": "object",
+            "required": ["uri", "db", "use_proxy", "auth"],
+            "properties": {
+                "uri": { "type": "string" },
+                "db": { "type": "string" },
+                "use_proxy": { "type": "boolean" },
+                "tunnel_name": { "type": "string" },
+                "auth": {
+                    "type": "object",
+                    "required": ["method"],
+                    "properties": {
+                        "method": { "type": "string", "enum": ["scram", "aws", "oidc"] },
+                        "aws_auth_type": { "type": "string", "enum": ["static", "role"] },
+                        "aws_access_key": { "type": "string" },
+                        "aws_secret_key": { "type": "string" },
+                        "aws_session_token": { "type": "string" },
+                        "aws_role_arn": { "type": "string" },
+                        "aws_external_id": { "type": "string" },
+                        "aws_role_session_name": { "type": "string" },
+                        "aws_profile": { "type": "string" },
+                        "aws_sso_start_url": { "type": "string" },
+                        "aws_sso_region": { "type": "string" },
+                        "aws_sso_account_id": { "type": "string" },
+                        "aws_sso_role_name": { "type": "string" },
+                        "oidc_token": { "type": "string" }
+                    }
+                }
+            }
+        }
     }
 }
-
-
-
-
-
