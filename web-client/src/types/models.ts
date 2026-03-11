@@ -104,6 +104,7 @@ export interface Settings {
   mongo_db?: string;
   mongo_auth_method?: 'scram' | 'aws' | 'oidc';
   mongo_use_proxy?: boolean;
+  mongo_tunnel_name?: string;
   mongo_aws_auth_type?: 'static' | 'role';
   mongo_aws_access_key?: string;
   mongo_aws_secret_key?: string;
@@ -124,6 +125,7 @@ export interface Settings {
   customer_mongo_db?: string;
   customer_mongo_auth_method?: 'scram' | 'aws' | 'oidc';
   customer_mongo_use_proxy?: boolean;
+  customer_mongo_tunnel_name?: string;
   customer_mongo_aws_auth_type?: 'static' | 'role';
   customer_mongo_aws_access_key?: string;
   customer_mongo_aws_secret_key?: string;

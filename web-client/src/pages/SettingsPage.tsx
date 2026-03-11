@@ -61,6 +61,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         mongo_db: settings.mongo_db || "",
         mongo_auth_method: settings.mongo_auth_method || "scram",
         mongo_use_proxy: settings.mongo_use_proxy ?? false,
+        mongo_tunnel_name: settings.mongo_tunnel_name || "",
         mongo_aws_auth_type: settings.mongo_aws_auth_type || "static",
         mongo_aws_access_key: settings.mongo_aws_access_key || "",
         mongo_aws_secret_key: settings.mongo_aws_secret_key || "",
@@ -72,6 +73,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         customer_mongo_db: settings.customer_mongo_db || "",
         customer_mongo_auth_method: settings.customer_mongo_auth_method || "scram",
         customer_mongo_use_proxy: settings.customer_mongo_use_proxy ?? false,
+        customer_mongo_tunnel_name: settings.customer_mongo_tunnel_name || "",
         customer_mongo_aws_auth_type: settings.customer_mongo_aws_auth_type || "static",
         customer_mongo_aws_access_key: settings.customer_mongo_aws_access_key || "",
         customer_mongo_aws_secret_key: settings.customer_mongo_aws_secret_key || "",
@@ -126,6 +128,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     const dbField = isCustomer ? 'customer_mongo_db' : 'mongo_db';
     const authField = isCustomer ? 'customer_mongo_auth_method' : 'mongo_auth_method';
     const useProxyField = isCustomer ? 'customer_mongo_use_proxy' : 'mongo_use_proxy';
+    const tunnelField = isCustomer ? 'customer_mongo_tunnel_name' : 'mongo_tunnel_name';
     const akField = isCustomer ? 'customer_mongo_aws_access_key' : 'mongo_aws_access_key';
     const skField = isCustomer ? 'customer_mongo_aws_secret_key' : 'mongo_aws_secret_key';
     const stField = isCustomer ? 'customer_mongo_aws_session_token' : 'mongo_aws_session_token';
@@ -136,6 +139,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       [dbField]: localFormData[dbField] || settings[dbField],
       [authField]: localFormData[authField] || settings[authField],
       [useProxyField]: localFormData[useProxyField] || settings[useProxyField],
+      [tunnelField]: localFormData[tunnelField] || settings[tunnelField],
       [akField]: localFormData[akField] || settings[akField],
       [skField]: localFormData[skField] || settings[skField],
       [stField]: localFormData[stField] || settings[stField],
@@ -618,6 +622,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         Use SOCKS Proxy (from .env)
                       </label>
 
+                      {localFormData.mongo_use_proxy && (
+                        <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                          Tunnel Name:
+                          <input
+                            type="text"
+                            placeholder="app"
+                            value={localFormData.mongo_tunnel_name || ""}
+                            onChange={(e) => setFormData({ ...localFormData, mongo_tunnel_name: e.target.value })}
+                            onBlur={() => onUpdateSettings({ mongo_tunnel_name: localFormData.mongo_tunnel_name })}
+                          />
+                        </label>
+                      )}
+
                       <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                         MongoDB Database Name:
                         <div style={{ position: 'relative', display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -857,6 +874,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         />
                         Use SOCKS Proxy (from .env)
                       </label>
+
+                      {localFormData.customer_mongo_use_proxy && (
+                        <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                          Tunnel Name:
+                          <input
+                            type="text"
+                            placeholder="customer"
+                            value={localFormData.customer_mongo_tunnel_name || ""}
+                            onChange={(e) => setFormData({ ...localFormData, customer_mongo_tunnel_name: e.target.value })}
+                            onBlur={() => onUpdateSettings({ customer_mongo_tunnel_name: localFormData.customer_mongo_tunnel_name })}
+                          />
+                        </label>
+                      )}
 
                       <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                         Customer MongoDB Database Name:
