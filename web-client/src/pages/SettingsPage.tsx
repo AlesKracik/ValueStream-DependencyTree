@@ -908,9 +908,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             return parts.map((part, i) => {
                                                 if (part.startsWith('http')) {
                                                     let url = part.replace(/[.,]$/, '');
-                                                    // Handle appending user_code at the very end (often follows the #/device fragment)
+                                                    // Handle appending user_code for any official AWS SSO URL pattern
                                                     let finalUrl = url;
-                                                    if (code && url.includes('device.sso') && !url.includes('user_code=')) {
+                                                    const isAWSSSOUrl = url.includes('device.sso') || url.includes('awsapps.com/start') || url.includes('.app.aws');
+                                                    if (code && isAWSSSOUrl && !url.includes('user_code=')) {
                                                         const separator = url.includes('?') ? '&' : '?';
                                                         finalUrl = `${url}${separator}user_code=${code}`;
                                                     }
@@ -1346,9 +1347,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             return parts.map((part, i) => {
                                                 if (part.startsWith('http')) {
                                                     let url = part.replace(/[.,]$/, '');
-                                                    // Handle appending user_code at the very end (often follows the #/device fragment)
+                                                    // Handle appending user_code for any official AWS SSO URL pattern
                                                     let finalUrl = url;
-                                                    if (code && url.includes('device.sso') && !url.includes('user_code=')) {
+                                                    const isAWSSSOUrl = url.includes('device.sso') || url.includes('awsapps.com/start') || url.includes('.app.aws');
+                                                    if (code && isAWSSSOUrl && !url.includes('user_code=')) {
                                                         const separator = url.includes('?') ? '&' : '?';
                                                         finalUrl = `${url}${separator}user_code=${code}`;
                                                     }
