@@ -1,0 +1,49 @@
+import { describe, it, expect } from 'vitest';
+import { checkAuth } from '../authServer';
+
+describe('authServer utility', () => {
+    describe('checkAuth', () => {
+        it('allows everything if no admin secret is set', () => {
+            const result = checkAuth('/api/loadData', {}, undefined);
+            expect(result.authorized).toBe(true);
+        });
+
+        it('returns required: false for auth status if no secret is set', () => {
+            const result = checkAuth('/api/auth/status', {}, undefined);
+            expect(result.authorized).toBe(true);
+            expect(result.statusCode).toBe(200);
+            expect(result.response).toEqual({ required: false, authenticated: true });
+        });
+
+        it('blocks requests if admin secret is set and not provided', () => {
+            const result = checkAuth('/api/loadData', {}, 'my-secret');
+            expect(result.authorized).toBe(false);
+            expect(result.statusCode).toBe(401);
+            expect(result.response.error).toBe('Unauthorized');
+        });
+
+        it('allows requests if admin secret is set and correctly provided', () => {
+            const result = checkAuth('/api/loadData', { 'x-admin-secret': 'my-secret' }, 'my-secret');
+            expect(result.authorized).toBe(true);
+        });
+
+        it('returns required: true, authenticated: false for auth status if secret is set but missing', () => {
+            const result = checkAuth('/api/auth/status', {}, 'my-secret');
+            expect(result.authorized).toBe(true);
+            expect(result.statusCode).toBe(401);
+            expect(result.response).toEqual({ required: true, authenticated: false });
+        });
+
+        it('returns required: true, authenticated: true for auth status if secret is set and correct', () => {
+            const result = checkAuth('/api/auth/status', { 'x-admin-secret': 'my-secret' }, 'my-secret');
+            expect(result.authorized).toBe(true);
+            expect(result.statusCode).toBe(200);
+            expect(result.response).toEqual({ required: true, authenticated: true });
+        });
+
+        it('is case-insensitive for headers if they are processed by Node middleware (passed as lowercase)', () => {
+            const result = checkAuth('/api/loadData', { 'x-admin-secret': 'my-secret' }, 'my-secret');
+            expect(result.authorized).toBe(true);
+        });
+    });
+});

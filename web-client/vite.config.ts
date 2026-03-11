@@ -9,6 +9,7 @@ import crypto from 'crypto'
 import { spawn, exec } from 'child_process'
 import { promisify } from 'util'
 import { getDb, startMongoCleanup, isSafeUrl } from './src/utils/mongoServer'
+import { checkAuth } from './src/utils/authServer'
 
 const execPromise = promisify(exec);
 
@@ -45,8 +46,174 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
   configureServer(server) {
     server.middlewares.use(async (req, res, next) => {
       const ADMIN_SECRET = process.env.ADMIN_SECRET || env.VITE_ADMIN_SECRET;
-      const isAuthRequired = !!ADMIN_SECRET;
       
+      const SENSITIVE_FIELDS = [
+        'api_token', 
+        'uri', 
+        'aws_access_key', 
+        'aws_secret_key', 
+        'aws_session_token', 
+        'aws_role_arn',
+        'aws_external_id',
+        'aws_role_session_name',
+        'aws_profile',
+        'aws_sso_start_url',
+        'aws_sso_region',
+        'aws_sso_account_id',
+        'aws_sso_role_name',
+        'oidc_token', 
+        'api_key'
+      ];
+
+      const MASK = '********';
+
+      function maskSettings(settings: any) {
+        if (!settings || typeof settings !== 'object') return settings;
+        const masked = Array.isArray(settings) ? [...settings] : { ...settings };
+        
+        Object.keys(masked).forEach(key => {
+          if (SENSITIVE_FIELDS.includes(key) && masked[key]) {
+            masked[key] = MASK;
+          } else if (typeof masked[key] === 'object') {
+            masked[key] = maskSettings(masked[key]);
+          }
+        });
+        return masked;
+      }
+
+      function unmaskSettings(newData: any, existingSettings: any) {
+        if (!newData || typeof newData !== 'object') return newData;
+        const unmasked = Array.isArray(newData) ? [...newData] : { ...newData };
+        
+        Object.keys(unmasked).forEach(key => {
+          if (SENSITIVE_FIELDS.includes(key) && unmasked[key] === MASK) {
+            unmasked[key] = existingSettings ? existingSettings[key] : MASK;
+          } else if (typeof unmasked[key] === 'object') {
+            unmasked[key] = unmaskSettings(unmasked[key], existingSettings ? existingSettings[key] : null);
+          }
+        });
+        return unmasked;
+      }
+
+      function migrateSettings(settings: any) {
+        if (settings.general || settings.persistence || settings.jira || settings.ai) return settings;
+
+        console.log("[SETTINGS] Migrating flat settings.json to hierarchical structure...");
+        return {
+          general: {
+            fiscal_year_start_month: settings.fiscal_year_start_month || 1,
+            sprint_duration_days: settings.sprint_duration_days || 14
+          },
+          persistence: {
+            mongo: {
+              app: {
+                uri: settings.mongo_uri || '',
+                db: settings.mongo_db || '',
+                use_proxy: settings.mongo_use_proxy || false,
+                tunnel_name: settings.mongo_tunnel_name || 'app',
+                auth: {
+                  method: settings.mongo_auth_method || 'scram',
+                  aws_auth_type: settings.mongo_aws_auth_type || 'static',
+                  aws_access_key: settings.mongo_aws_access_key,
+                  aws_secret_key: settings.mongo_aws_secret_key,
+                  aws_session_token: settings.mongo_aws_session_token,
+                  aws_role_arn: settings.mongo_aws_role_arn,
+                  aws_external_id: settings.mongo_aws_external_id,
+                  aws_role_session_name: settings.mongo_aws_role_session_name,
+                  aws_profile: settings.mongo_aws_profile,
+                  aws_sso_start_url: settings.mongo_aws_sso_start_url,
+                  aws_sso_region: settings.mongo_aws_sso_region,
+                  aws_sso_account_id: settings.mongo_aws_sso_account_id,
+                  aws_sso_role_name: settings.mongo_aws_sso_role_name,
+                  oidc_token: settings.mongo_oidc_token
+                }
+              },
+              customer: {
+                uri: settings.customer_mongo_uri || '',
+                db: settings.customer_mongo_db || '',
+                use_proxy: settings.customer_mongo_use_proxy || false,
+                tunnel_name: settings.customer_mongo_tunnel_name || 'customer',
+                collection: settings.customer_mongo_collection || 'Customers',
+                custom_query: settings.customer_mongo_custom_query || '',
+                auth: {
+                  method: settings.customer_mongo_auth_method || 'scram',
+                  aws_auth_type: settings.customer_mongo_aws_auth_type || 'static',
+                  aws_access_key: settings.customer_mongo_aws_access_key,
+                  aws_secret_key: settings.customer_mongo_aws_secret_key,
+                  aws_session_token: settings.customer_mongo_aws_session_token,
+                  aws_role_arn: settings.customer_mongo_aws_role_arn,
+                  aws_external_id: settings.customer_mongo_aws_external_id,
+                  aws_role_session_name: settings.customer_mongo_aws_role_session_name,
+                  aws_profile: settings.customer_mongo_aws_profile,
+                  aws_sso_start_url: settings.customer_mongo_aws_sso_start_url,
+                  aws_sso_region: settings.customer_mongo_aws_sso_region,
+                  aws_sso_account_id: settings.customer_mongo_aws_sso_account_id,
+                  aws_sso_role_name: settings.customer_mongo_aws_sso_role_name,
+                  oidc_token: settings.customer_mongo_oidc_token
+                }
+              }
+            }
+          },
+          jira: {
+            base_url: settings.jira_base_url || '',
+            api_version: settings.jira_api_version || '3',
+            api_token: settings.jira_api_token,
+            customer_jql_new: settings.customer_jql_new,
+            customer_jql_in_progress: settings.customer_jql_in_progress,
+            customer_jql_noop: settings.customer_jql_noop
+          },
+          ai: {
+            provider: settings.llm_provider || 'openai',
+            api_key: settings.llm_api_key,
+            model: settings.llm_model
+          }
+        };
+      }
+
+      const augmentConfig = (config: any, role: 'app' | 'customer' = 'app') => {
+        const tunnels: Record<string, any> = {};
+        const combinedEnv = { ...process.env, ...env };
+        Object.keys(combinedEnv).forEach(key => {
+          if (key.endsWith('_SOCKS_PORT')) {
+            const name = key.replace('_SOCKS_PORT', '').toLowerCase();
+            const port = parseInt(combinedEnv[key] || '');
+            if (!isNaN(port)) {
+              tunnels[name] = {
+                host: combinedEnv.SOCKS_PROXY_HOST || combinedEnv.VITE_SOCKS_PROXY_HOST || 'localhost',
+                port: port
+              };
+            }
+          }
+        });
+
+        const mongo = config.persistence?.mongo?.[role] || {};
+        return {
+            mongo_uri: mongo.uri,
+            mongo_db: mongo.db,
+            mongo_use_proxy: mongo.use_proxy,
+            mongo_tunnel_name: mongo.tunnel_name,
+            mongo_auth_method: mongo.auth?.method,
+            mongo_aws_auth_type: mongo.auth?.aws_auth_type,
+            mongo_aws_access_key: mongo.auth?.aws_access_key,
+            mongo_aws_secret_key: mongo.auth?.aws_secret_key,
+            mongo_aws_session_token: mongo.auth?.aws_session_token,
+            mongo_aws_role_arn: mongo.auth?.aws_role_arn,
+            mongo_aws_external_id: mongo.auth?.aws_external_id,
+            mongo_aws_role_session_name: mongo.auth?.aws_role_session_name,
+            mongo_aws_profile: mongo.auth?.aws_profile,
+            mongo_aws_sso_start_url: mongo.auth?.aws_sso_start_url,
+            mongo_aws_sso_region: mongo.auth?.aws_sso_region,
+            mongo_aws_sso_account_id: mongo.auth?.aws_sso_account_id,
+            mongo_aws_sso_role_name: mongo.auth?.aws_sso_role_name,
+            mongo_oidc_token: mongo.auth?.oidc_token,
+            customer_mongo_collection: mongo.collection,
+            customer_mongo_custom_query: mongo.custom_query,
+            proxyHost: process.env.SOCKS_PROXY_HOST || env.VITE_SOCKS_PROXY_HOST || env.SOCKS_PROXY_HOST,
+            proxyPort: parseInt(process.env.SOCKS_PROXY_PORT || env.VITE_SOCKS_PROXY_PORT || env.SOCKS_PROXY_PORT || '1080'),
+            tunnels
+        };
+      };
+
       const readBody = (request: any): Promise<string> => {
         return new Promise((resolve, reject) => {
           let body = '';
@@ -59,21 +226,16 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
         });
       };
 
-      if (req.url?.startsWith('/api/auth/status')) {
-        const secret = req.headers['x-admin-secret'];
-        const isAuthorized = isAuthRequired ? secret === ADMIN_SECRET : true;
-        res.statusCode = isAuthorized ? 200 : 401;
+      const authResult = checkAuth(req.url, req.headers, ADMIN_SECRET);
+      if (authResult.response) {
+        res.statusCode = authResult.statusCode || 200;
         res.setHeader('Content-Type', 'application/json');
-        return res.end(JSON.stringify({ required: isAuthRequired, authenticated: isAuthorized }));
+        return res.end(JSON.stringify(authResult.response));
       }
-
-      if (isAuthRequired) {
-        const secret = req.headers['x-admin-secret'];
-        if (secret !== ADMIN_SECRET) {
-          res.statusCode = 401;
-          res.setHeader('Content-Type', 'application/json');
-          return res.end(JSON.stringify({ success: false, error: 'Unauthorized' }));
-        }
+      if (!authResult.authorized) {
+        res.statusCode = 401;
+        res.setHeader('Content-Type', 'application/json');
+        return res.end(JSON.stringify({ success: false, error: 'Unauthorized' }));
       }
 
       if (req.url?.startsWith('/api/loadData') && req.method === 'GET') {
