@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import * as React from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { Settings, ValueStreamData, Epic } from "../types/models";
 import styles from './List.module.css';

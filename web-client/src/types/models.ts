@@ -157,6 +157,8 @@ export interface Settings {
   ai: AISettings;
 }
 
+export type AppSettings = Settings;
+
 export interface ValueStreamParameters {
   customerFilter: string;
   workItemFilter: string;
