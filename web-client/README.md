@@ -32,53 +32,54 @@ An interactive React ValueStream designed to visualize the flow of value from cu
 4.  **Initial Setup & SSH Tunneling:**
     - Open `http://localhost:5173`.
     - Go to **Settings** (Sidebar) and configure your **MongoDB URI**.
-    - **SSH Tunneling (Local):** If your MongoDB is behind an SSH bastion, start a SOCKS5 tunnel in a separate terminal:
-      - **Windows:** `powershell ./scripts/start-tunnel.ps1`
-      - **MacOS/Linux:** `bash ./scripts/start-tunnel.sh`
-    - Ensure `SOCKS_PROXY_HOST=127.0.0.1` is set in your `.env` file.
-    - In the application **Settings**, enable the **"Use SOCKS Proxy (from .env)"** checkbox for your connection.
-    - The app will then route that specific MongoDB connection's traffic (including SRV) through the tunnel.
+    - **SSH Tunneling (Local):** If your MongoDB is behind one or more SSH bastions, start SOCKS5 tunnels in a separate terminal:
+      - **Windows:** `.\scripts\start-tunnel.ps1 all` (or `app`, `customer`)
+      - **MacOS/Linux:** `./scripts/start-tunnel.sh all` (or `app`, `customer`)
+    - Ensure `SOCKS_PROXY_HOST=localhost` is set in your `.env` file.
+    - In the application **Settings**, enable the **"Use Proxy"** checkbox and specify the **"Tunnel Name"** (e.g., `app` or `customer`) to match your `.env` prefix.
 
 ### 🐳 Docker Deployment
 
-The application supports three networking variants to ensure it runs in any environment:
+The application supports four networking scenarios to ensure it runs in any environment:
 
-#### Scenario A: Standard (No Tunnel)
-If your MongoDB is directly accessible or you're running it in a container.
-- **Config:** Set `SOCKS_PROXY_HOST=` (empty) in `.env`.
-- **Command:** `docker-compose up`
+#### Scenario A: Local Development (Native Node.js)
+If you are running the app directly on your host machine.
+- **Config:** Set `SOCKS_PROXY_HOST=localhost` in `.env`.
+- **Tunnel:** Start manually on host using `scripts/start-tunnel.ps1 all`.
 
-#### Scenario B: Sidecar (Standard Sidecar) - RECOMMENDED
-The most systematic way to run with an SSH tunnel.
+#### Scenario B: Docker Sidecar (Recommended)
+The sidecar container in `docker-compose.yml` automatically manages one or more SSH tunnels.
 - **Config:** 
-  - Set `SOCKS_PROXY_HOST=ssh-proxy` in `.env`.
-  - Set `COMPOSE_PROFILES=ssh-proxy` in `.env` to enable the sidecar container.
-- **Pre-requisites:** Fill in `SSH_USER`, `SSH_HOST`, and `SSH_KEY_PATH` in `.env`.
-- **Command:** `docker-compose up`. The `ssh-proxy` sidecar handles the tunnel automatically.
+  - Set `SOCKS_PROXY_HOST=ssh-proxy` and `COMPOSE_PROFILES=ssh-proxy` in `.env`.
+  - Provide `[PREFIX]_SSH_USER`, `[PREFIX]_SSH_HOST`, and `[PREFIX]_SSH_KEY_PATH` for each bastion.
+- **Command:** `docker-compose up`. The sidecar starts a tunnel for every `_SSH_HOST` it finds.
 
 #### Scenario C: VPN Workaround (MacOS/Windows)
-Use this if your corporate VPN blocks the Docker VM from making outbound SSH connections, but allows your Mac/PC host to do so.
-1. **Start Tunnel on Host:** 
-   - Windows: `powershell ./scripts/start-tunnel.ps1`
-   - MacOS/Linux: `bash ./scripts/start-tunnel.sh`
-2. **Config:** 
+Use this if your corporate VPN blocks Docker VM outbound SSH, but allows your Host to connect.
+- **Tunnel:** Start manually on host using `scripts/start-tunnel.ps1 all`.
+- **Config:** 
   - Set `SOCKS_PROXY_HOST=host.docker.internal` in `.env`.
-  - Ensure `COMPOSE_PROFILES` is empty or not set in `.env`.
-3. **Command:** `docker-compose up`. The app routes traffic through the tunnel running on your Mac host. The sidecar container will not start.
+  - Ensure `COMPOSE_PROFILES=` is empty.
+
+#### Scenario D: Kubernetes (Sidecar Pattern)
+In K8s, the application and its SSH sidecars share the same Pod network.
+- **Config:** Set `SOCKS_PROXY_HOST=localhost` in your Deployment manifest.
+- **Tunnel:** Each `openssh-client` sidecar container listens on a unique local port (e.g., `1080`, `1081`).
+- **Routing:** Specify the `Tunnel Name` in the UI Settings to route to the correct sidecar.
 
 ### ☸️ Kubernetes Deployment
 
 For enterprise-grade scaling using the **Sidecar Pattern**:
 
-1.  **SSH Sidecar:** 
-    Add a lightweight SSH container (e.g., a custom `alpine` image with `openssh-client`) to your Application Pod.
+1.  **SSH Sidecars:** 
+    Add one or more lightweight SSH containers (e.g., using `alpine`) to your Application Pod.
     ```yaml
-    - name: ssh-proxy
-      image: custom-ssh-proxy # built from alpine with openssh-client
+    - name: ssh-proxy-app
+      image: alpine-ssh-client
       command: ["ssh", "-D", "1080", "-N", "..."]
     ```
 2.  **App Configuration:** 
-    Inject `SOCKS_PROXY_HOST=localhost` and `SOCKS_PROXY_PORT=1080` into the Web Client container. The MongoDB driver will automatically route all traffic (including SRV lookups) through the sidecar.
+    Inject `SOCKS_PROXY_HOST=localhost` and the relevant `[PREFIX]_SOCKS_PORT` variables.
 3.  **Secrets:** 
     Store `ADMIN_SECRET` and SSH Private Keys in K8s Secrets.
 4.  **Persistence:** 
