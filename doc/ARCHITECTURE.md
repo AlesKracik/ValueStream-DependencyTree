@@ -61,7 +61,7 @@ The system supports an optional security layer via the `ADMIN_SECRET` environmen
 The backend fetches raw entities and performs the "heavy lifting":
 -   **Joins:** It joins Work Items with Epics to calculate effort and with Customers to calculate RICE scores.
 -   **Metrics:** It returns a `metrics` object with global maximums (e.g., `maxScore`, `maxRoi`) to ensure consistent visual scaling across all filtered views.
--   **Fiscal Logic:** Sprints are automatically tagged with a fiscal quarter (e.g., `FY2026 Q1`) based on the `fiscal_year_start_month` setting.
+-   **Fiscal Logic:** Sprints are automatically tagged with a fiscal quarter (e.g., `FY2026 Q1`) based on the `general.fiscal_year_start_month` setting.
 
 ### 4. AI & LLM Integration
 The system provides a unified interface for AI generation, supporting multiple providers:

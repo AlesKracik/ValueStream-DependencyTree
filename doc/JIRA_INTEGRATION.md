@@ -17,7 +17,7 @@ sequenceDiagram
     Proxy-->>UI: Raw JSON Data
 ```
 
-All integration endpoints (`/api/jira/issue`, `/api/jira/search`) expect the necessary Jira configuration (`jira_base_url`, `jira_api_token`, etc.) to be passed within the JSON request body. This ensures the proxy remains stateless and can handle requests across different integration environments.
+All integration endpoints (`/api/jira/issue`, `/api/jira/search`) expect the necessary Jira configuration (`base_url`, `api_token`, etc.) to be passed within the `jira` section of the request body. This ensures the proxy remains stateless and can handle requests across different integration environments.
 
 
 ## Data Mapping

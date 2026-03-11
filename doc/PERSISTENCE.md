@@ -29,24 +29,24 @@ Upserts a single document into one of the allowed collections (`customers`, `wor
 Removes a specific document by its unique ID.
 
 #### 4. `POST /api/settings`
-Updates the `settings.json` file. It automatically masks/unmasks sensitive fields (API tokens, URIs) during the round-trip to the UI.
+Updates the `settings.json` file. It automatically masks/unmasks sensitive fields (API tokens, URIs) recursively within the nested structure during the round-trip to the UI.
 
 ### Database Management & Portability
 
 #### 5. `POST /api/mongo/test`
-Validates connectivity to a MongoDB URI. Returns whether the targeted database exists and provides descriptive feedback based on the "Create if not exists" safety rail.
+Validates connectivity to a MongoDB cluster. It accepts a hierarchical configuration object and connection role (`app` or `customer`). Returns whether the targeted database exists and provides descriptive feedback.
 
 #### 6. `POST /api/mongo/databases`
-Lists all databases on a cluster to assist with UI-based discovery.
+Lists all databases on a cluster to assist with UI-based discovery. Uses the same hierarchical configuration as the test endpoint.
 
 #### 7. `POST /api/mongo/export`
-Aggregates the entire database state into a single portable JSON object.
+Aggregates the entire application database state into a single portable JSON object, including the current settings.
 
 #### 8. `POST /api/mongo/import`
-Wipes the current database and re-populates it from a provided JSON export.
+Wipes the current application database and re-populates it from a provided JSON export.
 
 #### 9. `POST /api/mongo/query`
-A pass-through interface for executing raw MongoDB queries or aggregation pipelines. primarily used for fetching "Customer Custom Data" from secondary clusters.
+A pass-through interface for executing raw MongoDB queries or aggregation pipelines. Primarily used for fetching "Customer Custom Data" from secondary clusters. It expects the nested `persistence.mongo.customer` configuration.
 
 ### Security & Integration
 
@@ -61,68 +61,48 @@ A unified gateway for multiple AI providers (OpenAI, Gemini, Anthropic, Augment)
 
 ## MongoDB Authentication & Safety
 
-The application supports three primary authentication methods for MongoDB, configurable via the **Settings** (⚙️) menu. It also includes a "Safety Rail" to prevent accidental database creation due to typos.
+The application supports three primary authentication methods for MongoDB, configurable via the **Settings** (⚙️) menu. The configuration is now organized into two distinct roles: **Application** (primary storage) and **Customer** (external data).
 
-### Connection Safety Features
-To ensure data integrity and prevent "ghost" databases:
-1.  **Database Discovery:** After entering a URI and clicking "Test Connection", the UI provides a searchable dropdown of all existing databases on that cluster.
-2.  **Explicit Creation Consent:** A **"Create database if it doesn't exist"** checkbox must be enabled to target a new database name.
-3.  **Strict Enforcement:** If this safety checkbox is disabled, the backend will refuse to connect or perform any operations (Load, Save, Export) if the specified database does not already exist.
+### Hierarchical Settings Structure
+Configuration is stored in `web-client/settings.json` with the following top-level structure:
+- `general`: Time and project-wide defaults.
+- `persistence`: Database connections (Application vs. Customer).
+- `jira`: Integration parameters.
+- `ai`: LLM provider and API keys.
 
 ### 1. SCRAM (Standard)
-... (rest of the file)
 The default authentication method using URI-based credentials.
-- **Config:** Provide a full URI including username and password.
+- **Config:** Set in `persistence.mongo.[app|customer].uri`.
 - **Example:** `mongodb://user:pass@localhost:27017`
 
 ### 2. AWS IAM
-Allows connection to Amazon DocumentDB or MongoDB Atlas using AWS Identity and Access Management.
-- **Config:** Set method to "AWS IAM" and provide:
-    - `Access Key ID`
-    - `Secret Access Key`
-    - `Session Token` (Optional)
+Allows connection using AWS Identity and Access Management. Supports both static keys and Assume Role.
+- **Config:** Nested under `persistence.mongo.[role].auth`:
+    - `method`: "aws"
+    - `aws_auth_type`: "static" or "role"
+    - `aws_access_key`, `aws_secret_key`, `aws_session_token`
+    - `aws_role_arn`, `aws_external_id`
 - **Driver Logic:** Uses `MONGODB-AWS` mechanism.
-- **SOCKS Compatibility:** When a SOCKS proxy is active, the application automatically sets the `NO_PROXY` environment variable for AWS endpoints (`sts.amazonaws.com`, `amazonaws.com`). This ensures the driver's native AWS provider bypasses the tunnel for authentication calls, avoiding bastion restrictions while still using the tunnel for the database traffic itself.
+- **SSO Support:** Includes integrated buttons to trigger `aws sso login` and fetch temporary credentials directly into the application settings, supporting both local profiles and manual SSO metadata entry.
 
 ### 3. OIDC (OpenID Connect)
-Enables authentication via external identity providers like Azure AD, Okta, or Ping.
-- **Config:** Set method to "OIDC" and provide:
-    - `Access Token`: The bearer token obtained from your identity provider.
-- **Driver Logic:** Uses `MONGODB-OIDC` mechanism.
+Enables authentication via external identity providers.
+- **Config:** Set in `persistence.mongo.[role].auth`:
+    - `method`: "oidc"
+    - `oidc_token`: The bearer token.
 
 ### 4. SSH Tunneling (SOCKS5)
-For databases behind an SSH bastion (common with MongoDB Atlas + Private Link), the application supports SOCKS5 dynamic forwarding provided by the **Infrastructure (Sidecar/Proxy)**.
-
-- **Local Dev:** Use the provided scripts (`scripts/start-tunnel.ps1`) to start a tunnel on your host.
-- **Docker/K8s:** Use a dedicated sidecar container (e.g., a custom `alpine` image with `openssh-client`) in the same network/pod.
-- **Application Logic:** The app is configured via `SOCKS_PROXY_HOST` and `SOCKS_PROXY_PORT`, but the proxy is only used if the **"Use SOCKS Proxy (from .env)"** toggle is enabled for a specific connection in the Settings UI. This allows for mixed connection types.
-
-```mermaid
-graph TD
-    UI[Settings UI] -->|Select Method| Auth{Auth Logic}
-    Auth -->|SCRAM| SCRAM[URI + Options]
-    Auth -->|AWS| AWS[MONGODB-AWS + IAM Keys]
-    Auth -->|OIDC| OIDC[MONGODB-OIDC + Token]
-    SCRAM --> Driver[MongoClient]
-    AWS --> Driver
-    OIDC --> Driver
-    Driver --> ProxyToggle{Use Proxy Toggle enabled?}
-    ProxyToggle -->|Yes| EnvCheck{SOCKS_PROXY_HOST set?}
-    EnvCheck -->|Yes| SOCKS[External SOCKS Proxy/Sidecar]
-    ProxyToggle -->|No| Direct[Direct Connection]
-    EnvCheck -->|No| Direct
-    SOCKS --> DB[(MongoDB)]
-    Direct --> DB
-```
+Supports SOCKS5 dynamic forwarding for databases behind bastions.
+- **Config:** Each role can independently opt-in via `use_proxy` and specify a `tunnel_name` (matches `[NAME]_SOCKS_PORT` environment variables).
 
 ## Migration System
-The system includes an automatic migration handler inside the `/api/loadData` endpoint to ensure data consistency across versions.
+The system includes an automatic migration handler to ensure data consistency.
 
-### Example: Sprint Quarter Migration
-When the data model was extended to include persisted `quarter` attributes on sprints, a migration was added to:
-1. Identify sprints missing the `quarter` field.
-2. Recompute the quarter using the `fiscal_year_start_month` setting.
-3. Update the MongoDB collection retroactively.
+### Hierarchical Settings Migration
+When the application loads, the backend automatically detects if `settings.json` is using the old flat structure. If so, it migrates all keys to the new nested format (`general`, `persistence`, `jira`, `ai`) and saves the file back to disk.
+
+### Sprint Quarter Migration
+... (rest of the section)
 
 ```mermaid
 graph TD

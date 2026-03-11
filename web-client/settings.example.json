@@ -1,22 +1,40 @@
 {
-  "jira_base_url": "https://your-domain.atlassian.net",
-  "jira_api_version": "3",
-  "jira_api_token": "YOUR_JIRA_PAT",
-  "mongo_uri": "mongodb://localhost:27017",
-  "mongo_db": "valueStream",
-  "mongo_auth_method": "scram",
-  "mongo_oidc_token": "",
-  "customer_mongo_uri": "mongodb://localhost:27017",
-  "customer_mongo_db": "customers",
-  "customer_mongo_auth_method": "scram",
-  "customer_mongo_aws_auth_type": "static",
-  "customer_mongo_oidc_token": "",
-  "fiscal_year_start_month": 2,
-  "sprint_duration_days": 14,
-  "customer_jql_new": "labels = '{{CUSTOMER_ID}}' AND status = 'New'",
-  "customer_jql_in_progress": "labels = '{{CUSTOMER_ID}}' AND status = 'In Progress'",
-  "customer_jql_noop": "labels = '{{CUSTOMER_ID}}' AND status = 'Closed'",
-  "llm_provider": "openai",
-  "llm_api_key": "YOUR_LLM_API_KEY",
-  "llm_model": "gpt-4-turbo"
+  "general": {
+    "fiscal_year_start_month": 1,
+    "sprint_duration_days": 14
+  },
+  "persistence": {
+    "mongo": {
+      "app": {
+        "uri": "mongodb://localhost:27017",
+        "db": "valueStream",
+        "use_proxy": false,
+        "tunnel_name": "app",
+        "auth": {
+          "method": "scram"
+        }
+      },
+      "customer": {
+        "uri": "",
+        "db": "",
+        "use_proxy": false,
+        "tunnel_name": "customer",
+        "collection": "Customers",
+        "custom_query": "",
+        "auth": {
+          "method": "scram"
+        }
+      }
+    }
+  },
+  "jira": {
+    "base_url": "",
+    "api_version": "3",
+    "api_token": ""
+  },
+  "ai": {
+    "provider": "openai",
+    "api_key": "",
+    "model": "gpt-4-turbo"
+  }
 }
