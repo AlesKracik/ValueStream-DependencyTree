@@ -18,6 +18,18 @@ interface SettingsPageProps {
   addEpic: (epic: Epic) => void;
 }
 
+const DEFAULT_SETTINGS: Settings = {
+  general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
+  persistence: {
+    mongo: {
+      app: { uri: '', db: '', use_proxy: false, tunnel_name: 'app', auth: { method: 'scram' } },
+      customer: { uri: '', db: '', use_proxy: false, tunnel_name: 'customer', collection: 'Customers', custom_query: '', auth: { method: 'scram' } }
+    }
+  },
+  jira: { base_url: '', api_version: '3' },
+  ai: { provider: 'openai' }
+};
+
 export const SettingsPage: React.FC<SettingsPageProps> = ({
   settings,
   onUpdateSettings,
@@ -34,7 +46,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
   const { showConfirm } = useValueStreamContext();
 
-  const [localFormData, setFormData] = useState<Settings>(settings);
+  const [localFormData, setFormData] = useState<Settings>(settings || DEFAULT_SETTINGS);
   const [isTesting, setIsTesting] = useState(false);
   const [availableDbs, setAvailableDbs] = useState<string[]>([]);
   const [mongoTestResult, setMongoTestResult] = useState<{ success: boolean; message: string; exists?: boolean } | null>(null);
@@ -52,6 +64,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [ssoMessage, setSSOMessage] = useState<{ success: boolean; message: string } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Deep merge helper to ensure we don't lose structure
+  const deepMerge = (target: any, source: any) => {
+    if (!source) return target;
+    const result = { ...target };
+    Object.keys(source).forEach(key => {
+      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+        result[key] = deepMerge(target[key] || {}, source[key]);
+      } else if (source[key] !== undefined) {
+        result[key] = source[key];
+      }
+    });
+    return result;
+  };
 
   const updateFormData = (path: string, value: any) => {
     setFormData(prev => {
@@ -153,7 +179,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
   useEffect(() => {
     if (settings) {
-      setFormData(settings);
+      setFormData(prev => deepMerge(prev, settings));
     }
   }, [settings]);
 
@@ -628,15 +654,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                           onChange={(e) => {
                               const val = e.target.value as any;
                               updateFormData('persistence.mongo.app.auth.method', val);
+                              const newApp = { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, method: val } };
                               onUpdateSettings({ 
                                 persistence: { 
                                     ...localFormData.persistence, 
                                     mongo: { 
                                         ...localFormData.persistence.mongo, 
-                                        app: { 
-                                            ...localFormData.persistence.mongo.app, 
-                                            auth: { ...localFormData.persistence.mongo.app.auth, method: val } 
-                                        } 
+                                        app: newApp
                                     } 
                                 } 
                               });
@@ -655,7 +679,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                           placeholder={localFormData.persistence.mongo.app.auth.method === 'scram' ? "mongodb://username:password@localhost:27017" : "mongodb://localhost:27017"}
                           value={localFormData.persistence.mongo.app.uri || ""}
                           onChange={(e) => updateFormData('persistence.mongo.app.uri', e.target.value)}
-                          onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                          onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, uri: localFormData.persistence.mongo.app.uri } } } })}
                         />
                       </label>
 
@@ -667,12 +691,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                             onChange={(e) => {
                               const val = e.target.checked;
                               updateFormData('persistence.mongo.app.use_proxy', val);
+                              const newApp = { ...localFormData.persistence.mongo.app, use_proxy: val };
                               onUpdateSettings({ 
                                 persistence: { 
                                     ...localFormData.persistence, 
                                     mongo: { 
                                         ...localFormData.persistence.mongo, 
-                                        app: { ...localFormData.persistence.mongo.app, use_proxy: val } 
+                                        app: newApp
                                     } 
                                 } 
                               });
@@ -689,7 +714,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               placeholder="app"
                               value={localFormData.persistence.mongo.app.tunnel_name || ""}
                               onChange={(e) => updateFormData('persistence.mongo.app.tunnel_name', e.target.value)}
-                              onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                              onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, tunnel_name: localFormData.persistence.mongo.app.tunnel_name } } } })}
                               style={{ width: '120px', padding: '4px 8px' }}
                             />
                           </label>
@@ -706,7 +731,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               list="mongo-dbs"
                               value={localFormData.persistence.mongo.app.db || ""}
                               onChange={(e) => updateFormData('persistence.mongo.app.db', e.target.value)}
-                              onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                              onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, db: localFormData.persistence.mongo.app.db } } } })}
                               style={{
                                 borderColor: mongoTestResult?.success && !mongoTestResult.exists ? '#f59e0b' : undefined
                               }}
@@ -742,15 +767,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               onChange={(e) => {
                                   const val = e.target.value as any;
                                   updateFormData('persistence.mongo.app.auth.aws_auth_type', val);
+                                  const newAuth = { ...localFormData.persistence.mongo.app.auth, aws_auth_type: val };
+                                  const newApp = { ...localFormData.persistence.mongo.app, auth: newAuth };
                                   onUpdateSettings({ 
                                     persistence: { 
                                         ...localFormData.persistence, 
                                         mongo: { 
                                             ...localFormData.persistence.mongo, 
-                                            app: { 
-                                                ...localFormData.persistence.mongo.app, 
-                                                auth: { ...localFormData.persistence.mongo.app.auth, aws_auth_type: val } 
-                                            } 
+                                            app: newApp
                                         } 
                                     } 
                                   });
@@ -769,7 +793,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     placeholder="default"
                                     value={localFormData.persistence.mongo.app.auth.aws_profile || ""}
                                     onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_profile', e.target.value)}
-                                    onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_profile: localFormData.persistence.mongo.app.auth.aws_profile } } } } })}
                                 />
                             </label>
 
@@ -784,7 +808,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                 placeholder="https://..."
                                                 value={localFormData.persistence.mongo.app.auth.aws_sso_start_url || ""}
                                                 onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_sso_start_url', e.target.value)}
-                                                onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                                onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_sso_start_url: localFormData.persistence.mongo.app.auth.aws_sso_start_url } } } } })}
                                             />
                                         </label>
                                         <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
@@ -794,7 +818,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                 placeholder="us-east-1"
                                                 value={localFormData.persistence.mongo.app.auth.aws_sso_region || ""}
                                                 onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_sso_region', e.target.value)}
-                                                onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                                onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_sso_region: localFormData.persistence.mongo.app.auth.aws_sso_region } } } } })}
                                             />
                                         </label>
                                         <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
@@ -804,7 +828,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                 placeholder="123456789012"
                                                 value={localFormData.persistence.mongo.app.auth.aws_sso_account_id || ""}
                                                 onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_sso_account_id', e.target.value)}
-                                                onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                                onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_sso_account_id: localFormData.persistence.mongo.app.auth.aws_sso_account_id } } } } })}
                                             />
                                         </label>
                                         <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
@@ -814,7 +838,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                 placeholder="AWSReadOnlyAccess"
                                                 value={localFormData.persistence.mongo.app.auth.aws_sso_role_name || ""}
                                                 onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_sso_role_name', e.target.value)}
-                                                onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                                onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_sso_role_name: localFormData.persistence.mongo.app.auth.aws_sso_role_name } } } } })}
                                             />
                                         </label>
                                     </div>
@@ -856,7 +880,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   type="text"
                                   value={localFormData.persistence.mongo.app.auth.aws_access_key || ""}
                                   onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_access_key', e.target.value)}
-                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_access_key: localFormData.persistence.mongo.app.auth.aws_access_key } } } } })}
                                 />
                               </label>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
@@ -865,7 +889,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   type="password"
                                   value={localFormData.persistence.mongo.app.auth.aws_secret_key || ""}
                                   onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_secret_key', e.target.value)}
-                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_secret_key: localFormData.persistence.mongo.app.auth.aws_secret_key } } } } })}
                                 />
                               </label>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
@@ -874,7 +898,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   type="password"
                                   value={localFormData.persistence.mongo.app.auth.aws_session_token || ""}
                                   onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_session_token', e.target.value)}
-                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_session_token: localFormData.persistence.mongo.app.auth.aws_session_token } } } } })}
                                 />
                               </label>
                             </>
@@ -887,7 +911,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   placeholder="arn:aws:iam::123456789012:role/MyRole"
                                   value={localFormData.persistence.mongo.app.auth.aws_role_arn || ""}
                                   onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_role_arn', e.target.value)}
-                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_role_arn: localFormData.persistence.mongo.app.auth.aws_role_arn } } } } })}
                                 />
                               </label>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
@@ -896,7 +920,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   type="text"
                                   value={localFormData.persistence.mongo.app.auth.aws_external_id || ""}
                                   onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_external_id', e.target.value)}
-                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_external_id: localFormData.persistence.mongo.app.auth.aws_external_id } } } } })}
                                 />
                               </label>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
@@ -906,7 +930,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   placeholder="ValueStreamSession"
                                   value={localFormData.persistence.mongo.app.auth.aws_role_session_name || ""}
                                   onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_role_session_name', e.target.value)}
-                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_role_session_name: localFormData.persistence.mongo.app.auth.aws_role_session_name } } } } })}
                                 />
                               </label>
                             </>
@@ -924,7 +948,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               placeholder="eyJhbG..."
                               value={localFormData.persistence.mongo.app.auth.oidc_token || ""}
                               onChange={(e) => updateFormData('persistence.mongo.app.auth.oidc_token', e.target.value)}
-                              onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                              onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, oidc_token: localFormData.persistence.mongo.app.auth.oidc_token } } } } })}
                             />
                           </label>
                         </div>
@@ -1001,15 +1025,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                           onChange={(e) => {
                               const val = e.target.value as any;
                               updateFormData('persistence.mongo.customer.auth.method', val);
+                              const newCustomer = { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, method: val } };
                               onUpdateSettings({ 
                                 persistence: { 
                                     ...localFormData.persistence, 
                                     mongo: { 
                                         ...localFormData.persistence.mongo, 
-                                        customer: { 
-                                            ...localFormData.persistence.mongo.customer, 
-                                            auth: { ...localFormData.persistence.mongo.customer.auth, method: val } 
-                                        } 
+                                        customer: newCustomer
                                     } 
                                 } 
                               });
@@ -1028,7 +1050,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                           placeholder={localFormData.persistence.mongo.customer.auth.method === 'scram' ? "mongodb://username:password@localhost:27017" : "mongodb://localhost:27017"}
                           value={localFormData.persistence.mongo.customer.uri || ""}
                           onChange={(e) => updateFormData('persistence.mongo.customer.uri', e.target.value)}
-                          onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                          onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, uri: localFormData.persistence.mongo.customer.uri } } } })}
                         />
                       </label>
 
@@ -1040,12 +1062,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                             onChange={(e) => {
                               const val = e.target.checked;
                               updateFormData('persistence.mongo.customer.use_proxy', val);
+                              const newCustomer = { ...localFormData.persistence.mongo.customer, use_proxy: val };
                               onUpdateSettings({ 
                                 persistence: { 
                                     ...localFormData.persistence, 
                                     mongo: { 
                                         ...localFormData.persistence.mongo, 
-                                        customer: { ...localFormData.persistence.mongo.customer, use_proxy: val } 
+                                        customer: newCustomer
                                     } 
                                 } 
                               });
@@ -1062,7 +1085,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               placeholder="customer"
                               value={localFormData.persistence.mongo.customer.tunnel_name || ""}
                               onChange={(e) => updateFormData('persistence.mongo.customer.tunnel_name', e.target.value)}
-                              onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                              onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, tunnel_name: localFormData.persistence.mongo.customer.tunnel_name } } } })}
                               style={{ width: '120px', padding: '4px 8px' }}
                             />
                           </label>
@@ -1079,7 +1102,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               list="customer-mongo-dbs"
                               value={localFormData.persistence.mongo.customer.db || ""}
                               onChange={(e) => updateFormData('persistence.mongo.customer.db', e.target.value)}
-                              onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                              onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, db: localFormData.persistence.mongo.customer.db } } } })}
                             />
                             <datalist id="customer-mongo-dbs">
                               {availableCustomerDbs.map(db => <option key={db} value={db} />)}
@@ -1108,7 +1131,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                           placeholder="Customers"
                           value={localFormData.persistence.mongo.customer.collection || ""}
                           onChange={(e) => updateFormData('persistence.mongo.customer.collection', e.target.value)}
-                          onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                          onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, collection: localFormData.persistence.mongo.customer.collection } } } })}
                         />
                       </label>
 
@@ -1123,15 +1146,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               onChange={(e) => {
                                   const val = e.target.value as any;
                                   updateFormData('persistence.mongo.customer.auth.aws_auth_type', val);
+                                  const newAuth = { ...localFormData.persistence.mongo.customer.auth, aws_auth_type: val };
+                                  const newCustomer = { ...localFormData.persistence.mongo.customer, auth: newAuth };
                                   onUpdateSettings({ 
                                     persistence: { 
                                         ...localFormData.persistence, 
                                         mongo: { 
                                             ...localFormData.persistence.mongo, 
-                                            customer: { 
-                                                ...localFormData.persistence.mongo.customer, 
-                                                auth: { ...localFormData.persistence.mongo.customer.auth, aws_auth_type: val } 
-                                            } 
+                                            customer: newCustomer
                                         } 
                                     } 
                                   });
@@ -1150,7 +1172,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     placeholder="default"
                                     value={localFormData.persistence.mongo.customer.auth.aws_profile || ""}
                                     onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_profile', e.target.value)}
-                                    onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_profile: localFormData.persistence.mongo.customer.auth.aws_profile } } } } })}
                                 />
                             </label>
 
@@ -1165,7 +1187,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                 placeholder="https://..."
                                                 value={localFormData.persistence.mongo.customer.auth.aws_sso_start_url || ""}
                                                 onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_sso_start_url', e.target.value)}
-                                                onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                                onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_sso_start_url: localFormData.persistence.mongo.customer.auth.aws_sso_start_url } } } } })}
                                             />
                                         </label>
                                         <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
@@ -1175,7 +1197,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                 placeholder="us-east-1"
                                                 value={localFormData.persistence.mongo.customer.auth.aws_sso_region || ""}
                                                 onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_sso_region', e.target.value)}
-                                                onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                                onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_sso_region: localFormData.persistence.mongo.customer.auth.aws_sso_region } } } } })}
                                             />
                                         </label>
                                         <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
@@ -1185,7 +1207,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                 placeholder="123456789012"
                                                 value={localFormData.persistence.mongo.customer.auth.aws_sso_account_id || ""}
                                                 onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_sso_account_id', e.target.value)}
-                                                onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                                onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_sso_account_id: localFormData.persistence.mongo.customer.auth.aws_sso_account_id } } } } })}
                                             />
                                         </label>
                                         <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
@@ -1195,7 +1217,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                 placeholder="AWSReadOnlyAccess"
                                                 value={localFormData.persistence.mongo.customer.auth.aws_sso_role_name || ""}
                                                 onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_sso_role_name', e.target.value)}
-                                                onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                                onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_sso_role_name: localFormData.persistence.mongo.customer.auth.aws_sso_role_name } } } } })}
                                             />
                                         </label>
                                     </div>
@@ -1237,7 +1259,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   type="text"
                                   value={localFormData.persistence.mongo.customer.auth.aws_access_key || ""}
                                   onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_access_key', e.target.value)}
-                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_access_key: localFormData.persistence.mongo.customer.auth.aws_access_key } } } } })}
                                 />
                               </label>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
@@ -1246,7 +1268,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   type="password"
                                   value={localFormData.persistence.mongo.customer.auth.aws_secret_key || ""}
                                   onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_secret_key', e.target.value)}
-                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_secret_key: localFormData.persistence.mongo.customer.auth.aws_secret_key } } } } })}
                                 />
                               </label>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
@@ -1255,7 +1277,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   type="password"
                                   value={localFormData.persistence.mongo.customer.auth.aws_session_token || ""}
                                   onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_session_token', e.target.value)}
-                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_session_token: localFormData.persistence.mongo.customer.auth.aws_session_token } } } } })}
                                 />
                               </label>
                             </>
@@ -1268,7 +1290,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   placeholder="arn:aws:iam::123456789012:role/MyRole"
                                   value={localFormData.persistence.mongo.customer.auth.aws_role_arn || ""}
                                   onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_role_arn', e.target.value)}
-                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_role_arn: localFormData.persistence.mongo.customer.auth.aws_role_arn } } } } })}
                                 />
                               </label>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
@@ -1277,7 +1299,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   type="text"
                                   value={localFormData.persistence.mongo.customer.auth.aws_external_id || ""}
                                   onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_external_id', e.target.value)}
-                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_external_id: localFormData.persistence.mongo.customer.auth.aws_external_id } } } } })}
                                 />
                               </label>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
@@ -1287,7 +1309,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   placeholder="ValueStreamSession"
                                   value={localFormData.persistence.mongo.customer.auth.aws_role_session_name || ""}
                                   onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_role_session_name', e.target.value)}
-                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_role_session_name: localFormData.persistence.mongo.customer.auth.aws_role_session_name } } } } })}
                                 />
                               </label>
                             </>
@@ -1305,7 +1327,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               placeholder="eyJhbG..."
                               value={localFormData.persistence.mongo.customer.auth.oidc_token || ""}
                               onChange={(e) => updateFormData('persistence.mongo.customer.auth.oidc_token', e.target.value)}
-                              onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                              onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, oidc_token: localFormData.persistence.mongo.customer.auth.oidc_token } } } } })}
                             />
                           </label>
                         </div>
@@ -1353,7 +1375,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                           placeholder='[{"$match": {"customer_id": "{{CUSTOMER_ID}}"}}, {"$lookup": {"from": "Clusters", "localField": "customer_id", "foreignField": "customer_id", "as": "clusters"}}, {"$project": {"customer_id": 1, "status": 1, "clusters": 1}}]'
                           value={localFormData.persistence.mongo.customer.custom_query || ""}
                           onChange={(e) => updateFormData('persistence.mongo.customer.custom_query', e.target.value)}
-                          onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
+                          onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, custom_query: localFormData.persistence.mongo.customer.custom_query } } } })}
                           rows={12}
                           style={{ fontFamily: 'monospace', fontSize: '12px', resize: 'vertical' }}
                         />
@@ -1430,7 +1452,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       placeholder="https://yourdomain.atlassian.net"
                       value={localFormData.jira.base_url || ""}
                       onChange={(e) => updateFormData('jira.base_url', e.target.value)}
-                      onBlur={() => onUpdateSettings({ jira: localFormData.jira })}
+                      onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, base_url: localFormData.jira.base_url } })}
                     />
                   </label>
 
@@ -1456,7 +1478,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       placeholder="Your Jira PAT"
                       value={localFormData.jira.api_token || ""}
                       onChange={(e) => updateFormData('jira.api_token', e.target.value)}
-                      onBlur={() => onUpdateSettings({ jira: localFormData.jira })}
+                      onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, api_token: localFormData.jira.api_token } })}
                     />
                   </label>
 
@@ -1551,7 +1573,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'New'"
                       value={localFormData.jira.customer_jql_new || ""}
                       onChange={(e) => updateFormData('jira.customer_jql_new', e.target.value)}
-                      onBlur={() => onUpdateSettings({ jira: localFormData.jira })}
+                      onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, customer_jql_new: localFormData.jira.customer_jql_new } })}
                     />
                   </label>
                   <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
@@ -1561,7 +1583,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'In Progress'"
                       value={localFormData.jira.customer_jql_in_progress || ""}
                       onChange={(e) => updateFormData('jira.customer_jql_in_progress', e.target.value)}
-                      onBlur={() => onUpdateSettings({ jira: localFormData.jira })}
+                      onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, customer_jql_in_progress: localFormData.jira.customer_jql_in_progress } })}
                     />
                   </label>
                   <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
@@ -1571,7 +1593,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'Blocked'"
                       value={localFormData.jira.customer_jql_noop || ""}
                       onChange={(e) => updateFormData('jira.customer_jql_noop', e.target.value)}
-                      onBlur={() => onUpdateSettings({ jira: localFormData.jira })}
+                      onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, customer_jql_noop: localFormData.jira.customer_jql_noop } })}
                     />
                   </label>
                 </>
@@ -1587,7 +1609,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                 Fiscal Year Start Month:
                 <select
-                  value={localFormData.general.fiscal_year_start_month}
+                  value={localFormData.general?.fiscal_year_start_month || 1}
                   onChange={(e) => {
                       const val = parseInt(e.target.value);
                       updateFormData('general.fiscal_year_start_month', val);
@@ -1618,7 +1640,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   type="number"
                   min="1"
                   max="365"
-                  value={localFormData.general.sprint_duration_days}
+                  value={localFormData.general?.sprint_duration_days || 14}
                   onChange={(e) => {
                       const val = parseInt(e.target.value);
                       updateFormData('general.sprint_duration_days', val);
@@ -1634,7 +1656,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                 LLM Provider:
                 <select
-                  value={localFormData.ai.provider}
+                  value={localFormData.ai?.provider || 'openai'}
                   onChange={(e) => {
                       const val = e.target.value as any;
                       updateFormData('ai.provider', val);
@@ -1649,25 +1671,25 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               </label>
 
               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
-                {localFormData.ai.provider === 'augment' ? 'Augment Session Auth:' : 'LLM API Key:'}
+                {localFormData.ai?.provider === 'augment' ? 'Augment Session Auth:' : 'LLM API Key:'}
                 <input
                   type="password"
-                  placeholder={localFormData.ai.provider === 'augment' ? "Session token..." : "sk-..."}
-                  value={localFormData.ai.api_key || ""}
+                  placeholder={localFormData.ai?.provider === 'augment' ? "Session token..." : "sk-..."}
+                  value={localFormData.ai?.api_key || ""}
                   onChange={(e) => updateFormData('ai.api_key', e.target.value)}
-                  onBlur={() => onUpdateSettings({ ai: localFormData.ai })}
+                  onBlur={() => onUpdateSettings({ ai: { ...localFormData.ai, api_key: localFormData.ai.api_key } })}
                 />
               </label>
 
-              {localFormData.ai.provider !== 'augment' && (
+              {localFormData.ai?.provider !== 'augment' && (
                 <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                   LLM Model (Optional):
                   <input
                     type="text"
                     placeholder="gpt-4-turbo"
-                    value={localFormData.ai.model || ""}
+                    value={localFormData.ai?.model || ""}
                     onChange={(e) => updateFormData('ai.model', e.target.value)}
-                    onBlur={() => onUpdateSettings({ ai: localFormData.ai })}
+                    onBlur={() => onUpdateSettings({ ai: { ...localFormData.ai, model: localFormData.ai.model } })}
                   />
                 </label>
               )}
