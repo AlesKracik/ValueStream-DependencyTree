@@ -77,29 +77,46 @@ export function getMongoClientCount() {
 }
 
 export interface MongoConfig {
-  [key: string]: any;
+  uri: string;
+  db?: string;
+  use_proxy?: boolean;
+  tunnel_name?: string;
+  auth?: {
+    method?: 'scram' | 'aws' | 'oidc';
+    aws_auth_type?: 'static' | 'env' | 'sso';
+    aws_access_key?: string;
+    aws_secret_key?: string;
+    aws_session_token?: string;
+    aws_role_arn?: string;
+    aws_external_id?: string;
+    aws_role_session_name?: string;
+    aws_profile?: string;
+    aws_sso_start_url?: string;
+    aws_sso_region?: string;
+    aws_sso_account_id?: string;
+    aws_sso_role_name?: string;
+    oidc_token?: string;
+  };
   proxyHost?: string;
   proxyPort?: number;
   tunnels?: Record<string, { host: string, port: number }>;
 }
 
 export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app', checkExists = false) {
-  const prefix = type === 'customer' ? 'customer_mongo_' : 'mongo_';
-
-  const uri = config[prefix + 'uri'];
+  const uri = config.uri;
   if (!uri) throw new Error(`Mongo ${type} URI not provided`);
   
   if (!await isSafeUrl(uri)) {
     throw new Error(`Invalid or unsafe MongoDB ${type} URI`);
   }
   
-  const dbName = config[prefix + 'db'] || (type === 'customer' ? 'customer' : 'valueStream');
-  const authMethod = config[prefix + 'auth_method'] || 'scram';
-  const useProxy = !!config[prefix + 'use_proxy'];
-  const tunnelName = config[prefix + 'tunnel_name'];
+  const dbName = config.db || (type === 'customer' ? 'customer' : 'valueStream');
+  const authMethod = config.auth?.method || 'scram';
+  const useProxy = !!config.use_proxy;
+  const tunnelName = config.tunnel_name;
 
   // Create a cache key for this specific connection
-  const cacheKey = `${type}:${uri}:${dbName}:${authMethod}:${useProxy}:${tunnelName || ''}:${config[prefix + 'aws_access_key'] || ''}`;
+  const cacheKey = `${type}:${uri}:${dbName}:${authMethod}:${useProxy}:${tunnelName || ''}:${config.auth?.aws_access_key || ''}`;
   
   const cached = mongoClients.get(cacheKey);
   if (cached) {
@@ -156,9 +173,9 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
   }
 
   if (authMethod === 'aws') {
-    const ak = config[prefix + 'aws_access_key'];
-    const sk = config[prefix + 'aws_secret_key'];
-    const st = config[prefix + 'aws_session_token'];
+    const ak = config.auth?.aws_access_key;
+    const sk = config.auth?.aws_secret_key;
+    const st = config.auth?.aws_session_token;
     
     if (!ak || !sk) {
       throw new Error(`AWS Access Key and Secret Key are required for AWS IAM authentication on ${type} DB.`);
@@ -197,7 +214,7 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
       AWS_CREDENTIAL_PROVIDER: fromNodeProviderChain()
     };
   } else if (authMethod === 'oidc') {
-    const token = config[prefix + 'oidc_token'];
+    const token = config.auth?.oidc_token;
     if (!token) {
       throw new Error(`Access Token is required for OIDC authentication on ${type} DB.`);
     }

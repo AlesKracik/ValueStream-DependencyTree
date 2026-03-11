@@ -16,10 +16,15 @@ vi.mock('mongodb', () => {
 
   return {
     MongoClient: vi.fn().mockImplementation(function(uri, options) {
+      // @ts-ignore
       this.uri = uri;
+      // @ts-ignore
       this.options = options;
+      // @ts-ignore
       this.connect = mockConnect;
+      // @ts-ignore
       this.db = mockDb;
+      // @ts-ignore
       this.close = mockClose;
     }),
     ServerApiVersion: { v1: '1' }
@@ -39,7 +44,7 @@ describe('mongoServer utility', () => {
   });
 
   it('creates and caches a connection for the app role', async () => {
-    const config = { mongo_uri: 'mongodb://app-host', mongo_db: 'app-db' };
+    const config = { uri: 'mongodb://app-host', db: 'app-db' };
     
     const db1 = await getDb(config, 'app');
     expect(MongoClient).toHaveBeenCalledTimes(1);
@@ -51,23 +56,21 @@ describe('mongoServer utility', () => {
   });
 
   it('distinguishes between app and customer roles with different URIs', async () => {
-    const config = { 
-        mongo_uri: 'mongodb://app-host', 
-        customer_mongo_uri: 'mongodb://customer-host' 
-    };
+    const configApp = { uri: 'mongodb://app-host' };
+    const configCust = { uri: 'mongodb://customer-host' };
     
-    await getDb(config, 'app');
+    await getDb(configApp, 'app');
     expect(getMongoClientCount()).toBe(1);
 
-    await getDb(config, 'customer');
+    await getDb(configCust, 'customer');
     expect(getMongoClientCount()).toBe(2);
     expect(MongoClient).toHaveBeenCalledTimes(2);
   });
 
   it('uses proxy settings when configured', async () => {
     const config = { 
-        mongo_uri: 'mongodb://host', 
-        mongo_use_proxy: true,
+        uri: 'mongodb://host', 
+        use_proxy: true,
         proxyHost: 'proxy-host',
         proxyPort: 1080
     };
@@ -81,11 +84,11 @@ describe('mongoServer utility', () => {
 
   it('uses specific tunnel when tunnel_name is provided', async () => {
     const config = { 
-        mongo_uri: 'mongodb://host', 
-        mongo_use_proxy: true,
+        uri: 'mongodb://host', 
+        use_proxy: true,
         proxyHost: 'default-proxy',
         proxyPort: 1080,
-        mongo_tunnel_name: 'customer',
+        tunnel_name: 'customer',
         tunnels: {
             customer: { host: 'customer-tunnel', port: 1081 },
             app: { host: 'app-tunnel', port: 1082 }
@@ -101,12 +104,14 @@ describe('mongoServer utility', () => {
 
   it('sets environment variables and NO_PROXY for MONGODB-AWS authentication', async () => {
     const config = { 
-        mongo_uri: 'mongodb://host', 
-        mongo_auth_method: 'aws',
-        mongo_aws_access_key: 'AK-test',
-        mongo_aws_secret_key: 'SK-test',
-        mongo_aws_session_token: 'ST-test',
-        mongo_use_proxy: true,
+        uri: 'mongodb://host', 
+        auth: {
+            method: 'aws',
+            aws_access_key: 'AK-test',
+            aws_secret_key: 'SK-test',
+            aws_session_token: 'ST-test'
+        },
+        use_proxy: true,
         proxyHost: 'proxy-host',
         proxyPort: 1080
     };
@@ -117,7 +122,7 @@ describe('mongoServer utility', () => {
     delete process.env.AWS_SESSION_TOKEN;
     delete process.env.NO_PROXY;
 
-    await getDb(config, 'app');
+    await getDb(config as any, 'app');
     
     expect(process.env.AWS_ACCESS_KEY_ID).toBe('AK-test');
     expect(process.env.AWS_SECRET_ACCESS_KEY).toBe('SK-test');
@@ -126,7 +131,7 @@ describe('mongoServer utility', () => {
     expect(process.env.NO_PROXY).toContain('.amazonaws.com');
     
     // Call again to ensure no duplicates are added
-    await getDb(config, 'app');
+    await getDb(config as any, 'app');
     const parts = process.env.NO_PROXY.split(',');
     const stsCount = parts.filter(p => p === 'sts.amazonaws.com').length;
     expect(stsCount).toBe(1);
@@ -158,7 +163,7 @@ describe('mongoServer utility', () => {
   });
 
   it('cleans up idle connections', async () => {
-    const config = { mongo_uri: 'mongodb://host' };
+    const config = { uri: 'mongodb://host' };
     await getDb(config, 'app');
     expect(getMongoClientCount()).toBe(1);
 

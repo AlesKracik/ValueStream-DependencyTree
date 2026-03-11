@@ -151,10 +151,20 @@ export interface AISettings {
 }
 
 export interface Settings {
-  general: GeneralSettings;
-  persistence: PersistenceSettings;
-  jira: JiraSettings;
-  ai: AISettings;
+  general?: GeneralSettings;
+  persistence?: PersistenceSettings;
+  jira?: JiraSettings;
+  ai?: AISettings;
+  
+  // Legacy/Flat property aliases for backward compatibility
+  jira_base_url?: string;
+  jira_api_version?: '2' | '3';
+  jira_api_token?: string;
+  sprint_duration_days?: number;
+  fiscal_year_start_month?: number;
+  customer_jql_new?: string;
+  customer_jql_in_progress?: string;
+  customer_jql_noop?: string;
 }
 
 export type AppSettings = Settings;

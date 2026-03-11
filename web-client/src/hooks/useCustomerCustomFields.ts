@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { authorizedFetch } from '../utils/api';
 import type { Settings, Customer } from '../types/models';
 
-export function useCustomerCustomFields(customerOrCustomers: Customer | Customer[] | null | undefined, settings: Settings | null) {
+export function useCustomerCustomFields(customerOrCustomers: Customer | Customer[] | null | undefined, settings: Settings | null | undefined) {
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);

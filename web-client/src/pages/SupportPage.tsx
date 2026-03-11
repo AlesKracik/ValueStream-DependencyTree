@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect } from 'react';
-import type { ValueStreamData, SupportIssue, Customer } from '../types/models';
+import type { ValueStreamData, Customer } from '../types/models';
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption, ListColumn } from '../components/common/GenericListPage';
 import { useNavigate } from 'react-router-dom';
@@ -21,6 +21,8 @@ interface SupportIssueWithCustomer {
     isJira: boolean;
     linkedJiras?: { key: string; status: string; url: string }[];
     created_at?: string;
+    priority?: string;
+    url?: string;
 }
 
 const STATUS_ORDER: Record<string, number> = {

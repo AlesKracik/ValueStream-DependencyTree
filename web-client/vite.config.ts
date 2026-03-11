@@ -78,6 +78,19 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
             masked[key] = maskSettings(masked[key]);
           }
         });
+
+        // Inject legacy flat properties for UI backward compatibility
+        if (!Array.isArray(masked)) {
+          if (settings.jira?.base_url) masked.jira_base_url = settings.jira.base_url;
+          if (settings.jira?.api_version) masked.jira_api_version = settings.jira.api_version;
+          if (settings.jira?.api_token) masked.jira_api_token = MASK;
+          if (settings.jira?.customer_jql_new) masked.customer_jql_new = settings.jira.customer_jql_new;
+          if (settings.jira?.customer_jql_in_progress) masked.customer_jql_in_progress = settings.jira.customer_jql_in_progress;
+          if (settings.jira?.customer_jql_noop) masked.customer_jql_noop = settings.jira.customer_jql_noop;
+          if (settings.general?.sprint_duration_days) masked.sprint_duration_days = settings.general.sprint_duration_days;
+          if (settings.general?.fiscal_year_start_month) masked.fiscal_year_start_month = settings.general.fiscal_year_start_month;
+        }
+
         return masked;
       }
 
@@ -187,27 +200,9 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
         });
 
         const mongo = config.persistence?.mongo?.[role] || {};
+        
         return {
-            mongo_uri: mongo.uri,
-            mongo_db: mongo.db,
-            mongo_use_proxy: mongo.use_proxy,
-            mongo_tunnel_name: mongo.tunnel_name,
-            mongo_auth_method: mongo.auth?.method,
-            mongo_aws_auth_type: mongo.auth?.aws_auth_type,
-            mongo_aws_access_key: mongo.auth?.aws_access_key,
-            mongo_aws_secret_key: mongo.auth?.aws_secret_key,
-            mongo_aws_session_token: mongo.auth?.aws_session_token,
-            mongo_aws_role_arn: mongo.auth?.aws_role_arn,
-            mongo_aws_external_id: mongo.auth?.aws_external_id,
-            mongo_aws_role_session_name: mongo.auth?.aws_role_session_name,
-            mongo_aws_profile: mongo.auth?.aws_profile,
-            mongo_aws_sso_start_url: mongo.auth?.aws_sso_start_url,
-            mongo_aws_sso_region: mongo.auth?.aws_sso_region,
-            mongo_aws_sso_account_id: mongo.auth?.aws_sso_account_id,
-            mongo_aws_sso_role_name: mongo.auth?.aws_sso_role_name,
-            mongo_oidc_token: mongo.auth?.oidc_token,
-            customer_mongo_collection: mongo.collection,
-            customer_mongo_custom_query: mongo.custom_query,
+            ...mongo,
             proxyHost: process.env.SOCKS_PROXY_HOST || env.VITE_SOCKS_PROXY_HOST || env.SOCKS_PROXY_HOST,
             proxyPort: parseInt(process.env.SOCKS_PROXY_PORT || env.VITE_SOCKS_PROXY_PORT || env.SOCKS_PROXY_PORT || '1080'),
             tunnels

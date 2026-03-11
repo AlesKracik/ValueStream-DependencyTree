@@ -898,13 +898,34 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                         borderRadius: '4px',
                                         border: `1px solid ${ssoMessage.success ? 'rgba(52, 211, 153, 0.2)' : 'rgba(248, 113, 113, 0.2)'}`
                                     }}>
-                                        {ssoMessage.message.split(/(https?:\/\/[^\s]+)/g).map((part, i) => 
-                                            part.startsWith('http') ? (
-                                                <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', textDecoration: 'underline' }}>
-                                                    {part}
-                                                </a>
-                                            ) : part
-                                        )}
+                                        {(() => {
+                                            const codeMatch = ssoMessage.message.match(/([A-Z0-9]{4}-[A-Z0-9]{4})/);
+                                            const code = codeMatch ? codeMatch[1] : null;
+                                            
+                                            return ssoMessage.message.split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
+                                                if (part.startsWith('http')) {
+                                                    let url = part.replace(/[.,]$/, '');
+                                                    const finalUrl = (code && url.includes('device.sso')) ? `${url}?user_code=${code}` : url;
+                                                    return (
+                                                        <a key={i} href={finalUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', textDecoration: 'underline', fontWeight: 'bold' }}>
+                                                            {part}
+                                                        </a>
+                                                    );
+                                                }
+                                                // Linkify the code too if we found it
+                                                if (code && part.includes(code)) {
+                                                    const parts = part.split(code);
+                                                    return (
+                                                        <React.Fragment key={i}>
+                                                            {parts[0]}
+                                                            <span style={{ color: '#f59e0b', fontWeight: 'bold', padding: '0 4px', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '2px' }}>{code}</span>
+                                                            {parts[1]}
+                                                        </React.Fragment>
+                                                    );
+                                                }
+                                                return part;
+                                            });
+                                        })()}
                                     </div>
                                 )}
                               </div>
@@ -1293,13 +1314,34 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                         borderRadius: '4px',
                                         border: `1px solid ${ssoMessage.success ? 'rgba(52, 211, 153, 0.2)' : 'rgba(248, 113, 113, 0.2)'}`
                                     }}>
-                                        {ssoMessage.message.split(/(https?:\/\/[^\s]+)/g).map((part, i) => 
-                                            part.startsWith('http') ? (
-                                                <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', textDecoration: 'underline' }}>
-                                                    {part}
-                                                </a>
-                                            ) : part
-                                        )}
+                                        {(() => {
+                                            const codeMatch = ssoMessage.message.match(/([A-Z0-9]{4}-[A-Z0-9]{4})/);
+                                            const code = codeMatch ? codeMatch[1] : null;
+                                            
+                                            return ssoMessage.message.split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
+                                                if (part.startsWith('http')) {
+                                                    let url = part.replace(/[.,]$/, '');
+                                                    const finalUrl = (code && url.includes('device.sso')) ? `${url}?user_code=${code}` : url;
+                                                    return (
+                                                        <a key={i} href={finalUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', textDecoration: 'underline', fontWeight: 'bold' }}>
+                                                            {part}
+                                                        </a>
+                                                    );
+                                                }
+                                                // Linkify the code too if we found it
+                                                if (code && part.includes(code)) {
+                                                    const parts = part.split(code);
+                                                    return (
+                                                        <React.Fragment key={i}>
+                                                            {parts[0]}
+                                                            <span style={{ color: '#f59e0b', fontWeight: 'bold', padding: '0 4px', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '2px' }}>{code}</span>
+                                                            {parts[1]}
+                                                        </React.Fragment>
+                                                    );
+                                                }
+                                                return part;
+                                            });
+                                        })()}
                                     </div>
                                 )}
                               </div>

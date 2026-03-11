@@ -46,7 +46,7 @@ function ValueStreamRouteWrapper({ ValueStreamViewState, setValueStreamViewState
   return (
     <ValueStream
       {...valueStreamState}
-      currentvalueStreamId={id}
+      currentValueStreamId={id}
       viewState={ValueStreamViewState}
       setViewState={setValueStreamViewState}
       onNavigateToCustomer={(id) => navigate(`/customer/${id}`)}

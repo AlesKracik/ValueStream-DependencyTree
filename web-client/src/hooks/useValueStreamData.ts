@@ -20,7 +20,11 @@ const persistEntity = async (collection: string, method: 'POST' | 'DELETE', enti
             }
         }
     } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
         console.error(`Failed to ${method} entity in ${collection}`, e);
+        if (showAlert) {
+            showAlert('Network Error', `Could not connect to server while saving to ${collection}: ${message}`);
+        }
     }
 };
 
@@ -41,7 +45,11 @@ const persistSettings = async (settings: any, showAlert?: (title: string, messag
             }
         }
     } catch (e) {
+        const message = e instanceof Error ? e.message : String(e);
         console.error("Failed to persist settings", e);
+        if (showAlert) {
+            showAlert('Network Error', `Could not connect to server while saving settings: ${message}`);
+        }
     }
 };
 
@@ -90,12 +98,17 @@ export function useValueStreamData(
             const queryString = params.toString();
             const response = await authorizedFetch(`/api/loadData${queryString ? `?${queryString}` : ''}`);
             if (!response.ok) {
-                throw new Error('Failed to fetch data');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || 'Failed to fetch data');
             }
             const json = await response.json();
             setData(json);
         } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
             setError(err as Error);
+            if (showAlert) {
+                showAlert('Load Error', `Failed to load data: ${message}`);
+            }
         } finally {
             setLoading(false);
         }
