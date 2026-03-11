@@ -79,6 +79,26 @@ describe('mongoServer utility', () => {
     }));
   });
 
+  it('uses specific tunnel when tunnel_name is provided', async () => {
+    const config = { 
+        mongo_uri: 'mongodb://host', 
+        mongo_use_proxy: true,
+        proxyHost: 'default-proxy',
+        proxyPort: 1080,
+        mongo_tunnel_name: 'customer',
+        tunnels: {
+            customer: { host: 'customer-tunnel', port: 1081 },
+            app: { host: 'app-tunnel', port: 1082 }
+        }
+    };
+    
+    await getDb(config, 'app');
+    expect(MongoClient).toHaveBeenCalledWith('mongodb://host', expect.objectContaining({
+        proxyHost: 'customer-tunnel',
+        proxyPort: 1081
+    }));
+  });
+
   it('sets environment variables and NO_PROXY for MONGODB-AWS authentication', async () => {
     const config = { 
         mongo_uri: 'mongodb://host', 

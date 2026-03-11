@@ -120,6 +120,7 @@ describe('useCustomerCustomFields', () => {
             customer_mongo_uri: 'mongodb://localhost',
             customer_mongo_custom_query: '[{"$match": {"customer_id": "{{CUSTOMER_ID}}"}}]',
             customer_mongo_use_proxy: true,
+            customer_mongo_tunnel_name: 'test-tunnel',
         };
 
         (authorizedFetch as any).mockResolvedValueOnce({
@@ -134,6 +135,7 @@ describe('useCustomerCustomFields', () => {
             const body = JSON.parse(fetchCall[1].body);
             expect(body.connection_type).toBe('customer');
             expect(body.customer_mongo_use_proxy).toBe(true);
+            expect(body.customer_mongo_tunnel_name).toBe('test-tunnel');
             expect(body.customer_mongo_uri).toBe('mongodb://localhost');
         });
     });

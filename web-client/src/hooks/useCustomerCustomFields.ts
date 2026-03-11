@@ -46,6 +46,7 @@ export function useCustomerCustomFields(customerOrCustomers: Customer | Customer
                         customer_mongo_aws_session_token: settings.customer_mongo_aws_session_token,
                         customer_mongo_oidc_token: settings.customer_mongo_oidc_token,
                         customer_mongo_use_proxy: settings.customer_mongo_use_proxy,
+                        customer_mongo_tunnel_name: settings.customer_mongo_tunnel_name,
                         customer_mongo_collection: settings.customer_mongo_collection,
                         connection_type: 'customer',
                         query: queryStr
