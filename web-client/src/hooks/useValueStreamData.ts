@@ -305,7 +305,13 @@ export function useValueStreamData(
     const updateSettings = (updates: Partial<Settings>) => {
         setData(prev => {
             if (!prev) return prev;
-            const newSettings = { ...prev.settings, ...updates };
+            
+            // Ensure auth methods are explicitly stored if missing
+            const defaults = {
+                mongo_auth_method: prev.settings.mongo_auth_method || 'scram',
+                customer_mongo_auth_method: prev.settings.customer_mongo_auth_method || 'scram'
+            };
+            const newSettings = { ...prev.settings, ...defaults, ...updates };
             
             let newSprints = prev.sprints;
             // If fiscal start month changed, recompute all sprint quarters
@@ -322,6 +328,10 @@ export function useValueStreamData(
             const needsRefresh = (
                 updates.mongo_uri !== undefined || 
                 updates.mongo_db !== undefined ||
+                updates.mongo_auth_method !== undefined ||
+                updates.customer_mongo_uri !== undefined ||
+                updates.customer_mongo_db !== undefined ||
+                updates.customer_mongo_auth_method !== undefined ||
                 updates.jira_base_url !== undefined || 
                 updates.jira_api_token !== undefined
             );

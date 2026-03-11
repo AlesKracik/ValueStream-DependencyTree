@@ -6,6 +6,7 @@
     "mongo_uri": "mongodb://localhost:27017",
     "mongo_db": "valueStream",
     "mongo_auth_method": "scram",
+    "customer_mongo_auth_method": "scram",
     "customer_jql_new": "labels = '{{CUSTOMER_ID}}' AND status = 'New'",
     "customer_jql_in_progress": "labels = '{{CUSTOMER_ID}}' AND status = 'In Progress'",
     "customer_jql_noop": "labels = '{{CUSTOMER_ID}}' AND status = 'Closed'",
