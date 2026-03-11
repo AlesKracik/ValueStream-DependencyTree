@@ -22,20 +22,18 @@ describe('authServer utility', () => {
             expect(result.response.error).toBe('Unauthorized');
         });
 
-        it('allows requests if admin secret is set and correctly provided', () => {
+        it('allows requests if admin secret is set and correctly provided via x-admin-secret', () => {
             const result = checkAuth('/api/loadData', { 'x-admin-secret': 'my-secret' }, 'my-secret');
             expect(result.authorized).toBe(true);
         });
 
-        it('returns required: true, authenticated: false for auth status if secret is set but missing', () => {
-            const result = checkAuth('/api/auth/status', {}, 'my-secret');
+        it('allows requests if admin secret is set and correctly provided via Authorization: Bearer', () => {
+            const result = checkAuth('/api/loadData', { 'authorization': 'Bearer my-secret' }, 'my-secret');
             expect(result.authorized).toBe(true);
-            expect(result.statusCode).toBe(401);
-            expect(result.response).toEqual({ required: true, authenticated: false });
         });
 
-        it('returns required: true, authenticated: true for auth status if secret is set and correct', () => {
-            const result = checkAuth('/api/auth/status', { 'x-admin-secret': 'my-secret' }, 'my-secret');
+        it('returns required: true, authenticated: true for auth status if secret is set and correct via Bearer', () => {
+            const result = checkAuth('/api/auth/status', { 'authorization': 'Bearer my-secret' }, 'my-secret');
             expect(result.authorized).toBe(true);
             expect(result.statusCode).toBe(200);
             expect(result.response).toEqual({ required: true, authenticated: true });

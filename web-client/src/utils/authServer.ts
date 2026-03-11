@@ -14,7 +14,14 @@ export function checkAuth(
     adminSecret: string | undefined
 ): { authorized: boolean; response?: any; statusCode?: number } {
     const isAuthRequired = !!adminSecret;
-    const providedSecret = headers['x-admin-secret'] as string | undefined;
+    
+    // Support both header formats
+    let providedSecret = headers['x-admin-secret'] as string | undefined;
+    const authHeader = headers['authorization'] as string | undefined;
+    
+    if (!providedSecret && authHeader?.startsWith('Bearer ')) {
+        providedSecret = authHeader.substring(7);
+    }
 
     // Special case for auth status endpoint
     if (url?.startsWith('/api/auth/status')) {
