@@ -45,7 +45,7 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
   name: 'persistence-plugin',
   configureServer(server) {
     server.middlewares.use(async (req, res, next) => {
-      const ADMIN_SECRET = process.env.ADMIN_SECRET || env.VITE_ADMIN_SECRET;
+      const ADMIN_SECRET = process.env.ADMIN_SECRET || env.ADMIN_SECRET || env.VITE_ADMIN_SECRET;
       
       const SENSITIVE_FIELDS = [
         'api_token', 
