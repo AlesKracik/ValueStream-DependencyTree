@@ -110,7 +110,7 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
     throw new Error(`Invalid or unsafe MongoDB ${type} URI`);
   }
   
-  const dbName = config.db || (type === 'customer' ? 'customer' : 'valueStream');
+  const dbName = config.db || (type === 'customer' ? 'customers' : 'valueStream');
   const authMethod = config.auth?.method || 'scram';
   const useProxy = !!config.use_proxy;
   const tunnelName = config.tunnel_name;

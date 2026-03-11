@@ -143,7 +143,7 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
               },
               customer: {
                 uri: settings.customer_mongo_uri || '',
-                db: settings.customer_mongo_db || '',
+                db: settings.customer_mongo_db || 'customers',
                 use_proxy: settings.customer_mongo_use_proxy || false,
                 tunnel_name: settings.customer_mongo_tunnel_name || 'customer',
                 collection: settings.customer_mongo_collection || 'Customers',
@@ -399,13 +399,21 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
           const rawConfig = JSON.parse(body);
           const settingsPath = path.resolve(__dirname, 'settings.json');
           const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
-          const config = unmaskSettings(rawConfig, existing);
-          const role = config.connection_type || 'customer';
-          const mongo = config.persistence?.mongo?.[role];
-          const db = await getDb(augmentConfig(config, role), role);
-          const collection = db.collection(mongo.collection || 'Customers');
-          const query = typeof config.query === 'string' ? JSON.parse(config.query) : config.query;
+          
+          // Use existing (saved) settings for the connection to ensure we use the right mongo
+          // The client's rawConfig might be incomplete or masked
+          const role = rawConfig.connection_type || 'customer';
+          const mongo = existing.persistence?.mongo?.[role] || {};
+          
+          const targetCollection = mongo.collection || (role === 'customer' ? 'Customers' : 'customers');
+          
+          const db = await getDb(augmentConfig(existing, role), role);
+          const collection = db.collection(targetCollection);
+          
+          const query = typeof rawConfig.query === 'string' ? JSON.parse(rawConfig.query) : rawConfig.query;
           const results = Array.isArray(query) ? await collection.aggregate(query).toArray() : await collection.find(query).toArray();
+          console.log(`[DEBUG] /api/mongo/query - results count: ${results.length}`);
+          
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
           res.end(JSON.stringify({ success: true, data: results }));

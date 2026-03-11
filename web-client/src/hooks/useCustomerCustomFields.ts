@@ -9,8 +9,8 @@ export function useCustomerCustomFields(customerOrCustomers: Customer | Customer
 
     const customerIds = useMemo(() => {
         const ids = Array.isArray(customerOrCustomers) 
-            ? customerOrCustomers.map(c => c.id).filter(Boolean)
-            : customerOrCustomers?.id ? [customerOrCustomers.id] : [];
+            ? customerOrCustomers.map(c => c.customer_id || c.id).filter(Boolean)
+            : (customerOrCustomers?.customer_id || customerOrCustomers?.id) ? [customerOrCustomers!.customer_id || customerOrCustomers!.id] : [];
         return ids;
     }, [customerOrCustomers]);
 
@@ -35,8 +35,7 @@ export function useCustomerCustomFields(customerOrCustomers: Customer | Customer
                 
                 const queryStr = customerMongo.custom_query.replace(/"?{{CUSTOMER_ID}}"?/g, JSON.stringify(replacementValue));
 
-                const response = await authorizedFetch('/api/mongo/query', {
-                    method: 'POST',
+                const response = await authorizedFetch('/api/mongo/query', {                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         persistence: {
