@@ -869,8 +869,24 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     </button>
                                 </div>
                                 {ssoMessage && (
-                                    <div style={{ fontSize: '12px', marginTop: '8px', color: ssoMessage.success ? '#34d399' : '#f87171' }}>
-                                        {ssoMessage.message}
+                                    <div style={{ 
+                                        fontSize: '12px', 
+                                        marginTop: '8px', 
+                                        color: ssoMessage.success ? '#34d399' : '#f87171',
+                                        whiteSpace: 'pre-wrap',
+                                        wordBreak: 'break-all',
+                                        backgroundColor: 'rgba(0,0,0,0.2)',
+                                        padding: '8px',
+                                        borderRadius: '4px',
+                                        border: `1px solid ${ssoMessage.success ? 'rgba(52, 211, 153, 0.2)' : 'rgba(248, 113, 113, 0.2)'}`
+                                    }}>
+                                        {ssoMessage.message.split(/(https?:\/\/[^\s]+)/g).map((part, i) => 
+                                            part.startsWith('http') ? (
+                                                <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', textDecoration: 'underline' }}>
+                                                    {part}
+                                                </a>
+                                            ) : part
+                                        )}
                                     </div>
                                 )}
                               </div>
@@ -1248,8 +1264,24 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     </button>
                                 </div>
                                 {ssoMessage && (
-                                    <div style={{ fontSize: '12px', marginTop: '8px', color: ssoMessage.success ? '#34d399' : '#f87171' }}>
-                                        {ssoMessage.message}
+                                    <div style={{ 
+                                        fontSize: '12px', 
+                                        marginTop: '8px', 
+                                        color: ssoMessage.success ? '#34d399' : '#f87171',
+                                        whiteSpace: 'pre-wrap',
+                                        wordBreak: 'break-all',
+                                        backgroundColor: 'rgba(0,0,0,0.2)',
+                                        padding: '8px',
+                                        borderRadius: '4px',
+                                        border: `1px solid ${ssoMessage.success ? 'rgba(52, 211, 153, 0.2)' : 'rgba(248, 113, 113, 0.2)'}`
+                                    }}>
+                                        {ssoMessage.message.split(/(https?:\/\/[^\s]+)/g).map((part, i) => 
+                                            part.startsWith('http') ? (
+                                                <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', textDecoration: 'underline' }}>
+                                                    {part}
+                                                </a>
+                                            ) : part
+                                        )}
                                     </div>
                                 )}
                               </div>

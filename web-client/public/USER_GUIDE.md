@@ -226,6 +226,7 @@ Configuration and security parameters that govern the platform.
 **Details:**
 *   **Persistence:** 
     *   **MongoDB:** Supports multiple authentication methods (SCRAM, AWS IAM, OIDC) and connection testing.
+    *   **AWS SSO Workflow:** If using AWS IAM, use the "Login via AWS SSO" button to initiate a session. A login URL and code will appear in the UI. Open the link, enter the code, and once authorized, click "Fetch SSO Credentials" to automatically populate your temporary Access Key, Secret Key, and Session Token.
     *   **Portability:** Perform full workspace **Export** to JSON or **Import** to restore from a backup.
 *   **Jira Integration:** Configure JQL templates for automated ticket discovery.
 *   **AI Settings (Optional):** Configure LLM providers (OpenAI, Gemini, Anthropic) for potential future enhancements.

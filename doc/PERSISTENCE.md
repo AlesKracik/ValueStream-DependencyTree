@@ -83,7 +83,10 @@ Allows connection using AWS Identity and Access Management. Supports both static
     - `aws_access_key`, `aws_secret_key`, `aws_session_token`
     - `aws_role_arn`, `aws_external_id`
 - **Driver Logic:** Uses `MONGODB-AWS` mechanism.
--   **SSO Support:** Includes integrated buttons (within the **Static Credentials** section) to trigger `aws sso login` and fetch temporary credentials directly into the application settings, supporting both local profiles and manual SSO metadata entry.
+- **SSO Support:** The application includes integrated buttons to streamline AWS SSO authentication:
+    - **Login via AWS SSO:** Executes `aws sso login` on the server. In Docker environments, the login URL and device code are captured and displayed directly in the UI for the user to click.
+    - **Fetch SSO Credentials:** Executes `aws configure export-credentials` to retrieve temporary keys from the active SSO session and automatically populates the Access Key, Secret Key, and Session Token fields.
+- **Docker Note:** The `aws-cli` is required in the container. If updating from an older version, run `docker compose up --build app` to ensure the CLI is installed.
 
 ### 3. OIDC (OpenID Connect)
 Enables authentication via external identity providers.

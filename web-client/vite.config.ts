@@ -553,10 +553,32 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
             fs.writeFileSync(tempConfigPath, `[profile ${profileName}]\nsso_start_url = ${sso_start_url}\nsso_region = ${sso_region}\nsso_account_id = ${sso_account_id}\nsso_role_name = ${sso_role_name}\nregion = ${sso_region}\n`);
             envVars.AWS_CONFIG_FILE = tempConfigPath;
           }
-          spawn(`aws sso login --profile ${profileName}`, { shell: true, stdio: 'inherit', env: envVars });
+          
+          const child = spawn(`aws sso login --profile ${profileName}`, { shell: true, env: envVars });
+          
+          let capturedOutput = '';
+          const outputPromise = new Promise<string>((resolve) => {
+            const timeout = setTimeout(() => resolve(capturedOutput || 'Login initiated (check logs if no URL appears)'), 4000);
+            
+            const handleData = (data: any) => {
+              const str = data.toString();
+              capturedOutput += str;
+              if (str.includes('https://') || str.includes('code:')) {
+                clearTimeout(timeout);
+                // Give it a tiny bit more time to finish the sentence
+                setTimeout(() => resolve(capturedOutput), 500);
+              }
+            };
+            
+            child.stdout.on('data', handleData);
+            child.stderr.on('data', handleData);
+          });
+
+          const message = await outputPromise;
+          
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
-          res.end(JSON.stringify({ success: true, message: 'Login initiated' }));
+          res.end(JSON.stringify({ success: true, message }));
         } catch (e: any) {
           res.statusCode = 500;
           res.end(JSON.stringify({ success: false, error: e.message }));
