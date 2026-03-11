@@ -4,7 +4,11 @@ import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
+import { spawn, exec } from 'child_process'
+import { promisify } from 'util'
 import { getDb, startMongoCleanup, isSafeUrl } from './src/utils/mongoServer'
+
+const execPromise = promisify(exec);
 
 // Start idle connection cleanup for MongoDB connections
 startMongoCleanup();
@@ -95,6 +99,7 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
         'customer_mongo_aws_role_arn',
         'customer_mongo_aws_external_id',
         'customer_mongo_aws_role_session_name',
+        'customer_mongo_aws_profile',
         'customer_mongo_oidc_token', 
         'llm_api_key'
       ];
@@ -1014,6 +1019,48 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
             res.statusCode = e.message === 'Payload Too Large' ? 413 : 500;
             res.end(JSON.stringify({ success: false, error: e.message }));
           }
+        }
+      } else if (req.url === '/api/aws/sso/login' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const { profile } = JSON.parse(body);
+          
+          // Initiates browser flow for SSO login
+          const cmd = profile ? `aws sso login --profile ${profile}` : 'aws sso login';
+          
+          // Use spawn for long running interactive-ish process
+          const child = spawn(cmd, { shell: true, stdio: 'inherit' });
+          
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, message: 'AWS SSO Login initiated in your browser.' }));
+        } catch (e: any) {
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 500;
+          res.end(JSON.stringify({ success: false, error: e.message }));
+        }
+      } else if (req.url === '/api/aws/sso/credentials' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const { profile } = JSON.parse(body);
+          
+          const profileArg = profile ? `--profile ${profile}` : '';
+          const { stdout } = await execPromise(`aws configure export-credentials ${profileArg}`);
+          const creds = JSON.parse(stdout);
+          
+          // Return credentials so frontend can store them as temporary overrides
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 200;
+          res.end(JSON.stringify({ 
+            success: true, 
+            accessKey: creds.AccessKeyId,
+            secretKey: creds.SecretAccessKey,
+            sessionToken: creds.SessionToken
+          }));
+        } catch (e: any) {
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 500;
+          res.end(JSON.stringify({ success: false, error: e.message || 'Failed to fetch SSO credentials. Ensure you are logged in.' }));
         }
       } else {
         next();

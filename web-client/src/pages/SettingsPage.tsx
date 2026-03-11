@@ -48,8 +48,63 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [importJql, setImportJql] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<string>("");
+  const [isSSOLoginLoading, setIsSSOLoginLoading] = useState(false);
+  const [ssoMessage, setSSOMessage] = useState<{ success: boolean; message: string } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAWSSSOLOGIN = async (type: 'application' | 'customer') => {
+    const profile = type === 'customer' ? (localFormData.customer_mongo_aws_profile || settings.customer_mongo_aws_profile) : (localFormData.mongo_aws_profile || settings.mongo_aws_profile);
+    setIsSSOLoginLoading(true);
+    setSSOMessage(null);
+    try {
+        const res = await authorizedFetch('/api/aws/sso/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profile })
+        });
+        const data = await res.json();
+        setSSOMessage({ success: data.success, message: data.message || data.error });
+    } catch (e: any) {
+        setSSOMessage({ success: false, message: e.message || 'Failed to initiate SSO login' });
+    } finally {
+        setIsSSOLoginLoading(false);
+    }
+  };
+
+  const handleFetchSSOCredentials = async (type: 'application' | 'customer') => {
+    const profile = type === 'customer' ? (localFormData.customer_mongo_aws_profile || settings.customer_mongo_aws_profile) : (localFormData.mongo_aws_profile || settings.mongo_aws_profile);
+    setIsSSOLoginLoading(true);
+    setSSOMessage(null);
+    try {
+        const res = await authorizedFetch('/api/aws/sso/credentials', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profile })
+        });
+        const data = await res.json();
+        if (data.success) {
+            const updates: Partial<Settings> = type === 'customer' ? {
+                customer_mongo_aws_access_key: data.accessKey,
+                customer_mongo_aws_secret_key: data.secretKey,
+                customer_mongo_aws_session_token: data.sessionToken
+            } : {
+                mongo_aws_access_key: data.accessKey,
+                mongo_aws_secret_key: data.secretKey,
+                mongo_aws_session_token: data.sessionToken
+            };
+            setFormData(prev => ({ ...prev, ...updates }));
+            onUpdateSettings(updates);
+            setSSOMessage({ success: true, message: 'Temporary credentials fetched and applied!' });
+        } else {
+            setSSOMessage({ success: false, message: data.error });
+        }
+    } catch (e: any) {
+        setSSOMessage({ success: false, message: e.message || 'Failed to fetch credentials' });
+    } finally {
+        setIsSSOLoginLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (settings) {
@@ -69,6 +124,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         mongo_aws_role_arn: settings.mongo_aws_role_arn || "",
         mongo_aws_external_id: settings.mongo_aws_external_id || "",
         mongo_aws_role_session_name: settings.mongo_aws_role_session_name || "",
+        mongo_aws_profile: settings.mongo_aws_profile || "",
         mongo_oidc_token: settings.mongo_oidc_token || "",
         customer_mongo_db: settings.customer_mongo_db || "",
         customer_mongo_auth_method: settings.customer_mongo_auth_method || "scram",
@@ -81,6 +137,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         customer_mongo_aws_role_arn: settings.customer_mongo_aws_role_arn || "",
         customer_mongo_aws_external_id: settings.customer_mongo_aws_external_id || "",
         customer_mongo_aws_role_session_name: settings.customer_mongo_aws_role_session_name || "",
+        customer_mongo_aws_profile: settings.customer_mongo_aws_profile || "",
         customer_mongo_oidc_token: settings.customer_mongo_oidc_token || "",
         customer_mongo_uri: settings.customer_mongo_uri || "",
         customer_mongo_collection: settings.customer_mongo_collection || "",
@@ -692,6 +749,44 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                             </select>
                           </label>
 
+                          <div style={{ padding: '12px', border: '1px solid #1f2937', borderRadius: '4px', backgroundColor: 'rgba(0,0,0,0.1)' }}>
+                            <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem", marginBottom: '8px' }}>
+                                AWS Profile (Optional for SSO):
+                                <input
+                                    type="text"
+                                    placeholder="default"
+                                    value={localFormData.mongo_aws_profile || ""}
+                                    onChange={(e) => setFormData({ ...localFormData, mongo_aws_profile: e.target.value })}
+                                    onBlur={() => onUpdateSettings({ mongo_aws_profile: localFormData.mongo_aws_profile })}
+                                />
+                            </label>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                    type="button"
+                                    className="btn-primary"
+                                    onClick={() => handleAWSSSOLOGIN('application')}
+                                    disabled={isSSOLoginLoading}
+                                    style={{ fontSize: '12px', padding: '6px 10px' }}
+                                >
+                                    Login via AWS SSO
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn-primary"
+                                    onClick={() => handleFetchSSOCredentials('application')}
+                                    disabled={isSSOLoginLoading}
+                                    style={{ fontSize: '12px', padding: '6px 10px' }}
+                                >
+                                    Fetch SSO Credentials
+                                </button>
+                            </div>
+                            {ssoMessage && (
+                                <div style={{ fontSize: '12px', marginTop: '8px', color: ssoMessage.success ? '#34d399' : '#f87171' }}>
+                                    {ssoMessage.message}
+                                </div>
+                            )}
+                          </div>
+
                           {localFormData.mongo_aws_auth_type === 'static' ? (
                             <>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
@@ -955,6 +1050,44 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               <option value="role">Assume Role</option>
                             </select>
                           </label>
+
+                          <div style={{ padding: '12px', border: '1px solid #1f2937', borderRadius: '4px', backgroundColor: 'rgba(0,0,0,0.1)' }}>
+                            <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem", marginBottom: '8px' }}>
+                                AWS Profile (Optional for SSO):
+                                <input
+                                    type="text"
+                                    placeholder="default"
+                                    value={localFormData.customer_mongo_aws_profile || ""}
+                                    onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_profile: e.target.value })}
+                                    onBlur={() => onUpdateSettings({ customer_mongo_aws_profile: localFormData.customer_mongo_aws_profile })}
+                                />
+                            </label>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                    type="button"
+                                    className="btn-primary"
+                                    onClick={() => handleAWSSSOLOGIN('customer')}
+                                    disabled={isSSOLoginLoading}
+                                    style={{ fontSize: '12px', padding: '6px 10px' }}
+                                >
+                                    Login via AWS SSO
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn-primary"
+                                    onClick={() => handleFetchSSOCredentials('customer')}
+                                    disabled={isSSOLoginLoading}
+                                    style={{ fontSize: '12px', padding: '6px 10px' }}
+                                >
+                                    Fetch SSO Credentials
+                                </button>
+                            </div>
+                            {ssoMessage && (
+                                <div style={{ fontSize: '12px', marginTop: '8px', color: ssoMessage.success ? '#34d399' : '#f87171' }}>
+                                    {ssoMessage.message}
+                                </div>
+                            )}
+                          </div>
 
                           {localFormData.customer_mongo_aws_auth_type === 'static' ? (
                             <>
