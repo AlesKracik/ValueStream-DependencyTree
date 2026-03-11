@@ -5,4 +5,5 @@
 * code readability, organization, DRY and overall architecture
   * update doc structure. it sometimes has paragraphs in wrong places. Also does not have a good logical hierarchy going from high level tree structure to individiual areas and eventually details
   * refactor API to be more granular, well structured and use case isolated
+  * make settings json file organizezd by tabs
 * security
