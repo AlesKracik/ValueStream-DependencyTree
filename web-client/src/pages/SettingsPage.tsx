@@ -908,10 +908,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             return parts.map((part, i) => {
                                                 if (part.startsWith('http')) {
                                                     let url = part.replace(/[.,]$/, '');
-                                                    // Only append if it's a device.sso URL and doesn't already have user_code
-                                                    const finalUrl = (code && url.includes('device.sso') && !url.includes('user_code=')) 
-                                                        ? `${url}${url.includes('?') ? '&' : '?'}user_code=${code}` 
-                                                        : url;
+                                                    // Handle appending user_code, inserting it before any fragment (#) if present
+                                                    let finalUrl = url;
+                                                    if (code && url.includes('device.sso') && !url.includes('user_code=')) {
+                                                        const [baseUrl, fragment] = url.split('#');
+                                                        const separator = baseUrl.includes('?') ? '&' : '?';
+                                                        finalUrl = `${baseUrl}${separator}user_code=${code}${fragment ? '#' + fragment : ''}`;
+                                                    }
                                                         
                                                     return (
                                                         <div key={i} style={{ margin: '8px 0' }}>
@@ -1344,10 +1347,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             return parts.map((part, i) => {
                                                 if (part.startsWith('http')) {
                                                     let url = part.replace(/[.,]$/, '');
-                                                    // Only append if it's a device.sso URL and doesn't already have user_code
-                                                    const finalUrl = (code && url.includes('device.sso') && !url.includes('user_code=')) 
-                                                        ? `${url}${url.includes('?') ? '&' : '?'}user_code=${code}` 
-                                                        : url;
+                                                    // Handle appending user_code, inserting it before any fragment (#) if present
+                                                    let finalUrl = url;
+                                                    if (code && url.includes('device.sso') && !url.includes('user_code=')) {
+                                                        const [baseUrl, fragment] = url.split('#');
+                                                        const separator = baseUrl.includes('?') ? '&' : '?';
+                                                        finalUrl = `${baseUrl}${separator}user_code=${code}${fragment ? '#' + fragment : ''}`;
+                                                    }
                                                         
                                                     return (
                                                         <div key={i} style={{ margin: '8px 0' }}>
