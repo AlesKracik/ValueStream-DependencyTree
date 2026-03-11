@@ -54,14 +54,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAWSSSOLOGIN = async (type: 'application' | 'customer') => {
-    const profile = type === 'customer' ? (localFormData.customer_mongo_aws_profile || settings.customer_mongo_aws_profile) : (localFormData.mongo_aws_profile || settings.mongo_aws_profile);
+    const isCustomer = type === 'customer';
+    const profile = isCustomer ? (localFormData.customer_mongo_aws_profile || settings.customer_mongo_aws_profile) : (localFormData.mongo_aws_profile || settings.mongo_aws_profile);
+    const sso_start_url = isCustomer ? (localFormData.customer_mongo_aws_sso_start_url || settings.customer_mongo_aws_sso_start_url) : (localFormData.mongo_aws_sso_start_url || settings.mongo_aws_sso_start_url);
+    const sso_region = isCustomer ? (localFormData.customer_mongo_aws_sso_region || settings.customer_mongo_aws_sso_region) : (localFormData.mongo_aws_sso_region || settings.mongo_aws_sso_region);
+    const sso_account_id = isCustomer ? (localFormData.customer_mongo_aws_sso_account_id || settings.customer_mongo_aws_sso_account_id) : (localFormData.mongo_aws_sso_account_id || settings.mongo_aws_sso_account_id);
+    const sso_role_name = isCustomer ? (localFormData.customer_mongo_aws_sso_role_name || settings.customer_mongo_aws_sso_role_name) : (localFormData.mongo_aws_sso_role_name || settings.mongo_aws_sso_role_name);
+
     setIsSSOLoginLoading(true);
     setSSOMessage(null);
     try {
         const res = await authorizedFetch('/api/aws/sso/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ profile })
+            body: JSON.stringify({ profile, sso_start_url, sso_region, sso_account_id, sso_role_name })
         });
         const data = await res.json();
         setSSOMessage({ success: data.success, message: data.message || data.error });
@@ -73,14 +79,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   const handleFetchSSOCredentials = async (type: 'application' | 'customer') => {
-    const profile = type === 'customer' ? (localFormData.customer_mongo_aws_profile || settings.customer_mongo_aws_profile) : (localFormData.mongo_aws_profile || settings.mongo_aws_profile);
+    const isCustomer = type === 'customer';
+    const profile = isCustomer ? (localFormData.customer_mongo_aws_profile || settings.customer_mongo_aws_profile) : (localFormData.mongo_aws_profile || settings.mongo_aws_profile);
+    const sso_start_url = isCustomer ? (localFormData.customer_mongo_aws_sso_start_url || settings.customer_mongo_aws_sso_start_url) : (localFormData.mongo_aws_sso_start_url || settings.mongo_aws_sso_start_url);
+    const sso_region = isCustomer ? (localFormData.customer_mongo_aws_sso_region || settings.customer_mongo_aws_sso_region) : (localFormData.mongo_aws_sso_region || settings.mongo_aws_sso_region);
+    const sso_account_id = isCustomer ? (localFormData.customer_mongo_aws_sso_account_id || settings.customer_mongo_aws_sso_account_id) : (localFormData.mongo_aws_sso_account_id || settings.mongo_aws_sso_account_id);
+    const sso_role_name = isCustomer ? (localFormData.customer_mongo_aws_sso_role_name || settings.customer_mongo_aws_sso_role_name) : (localFormData.mongo_aws_sso_role_name || settings.mongo_aws_sso_role_name);
+
     setIsSSOLoginLoading(true);
     setSSOMessage(null);
     try {
         const res = await authorizedFetch('/api/aws/sso/credentials', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ profile })
+            body: JSON.stringify({ profile, sso_start_url, sso_region, sso_account_id, sso_role_name })
         });
         const data = await res.json();
         if (data.success) {
@@ -125,6 +137,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         mongo_aws_external_id: settings.mongo_aws_external_id || "",
         mongo_aws_role_session_name: settings.mongo_aws_role_session_name || "",
         mongo_aws_profile: settings.mongo_aws_profile || "",
+        mongo_aws_sso_start_url: settings.mongo_aws_sso_start_url || "",
+        mongo_aws_sso_region: settings.mongo_aws_sso_region || "",
+        mongo_aws_sso_account_id: settings.mongo_aws_sso_account_id || "",
+        mongo_aws_sso_role_name: settings.mongo_aws_sso_role_name || "",
         mongo_oidc_token: settings.mongo_oidc_token || "",
         customer_mongo_db: settings.customer_mongo_db || "",
         customer_mongo_auth_method: settings.customer_mongo_auth_method || "scram",
@@ -138,6 +154,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         customer_mongo_aws_external_id: settings.customer_mongo_aws_external_id || "",
         customer_mongo_aws_role_session_name: settings.customer_mongo_aws_role_session_name || "",
         customer_mongo_aws_profile: settings.customer_mongo_aws_profile || "",
+        customer_mongo_aws_sso_start_url: settings.customer_mongo_aws_sso_start_url || "",
+        customer_mongo_aws_sso_region: settings.customer_mongo_aws_sso_region || "",
+        customer_mongo_aws_sso_account_id: settings.customer_mongo_aws_sso_account_id || "",
+        customer_mongo_aws_sso_role_name: settings.customer_mongo_aws_sso_role_name || "",
         customer_mongo_oidc_token: settings.customer_mongo_oidc_token || "",
         customer_mongo_uri: settings.customer_mongo_uri || "",
         customer_mongo_collection: settings.customer_mongo_collection || "",
@@ -760,6 +780,55 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     onBlur={() => onUpdateSettings({ mongo_aws_profile: localFormData.mongo_aws_profile })}
                                 />
                             </label>
+
+                            {!localFormData.mongo_aws_profile && (
+                                <div style={{ marginBottom: '16px', padding: '12px', border: '1px dashed #374151', borderRadius: '4px' }}>
+                                    <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px' }}>Manual SSO Configuration (No Profile):</div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                        <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                                            SSO Start URL:
+                                            <input
+                                                type="text"
+                                                placeholder="https://..."
+                                                value={localFormData.mongo_aws_sso_start_url || ""}
+                                                onChange={(e) => setFormData({ ...localFormData, mongo_aws_sso_start_url: e.target.value })}
+                                                onBlur={() => onUpdateSettings({ mongo_aws_sso_start_url: localFormData.mongo_aws_sso_start_url })}
+                                            />
+                                        </label>
+                                        <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                                            SSO Region:
+                                            <input
+                                                type="text"
+                                                placeholder="us-east-1"
+                                                value={localFormData.mongo_aws_sso_region || ""}
+                                                onChange={(e) => setFormData({ ...localFormData, mongo_aws_sso_region: e.target.value })}
+                                                onBlur={() => onUpdateSettings({ mongo_aws_sso_region: localFormData.mongo_aws_sso_region })}
+                                            />
+                                        </label>
+                                        <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                                            SSO Account ID:
+                                            <input
+                                                type="text"
+                                                placeholder="123456789012"
+                                                value={localFormData.mongo_aws_sso_account_id || ""}
+                                                onChange={(e) => setFormData({ ...localFormData, mongo_aws_sso_account_id: e.target.value })}
+                                                onBlur={() => onUpdateSettings({ mongo_aws_sso_account_id: localFormData.mongo_aws_sso_account_id })}
+                                            />
+                                        </label>
+                                        <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                                            SSO Role Name:
+                                            <input
+                                                type="text"
+                                                placeholder="AWSReadOnlyAccess"
+                                                value={localFormData.mongo_aws_sso_role_name || ""}
+                                                onChange={(e) => setFormData({ ...localFormData, mongo_aws_sso_role_name: e.target.value })}
+                                                onBlur={() => onUpdateSettings({ mongo_aws_sso_role_name: localFormData.mongo_aws_sso_role_name })}
+                                            />
+                                        </label>
+                                    </div>
+                                </div>
+                            )}
+
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <button
                                     type="button"
@@ -1062,6 +1131,55 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     onBlur={() => onUpdateSettings({ customer_mongo_aws_profile: localFormData.customer_mongo_aws_profile })}
                                 />
                             </label>
+
+                            {!localFormData.customer_mongo_aws_profile && (
+                                <div style={{ marginBottom: '16px', padding: '12px', border: '1px dashed #374151', borderRadius: '4px' }}>
+                                    <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px' }}>Manual SSO Configuration (No Profile):</div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                        <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                                            SSO Start URL:
+                                            <input
+                                                type="text"
+                                                placeholder="https://..."
+                                                value={localFormData.customer_mongo_aws_sso_start_url || ""}
+                                                onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_sso_start_url: e.target.value })}
+                                                onBlur={() => onUpdateSettings({ customer_mongo_aws_sso_start_url: localFormData.customer_mongo_aws_sso_start_url })}
+                                            />
+                                        </label>
+                                        <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                                            SSO Region:
+                                            <input
+                                                type="text"
+                                                placeholder="us-east-1"
+                                                value={localFormData.customer_mongo_aws_sso_region || ""}
+                                                onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_sso_region: e.target.value })}
+                                                onBlur={() => onUpdateSettings({ customer_mongo_aws_sso_region: localFormData.customer_mongo_aws_sso_region })}
+                                            />
+                                        </label>
+                                        <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                                            SSO Account ID:
+                                            <input
+                                                type="text"
+                                                placeholder="123456789012"
+                                                value={localFormData.customer_mongo_aws_sso_account_id || ""}
+                                                onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_sso_account_id: e.target.value })}
+                                                onBlur={() => onUpdateSettings({ customer_mongo_aws_sso_account_id: localFormData.customer_mongo_aws_sso_account_id })}
+                                            />
+                                        </label>
+                                        <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                                            SSO Role Name:
+                                            <input
+                                                type="text"
+                                                placeholder="AWSReadOnlyAccess"
+                                                value={localFormData.customer_mongo_aws_sso_role_name || ""}
+                                                onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_sso_role_name: e.target.value })}
+                                                onBlur={() => onUpdateSettings({ customer_mongo_aws_sso_role_name: localFormData.customer_mongo_aws_sso_role_name })}
+                                            />
+                                        </label>
+                                    </div>
+                                </div>
+                            )}
+
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <button
                                     type="button"

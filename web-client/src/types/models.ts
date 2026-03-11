@@ -113,6 +113,10 @@ export interface Settings {
   mongo_aws_external_id?: string;
   mongo_aws_role_session_name?: string;
   mongo_aws_profile?: string;
+  mongo_aws_sso_start_url?: string;
+  mongo_aws_sso_region?: string;
+  mongo_aws_sso_account_id?: string;
+  mongo_aws_sso_role_name?: string;
   mongo_oidc_token?: string;
   customer_jql_new?: string;
   customer_jql_in_progress?: string;
@@ -135,6 +139,10 @@ export interface Settings {
   customer_mongo_aws_external_id?: string;
   customer_mongo_aws_role_session_name?: string;
   customer_mongo_aws_profile?: string;
+  customer_mongo_aws_sso_start_url?: string;
+  customer_mongo_aws_sso_region?: string;
+  customer_mongo_aws_sso_account_id?: string;
+  customer_mongo_aws_sso_role_name?: string;
   customer_mongo_oidc_token?: string;
   customer_mongo_collection?: string;
   customer_mongo_custom_query?: string;

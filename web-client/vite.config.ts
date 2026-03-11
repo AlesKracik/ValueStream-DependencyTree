@@ -4,6 +4,8 @@ import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import fs from 'fs'
 import path from 'path'
+import os from 'os'
+import crypto from 'crypto'
 import { spawn, exec } from 'child_process'
 import { promisify } from 'util'
 import { getDb, startMongoCleanup, isSafeUrl } from './src/utils/mongoServer'
@@ -91,8 +93,12 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
         'mongo_aws_role_arn',
         'mongo_aws_external_id',
         'mongo_aws_role_session_name',
-        'mongo_oidc_token', 
-        'customer_mongo_uri', 
+        'mongo_aws_role_session_name',
+        'mongo_aws_profile',
+        'mongo_aws_sso_start_url',
+        'mongo_aws_sso_region',
+        'mongo_aws_sso_account_id',
+        'mongo_aws_sso_role_name',
         'customer_mongo_aws_access_key', 
         'customer_mongo_aws_secret_key', 
         'customer_mongo_aws_session_token', 
@@ -100,9 +106,13 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
         'customer_mongo_aws_external_id',
         'customer_mongo_aws_role_session_name',
         'customer_mongo_aws_profile',
+        'customer_mongo_aws_sso_start_url',
+        'customer_mongo_aws_sso_region',
+        'customer_mongo_aws_sso_account_id',
+        'customer_mongo_aws_sso_role_name',
         'customer_mongo_oidc_token', 
         'llm_api_key'
-      ];
+        ];
 
       const MASK = '********';
 
@@ -1023,13 +1033,24 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
       } else if (req.url === '/api/aws/sso/login' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const { profile } = JSON.parse(body);
+          const { profile, sso_start_url, sso_region, sso_account_id, sso_role_name } = JSON.parse(body);
           
+          let envVars = { ...process.env };
+          let profileName = profile || 'temp-sso-profile';
+
+          if (!profile && sso_start_url && sso_region && sso_account_id && sso_role_name) {
+            const tempConfigPath = path.join(os.tmpdir(), `aws_config_${crypto.randomBytes(4).toString('hex')}`);
+            const configContent = `[profile ${profileName}]\nsso_start_url = ${sso_start_url}\nsso_region = ${sso_region}\nsso_account_id = ${sso_account_id}\nsso_role_name = ${sso_role_name}\nregion = ${sso_region}\n`;
+            fs.writeFileSync(tempConfigPath, configContent);
+            envVars.AWS_CONFIG_FILE = tempConfigPath;
+            console.log(`[AWS_DEBUG] Using temporary AWS config: ${tempConfigPath}`);
+          }
+
           // Initiates browser flow for SSO login
-          const cmd = profile ? `aws sso login --profile ${profile}` : 'aws sso login';
+          const cmd = `aws sso login --profile ${profileName}`;
           
           // Use spawn for long running interactive-ish process
-          const child = spawn(cmd, { shell: true, stdio: 'inherit' });
+          const child = spawn(cmd, { shell: true, stdio: 'inherit', env: envVars });
           
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
@@ -1042,12 +1063,27 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
       } else if (req.url === '/api/aws/sso/credentials' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const { profile } = JSON.parse(body);
+          const { profile, sso_start_url, sso_region, sso_account_id, sso_role_name } = JSON.parse(body);
           
-          const profileArg = profile ? `--profile ${profile}` : '';
-          const { stdout } = await execPromise(`aws configure export-credentials ${profileArg}`);
+          let envVars = { ...process.env };
+          let profileName = profile || 'temp-sso-profile';
+          let tempConfigPath = '';
+
+          if (!profile && sso_start_url && sso_region && sso_account_id && sso_role_name) {
+            tempConfigPath = path.join(os.tmpdir(), `aws_config_${crypto.randomBytes(4).toString('hex')}`);
+            const configContent = `[profile ${profileName}]\nsso_start_url = ${sso_start_url}\nsso_region = ${sso_region}\nsso_account_id = ${sso_account_id}\nsso_role_name = ${sso_role_name}\nregion = ${sso_region}\n`;
+            fs.writeFileSync(tempConfigPath, configContent);
+            envVars.AWS_CONFIG_FILE = tempConfigPath;
+          }
+
+          const cmd = `aws configure export-credentials --profile ${profileName}`;
+          const { stdout } = await execPromise(cmd, { env: envVars });
           const creds = JSON.parse(stdout);
           
+          if (tempConfigPath && fs.existsSync(tempConfigPath)) {
+            try { fs.unlinkSync(tempConfigPath); } catch(e) {}
+          }
+
           // Return credentials so frontend can store them as temporary overrides
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
