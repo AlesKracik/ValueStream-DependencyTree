@@ -325,4 +325,24 @@ describe('SettingsPage', () => {
         expect(screen.getByLabelText(/SSO Start URL:/i)).toBeDefined();
         expect(screen.getByLabelText(/SSO Region:/i)).toBeDefined();
     });
+
+    it('renders correctly with empty settings using defaults', () => {
+        // This test verifies that the fix for "Cannot read properties of undefined (reading 'fiscal_year_start_month')" works
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=general']}>
+                <SettingsPage 
+                    settings={null as any} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        expect(screen.getByLabelText(/Fiscal Year Start Month:/i)).toBeDefined();
+        // Default value should be 1 (January)
+        const select = screen.getByLabelText(/Fiscal Year Start Month:/i) as HTMLSelectElement;
+        expect(select.value).toBe('1');
+    });
 });
