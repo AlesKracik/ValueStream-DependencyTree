@@ -2,12 +2,10 @@ import { MongoClient, ServerApiVersion } from 'mongodb';
 import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
 import dns from 'node:dns';
 import { promisify } from 'node:util';
-import { SocksClient } from 'socks';
 
 const dnsLookup = promisify(dns.lookup);
 
-// ... (isSafeUrl remains same)
-
+// SSRF Protection: Check if URL is internal/private
 export async function isSafeUrl(urlStr: string) {
   try {
     const url = new URL(urlStr);
@@ -40,8 +38,7 @@ export async function isSafeUrl(urlStr: string) {
   }
 }
 
-// ... (cache and cleanup remain same)
-
+// Map to store persistent Mongo clients: cacheKey -> { client, lastUsed }
 const mongoClients = new Map<string, { client: MongoClient, lastUsed: number }>();
 
 // Cleanup idle Mongo clients every 5 minutes
@@ -60,6 +57,7 @@ export function startMongoCleanup(intervalMs = 300000, idleTimeoutMs = 1800000) 
   }, intervalMs);
 }
 
+// For testing purposes
 export function stopMongoCleanup() {
   if (cleanupInterval) {
     clearInterval(cleanupInterval);
@@ -125,32 +123,16 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
     }
   };
 
-  // Improved SOCKS proxy implementation using a custom connection handler
+  // Official SOCKS proxy implementation for the MongoDB Node driver (v7+)
   if (useProxy && config.proxyHost) {
-    console.log(`[MONGO_DEBUG] Using SOCKS5 proxy via SocksClient: ${config.proxyHost}:${config.proxyPort}`);
+    options.proxyHost = config.proxyHost;
+    options.proxyPort = Number(config.proxyPort);
+    // Explicitly providing these (even if empty) can help force the SOCKS logic
+    options.proxyUsername = '';
+    options.proxyPassword = '';
     
-    // We override the connect function to force ALL connections (including secondaries) 
-    // through the SOCKS proxy. This also ensures remote DNS resolution.
-    options.connect = (address: any, callback: any) => {
-      SocksClient.createConnection({
-        proxy: {
-          host: config.proxyHost!,
-          port: Number(config.proxyPort),
-          type: 5
-        },
-        command: 'connect',
-        destination: {
-          host: address.host,
-          port: address.port
-        }
-      }, (err, info) => {
-        if (err) {
-          console.error(`[MONGO_DEBUG] SOCKS connection failed to ${address.host}:${address.port}:`, err.message);
-          return callback(err);
-        }
-        callback(null, info!.socket);
-      });
-    };
+    // MONGO_DEBUG: Log proxy usage
+    console.log(`[MONGO_DEBUG] Using SOCKS proxy: ${config.proxyHost}:${config.proxyPort}`);
   }
 
   const isSrv = uri.startsWith('mongodb+srv://');
