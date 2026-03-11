@@ -31,11 +31,12 @@ start_tunnel() {
     USER_VAR="${PREFIX}_SSH_USER"
     HOST_VAR="${PREFIX}_SSH_HOST"
     PORT_VAR="${PREFIX}_SOCKS_PORT"
+    KEY_VAR="${PREFIX}_SSH_KEY_PATH"
     
     USER=${!USER_VAR}
     HOST=${!HOST_VAR}
     PORT=${!PORT_VAR:-"1080"}
-    KEY=${SSH_KEY_PATH:-"~/.ssh/id_rsa"}
+    KEY=${!KEY_VAR:-${SSH_KEY_PATH:-"~/.ssh/id_rsa"}}
     PID_FILE=".tunnel.$NAME.pid"
 
     if [ -z "$USER" ] || [ -z "$HOST" ]; then
@@ -47,6 +48,7 @@ start_tunnel() {
     echo -e "\033[0;90m  - SSH User: $USER\033[0m"
     echo -e "\033[0;90m  - SSH Host: $HOST\033[0m"
     echo -e "\033[0;90m  - SOCKS Port: $PORT\033[0m"
+    echo -e "\033[0;90m  - SSH Key:  $KEY\033[0m"
     echo -e "\033[0;90m  - PID File: $PID_FILE\033[0m"
 
     # Check if tunnel is already running

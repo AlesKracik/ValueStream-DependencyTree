@@ -35,10 +35,12 @@ function Start-Tunnel {
     $User = [System.Environment]::GetEnvironmentVariable("${Prefix}_SSH_USER")
     $Host = [System.Environment]::GetEnvironmentVariable("${Prefix}_SSH_HOST")
     $Port = [System.Environment]::GetEnvironmentVariable("${Prefix}_SOCKS_PORT")
-    $Key  = $env:SSH_KEY_PATH
+    $Key  = [System.Environment]::GetEnvironmentVariable("${Prefix}_SSH_KEY_PATH")
     
+    # Fallback to global settings
+    if (-not $Key)  { $Key  = $env:SSH_KEY_PATH }
+    if (-not $Key)  { $Key  = "~/.ssh/id_rsa" }
     if (-not $Port) { $Port = "1080" }
-    if (-not $Key) { $Key = "~/.ssh/id_rsa" }
     
     if (-not $User -or -not $Host) {
         Write-Host "[ERROR] ${Prefix}_SSH_USER and ${Prefix}_SSH_HOST must be defined in .env" -ForegroundColor Red
@@ -51,6 +53,7 @@ function Start-Tunnel {
     Write-Host "  - SSH User: $User" -ForegroundColor Gray
     Write-Host "  - SSH Host: $Host" -ForegroundColor Gray
     Write-Host "  - SOCKS Port: $Port" -ForegroundColor Gray
+    Write-Host "  - SSH Key:  $Key" -ForegroundColor Gray
     Write-Host "  - PID File: $PidFile" -ForegroundColor Gray
 
     # Check if tunnel is already running

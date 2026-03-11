@@ -5,9 +5,6 @@ RUN apk add --no-cache openssh-client
 COPY <<'EOF' /usr/local/bin/entrypoint.sh
 #!/bin/sh
 
-# Ensure SSH key has correct permissions
-chmod 600 /root/.ssh/id_rsa
-
 # Iterate over all environment variables ending in _SSH_HOST
 # (e.g., APP_SSH_HOST, CUSTOMER_SSH_HOST)
 for VAR_NAME in $(env | grep _SSH_HOST | cut -d'=' -f1); do
@@ -17,14 +14,25 @@ for VAR_NAME in $(env | grep _SSH_HOST | cut -d'=' -f1); do
     HOST=$(eval echo \$${PREFIX}_SSH_HOST)
     USER=$(eval echo \$${PREFIX}_SSH_USER)
     PORT=$(eval echo \$${PREFIX}_SOCKS_PORT)
+    KEY=$(eval echo \$${PREFIX}_SSH_KEY_PATH)
     
     # Fallback to default port if not specified
     PORT=${PORT:-1080}
+    # Fallback to default key if not specified
+    KEY=${KEY:-"/root/.ssh/id_rsa"}
     
     if [ -n "$HOST" ] && [ -n "$USER" ]; then
-        echo "[INFO] Starting SOCKS5 tunnel for $PREFIX on 0.0.0.0:$PORT to $HOST..."
+        echo "[INFO] Starting SOCKS5 tunnel for $PREFIX on 0.0.0.0:$PORT to $HOST (Key: $KEY)..."
+        # Ensure the key has correct permissions right before use
+        if [ -f "$KEY" ]; then
+            chmod 600 "$KEY"
+        else
+            echo "[ERROR] SSH Key not found: $KEY"
+            continue
+        fi
+
         ssh -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes \
-            -D 0.0.0.0:$PORT -N -i /root/.ssh/id_rsa "$USER@$HOST" &
+            -D 0.0.0.0:$PORT -N -i "$KEY" "$USER@$HOST" &
     fi
 done
 

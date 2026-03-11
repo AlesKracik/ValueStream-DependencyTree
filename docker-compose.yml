@@ -29,7 +29,8 @@ services:
     env_file:
       - .env
     volumes:
-      - ${SSH_KEY_PATH:-~/.ssh/id_rsa}:/root/.ssh/id_rsa:ro
+      # Mount the entire .ssh folder so any key can be used
+      - ${SSH_DIR:-~/.ssh}:/root/.ssh:ro
     networks:
       - app-network
 
