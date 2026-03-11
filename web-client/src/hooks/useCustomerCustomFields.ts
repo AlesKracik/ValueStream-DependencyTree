@@ -2,15 +2,16 @@ import { useState, useEffect, useMemo } from 'react';
 import { authorizedFetch } from '../utils/api';
 import type { Settings, Customer } from '../types/models';
 
-export function useCustomerCustomFields(customerOrCustomers: Customer | Customer[] | undefined, settings: Settings | undefined) {
+export function useCustomerCustomFields(customerOrCustomers: Customer | Customer[] | null | undefined, settings: Settings | null) {
     const [data, setData] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Create a stable key for the customer IDs to use as a dependency
     const customerIds = useMemo(() => {
-        const customers = Array.isArray(customerOrCustomers) ? customerOrCustomers : (customerOrCustomers ? [customerOrCustomers] : []);
-        return customers.map(c => c.customer_id).filter(Boolean) as string[];
+        const ids = Array.isArray(customerOrCustomers) 
+            ? customerOrCustomers.map(c => c.id).filter(Boolean)
+            : customerOrCustomers?.id ? [customerOrCustomers.id] : [];
+        return ids;
     }, [customerOrCustomers]);
 
     const customerIdsKey = customerIds.join(',');
@@ -53,8 +54,10 @@ export function useCustomerCustomFields(customerOrCustomers: Customer | Customer
                     setData(resData.data || []);
                 } else {
                     setError(resData.error || 'Failed to fetch custom fields');
+                    setData([]);
                 }
             } catch (err: any) {
+                console.error('Error fetching custom fields:', err);
                 setError(err.message || 'Network error fetching custom fields');
             } finally {
                 setLoading(false);

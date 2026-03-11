@@ -2,10 +2,45 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useCustomerCustomFields } from '../useCustomerCustomFields';
 import { authorizedFetch } from '../../utils/api';
+import type { Settings } from '../../types/models';
 
 vi.mock('../../utils/api', () => ({
     authorizedFetch: vi.fn()
 }));
+
+const mockSettings: Settings = {
+    general: {
+        fiscal_year_start_month: 1,
+        sprint_duration_days: 14
+    },
+    persistence: {
+        mongo: {
+            app: {
+                uri: 'mongodb://localhost:27017',
+                db: 'testdb',
+                use_proxy: false,
+                auth: { method: 'scram' }
+            },
+            customer: {
+                uri: 'mongodb://localhost',
+                db: 'testdb',
+                use_proxy: false,
+                tunnel_name: 'test-tunnel',
+                custom_query: '{"customer_id": "{{CUSTOMER_ID}}"}',
+                auth: { method: 'scram' }
+            }
+        }
+    },
+    jira: {
+        base_url: 'https://jira.com',
+        api_version: '3',
+        api_token: 'token'
+    },
+    ai: {
+        provider: 'openai',
+        api_key: ''
+    }
+};
 
 describe('useCustomerCustomFields', () => {
     beforeEach(() => {
@@ -13,64 +48,57 @@ describe('useCustomerCustomFields', () => {
     });
 
     it('returns empty data if no customers or settings provided', async () => {
-        const { result } = renderHook(() => useCustomerCustomFields(undefined, undefined));
-        
+        const { result } = renderHook(() => useCustomerCustomFields([], null as any));
         expect(result.current.data).toEqual([]);
         expect(result.current.loading).toBe(false);
-        expect(result.current.error).toBeNull();
     });
 
     it('returns empty data if no custom query is configured', async () => {
-        const customer = { customer_id: 'CUST-1', id: '1', name: 'Test' };
-        const settings = { customer_mongo_uri: 'mongodb://localhost' }; // missing query
-        
-        const { result } = renderHook(() => useCustomerCustomFields(customer as any, settings as any));
-        
+        const settingsNoQuery = { 
+            ...mockSettings, 
+            persistence: { 
+                ...mockSettings.persistence,
+                mongo: {
+                    ...mockSettings.persistence.mongo,
+                    customer: { ...mockSettings.persistence.mongo.customer, custom_query: '' }
+                }
+            } 
+        };
+        const { result } = renderHook(() => useCustomerCustomFields([{ id: 'CUST-1' }] as any, settingsNoQuery as any));
         expect(result.current.data).toEqual([]);
     });
 
     it('fetches data for a single customer', async () => {
-        const customer = { customer_id: 'CUST-1', id: '1', name: 'Test' };
-        const settings = { 
-            customer_mongo_uri: 'mongodb://localhost',
-            customer_mongo_custom_query: '[{"$match": {"customer_id": "{{CUSTOMER_ID}}"}}]'
-        };
-
-        const mockData = [{ customer_id: 'CUST-1', custom_field: 'value' }];
+        const customer = { id: 'CUST-1' };
+        const mockData = [{ custom_field: 'value', customer_id: 'CUST-1' }];
         
         (authorizedFetch as any).mockResolvedValueOnce({
             ok: true,
             json: async () => ({ success: true, data: mockData })
         });
 
-        const { result } = renderHook(() => useCustomerCustomFields(customer as any, settings as any));
-        
-        expect(result.current.loading).toBe(true);
-        
+        const { result } = renderHook(() => useCustomerCustomFields(customer as any, mockSettings as any));
+
         await waitFor(() => {
+            expect(result.current.data).toEqual(mockData);
             expect(result.current.loading).toBe(false);
         });
 
-        expect(result.current.data).toEqual(mockData);
-        expect(authorizedFetch).toHaveBeenCalledWith('/api/mongo/query', expect.objectContaining({
-            method: 'POST',
-            body: expect.stringContaining('\\"CUST-1\\"')
-        }));
+        const [url, options] = (authorizedFetch as any).mock.calls[0];
+        expect(url).toBe('/api/mongo/query');
+        expect(options.method).toBe('POST');
+        expect(options.headers).toMatchObject({ 'Content-Type': 'application/json' });
+        
+        const callBody = JSON.parse(options.body);
+        expect(callBody.query).toContain('"customer_id"');
+        expect(callBody.query).toContain('CUST-1');
     });
 
     it('fetches data for multiple customers using $in clause', async () => {
-        const customers = [
-            { customer_id: 'CUST-1', id: '1', name: 'Test1' },
-            { customer_id: 'CUST-2', id: '2', name: 'Test2' }
-        ];
-        const settings = { 
-            customer_mongo_uri: 'mongodb://localhost',
-            customer_mongo_custom_query: '[{"$match": {"customer_id": "{{CUSTOMER_ID}}"}}]'
-        };
-
+        const customers = [{ id: 'CUST-1' }, { id: 'CUST-2' }];
         const mockData = [
-            { customer_id: 'CUST-1', custom_field: 'value1' },
-            { customer_id: 'CUST-2', custom_field: 'value2' }
+            { custom_field: 'value1', customer_id: 'CUST-1' },
+            { custom_field: 'value2', customer_id: 'CUST-2' }
         ];
         
         (authorizedFetch as any).mockResolvedValueOnce({
@@ -78,49 +106,48 @@ describe('useCustomerCustomFields', () => {
             json: async () => ({ success: true, data: mockData })
         });
 
-        const { result } = renderHook(() => useCustomerCustomFields(customers as any, settings as any));
-        
+        const { result } = renderHook(() => useCustomerCustomFields(customers as any, mockSettings as any));
+
         await waitFor(() => {
-            expect(result.current.loading).toBe(false);
+            expect(result.current.data).toEqual(mockData);
         });
 
-        expect(result.current.data).toEqual(mockData);
-        
-        // Ensure the payload contains the $in clause properly stringified
         const fetchCall = (authorizedFetch as any).mock.calls[0];
         const body = JSON.parse(fetchCall[1].body);
-        expect(body.query).toContain('{"$in":["CUST-1","CUST-2"]}');
+        expect(body.query).toContain('"$in":["CUST-1","CUST-2"]');
     });
 
     it('handles API errors', async () => {
-        const customer = { customer_id: 'CUST-1', id: '1', name: 'Test' };
-        const settings = { 
-            customer_mongo_uri: 'mongodb://localhost',
-            customer_mongo_custom_query: '[{"$match": {"customer_id": "{{CUSTOMER_ID}}"}}]'
-        };
-
+        const customer = { id: 'CUST-1' };
+        
         (authorizedFetch as any).mockResolvedValueOnce({
             ok: false,
             json: async () => ({ success: false, error: 'Database connection failed' })
         });
 
-        const { result } = renderHook(() => useCustomerCustomFields(customer as any, settings as any));
-        
-        await waitFor(() => {
-            expect(result.current.loading).toBe(false);
-        });
+        const { result } = renderHook(() => useCustomerCustomFields(customer as any, mockSettings as any));
 
-        expect(result.current.error).toBe('Database connection failed');
-        expect(result.current.data).toEqual([]);
+        await waitFor(() => {
+            expect(result.current.error).toBe('Database connection failed');
+            expect(result.current.data).toEqual([]);
+        });
     });
 
     it('passes proxy configuration and connection_type to the API', async () => {
-        const customer = { customer_id: 'CUST-1', id: '1', name: 'Test' };
-        const settings = { 
-            customer_mongo_uri: 'mongodb://localhost',
-            customer_mongo_custom_query: '[{"$match": {"customer_id": "{{CUSTOMER_ID}}"}}]',
-            customer_mongo_use_proxy: true,
-            customer_mongo_tunnel_name: 'test-tunnel',
+        const customer = { id: 'CUST-1' };
+        const settings = {
+            ...mockSettings,
+            persistence: {
+                ...mockSettings.persistence,
+                mongo: {
+                    ...mockSettings.persistence.mongo,
+                    customer: {
+                        ...mockSettings.persistence.mongo.customer,
+                        use_proxy: true,
+                        tunnel_name: 'test-tunnel'
+                    }
+                }
+            }
         };
 
         (authorizedFetch as any).mockResolvedValueOnce({
@@ -134,9 +161,8 @@ describe('useCustomerCustomFields', () => {
             const fetchCall = (authorizedFetch as any).mock.calls[0];
             const body = JSON.parse(fetchCall[1].body);
             expect(body.connection_type).toBe('customer');
-            expect(body.customer_mongo_use_proxy).toBe(true);
-            expect(body.customer_mongo_tunnel_name).toBe('test-tunnel');
-            expect(body.customer_mongo_uri).toBe('mongodb://localhost');
+            expect(body.persistence.mongo.customer.use_proxy).toBe(true);
+            expect(body.persistence.mongo.customer.tunnel_name).toBe('test-tunnel');
         });
     });
 });

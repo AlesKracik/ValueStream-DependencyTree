@@ -306,8 +306,20 @@ export function useValueStreamData(
         setData(prev => {
             if (!prev) return prev;
             
-            // Shallow merge at root for Partial<Settings>
-            const newSettings = { ...prev.settings, ...updates };
+            // Deep merge updates into settings
+            const deepMerge = (target: any, source: any) => {
+                const result = { ...target };
+                Object.keys(source).forEach(key => {
+                    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+                        result[key] = deepMerge(target[key] || {}, source[key]);
+                    } else {
+                        result[key] = source[key];
+                    }
+                });
+                return result;
+            };
+
+            const newSettings = deepMerge(prev.settings, updates);
             
             let newSprints = prev.sprints;
             // If fiscal start month changed, recompute all sprint quarters
@@ -324,7 +336,6 @@ export function useValueStreamData(
             }
 
             // Check if we need to refresh data (critical connection settings changed)
-            // We check if the specific nested objects were provided in 'updates'
             const needsRefresh = (
                 updates.persistence?.mongo?.app?.uri !== undefined || 
                 updates.persistence?.mongo?.app?.db !== undefined ||

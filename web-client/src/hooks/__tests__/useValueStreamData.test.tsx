@@ -1,10 +1,43 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useValueStreamData } from '../useValueStreamData';
-import type { ValueStreamData } from '../../types/models';
+import type { ValueStreamData, Settings } from '../../types/models';
+
+const mockSettings: Settings = {
+    general: {
+        fiscal_year_start_month: 1,
+        sprint_duration_days: 14
+    },
+    persistence: {
+        mongo: {
+            app: {
+                uri: 'mongodb://localhost:27017',
+                db: 'testdb',
+                use_proxy: false,
+                auth: { method: 'scram' }
+            },
+            customer: {
+                uri: '',
+                db: '',
+                use_proxy: false,
+                auth: { method: 'scram' }
+            }
+        }
+    },
+    jira: {
+        base_url: 'https://jira.com',
+        api_version: '3',
+        api_token: 'token'
+    },
+    ai: {
+        provider: 'openai',
+        api_key: ''
+    }
+};
 
 const mockData: ValueStreamData = {
-    valueStreams: [], settings: { jira_base_url: 'https://jira.com', jira_api_version: '3' },
+    valueStreams: [], 
+    settings: mockSettings,
     customers: [
         { id: 'c1', name: 'Cust 1', existing_tcv: 100, potential_tcv: 0 }
     ],
@@ -14,7 +47,7 @@ const mockData: ValueStreamData = {
     teams: [],
     epics: [],
     sprints: [
-        { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' }
+        { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY2026 Q1' }
     ],
     metrics: { maxScore: 100, maxRoi: 10 }
 };
@@ -210,13 +243,13 @@ describe('useValueStreamData', () => {
 
         // Initial: FY starts in January (default). 2026-01-01 is FY2026 Q1
         act(() => {
-            result.current.updateSettings({ fiscal_year_start_month: 1 });
+            result.current.updateSettings({ general: { fiscal_year_start_month: 1, sprint_duration_days: 14 } });
         });
         expect(result.current.data?.sprints[0].quarter).toBe('FY2026 Q1');
 
         // Update: FY starts in April (4). 2026-01-01 is now FY2026 Q4
         act(() => {
-            result.current.updateSettings({ fiscal_year_start_month: 4 });
+            result.current.updateSettings({ general: { fiscal_year_start_month: 4, sprint_duration_days: 14 } });
         });
         expect(result.current.data?.sprints[0].quarter).toBe('FY2026 Q4');
         
@@ -236,7 +269,10 @@ describe('useValueStreamData', () => {
     it('assigns sprint to the quarter in which it ends', async () => {
         const dataWithCrossQuarterSprint: ValueStreamData = {
             ...mockData,
-            settings: { ...mockData.settings, fiscal_year_start_month: 7 }, // July 1st FY start
+            settings: { 
+                ...mockData.settings, 
+                general: { ...mockData.settings.general, fiscal_year_start_month: 7 } 
+            }, // July 1st FY start
             sprints: [
                 { 
                     id: 's_cross', 
@@ -278,7 +314,15 @@ describe('useValueStreamData', () => {
         vi.mocked(fetch).mockClear();
 
         await act(async () => {
-            result.current.updateSettings({ mongo_uri: 'mongodb://new-host:27017' });
+            result.current.updateSettings({ 
+                persistence: { 
+                    ...mockSettings.persistence,
+                    mongo: {
+                        ...mockSettings.persistence.mongo,
+                        app: { ...mockSettings.persistence.mongo.app, uri: 'mongodb://new-host:27017' }
+                    }
+                } 
+            });
         });
 
         // Should call persist settings then refresh data (loadData)
@@ -311,6 +355,3 @@ describe('useValueStreamData', () => {
         });
     });
 });
-
-
-
