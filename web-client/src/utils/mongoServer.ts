@@ -80,6 +80,7 @@ export interface MongoConfig {
   [key: string]: any;
   proxyHost?: string;
   proxyPort?: number;
+  tunnels?: Record<string, { host: string, port: number }>;
 }
 
 export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app', checkExists = false) {
@@ -95,9 +96,10 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
   const dbName = config[prefix + 'db'] || (type === 'customer' ? 'customer' : 'valueStream');
   const authMethod = config[prefix + 'auth_method'] || 'scram';
   const useProxy = !!config[prefix + 'use_proxy'];
+  const tunnelName = config[prefix + 'tunnel_name'];
 
   // Create a cache key for this specific connection
-  const cacheKey = `${type}:${uri}:${dbName}:${authMethod}:${useProxy}:${config[prefix + 'aws_access_key'] || ''}`;
+  const cacheKey = `${type}:${uri}:${dbName}:${authMethod}:${useProxy}:${tunnelName || ''}:${config[prefix + 'aws_access_key'] || ''}`;
   
   const cached = mongoClients.get(cacheKey);
   if (cached) {
@@ -123,16 +125,27 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
     }
   };
 
-  // Official SOCKS proxy implementation for the MongoDB Node driver (v7+)
-  if (useProxy && config.proxyHost) {
-    options.proxyHost = config.proxyHost;
-    options.proxyPort = Number(config.proxyPort);
-    // Explicitly providing these (even if empty) can help force the SOCKS logic
-    options.proxyUsername = '';
-    options.proxyPassword = '';
-    
-    // MONGO_DEBUG: Log proxy usage
-    console.log(`[MONGO_DEBUG] Using SOCKS proxy: ${config.proxyHost}:${config.proxyPort}`);
+  // SOCKS proxy implementation with dynamic tunnel support
+  if (useProxy) {
+    let effectiveHost = config.proxyHost;
+    let effectivePort = config.proxyPort;
+
+    // If a tunnel name is provided (e.g. "app", "customer"), try to resolve it from the tunnels map
+    if (tunnelName && config.tunnels && config.tunnels[tunnelName.toLowerCase()]) {
+      const tunnel = config.tunnels[tunnelName.toLowerCase()];
+      effectiveHost = tunnel.host || effectiveHost;
+      effectivePort = tunnel.port || effectivePort;
+      console.log(`[MONGO_DEBUG] Using tunnel '${tunnelName}': ${effectiveHost}:${effectivePort}`);
+    } else {
+      console.log(`[MONGO_DEBUG] Using default proxy: ${effectiveHost}:${effectivePort}`);
+    }
+
+    if (effectiveHost && effectivePort) {
+      options.proxyHost = effectiveHost;
+      options.proxyPort = Number(effectivePort);
+      options.proxyUsername = '';
+      options.proxyPassword = '';
+    }
   }
 
   const isSrv = uri.startsWith('mongodb+srv://');

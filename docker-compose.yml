@@ -26,23 +26,8 @@ services:
       context: .
       dockerfile: Dockerfile.ssh-proxy
     restart: unless-stopped
-    command: >
-      /bin/sh -c "
-      if [ \"$$SOCKS_PROXY_HOST\" = \"host.docker.internal\" ]; then
-        echo 'SOCKS_PROXY_HOST is set to host.docker.internal. Sidecar tunnel is NOT needed. Exiting...';
-        exit 0;
-      elif [ -z \"$$SSH_HOST\" ]; then
-        echo 'SSH_HOST not set. Sidecar tunnel is DISABLED. (Scenario A or C)';
-        sleep infinity;
-      else
-        echo 'Starting SOCKS5 Sidecar tunnel to $$SSH_HOST...';
-        ssh -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes 
-        -D 0.0.0.0:1080 -N -i /root/.ssh/id_rsa $$SSH_USER@$$SSH_HOST;
-      fi"
-    environment:
-      - SSH_USER=${SSH_USER}
-      - SSH_HOST=${SSH_HOST}
-      - SOCKS_PROXY_HOST=${SOCKS_PROXY_HOST}
+    env_file:
+      - .env
     volumes:
       - ${SSH_KEY_PATH:-~/.ssh/id_rsa}:/root/.ssh/id_rsa:ro
     networks:

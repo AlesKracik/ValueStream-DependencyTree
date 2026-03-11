@@ -237,10 +237,28 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
 
       // Helper to augment config with plugin-level env (proxy, etc)
       const augmentConfig = (config: any) => {
+        const tunnels: Record<string, any> = {};
+        
+        // Scan environment for any SOCKS port variables (e.g. APP_SOCKS_PORT, CUSTOMER_SOCKS_PORT)
+        const combinedEnv = { ...process.env, ...env };
+        Object.keys(combinedEnv).forEach(key => {
+          if (key.endsWith('_SOCKS_PORT')) {
+            const name = key.replace('_SOCKS_PORT', '').toLowerCase();
+            const port = parseInt(combinedEnv[key] || '');
+            if (!isNaN(port)) {
+              tunnels[name] = {
+                host: combinedEnv.SOCKS_PROXY_HOST || combinedEnv.VITE_SOCKS_PROXY_HOST || 'localhost',
+                port: port
+              };
+            }
+          }
+        });
+
         return {
           ...config,
           proxyHost: process.env.SOCKS_PROXY_HOST || env.VITE_SOCKS_PROXY_HOST || env.SOCKS_PROXY_HOST,
-          proxyPort: parseInt(process.env.SOCKS_PROXY_PORT || env.VITE_SOCKS_PROXY_PORT || env.SOCKS_PROXY_PORT || '1080')
+          proxyPort: parseInt(process.env.SOCKS_PROXY_PORT || env.VITE_SOCKS_PROXY_PORT || env.SOCKS_PROXY_PORT || '1080'),
+          tunnels
         };
       };
 

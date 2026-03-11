@@ -1,67 +1,85 @@
 # start-tunnel.ps1
-# Helper script to start a SOCKS5 SSH tunnel for local development.
-# Requires a .env file in the root directory with SSH_USER and SSH_HOST.
+# Helper script to start SOCKS5 SSH tunnels from a consolidated .env file.
+# Usage: 
+#   .\scripts\start-tunnel.ps1 app        (Starts APP bastion)
+#   .\scripts\start-tunnel.ps1 customer   (Starts CUSTOMER bastion)
+#   .\scripts\start-tunnel.ps1 all        (Starts both)
 
-Write-Host "[INFO] Locating .env file..." -ForegroundColor Gray
-$envFile = Join-Path (Get-Item .).FullName ".env"
-if (-not (Test-Path $envFile)) {
-    Write-Error "[ERROR] .env file not found at $envFile. Please create it based on .env.example."
+param (
+    [Parameter(Mandatory=$true)]
+    [ValidateSet("app", "customer", "all")]
+    [string]$Target
+)
+
+$EnvFile = ".env"
+if (-not (Test-Path $EnvFile)) {
+    Write-Host "[ERROR] .env file not found." -ForegroundColor Red
     exit 1
 }
 
-Write-Host "[INFO] Loading environment variables from $envFile..." -ForegroundColor Gray
-# Simple .env parser
-Get-Content $envFile | ForEach-Object {
-    if ($_ -match '^([^=]+)=(.*)$') {
-        $name = $matches[1].Trim()
-        $value = $matches[2].Trim()
-        Set-Item -Path "env:$name" -Value $value
+# Load .env file into process environment
+Write-Host "[INFO] Loading environment variables from $EnvFile..." -ForegroundColor Gray
+foreach ($line in Get-Content $EnvFile) {
+    if ($line -notmatch "^#" -and $line -match "=") {
+        $parts = $line -split "=", 2
+        $key = $parts[0].Trim()
+        $value = $parts[1].Trim()
+        [System.Environment]::SetEnvironmentVariable($key, $value, "Process")
     }
 }
 
-if (-not $env:SSH_USER -or -not $env:SSH_HOST) {
-    Write-Error "[ERROR] SSH_USER and SSH_HOST must be defined in .env"
-    exit 1
-}
+function Start-Tunnel {
+    param([string]$Name)
+    
+    $Prefix = $Name.ToUpper()
+    $User = [System.Environment]::GetEnvironmentVariable("${Prefix}_SSH_USER")
+    $Host = [System.Environment]::GetEnvironmentVariable("${Prefix}_SSH_HOST")
+    $Port = [System.Environment]::GetEnvironmentVariable("${Prefix}_SOCKS_PORT")
+    $Key  = $env:SSH_KEY_PATH
+    
+    if (-not $Port) { $Port = "1080" }
+    if (-not $Key) { $Key = "~/.ssh/id_rsa" }
+    
+    if (-not $User -or -not $Host) {
+        Write-Host "[ERROR] ${Prefix}_SSH_USER and ${Prefix}_SSH_HOST must be defined in .env" -ForegroundColor Red
+        return
+    }
 
-$port = if ($env:SOCKS_PROXY_PORT) { $env:SOCKS_PROXY_PORT } else { "1080" }
-$keyPath = if ($env:SSH_KEY_PATH) { $env:SSH_KEY_PATH } else { "~/.ssh/id_rsa" }
-$pidFile = Join-Path (Get-Item .).FullName ".tunnel.pid"
+    $PidFile = ".tunnel.$Name.pid"
 
-Write-Host "[INFO] Configuration:" -ForegroundColor Gray
-Write-Host "  - SSH User: $env:SSH_USER" -ForegroundColor Gray
-Write-Host "  - SSH Host: $env:SSH_HOST" -ForegroundColor Gray
-Write-Host "  - SOCKS Port: $port" -ForegroundColor Gray
-Write-Host "  - Key Path: $keyPath" -ForegroundColor Gray
-Write-Host "  - PID File: $pidFile" -ForegroundColor Gray
+    Write-Host "`n[INFO] Configuration for $Name ($Prefix):" -ForegroundColor Gray
+    Write-Host "  - SSH User: $User" -ForegroundColor Gray
+    Write-Host "  - SSH Host: $Host" -ForegroundColor Gray
+    Write-Host "  - SOCKS Port: $Port" -ForegroundColor Gray
+    Write-Host "  - PID File: $PidFile" -ForegroundColor Gray
 
-# Check if tunnel is already running
-if (Test-Path $pidFile) {
-    Write-Host "[INFO] Found existing PID file: $pidFile" -ForegroundColor Gray
-    $oldPid = Get-Content $pidFile -Raw
-    if ($oldPid) {
-        $oldProcess = Get-Process -Id $oldPid -ErrorAction SilentlyContinue
-        if ($oldProcess) {
-            Write-Host "[ACTION] Tunnel is already running (PID: $oldPid). Stopping it..." -ForegroundColor Yellow
-            Stop-Process -Id $oldPid -Force
-            Write-Host "[SUCCESS] Stopped process $oldPid." -ForegroundColor Green
-        } else {
-            Write-Host "[INFO] PID $oldPid from file is not running." -ForegroundColor Gray
+    # Check if tunnel is already running
+    if (Test-Path $PidFile) {
+        $OldPid = Get-Content $PidFile
+        $proc = Get-Process -Id $OldPid -ErrorAction SilentlyContinue
+        if ($proc) {
+            Write-Host "[ACTION] Tunnel for $Name is already running. Stopping it (PID: $OldPid)..." -ForegroundColor Yellow
+            Stop-Process -Id $OldPid -Force
+            Start-Sleep -Seconds 1
         }
+        Remove-Item $PidFile
     }
-    Write-Host "[INFO] Cleaning up old PID file." -ForegroundColor Gray
-    Remove-Item $pidFile
+
+    Write-Host "[ACTION] Starting SOCKS5 tunnel for $Name on 0.0.0.0:$Port to $Host..." -ForegroundColor Cyan
+    $sshArgs = @("-o", "StrictHostKeyChecking=no", "-o", "ExitOnForwardFailure=yes", "-D", "0.0.0.0:$Port", "-N", "-i", $Key, "$User@$Host")
+    $sshProc = Start-Process ssh -ArgumentList $sshArgs -PassThru -NoNewWindow
+
+    if ($sshProc) {
+        $sshProc.Id | Out-File $PidFile -NoNewline
+        Write-Host "[SUCCESS] Tunnel for $Name started (PID: $($sshProc.Id))." -ForegroundColor Green
+    } else {
+        Write-Host "[ERROR] Failed to start SSH tunnel for $Name." -ForegroundColor Red
+    }
 }
 
-Write-Host "[ACTION] Starting SOCKS5 tunnel on 0.0.0.0:$port to $env:SSH_HOST..." -ForegroundColor Cyan
-
-# Start ssh in the background
-$sshProcess = Start-Process ssh -ArgumentList "-o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -D `"0.0.0.0:$port`" -N -i `"$keyPath`" $($env:SSH_USER)@$($env:SSH_HOST)" -PassThru -NoNewWindow
-
-if ($sshProcess) {
-    $sshProcess.Id | Out-File -FilePath $pidFile -Encoding ascii
-    Write-Host "[SUCCESS] Tunnel started (PID: $($sshProcess.Id))." -ForegroundColor Green
-    Write-Host "[INFO] To stop the tunnel, run this script again or kill PID $($sshProcess.Id)." -ForegroundColor Gray
+if ($Target -eq "all") {
+    Start-Tunnel "app"
+    Start-Tunnel "customer"
 } else {
-    Write-Error "[ERROR] Failed to start SSH tunnel process."
+    Start-Tunnel $Target
 }

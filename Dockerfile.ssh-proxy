@@ -1,2 +1,37 @@
 FROM alpine:latest
 RUN apk add --no-cache openssh-client
+
+# Entrypoint script to start multiple SSH tunnels based on environment variables
+COPY <<'EOF' /usr/local/bin/entrypoint.sh
+#!/bin/sh
+
+# Ensure SSH key has correct permissions
+chmod 600 /root/.ssh/id_rsa
+
+# Iterate over all environment variables ending in _SSH_HOST
+# (e.g., APP_SSH_HOST, CUSTOMER_SSH_HOST)
+for VAR_NAME in $(env | grep _SSH_HOST | cut -d'=' -f1); do
+    PREFIX=$(echo "$VAR_NAME" | sed 's/_SSH_HOST//')
+    
+    # Get corresponding variables
+    HOST=$(eval echo \$${PREFIX}_SSH_HOST)
+    USER=$(eval echo \$${PREFIX}_SSH_USER)
+    PORT=$(eval echo \$${PREFIX}_SOCKS_PORT)
+    
+    # Fallback to default port if not specified
+    PORT=${PORT:-1080}
+    
+    if [ -n "$HOST" ] && [ -n "$USER" ]; then
+        echo "[INFO] Starting SOCKS5 tunnel for $PREFIX on 0.0.0.0:$PORT to $HOST..."
+        ssh -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes \
+            -D 0.0.0.0:$PORT -N -i /root/.ssh/id_rsa "$USER@$HOST" &
+    fi
+done
+
+# Keep the container running
+echo "[INFO] All tunnels started. Sidecar is active."
+sleep infinity
+EOF
+
+RUN chmod +x /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

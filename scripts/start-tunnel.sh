@@ -1,61 +1,80 @@
 #!/bin/bash
 # start-tunnel.sh
-# Helper script to start a SOCKS5 SSH tunnel for local development on MacOS/Linux.
+# Helper script to start SOCKS5 SSH tunnels from a consolidated .env file.
+# Usage: 
+#   ./scripts/start-tunnel.sh app        (Starts APP bastion)
+#   ./scripts/start-tunnel.sh customer   (Starts CUSTOMER bastion)
+#   ./scripts/start-tunnel.sh all        (Starts both)
 
-echo -e "\033[0;90m[INFO] Locating .env file...\033[0m"
-if [ -f .env ]; then
-    echo -e "\033[0;90m[INFO] Loading environment variables from .env...\033[0m"
-    export $(grep -v '^#' .env | xargs)
-else
-    echo -e "\033[0;31m[ERROR] .env file not found. Please create it based on .env.example.\033[0m"
+TARGET=$1
+
+if [[ ! "$TARGET" =~ ^(app|customer|all)$ ]]; then
+    echo -e "\033[0;31m[ERROR] Usage: ./scripts/start-tunnel.sh [app|customer|all]\033[0m"
     exit 1
 fi
 
-SSH_USER=${SSH_USER:-""}
-SSH_HOST=${SSH_HOST:-""}
-SOCKS_PORT=${SOCKS_PROXY_PORT:-1080}
-SSH_KEY=${SSH_KEY_PATH:-"~/.ssh/id_rsa"}
-PID_FILE=".tunnel.pid"
-
-if [ -z "$SSH_USER" ] || [ -z "$SSH_HOST" ]; then
-    echo -e "\033[0;31m[ERROR] SSH_USER and SSH_HOST must be defined in .env\033[0m"
+ENV_FILE=".env"
+if [ ! -f "$ENV_FILE" ]; then
+    echo -e "\033[0;31m[ERROR] .env file not found.\033[0m"
     exit 1
 fi
 
-echo -e "\033[0;90m[INFO] Configuration:\033[0m"
-echo -e "\033[0;90m  - SSH User: $SSH_USER\033[0m"
-echo -e "\033[0;90m  - SSH Host: $SSH_HOST\033[0m"
-echo -e "\033[0;90m  - SOCKS Port: $SOCKS_PORT\033[0m"
-echo -e "\033[0;90m  - Key Path: $SSH_KEY\033[0m"
-echo -e "\033[0;90m  - PID File: $PID_FILE\033[0m"
+# Load variables into current shell
+echo -e "\033[0;90m[INFO] Loading environment variables from $ENV_FILE...\033[0m"
+export $(grep -v '^#' "$ENV_FILE" | xargs)
 
-# Check if tunnel is already running
-if [ -f "$PID_FILE" ]; then
-    OLD_PID=$(cat "$PID_FILE")
-    echo -e "\033[0;90m[INFO] Found existing PID file: $PID_FILE (PID: $OLD_PID)\033[0m"
-    if ps -p "$OLD_PID" > /dev/null; then
-        echo -e "\033[0;33m[ACTION] Tunnel is already running. Stopping it (PID: $OLD_PID)...\033[0m"
-        kill "$OLD_PID"
-        sleep 1
-        echo -e "\033[0;32m[SUCCESS] Stopped process $OLD_PID.\033[0m"
-    else
-        echo -e "\033[0;90m[INFO] PID $OLD_PID from file is not running.\033[0m"
+start_tunnel() {
+    NAME=$1
+    PREFIX=$(echo "$NAME" | tr '[:lower:]' '[:upper:]')
+    
+    # Indirect reference to variables
+    USER_VAR="${PREFIX}_SSH_USER"
+    HOST_VAR="${PREFIX}_SSH_HOST"
+    PORT_VAR="${PREFIX}_SOCKS_PORT"
+    
+    USER=${!USER_VAR}
+    HOST=${!HOST_VAR}
+    PORT=${!PORT_VAR:-"1080"}
+    KEY=${SSH_KEY_PATH:-"~/.ssh/id_rsa"}
+    PID_FILE=".tunnel.$NAME.pid"
+
+    if [ -z "$USER" ] || [ -z "$HOST" ]; then
+        echo -e "\033[0;31m[ERROR] ${PREFIX}_SSH_USER and ${PREFIX}_SSH_HOST must be defined in .env\033[0m"
+        return
     fi
-    echo -e "\033[0;90m[INFO] Cleaning up old PID file.\033[0m"
-    rm "$PID_FILE"
-fi
 
-echo -e "\033[0;36m[ACTION] Starting SOCKS5 tunnel on 0.0.0.0:$SOCKS_PORT to $SSH_HOST...\033[0m"
+    echo -e "\n\033[0;90m[INFO] Configuration for $NAME ($PREFIX):\033[0m"
+    echo -e "\033[0;90m  - SSH User: $USER\033[0m"
+    echo -e "\033[0;90m  - SSH Host: $HOST\033[0m"
+    echo -e "\033[0;90m  - SOCKS Port: $PORT\033[0m"
+    echo -e "\033[0;90m  - PID File: $PID_FILE\033[0m"
 
-# Using background manual capture for better PID tracking:
-ssh -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -D 0.0.0.0:$SOCKS_PORT -N -i "$SSH_KEY" "$SSH_USER@$SSH_HOST" &
-SSH_PID=$!
+    # Check if tunnel is already running
+    if [ -f "$PID_FILE" ]; then
+        OLD_PID=$(cat "$PID_FILE")
+        if ps -p "$OLD_PID" > /dev/null; then
+            echo -e "\033[0;33m[ACTION] Tunnel for $NAME is already running. Stopping it (PID: $OLD_PID)...\033[0m"
+            kill "$OLD_PID"
+            sleep 1
+        fi
+        rm "$PID_FILE"
+    fi
 
-if [ -n "$SSH_PID" ]; then
-    echo "$SSH_PID" > "$PID_FILE"
-    echo -e "\033[0;32m[SUCCESS] Tunnel started (PID: $SSH_PID).\033[0m"
-    echo -e "\033[0;90m[INFO] To stop the tunnel, run this script again or kill PID $SSH_PID.\033[0m"
+    echo -e "\033[0;36m[ACTION] Starting SOCKS5 tunnel for $NAME on 0.0.0.0:$PORT to $HOST...\033[0m"
+    ssh -o StrictHostKeyChecking=no -o ExitOnForwardFailure=yes -D 0.0.0.0:$PORT -N -i "$KEY" "$USER@$HOST" &
+    SSH_PID=$!
+
+    if [ -n "$SSH_PID" ]; then
+        echo "$SSH_PID" > "$PID_FILE"
+        echo -e "\033[0;32m[SUCCESS] Tunnel for $NAME started (PID: $SSH_PID).\033[0m"
+    else
+        echo -e "\033[0;31m[ERROR] Failed to start SSH tunnel for $NAME.\033[0m"
+    fi
+}
+
+if [ "$TARGET" == "all" ]; then
+    start_tunnel "app"
+    start_tunnel "customer"
 else
-    echo -e "\033[0;31m[ERROR] Failed to start SSH tunnel process.\033[0m"
-    exit 1
+    start_tunnel "$TARGET"
 fi
