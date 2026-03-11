@@ -569,7 +569,7 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
             envVars.AWS_CONFIG_FILE = tempConfigPath;
           }
           
-          const child = spawn(`aws sso login --profile ${profileName}`, { shell: true, env: envVars });
+          const child = spawn(`aws sso login --profile ${profileName} --use-device-code`, { shell: true, env: envVars });
           
           let capturedOutput = '';
           const outputPromise = new Promise<string>((resolve) => {

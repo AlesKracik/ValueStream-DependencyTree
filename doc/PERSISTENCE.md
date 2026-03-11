@@ -84,7 +84,7 @@ Allows connection using AWS Identity and Access Management. Supports both static
     - `aws_role_arn`, `aws_external_id`
 - **Driver Logic:** Uses `MONGODB-AWS` mechanism.
 - **SSO Support:** The application includes integrated buttons to streamline AWS SSO authentication:
-    - **Login via AWS SSO:** Executes `aws sso login` on the server. In Docker environments, the login URL and device code are captured and displayed directly in the UI for the user to click.
+    - **Login via AWS SSO:** Executes `aws sso login --use-device-code` on the server. The application automatically constructs a complete authorization URL with the device code pre-filled (e.g., `https://device.sso.../?user_code=ABCD-EFGH`) and displays it as a direct link in the UI for a seamless one-click experience.
     - **Fetch SSO Credentials:** Executes `aws configure export-credentials` to retrieve temporary keys from the active SSO session and automatically populates the Access Key, Secret Key, and Session Token fields.
 - **Docker Note:** The `aws-cli` is required in the container. If updating from an older version, run `docker compose up --build app` to ensure the CLI is installed.
 

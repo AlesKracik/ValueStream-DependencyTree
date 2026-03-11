@@ -902,24 +902,44 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             const codeMatch = ssoMessage.message.match(/([A-Z0-9]{4}-[A-Z0-9]{4})/);
                                             const code = codeMatch ? codeMatch[1] : null;
                                             
-                                            return ssoMessage.message.split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
+                                            // Split message by URLs to linkify them
+                                            const parts = ssoMessage.message.split(/(https?:\/\/[^\s]+)/g);
+                                            
+                                            return parts.map((part, i) => {
                                                 if (part.startsWith('http')) {
                                                     let url = part.replace(/[.,]$/, '');
-                                                    const finalUrl = (code && url.includes('device.sso')) ? `${url}?user_code=${code}` : url;
+                                                    // Only append if it's a device.sso URL and doesn't already have user_code
+                                                    const finalUrl = (code && url.includes('device.sso') && !url.includes('user_code=')) 
+                                                        ? `${url}${url.includes('?') ? '&' : '?'}user_code=${code}` 
+                                                        : url;
+                                                        
                                                     return (
-                                                        <a key={i} href={finalUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', textDecoration: 'underline', fontWeight: 'bold' }}>
-                                                            {part}
-                                                        </a>
+                                                        <div key={i} style={{ margin: '8px 0' }}>
+                                                            <div style={{ color: '#9ca3af', marginBottom: '4px' }}>Authorization URL:</div>
+                                                            <a href={finalUrl} target="_blank" rel="noopener noreferrer" style={{ 
+                                                                color: '#60a5fa', 
+                                                                textDecoration: 'underline', 
+                                                                fontWeight: 'bold',
+                                                                display: 'block',
+                                                                padding: '8px',
+                                                                backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                                                                borderRadius: '4px',
+                                                                border: '1px solid rgba(96, 165, 250, 0.2)'
+                                                            }}>
+                                                                {finalUrl}
+                                                            </a>
+                                                        </div>
                                                     );
                                                 }
-                                                // Linkify the code too if we found it
+                                                
+                                                // If we found the code in this text part, highlight it but don't repeat the whole "Then enter the code" if it's already in the URL
                                                 if (code && part.includes(code)) {
-                                                    const parts = part.split(code);
+                                                    const subParts = part.split(code);
                                                     return (
                                                         <React.Fragment key={i}>
-                                                            {parts[0]}
+                                                            {subParts[0]}
                                                             <span style={{ color: '#f59e0b', fontWeight: 'bold', padding: '0 4px', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '2px' }}>{code}</span>
-                                                            {parts[1]}
+                                                            {subParts[1]}
                                                         </React.Fragment>
                                                     );
                                                 }
@@ -1318,24 +1338,44 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             const codeMatch = ssoMessage.message.match(/([A-Z0-9]{4}-[A-Z0-9]{4})/);
                                             const code = codeMatch ? codeMatch[1] : null;
                                             
-                                            return ssoMessage.message.split(/(https?:\/\/[^\s]+)/g).map((part, i) => {
+                                            // Split message by URLs to linkify them
+                                            const parts = ssoMessage.message.split(/(https?:\/\/[^\s]+)/g);
+                                            
+                                            return parts.map((part, i) => {
                                                 if (part.startsWith('http')) {
                                                     let url = part.replace(/[.,]$/, '');
-                                                    const finalUrl = (code && url.includes('device.sso')) ? `${url}?user_code=${code}` : url;
+                                                    // Only append if it's a device.sso URL and doesn't already have user_code
+                                                    const finalUrl = (code && url.includes('device.sso') && !url.includes('user_code=')) 
+                                                        ? `${url}${url.includes('?') ? '&' : '?'}user_code=${code}` 
+                                                        : url;
+                                                        
                                                     return (
-                                                        <a key={i} href={finalUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#60a5fa', textDecoration: 'underline', fontWeight: 'bold' }}>
-                                                            {part}
-                                                        </a>
+                                                        <div key={i} style={{ margin: '8px 0' }}>
+                                                            <div style={{ color: '#9ca3af', marginBottom: '4px' }}>Authorization URL:</div>
+                                                            <a href={finalUrl} target="_blank" rel="noopener noreferrer" style={{ 
+                                                                color: '#60a5fa', 
+                                                                textDecoration: 'underline', 
+                                                                fontWeight: 'bold',
+                                                                display: 'block',
+                                                                padding: '8px',
+                                                                backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                                                                borderRadius: '4px',
+                                                                border: '1px solid rgba(96, 165, 250, 0.2)'
+                                                            }}>
+                                                                {finalUrl}
+                                                            </a>
+                                                        </div>
                                                     );
                                                 }
-                                                // Linkify the code too if we found it
+                                                
+                                                // If we found the code in this text part, highlight it but don't repeat the whole "Then enter the code" if it's already in the URL
                                                 if (code && part.includes(code)) {
-                                                    const parts = part.split(code);
+                                                    const subParts = part.split(code);
                                                     return (
                                                         <React.Fragment key={i}>
-                                                            {parts[0]}
+                                                            {subParts[0]}
                                                             <span style={{ color: '#f59e0b', fontWeight: 'bold', padding: '0 4px', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '2px' }}>{code}</span>
-                                                            {parts[1]}
+                                                            {subParts[1]}
                                                         </React.Fragment>
                                                     );
                                                 }
