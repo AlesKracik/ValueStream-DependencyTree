@@ -15,6 +15,11 @@ export function checkAuth(
 ): { authorized: boolean; response?: any; statusCode?: number } {
     const isAuthRequired = !!adminSecret;
     
+    // Only protect /api/ routes. Static assets and the main app must load to show the login UI.
+    if (!url?.startsWith('/api/')) {
+        return { authorized: true };
+    }
+
     // Support both header formats
     let providedSecret = headers['x-admin-secret'] as string | undefined;
     const authHeader = headers['authorization'] as string | undefined;
@@ -24,7 +29,7 @@ export function checkAuth(
     }
 
     // Special case for auth status endpoint
-    if (url?.startsWith('/api/auth/status')) {
+    if (url.startsWith('/api/auth/status')) {
         const isAuthorized = isAuthRequired ? providedSecret === adminSecret : true;
         return {
             authorized: true, // We always return a response for this endpoint

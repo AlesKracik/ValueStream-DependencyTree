@@ -3,6 +3,13 @@ import { checkAuth } from '../authServer';
 
 describe('authServer utility', () => {
     describe('checkAuth', () => {
+        it('allows non-API routes unconditionally (e.g. static assets, index.html)', () => {
+            const result = checkAuth('/', {}, 'my-secret');
+            expect(result.authorized).toBe(true);
+            const assetResult = checkAuth('/src/main.tsx', {}, 'my-secret');
+            expect(assetResult.authorized).toBe(true);
+        });
+
         it('allows everything if no admin secret is set', () => {
             const result = checkAuth('/api/loadData', {}, undefined);
             expect(result.authorized).toBe(true);
