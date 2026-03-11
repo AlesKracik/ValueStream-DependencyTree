@@ -17,7 +17,8 @@ export function useCustomerCustomFields(customerOrCustomers: Customer | Customer
 
     useEffect(() => {
         async function fetchData() {
-            if (customerIds.length === 0 || !settings?.customer_mongo_uri || !settings?.customer_mongo_custom_query) {
+            const customerMongo = settings?.persistence?.mongo?.customer;
+            if (customerIds.length === 0 || !customerMongo?.uri || !customerMongo?.custom_query) {
                 setData([]);
                 return;
             }
@@ -27,27 +28,21 @@ export function useCustomerCustomFields(customerOrCustomers: Customer | Customer
 
             try {
                 // Replace {{CUSTOMER_ID}} with either a single string or an $in clause
-                // We use a regex that matches optional quotes around the placeholder
                 const replacementValue = customerIds.length === 1 
                     ? customerIds[0] 
                     : { $in: customerIds };
                 
-                const queryStr = settings.customer_mongo_custom_query.replace(/"?{{CUSTOMER_ID}}"?/g, JSON.stringify(replacementValue));
+                const queryStr = customerMongo.custom_query.replace(/"?{{CUSTOMER_ID}}"?/g, JSON.stringify(replacementValue));
 
                 const response = await authorizedFetch('/api/mongo/query', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        customer_mongo_uri: settings.customer_mongo_uri,
-                        customer_mongo_db: settings.customer_mongo_db,
-                        customer_mongo_auth_method: settings.customer_mongo_auth_method,
-                        customer_mongo_aws_access_key: settings.customer_mongo_aws_access_key,
-                        customer_mongo_aws_secret_key: settings.customer_mongo_aws_secret_key,
-                        customer_mongo_aws_session_token: settings.customer_mongo_aws_session_token,
-                        customer_mongo_oidc_token: settings.customer_mongo_oidc_token,
-                        customer_mongo_use_proxy: settings.customer_mongo_use_proxy,
-                        customer_mongo_tunnel_name: settings.customer_mongo_tunnel_name,
-                        customer_mongo_collection: settings.customer_mongo_collection,
+                        persistence: {
+                            mongo: {
+                                customer: customerMongo
+                            }
+                        },
                         connection_type: 'customer',
                         query: queryStr
                     })

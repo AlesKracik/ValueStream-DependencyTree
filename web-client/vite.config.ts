@@ -15,246 +15,162 @@ const execPromise = promisify(exec);
 // Start idle connection cleanup for MongoDB connections
 startMongoCleanup();
 
-// Map to store persistent Augment processes: sessionId -> { child, lastUsed }
-const augmentProcesses = new Map<string, { child: any, lastUsed: number }>();
+const ALLOWED_COLLECTIONS = ['customers', 'workItems', 'teams', 'epics', 'sprints', 'valueStreams'];
 
-// Cleanup idle processes every minute
-setInterval(() => {
-  const now = Date.now();
-  for (const [_, item] of augmentProcesses.entries()) {
-    if (now - item.lastUsed > 10 * 60 * 1000) { // 10 minutes idle
-      item.child.kill();
-      augmentProcesses.delete(_);
-    }
-  }
-}, 60000);
-
-// Ensure child processes are killed when the main app process exits
-const cleanupAllProcesses = () => {
-  for (const [_, item] of augmentProcesses.entries()) {
-    try {
-      item.child.kill();
-    } catch (e) { /* ignore */ }
-  }
-  augmentProcesses.clear();
+const calculateQuarter = (dateStr: string, fiscalYearStartMonth: number) => {
+  const date = new Date(dateStr);
+  const month = date.getMonth() + 1; // 1-12
+  const adjustedMonth = (month - fiscalYearStartMonth + 12) % 12;
+  const quarter = Math.floor(adjustedMonth / 3) + 1;
+  const year = date.getFullYear();
+  const fiscalYear = month < fiscalYearStartMonth ? year : year + 1;
+  return `FY${String(fiscalYear).slice(2)}Q${quarter}`;
 };
 
-process.on('SIGINT', () => { cleanupAllProcesses(); process.exit(); });
-process.on('SIGTERM', () => { cleanupAllProcesses(); process.exit(); });
-process.on('exit', cleanupAllProcesses);
+async function logQuery<T>(name: string, collection: string, op: string, promise: Promise<T>): Promise<T> {
+  const start = Date.now();
+  try {
+    const res = await promise;
+    const count = Array.isArray(res) ? res.length : (res ? 1 : 0);
+    console.log(`[MONGO] ${name} (${collection}.${op}) took ${Date.now() - start}ms (${count} docs)`);
+    return res;
+  } catch (e) {
+    console.error(`[MONGO] ${name} (${collection}.${op}) FAILED after ${Date.now() - start}ms`, e);
+    throw e;
+  }
+}
 
 const PersistencePlugin = (env: Record<string, string>): Plugin => ({
-  name: 'persistence',
-  configureServer(server: any) {
-    async function logQuery<T>(name: string, collection: string, operation: string, promise: Promise<T>): Promise<T> {
-      const start = Date.now();
-      try {
-        const result = await promise;
-        console.log(`[MONGO_DEBUG] Query ${name} on ${collection}.${operation} took ${Date.now() - start}ms`);
-        return result;
-      } catch (e) {
-        console.error(`[MONGO_DEBUG] Query ${name} on ${collection}.${operation} FAILED after ${Date.now() - start}ms:`, e);
-        throw e;
-      }
-    }
-
-    server.middlewares.use(async (req: any, res: any, next: any) => {
-      const ALLOWED_COLLECTIONS = ['customers', 'workItems', 'teams', 'epics', 'sprints', 'valueStreams'];
-      const MAX_PAYLOAD_SIZE = 5 * 1024 * 1024; // 5 MB limit
-
-      function escapeRegex(string: string) {
-        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      }
-
-      // Simple CORS check
-      const origin = req.headers['origin'];
-      const allowedOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
-      if (origin && !allowedOrigins.includes(origin)) {
-        res.statusCode = 403;
-        res.setHeader('Content-Type', 'application/json');
-        return res.end(JSON.stringify({ success: false, error: 'CORS policy violation' }));
-      }
-      if (origin) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-      }
-      if (req.method === 'OPTIONS') {
-        res.statusCode = 204;
-        return res.end();
-      }
-
+  name: 'persistence-plugin',
+  configureServer(server) {
+    server.middlewares.use(async (req, res, next) => {
+      const ADMIN_SECRET = process.env.ADMIN_SECRET || env.VITE_ADMIN_SECRET || 'dev-secret';
+      
       const SENSITIVE_FIELDS = [
-        'jira_api_token', 
-        'mongo_uri', 
-        'mongo_aws_access_key', 
-        'mongo_aws_secret_key', 
-        'mongo_aws_session_token', 
-        'mongo_aws_role_arn',
-        'mongo_aws_external_id',
-        'mongo_aws_role_session_name',
-        'mongo_aws_role_session_name',
-        'mongo_aws_profile',
-        'mongo_aws_sso_start_url',
-        'mongo_aws_sso_region',
-        'mongo_aws_sso_account_id',
-        'mongo_aws_sso_role_name',
-        'customer_mongo_aws_access_key', 
-        'customer_mongo_aws_secret_key', 
-        'customer_mongo_aws_session_token', 
-        'customer_mongo_aws_role_arn',
-        'customer_mongo_aws_external_id',
-        'customer_mongo_aws_role_session_name',
-        'customer_mongo_aws_profile',
-        'customer_mongo_aws_sso_start_url',
-        'customer_mongo_aws_sso_region',
-        'customer_mongo_aws_sso_account_id',
-        'customer_mongo_aws_sso_role_name',
-        'customer_mongo_oidc_token', 
-        'llm_api_key'
-        ];
+        'api_token', 
+        'uri', 
+        'aws_access_key', 
+        'aws_secret_key', 
+        'aws_session_token', 
+        'aws_role_arn',
+        'aws_external_id',
+        'aws_role_session_name',
+        'aws_profile',
+        'aws_sso_start_url',
+        'aws_sso_region',
+        'aws_sso_account_id',
+        'aws_sso_role_name',
+        'oidc_token', 
+        'api_key'
+      ];
 
       const MASK = '********';
 
       function maskSettings(settings: any) {
-        const masked = { ...settings };
-        SENSITIVE_FIELDS.forEach(field => {
-          if (masked[field]) masked[field] = MASK;
+        if (!settings || typeof settings !== 'object') return settings;
+        const masked = Array.isArray(settings) ? [...settings] : { ...settings };
+        
+        Object.keys(masked).forEach(key => {
+          if (SENSITIVE_FIELDS.includes(key) && masked[key]) {
+            masked[key] = MASK;
+          } else if (typeof masked[key] === 'object') {
+            masked[key] = maskSettings(masked[key]);
+          }
         });
         return masked;
       }
 
       function unmaskSettings(newData: any, existingSettings: any) {
-        const unmasked = { ...newData };
-        SENSITIVE_FIELDS.forEach(field => {
-          if (unmasked[field] === MASK) {
-            unmasked[field] = existingSettings[field];
+        if (!newData || typeof newData !== 'object') return newData;
+        const unmasked = Array.isArray(newData) ? [...newData] : { ...newData };
+        
+        Object.keys(unmasked).forEach(key => {
+          if (SENSITIVE_FIELDS.includes(key) && unmasked[key] === MASK) {
+            unmasked[key] = existingSettings ? existingSettings[key] : MASK;
+          } else if (typeof unmasked[key] === 'object') {
+            unmasked[key] = unmaskSettings(unmasked[key], existingSettings ? existingSettings[key] : null);
           }
         });
         return unmasked;
       }
 
-      // Simple Authentication Check
-      const adminSecret = process.env.ADMIN_SECRET || server.config.env.ADMIN_SECRET || env.VITE_ADMIN_SECRET || env.ADMIN_SECRET;
-      if (req.url === '/api/auth/status' && req.method === 'GET') {
-        const authHeader = req.headers['authorization'];
-        const hasSecret = !!adminSecret;
-        
-        if (hasSecret && authHeader) {
-            const isAuthorized = authHeader === `Bearer ${adminSecret}`;
-            res.statusCode = isAuthorized ? 200 : 401;
-            res.setHeader('Content-Type', 'application/json');
-            return res.end(JSON.stringify({ required: true, authenticated: isAuthorized }));
-        }
+      function migrateSettings(settings: any) {
+        if (settings.general || settings.persistence || settings.jira || settings.ai) return settings;
 
-        res.statusCode = 200;
-        res.setHeader('Content-Type', 'application/json');
-        return res.end(JSON.stringify({ required: hasSecret, authenticated: !hasSecret }));
-      }
-
-      if (adminSecret && req.url.startsWith('/api/')) {
-        const authHeader = req.headers['authorization'];
-        if (authHeader !== `Bearer ${adminSecret}`) {
-          res.statusCode = 401;
-          res.setHeader('Content-Type', 'application/json');
-          return res.end(JSON.stringify({ success: false, error: 'Unauthorized' }));
-        }
-      }
-
-      // Helper to safely read stream body with size limit
-      const readBody = (request: any): Promise<string> => {
-        return new Promise((resolve, reject) => {
-          let body = '';
-          let length = 0;
-          request.on('data', (chunk: any) => {
-            length += chunk.length;
-            if (length > MAX_PAYLOAD_SIZE) {
-              request.pause();
-              reject(new Error('Payload Too Large'));
-              return;
-            }
-            body += chunk.toString();
-          });
-          request.on('end', () => resolve(body));
-          request.on('error', reject);
-        });
-      };
-
-      function calculateQuarter(dateStr: string, fiscalStartMonth: number) {
-        const date = new Date(dateStr);
-        const month = date.getMonth() + 1; // 1-12
-        const year = date.getFullYear();
-
-        let shiftedMonth = month - fiscalStartMonth + 1;
-        let fiscalYear = year;
-        if (shiftedMonth <= 0) {
-            shiftedMonth += 12;
-            fiscalYear -= 1;
-        }
-
-        if (fiscalStartMonth > 1) {
-            fiscalYear += 1;
-        }
-
-        const quarter = Math.ceil(shiftedMonth / 3);
-        return `FY${fiscalYear} Q${quarter}`;
-      }
-
-      // Shared score calculation logic for both Mongo and local file
-      function applyScores(workItems: any[], allWorkItems: any[], allCustomers: any[]) {
-        return workItems.map(f => {
-            let impact = 0;
-            // Ensure we use numbers for effort calculation
-            const epicMdsSum = f.epicMdsSum || 0;
-            const totalEffort = Number(f.total_effort_mds || 0);
-            const displayEffort = Math.max(epicMdsSum > 0 ? epicMdsSum : totalEffort, 1);
-
-            if (f.all_customers_target) {
-                const type = f.all_customers_target.tcv_type;
-                const priority = f.all_customers_target.priority || 'Must-have';
-                // Global workitems are always bound to latest actual existing TCV
-                let totalRelevantTcv = allCustomers.reduce((sum, c) => sum + Number(type === 'existing' ? (c.existing_tcv || 0) : (c.potential_tcv || 0)), 0);
-                if (priority === 'Must-have') {
-                    impact = totalRelevantTcv;
-                } else if (priority === 'Should-have') {
-                    const globalShouldCount = allWorkItems.filter(wf => wf.all_customers_target?.priority === 'Should-have' && wf.all_customers_target?.tcv_type === type).length;
-                    impact = totalRelevantTcv / (globalShouldCount || 1);
+        console.log("[SETTINGS] Migrating flat settings.json to hierarchical structure...");
+        return {
+          general: {
+            fiscal_year_start_month: settings.fiscal_year_start_month || 1,
+            sprint_duration_days: settings.sprint_duration_days || 14
+          },
+          persistence: {
+            mongo: {
+              app: {
+                uri: settings.mongo_uri || '',
+                db: settings.mongo_db || '',
+                use_proxy: settings.mongo_use_proxy || false,
+                tunnel_name: settings.mongo_tunnel_name || 'app',
+                auth: {
+                  method: settings.mongo_auth_method || 'scram',
+                  aws_auth_type: settings.mongo_aws_auth_type || 'static',
+                  aws_access_key: settings.mongo_aws_access_key,
+                  aws_secret_key: settings.mongo_aws_secret_key,
+                  aws_session_token: settings.mongo_aws_session_token,
+                  aws_role_arn: settings.mongo_aws_role_arn,
+                  aws_external_id: settings.mongo_aws_external_id,
+                  aws_role_session_name: settings.mongo_aws_role_session_name,
+                  aws_profile: settings.mongo_aws_profile,
+                  aws_sso_start_url: settings.mongo_aws_sso_start_url,
+                  aws_sso_region: settings.mongo_aws_sso_region,
+                  aws_sso_account_id: settings.mongo_aws_sso_account_id,
+                  aws_sso_role_name: settings.mongo_aws_sso_role_name,
+                  oidc_token: settings.mongo_oidc_token
                 }
-            } else {
-                (f.customer_targets || []).forEach((target: any) => {
-                    const customer = allCustomers.find(c => c.id === target.customer_id);
-                    if (!customer) return;
-                    
-                    let targetTcv = 0;
-                    if (target.tcv_type === 'existing') {
-                        if (target.tcv_history_id && customer.tcv_history) {
-                            const historyEntry = customer.tcv_history.find((h: any) => h.id === target.tcv_history_id);
-                            targetTcv = Number(historyEntry ? historyEntry.value : customer.existing_tcv);
-                        } else {
-                            targetTcv = Number(customer.existing_tcv);
-                        }
-                    } else {
-                        targetTcv = Number(customer.potential_tcv);
-                    }
-
-                    if (target.priority === 'Must-have' || !target.priority) {
-                        impact += targetTcv;
-                    } else if (target.priority === 'Should-have') {
-                        const shouldHaveCount = allWorkItems.filter(wf => wf.customer_targets?.some((ct: any) => ct.customer_id === target.customer_id && ct.priority === 'Should-have' && ct.tcv_type === target.tcv_type)).length;
-                        impact += (targetTcv / (shouldHaveCount || 1));
-                    }
-                });
+              },
+              customer: {
+                uri: settings.customer_mongo_uri || '',
+                db: settings.customer_mongo_db || '',
+                use_proxy: settings.customer_mongo_use_proxy || false,
+                tunnel_name: settings.customer_mongo_tunnel_name || 'customer',
+                collection: settings.customer_mongo_collection || 'Customers',
+                custom_query: settings.customer_mongo_custom_query || '',
+                auth: {
+                  method: settings.customer_mongo_auth_method || 'scram',
+                  aws_auth_type: settings.customer_mongo_aws_auth_type || 'static',
+                  aws_access_key: settings.customer_mongo_aws_access_key,
+                  aws_secret_key: settings.customer_mongo_aws_secret_key,
+                  aws_session_token: settings.customer_mongo_aws_session_token,
+                  aws_role_arn: settings.customer_mongo_aws_role_arn,
+                  aws_external_id: settings.customer_mongo_aws_external_id,
+                  aws_role_session_name: settings.customer_mongo_aws_role_session_name,
+                  aws_profile: settings.customer_mongo_aws_profile,
+                  aws_sso_start_url: settings.customer_mongo_aws_sso_start_url,
+                  aws_sso_region: settings.customer_mongo_aws_sso_region,
+                  aws_sso_account_id: settings.customer_mongo_aws_sso_account_id,
+                  aws_sso_role_name: settings.customer_mongo_aws_sso_role_name,
+                  oidc_token: settings.customer_mongo_oidc_token
+                }
+              }
             }
-            const score = impact / displayEffort;
-            return { ...f, score };
-        });
+          },
+          jira: {
+            base_url: settings.jira_base_url || '',
+            api_version: settings.jira_api_version || '3',
+            api_token: settings.jira_api_token,
+            customer_jql_new: settings.customer_jql_new,
+            customer_jql_in_progress: settings.customer_jql_in_progress,
+            customer_jql_noop: settings.customer_jql_noop
+          },
+          ai: {
+            provider: settings.llm_provider || 'openai',
+            api_key: settings.llm_api_key,
+            model: settings.llm_model
+          }
+        };
       }
 
-      // Helper to augment config with plugin-level env (proxy, etc)
-      const augmentConfig = (config: any) => {
+      const augmentConfig = (config: any, role: 'app' | 'customer' = 'app') => {
         const tunnels: Record<string, any> = {};
-        
-        // Scan environment for any SOCKS port variables (e.g. APP_SOCKS_PORT, CUSTOMER_SOCKS_PORT)
         const combinedEnv = { ...process.env, ...env };
         Object.keys(combinedEnv).forEach(key => {
           if (key.endsWith('_SOCKS_PORT')) {
@@ -269,28 +185,65 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
           }
         });
 
+        const mongo = config.persistence?.mongo?.[role] || {};
         return {
-          ...config,
-          proxyHost: process.env.SOCKS_PROXY_HOST || env.VITE_SOCKS_PROXY_HOST || env.SOCKS_PROXY_HOST,
-          proxyPort: parseInt(process.env.SOCKS_PROXY_PORT || env.VITE_SOCKS_PROXY_PORT || env.SOCKS_PROXY_PORT || '1080'),
-          tunnels
+            mongo_uri: mongo.uri,
+            mongo_db: mongo.db,
+            mongo_use_proxy: mongo.use_proxy,
+            mongo_tunnel_name: mongo.tunnel_name,
+            mongo_auth_method: mongo.auth?.method,
+            mongo_aws_auth_type: mongo.auth?.aws_auth_type,
+            mongo_aws_access_key: mongo.auth?.aws_access_key,
+            mongo_aws_secret_key: mongo.auth?.aws_secret_key,
+            mongo_aws_session_token: mongo.auth?.aws_session_token,
+            mongo_aws_role_arn: mongo.auth?.aws_role_arn,
+            mongo_aws_external_id: mongo.auth?.aws_external_id,
+            mongo_aws_role_session_name: mongo.auth?.aws_role_session_name,
+            mongo_aws_profile: mongo.auth?.aws_profile,
+            mongo_aws_sso_start_url: mongo.auth?.aws_sso_start_url,
+            mongo_aws_sso_region: mongo.auth?.aws_sso_region,
+            mongo_aws_sso_account_id: mongo.auth?.aws_sso_account_id,
+            mongo_aws_sso_role_name: mongo.auth?.aws_sso_role_name,
+            mongo_oidc_token: mongo.auth?.oidc_token,
+            customer_mongo_collection: mongo.collection,
+            customer_mongo_custom_query: mongo.custom_query,
+            proxyHost: process.env.SOCKS_PROXY_HOST || env.VITE_SOCKS_PROXY_HOST || env.SOCKS_PROXY_HOST,
+            proxyPort: parseInt(process.env.SOCKS_PROXY_PORT || env.VITE_SOCKS_PROXY_PORT || env.SOCKS_PROXY_PORT || '1080'),
+            tunnels
         };
       };
 
-      if (req.url.startsWith('/api/loadData') && req.method === 'GET') {
+      const readBody = (request: any): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          let body = '';
+          request.on('data', (chunk: any) => {
+            body += chunk;
+            if (body.length > 10 * 1024 * 1024) reject(new Error('Payload Too Large'));
+          });
+          request.on('end', () => resolve(body));
+          request.on('error', reject);
+        });
+      };
+
+      if (req.url === '/api/auth/status') {
+        const secret = req.headers['x-admin-secret'];
+        const isAuthorized = secret === ADMIN_SECRET;
+        res.statusCode = isAuthorized ? 200 : 401;
+        res.setHeader('Content-Type', 'application/json');
+        return res.end(JSON.stringify({ required: true, authenticated: isAuthorized }));
+      }
+
+      const secret = req.headers['x-admin-secret'];
+      if (secret !== ADMIN_SECRET) {
+        res.statusCode = 401;
+        res.setHeader('Content-Type', 'application/json');
+        return res.end(JSON.stringify({ success: false, error: 'Unauthorized' }));
+      }
+
+      if (req.url?.startsWith('/api/loadData') && req.method === 'GET') {
         try {
           const url = new URL(req.url, `http://${req.headers.host}`);
           const valueStreamId = url.searchParams.get('valueStreamId');
-          
-          // Filters from query params
-          const qCustomerFilter = url.searchParams.get('customerFilter') || '';
-          const qWorkItemFilter = url.searchParams.get('workItemFilter') || '';
-          const qReleasedFilter = url.searchParams.get('releasedFilter') || 'all';
-          const qTeamFilter = url.searchParams.get('teamFilter') || '';
-          const qEpicFilter = url.searchParams.get('epicFilter') || '';
-          const qMinTcv = Number(url.searchParams.get('minTcv')) || 0;
-          const qMinScore = Number(url.searchParams.get('minScore')) || 0;
-
           const settingsPath = path.resolve(__dirname, 'settings.json');
           const mockDataPath = path.resolve(__dirname, 'public/staticImport.json');
 
@@ -300,180 +253,58 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
           } else if (fs.existsSync(mockDataPath)) {
             const mockData = JSON.parse(fs.readFileSync(mockDataPath, 'utf-8'));
             settings = mockData.settings || {};
-            fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
           }
 
-          const hasAppDb = !!settings.mongo_uri;
+          settings = migrateSettings(settings);
+          fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 
+          const hasAppDb = !!settings.persistence?.mongo?.app?.uri;
           let dbData: any = {
             settings: maskSettings(settings),
-            customers: [],
-            workItems: [],
-            teams: [],
-            epics: [],
-            sprints: [],
-            valueStreams: [],
+            customers: [], workItems: [], teams: [], epics: [], sprints: [], valueStreams: [],
             metrics: { maxScore: 1, maxRoi: 1 }
           };
 
           if (hasAppDb) {
             try {
-              const db = await getDb(augmentConfig(settings), 'app', true);
-              
+              const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
               const ValueStreams = await logQuery('ValueStreams', 'valueStreams', 'find', db.collection('valueStreams').find({}).toArray());
               dbData.valueStreams = ValueStreams.map(({ _id, ...rest }) => rest);
+              const activeVS = valueStreamId ? dbData.valueStreams.find((d: any) => d.id === valueStreamId) : null;
               
-              const activeValueStream = valueStreamId ? dbData.valueStreams.find((d: any) => d.id === valueStreamId) : null;
-              
-              const customerFilter = qCustomerFilter || activeValueStream?.parameters?.customerFilter || '';
-              const workItemFilter = qWorkItemFilter || activeValueStream?.parameters?.workItemFilter || '';
-              const teamFilter = qTeamFilter || activeValueStream?.parameters?.teamFilter || '';
-              const epicFilter = qEpicFilter || activeValueStream?.parameters?.epicFilter || '';
-              const releasedFilter = qReleasedFilter !== 'all' ? qReleasedFilter : (activeValueStream?.parameters?.releasedFilter || 'all');
-              const minTcv = Math.max(qMinTcv, Number(activeValueStream?.parameters?.minTcvFilter) || 0);
-              const minScore = Math.max(qMinScore, Number(activeValueStream?.parameters?.minScoreFilter) || 0);
-
               const sprints = await logQuery('Sprints', 'sprints', 'find', db.collection('sprints').find({ is_archived: { $ne: true } }).sort({ start_date: 1 }).toArray());
               dbData.sprints = sprints.map(({ _id, ...rest }) => rest);
 
               const sprintsToUpdate = dbData.sprints.filter((s: any) => !s.quarter);
               if (sprintsToUpdate.length > 0) {
                 for (const sprint of sprintsToUpdate) {
-                  const quarter = calculateQuarter(sprint.end_date, settings.fiscal_year_start_month || 1);
+                  const quarter = calculateQuarter(sprint.end_date, settings.general?.fiscal_year_start_month || 1);
                   await logQuery('UpdateSprintQuarter', 'sprints', 'updateOne', db.collection('sprints').updateOne({ id: sprint.id }, { $set: { quarter } }));
                   sprint.quarter = quarter;
                 }
               }
 
-              const teamQuery: any = {};
-              if (teamFilter) {
-                teamQuery.name = { $regex: escapeRegex(teamFilter), $options: 'i' };
-              }
-              const teams = await logQuery('Teams', 'teams', 'find', db.collection('teams').find(teamQuery).toArray());
+              const [customers, workItems, teams, epics] = await Promise.all([
+                logQuery('Customers', 'customers', 'find', db.collection('customers').find({}).toArray()),
+                logQuery('WorkItems', 'workItems', 'find', db.collection('workItems').find({}).toArray()),
+                logQuery('Teams', 'teams', 'find', db.collection('teams').find({}).toArray()),
+                logQuery('Epics', 'epics', 'find', db.collection('epics').find({}).toArray())
+              ]);
+
+              dbData.customers = customers.map(({ _id, ...rest }) => rest);
+              dbData.workItems = workItems.map(({ _id, ...rest }) => rest);
               dbData.teams = teams.map(({ _id, ...rest }) => rest);
-              const visibleTeamIds = new Set(dbData.teams.map((t: any) => t.id));
-
-              const customerQuery: any = {};
-              if (customerFilter) {
-                customerQuery.name = { $regex: escapeRegex(customerFilter), $options: 'i' };
-              }
-              const customers = await logQuery('CustomersFiltered', 'customers', 'find', db.collection('customers').find(customerQuery).toArray());
-              dbData.customers = customers.map(({ _id, ...rest }) => rest)
-                .filter((c: any) => (Number(c.existing_tcv || 0) + Number(c.potential_tcv || 0)) >= minTcv);
-
-              const workItemPipeline: any[] = [
-                {
-                  $lookup: {
-                    from: 'epics',
-                    localField: 'id',
-                    foreignField: 'work_item_id',
-                    as: 'associated_epics'
-                  }
-                },
-                {
-                  $addFields: {
-                    epicMdsSum: { $sum: '$associated_epics.effort_md' }
-                  }
-                }
-              ];
-
-              const workItemMatch: any = {};
-              if (workItemFilter) {
-                workItemMatch.name = { $regex: escapeRegex(workItemFilter), $options: 'i' };
-              }
-              if (releasedFilter === 'released') {
-                workItemMatch.released_in_sprint_id = { $exists: true, $ne: null };
-              } else if (releasedFilter === 'unreleased') {
-                workItemMatch.released_in_sprint_id = { $in: [null, ""] };
-              }
-              if (Object.keys(workItemMatch).length > 0) {
-                workItemPipeline.unshift({ $match: workItemMatch });
-              }
-
-              const workItemsRaw = await logQuery('WorkItemsAggregated', 'workItems', 'aggregate', db.collection('workItems').aggregate(workItemPipeline).toArray());
-              const fullCustomers = await logQuery('FullCustomers', 'customers', 'find', db.collection('customers').find({}).toArray());
-              const fullWorkItems = await logQuery('FullWorkItems', 'workItems', 'find', db.collection('workItems').find({}).toArray());
-
-              // Calculate scores for ALL work items to find global max and consistent scores
-              const allWorkItemsWithScores = applyScores(fullWorkItems, fullWorkItems, fullCustomers);
-              dbData.metrics.maxScore = allWorkItemsWithScores.reduce((max, f) => Math.max(max, f.score || 0), 1);
-
-              // Calculate ROI for edge thickness scaling
-              let maxRoi = 0.0001;
-              allWorkItemsWithScores.forEach(wf => {
-                  if (wf.all_customers_target) return;
-                  (wf.customer_targets || []).forEach((target: any) => {
-                      const customer = fullCustomers.find(c => c.id === target.customer_id);
-                      if (customer) {
-                          const targetTcv = Number(target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv);
-                          const roi = targetTcv / (Number(wf.total_effort_mds || 0) || 1);
-                          if (roi > maxRoi) maxRoi = roi;
-                      }
-                  });
-              });
-              dbData.metrics.maxRoi = maxRoi;
-
-              // Process workItemsRaw (the filtered set)
-              const workItemsRawWithLookups = workItemsRaw.map(f => {
-                  const { _id, associated_epics, ...rest } = f;
-                  return rest;
-              });
-              dbData.workItems = applyScores(workItemsRawWithLookups, fullWorkItems, fullCustomers)
-                .filter((f: any) => f.score >= minScore);
-
-              const epicQuery: any = {};
-              if (epicFilter) {
-                epicQuery.name = { $regex: escapeRegex(epicFilter), $options: 'i' };
-              }
-              if (teamFilter) {
-                // If team filter is active, only show epics for visible teams
-                epicQuery.team_id = { $in: Array.from(visibleTeamIds) };
-              }
-              const epics = await logQuery('Epics', 'epics', 'find', db.collection('epics').find(epicQuery).toArray());
               dbData.epics = epics.map(({ _id, ...rest }) => rest);
-
-              // Seeding logic (only for Application DB)
-              if (dbData.customers.length === 0 && !customerFilter && minTcv === 0 && fs.existsSync(mockDataPath)) {
-                 const localData = JSON.parse(fs.readFileSync(mockDataPath, 'utf-8'));
-                 if (localData.customers && localData.customers.length > 0) {
-                    await logQuery('SeedCustomers', 'customers', 'insertMany', db.collection('customers').insertMany(localData.customers));
-                    if (localData.workItems?.length > 0) await logQuery('SeedWorkItems', 'workItems', 'insertMany', db.collection('workItems').insertMany(localData.workItems));
-                    if (localData.teams?.length > 0) await logQuery('SeedTeams', 'teams', 'insertMany', db.collection('teams').insertMany(localData.teams));
-                    if (localData.epics?.length > 0) await logQuery('SeedEpics', 'epics', 'insertMany', db.collection('epics').insertMany(localData.epics));
-                    if (localData.sprints?.length > 0) await logQuery('SeedSprints', 'sprints', 'insertMany', db.collection('sprints').insertMany(localData.sprints));
-                    const defaultValueStreams = localData.valueStreams || [{ id: 'main', name: 'Main Value Stream', parameters: {} }];
-                    await logQuery('SeedValueStreams', 'valueStreams', 'insertMany', db.collection('valueStreams').insertMany(defaultValueStreams));
-                    dbData = { ...localData, settings, valueStreams: defaultValueStreams };
-                    // Recalculate scores for seeded data response
-                    const seededW = applyScores(dbData.workItems, dbData.workItems, dbData.customers);
-                    dbData.workItems = seededW;
-                    dbData.metrics.maxScore = Math.max(...seededW.map(f => f.score || 0), 1);
-                 }
-              }
-            } catch(e) {
-              console.error("MongoDB Error loading data:", e);
-            }
+            } catch (mongoErr) { console.error('MongoDB load error:', mongoErr); }
           } else if (fs.existsSync(mockDataPath)) {
-
-             const localData = JSON.parse(fs.readFileSync(mockDataPath, 'utf-8'));
-             const fullW = applyScores(localData.workItems || [], localData.workItems || [], localData.customers || []);
-             dbData = { 
-                ...localData, 
-                settings: maskSettings(settings), 
-                sprints: (localData.sprints || [])
-                    .filter((s: any) => !s.is_archived)
-                    .sort((a: any, b: any) => (a.start_date || '').localeCompare(b.start_date || '')),
-                workItems: fullW, 
-                metrics: { maxScore: Math.max(...fullW.map(f => f.score || 0), 1), maxRoi: 1 } 
-             };
+            const mockData = JSON.parse(fs.readFileSync(mockDataPath, 'utf-8'));
+            dbData = { ...dbData, ...mockData, settings: dbData.settings };
           }
-          
+
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
-          return res.end(JSON.stringify(dbData));
+          res.end(JSON.stringify(dbData));
         } catch (e: any) {
-          console.error('Error loading data:', e);
-          res.setHeader('Content-Type', 'application/json');
           res.statusCode = 500;
           res.end(JSON.stringify({ success: false, error: e.message }));
         }
@@ -482,178 +313,111 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
           const body = await readBody(req);
           const newData = JSON.parse(body);
           const settingsPath = path.resolve(__dirname, 'settings.json');
-          
-          let existingSettings: any = {};
-          if (fs.existsSync(settingsPath)) {
-            existingSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-          }
-          
-          const finalSettings = unmaskSettings(newData, existingSettings);
-          fs.writeFileSync(settingsPath, JSON.stringify(finalSettings, null, 2));
-
+          const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+          const unmasked = unmaskSettings(newData, existingSettings);
+          fs.writeFileSync(settingsPath, JSON.stringify(unmasked, null, 2));
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
           res.end(JSON.stringify({ success: true }));
         } catch (e: any) {
-          console.error('Error saving settings:', e);
-          res.setHeader('Content-Type', 'application/json');
-          res.statusCode = e.message === 'Payload Too Large' ? 413 : 500;
+          res.statusCode = 500;
           res.end(JSON.stringify({ success: false, error: e.message }));
         }
-      } else if (req.url.startsWith('/api/entity/') && (req.method === 'POST' || req.method === 'DELETE')) {
+      } else if (req.url?.startsWith('/api/entity/') && (req.method === 'POST' || req.method === 'DELETE')) {
         try {
           const body = await readBody(req);
           const parts = req.url.split('?')[0].split('/');
           const collectionName = parts[3];
           const entityId = parts[4]; 
-
-          if (!ALLOWED_COLLECTIONS.includes(collectionName)) {
-            res.statusCode = 403;
-            res.setHeader('Content-Type', 'application/json');
-            return res.end(JSON.stringify({ success: false, error: 'Forbidden collection' }));
-          }
+          if (!ALLOWED_COLLECTIONS.includes(collectionName)) throw new Error('Forbidden collection');
 
           const data = body ? JSON.parse(body) : {};
-          const rawId = data.id || entityId;
-          const id = String(rawId);
-
+          const id = String(data.id || entityId);
           const settingsPath = path.resolve(__dirname, 'settings.json');
-          const settings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
-
-          if (!settings.mongo_uri) {
-              throw new Error("Application MongoDB URI not configured (mongo_uri). Writing to customer database is not allowed.");
-          }
+          const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+          if (!settings.persistence?.mongo?.app?.uri) throw new Error("App MongoDB not configured");
           
-          const db = await getDb(augmentConfig(settings), 'app', true);
-
+          const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
           if (req.method === 'POST') {
-              if (!id) throw new Error("Missing entity id");
-              
-              // Ensure unique index exists for the 'id' field in this collection
               await db.collection(collectionName).createIndex({ id: 1 }, { unique: true });
-
               await db.collection(collectionName).updateOne({ id }, { $set: data }, { upsert: true });
-          } else if (req.method === 'DELETE') {
-              if (!id) throw new Error("Missing entity id");
+          } else {
               await db.collection(collectionName).deleteOne({ id });
           }
-
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
           res.end(JSON.stringify({ success: true }));
         } catch (e: any) {
-          console.error(`Error ${req.method} entity:`, e);
-          res.setHeader('Content-Type', 'application/json');
-          res.statusCode = e.message === 'Payload Too Large' ? 413 : 500;
+          res.statusCode = 500;
           res.end(JSON.stringify({ success: false, error: e.message }));
         }
       } else if (req.url === '/api/mongo/databases' && req.method === 'POST') {
         try {
           const body = await readBody(req);
           const rawConfig = JSON.parse(body);
-          
           const settingsPath = path.resolve(__dirname, 'settings.json');
-          const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
-          const config = unmaskSettings(rawConfig, existingSettings);
-
-          const db = await getDb(augmentConfig(config), config.connection_type || 'app');
-          let databases: string[] = [];
-          try {
-            const dbs = await db.admin().listDatabases();
-            databases = dbs.databases.map((d: any) => d.name);
-          } catch (err) {
-            console.warn("Could not list databases:", err);
-          }
-          
+          const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+          const config = unmaskSettings(rawConfig, existing);
+          const role = config.connection_type || 'app';
+          const db = await getDb(augmentConfig(config, role), role);
+          const dbs = await db.admin().listDatabases();
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
-          res.end(JSON.stringify({ success: true, databases }));
+          res.end(JSON.stringify({ success: true, databases: dbs.databases.map((d: any) => d.name) }));
         } catch (e: any) {
-          console.error('Error listing mongo databases:', e);
-          res.setHeader('Content-Type', 'application/json');
-          res.statusCode = 200; 
           res.end(JSON.stringify({ success: false, error: e.message }));
         }
       } else if (req.url === '/api/mongo/test' && req.method === 'POST') {
         try {
           const body = await readBody(req);
           const rawConfig = JSON.parse(body);
-          
           const settingsPath = path.resolve(__dirname, 'settings.json');
-          const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
-          const config = unmaskSettings(rawConfig, existingSettings);
-
-          const targetDb = config.mongo_db || config.customer_mongo_db || 'valueStream';
-          const db = await getDb(augmentConfig(config), config.connection_type || 'app');
-          
-          let exists = false;
-          try {
-              const collections = await db.listCollections().toArray();
-              exists = collections.length > 0;
-              
-              if (!exists) {
-                  try {
-                      const dbs = await db.admin().listDatabases();
-                      exists = dbs.databases.some((d: any) => d.name === targetDb);
-                  } catch (adminErr) { /* ignore */ }
-              }
-          } catch (err) { /* ignore */ }
-
-          let message = exists 
-            ? `Connection successful! Database '${targetDb}' exists.` 
-            : `Connection successful! Database '${targetDb}' does not exist yet, but will be created automatically.`;
-
+          const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+          const config = unmaskSettings(rawConfig, existing);
+          const role = config.connection_type || 'app';
+          const targetDb = config.persistence?.mongo?.[role]?.db || 'valueStream';
+          const db = await getDb(augmentConfig(config, role), role);
+          const collections = await db.listCollections().toArray();
+          const exists = collections.length > 0;
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
-          res.end(JSON.stringify({ 
-            success: true, 
-            exists,
-            message
-          }));
+          res.end(JSON.stringify({ success: true, exists, message: `Connected to ${targetDb}` }));
         } catch (e: any) {
-          console.error('Error testing mongo connection:', e);
+          res.end(JSON.stringify({ success: false, error: e.message }));
+        }
+      } else if (req.url === '/api/mongo/query' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const rawConfig = JSON.parse(body);
+          const settingsPath = path.resolve(__dirname, 'settings.json');
+          const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+          const config = unmaskSettings(rawConfig, existing);
+          const role = config.connection_type || 'customer';
+          const mongo = config.persistence?.mongo?.[role];
+          const db = await getDb(augmentConfig(config, role), role);
+          const collection = db.collection(mongo.collection || 'Customers');
+          const query = typeof config.query === 'string' ? JSON.parse(config.query) : config.query;
+          const results = Array.isArray(query) ? await collection.aggregate(query).toArray() : await collection.find(query).toArray();
           res.setHeader('Content-Type', 'application/json');
-          res.statusCode = 200; 
+          res.statusCode = 200;
+          res.end(JSON.stringify({ success: true, data: results }));
+        } catch (e: any) {
           res.end(JSON.stringify({ success: false, error: e.message }));
         }
       } else if (req.url === '/api/mongo/export' && req.method === 'POST') {
         try {
           const settingsPath = path.resolve(__dirname, 'settings.json');
-          if (!fs.existsSync(settingsPath)) throw new Error("Settings file not found.");
           const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-          if (!settings.mongo_uri && !settings.customer_mongo_uri) throw new Error("MongoDB URI not configured.");
-
-          const db = await getDb(augmentConfig(settings), 'app', true);
-          
-          const customers = await logQuery('ExportCustomers', 'customers', 'find', db.collection('customers').find({}).toArray());
-          const workItems = await logQuery('ExportWorkItems', 'workItems', 'find', db.collection('workItems').find({}).toArray());
-          const teams = await logQuery('ExportTeams', 'teams', 'find', db.collection('teams').find({}).toArray());
-          const epics = await logQuery('ExportEpics', 'epics', 'find', db.collection('epics').find({}).toArray());
-          const sprints = await logQuery('ExportSprints', 'sprints', 'find', db.collection('sprints').find({}).toArray());
-          const ValueStreams = await logQuery('ExportValueStreams', 'valueStreams', 'find', db.collection('valueStreams').find({}).toArray());
-          
-          const stripId = (arr: any[]) => arr.map(doc => {
-            const { _id, ...rest } = doc;
-            return rest;
-          });
-
+          const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
+          const data: any = { settings: maskSettings(settings) };
+          for (const col of ALLOWED_COLLECTIONS) {
+            const docs = await db.collection(col).find({}).toArray();
+            data[col] = docs.map(({ _id, ...rest }) => rest);
+          }
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
-          res.end(JSON.stringify({ 
-            success: true, 
-            data: {
-                settings: maskSettings(settings),
-                customers: stripId(customers),
-                workItems: stripId(workItems),
-                teams: stripId(teams),
-                epics: stripId(epics),
-                sprints: stripId(sprints),
-                valueStreams: stripId(ValueStreams),
-            } 
-          }));
+          res.end(JSON.stringify({ success: true, data }));
         } catch (e: any) {
-          console.error('Error exporting mongo data:', e);
-          res.setHeader('Content-Type', 'application/json');
           res.statusCode = 500;
           res.end(JSON.stringify({ success: false, error: e.message }));
         }
@@ -661,402 +425,126 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
         try {
           const body = await readBody(req);
           const { data: importData } = JSON.parse(body);
-
           const settingsPath = path.resolve(__dirname, 'settings.json');
-          if (!fs.existsSync(settingsPath)) throw new Error("Settings file not found.");
           const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-
-          if (!settings.mongo_uri) {
-              throw new Error("Application MongoDB URI not configured (mongo_uri). Importing to customer database is not allowed.");
+          const db = await getDb(augmentConfig(settings, 'app'), 'app', false);
+          for (const col of ALLOWED_COLLECTIONS) {
+            await db.collection(col).deleteMany({});
+            if (importData[col]?.length > 0) await db.collection(col).insertMany(importData[col]);
           }
-
-          const db = await getDb(augmentConfig(settings), 'app', false);
-
-          // Delete all collections
-          for (const collectionName of ALLOWED_COLLECTIONS) {
-              await db.collection(collectionName).deleteMany({});
-          }
-
-          // Import new data
-          if (importData.customers?.length > 0) await db.collection('customers').insertMany(importData.customers);
-          if (importData.workItems?.length > 0) await db.collection('workItems').insertMany(importData.workItems);
-          if (importData.teams?.length > 0) await db.collection('teams').insertMany(importData.teams);
-          if (importData.epics?.length > 0) await db.collection('epics').insertMany(importData.epics);
-          if (importData.sprints?.length > 0) await db.collection('sprints').insertMany(importData.sprints);
-          if (importData.valueStreams?.length > 0) await db.collection('valueStreams').insertMany(importData.valueStreams);
-
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
           res.end(JSON.stringify({ success: true }));
         } catch (e: any) {
-          console.error('Error importing mongo data:', e);
-          res.setHeader('Content-Type', 'application/json');
           res.statusCode = 500;
-          res.end(JSON.stringify({ success: false, error: e.message }));
-        }
-      } else if (req.url === '/api/mongo/query' && req.method === 'POST') {
-        try {
-          const body = await readBody(req);
-          const rawConfig = JSON.parse(body);
-
-          const settingsPath = path.resolve(__dirname, 'settings.json');
-          const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
-          const config = unmaskSettings(rawConfig, existingSettings);
-
-          if (!config.mongo_uri && !config.customer_mongo_uri) throw new Error("MongoDB URI not provided.");
-          if (!config.query) throw new Error("Query not provided.");
-
-          const db = await getDb(augmentConfig(config), config.connection_type || 'customer');
-          const collectionName = config.customer_mongo_collection || 'Customers';
-          const collection = db.collection(collectionName);
-          
-          let query;
-          try {
-            query = typeof config.query === 'string' ? JSON.parse(config.query) : config.query;
-          } catch (e) {
-            throw new Error("Invalid JSON in query: " + e.message);
-          }
-
-          let results;
-          if (Array.isArray(query)) {
-            results = await logQuery('CustomAggregate', collectionName, 'aggregate', collection.aggregate(query).toArray());
-          } else {
-            results = await logQuery('CustomFind', collectionName, 'find', collection.find(query).toArray());
-          }
-
-          res.setHeader('Content-Type', 'application/json');
-          res.statusCode = 200;
-          res.end(JSON.stringify({ success: true, data: results }));
-        } catch (e: any) {
-          console.error('Error executing mongo query:', e);
-          res.setHeader('Content-Type', 'application/json');
-          res.statusCode = 200; // Return 200 with success: false to avoid empty response errors
           res.end(JSON.stringify({ success: false, error: e.message }));
         }
       } else if (req.url === '/api/jira/test' && req.method === 'POST') {
         try {
           const body = await readBody(req);
           const rawConfig = JSON.parse(body);
-
           const settingsPath = path.resolve(__dirname, 'settings.json');
-          const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
-          const { jira_base_url, jira_api_version, jira_api_token } = unmaskSettings(rawConfig, existingSettings);
-          
-          if (!await isSafeUrl(jira_base_url)) {
-            throw new Error('Invalid or unsafe Jira URL');
-          }
-
-          const url = new URL(jira_base_url);
-          const apiUrl = `${url.origin}/rest/api/${jira_api_version || '3'}/myself`;
-          const headers = { 'Accept': 'application/json', 'Authorization': `Bearer ${jira_api_token}` };
-          const jiraRes = await fetch(apiUrl, { headers });
-          if (!jiraRes.ok) throw new Error(`Jira API returned ${jiraRes.status}`);
+          const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+          const { jira_base_url, jira_api_version, jira_api_token } = unmaskSettings(rawConfig, existing);
+          const apiUrl = `${new URL(jira_base_url).origin}/rest/api/${jira_api_version || '3'}/myself`;
+          const jiraRes = await fetch(apiUrl, { headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${jira_api_token}` } });
+          if (!jiraRes.ok) throw new Error(`Jira error ${jiraRes.status}`);
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
-          res.end(JSON.stringify({ success: true, message: 'Connection successful!' }));
+          res.end(JSON.stringify({ success: true, message: 'Connected!' }));
         } catch (e: any) {
-          res.setHeader('Content-Type', 'application/json');
-          res.statusCode = e.message === 'Payload Too Large' ? 413 : 200; 
           res.end(JSON.stringify({ success: false, error: e.message }));
         }
       } else if (req.url === '/api/jira/issue' && req.method === 'POST') {
         try {
           const body = await readBody(req);
           const rawConfig = JSON.parse(body);
-
           const settingsPath = path.resolve(__dirname, 'settings.json');
-          const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
-          const { jira_key, jira_base_url, jira_api_version, jira_api_token } = unmaskSettings(rawConfig, existingSettings);
-
-          if (!await isSafeUrl(jira_base_url)) {
-            throw new Error('Invalid or unsafe Jira URL');
-          }
-
-          const url = new URL(jira_base_url);
-          const apiUrl = `${url.origin}/rest/api/${jira_api_version || '3'}/issue/${jira_key}?expand=names`;
-          const headers: any = { 'Accept': 'application/json' };
-          if (jira_api_token) headers['Authorization'] = `Bearer ${jira_api_token}`;
-          const jiraRes = await fetch(apiUrl, { headers });
-          const jiraData = await jiraRes.json();
+          const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+          const { jira_key, jira_base_url, jira_api_version, jira_api_token } = unmaskSettings(rawConfig, existing);
+          const apiUrl = `${new URL(jira_base_url).origin}/rest/api/${jira_api_version || '3'}/issue/${jira_key}?expand=names`;
+          const jiraRes = await fetch(apiUrl, { headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${jira_api_token}` } });
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
-          res.end(JSON.stringify({ success: true, data: jiraData }));
+          res.end(JSON.stringify({ success: true, data: await jiraRes.json() }));
         } catch (e: any) {
-          res.setHeader('Content-Type', 'application/json');
-          res.statusCode = e.message === 'Payload Too Large' ? 413 : 500;
+          res.statusCode = 500;
           res.end(JSON.stringify({ success: false, error: e.message }));
         }
       } else if (req.url === '/api/jira/search' && req.method === 'POST') {
         try {
           const body = await readBody(req);
           const rawConfig = JSON.parse(body);
-
           const settingsPath = path.resolve(__dirname, 'settings.json');
-          const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
-          const { jql, jira_base_url, jira_api_version, jira_api_token } = unmaskSettings(rawConfig, existingSettings);
-
-          if (!await isSafeUrl(jira_base_url)) {
-            throw new Error('Invalid or unsafe Jira URL');
-          }
-
-          const url = new URL(jira_base_url);
-          const apiUrl = `${url.origin}/rest/api/${jira_api_version || '3'}/search`;
-          const headers: any = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
-          if (jira_api_token) headers['Authorization'] = `Bearer ${jira_api_token}`;
-          
-          const jiraRes = await fetch(apiUrl, { method: 'POST', headers, body: JSON.stringify({ jql, expand: ['names'], maxResults: 100 }) });
-          const jiraData = await jiraRes.json();
-
+          const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+          const { jql, jira_base_url, jira_api_version, jira_api_token } = unmaskSettings(rawConfig, existing);
+          const apiUrl = `${new URL(jira_base_url).origin}/rest/api/${jira_api_version || '3'}/search`;
+          const jiraRes = await fetch(apiUrl, { 
+            method: 'POST', 
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': `Bearer ${jira_api_token}` },
+            body: JSON.stringify({ jql, expand: ['names'], maxResults: 100 })
+          });
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
-          res.end(JSON.stringify({ success: true, data: jiraData }));
+          res.end(JSON.stringify({ success: true, data: await jiraRes.json() }));
         } catch (e: any) {
-          res.setHeader('Content-Type', 'application/json');
-          res.statusCode = e.message === 'Payload Too Large' ? 413 : 500;
+          res.statusCode = 500;
           res.end(JSON.stringify({ success: false, error: e.message }));
         }
       } else if (req.url === '/api/llm/generate' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const { prompt, config: rawConfig, stream = false } = JSON.parse(body);
-
+          const { prompt, config: rawConfig } = JSON.parse(body);
           const settingsPath = path.resolve(__dirname, 'settings.json');
-          const existingSettings = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
-          const config = unmaskSettings(rawConfig || {}, existingSettings);
-
-          const provider = config.llm_provider || 'openai';
-          const apiKey = config.llm_api_key;
-          const model = config.llm_model;
-
-          if (!apiKey) {
-            throw new Error('LLM API key not configured');
-          }
-
-          if (stream) {
-            res.setHeader('Content-Type', 'text/event-stream');
-            res.setHeader('Cache-Control', 'no-cache');
-            res.setHeader('Connection', 'keep-alive');
-            res.setHeader('X-Accel-Buffering', 'no'); // for nginx
-
-            if (provider === 'openai') {
-              const fetchRes = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-                body: JSON.stringify({
-                  model: model || 'gpt-4-turbo',
-                  messages: [{ role: 'user', content: prompt }],
-                  stream: true
-                })
-              });
-              
-              if (!fetchRes.ok) {
-                const errData = await fetchRes.json() as any;
-                res.write(`data: ${JSON.stringify({ error: errData.error?.message || 'OpenAI API error' })}\n\n`);
-                return res.end();
-              }
-
-              const reader = fetchRes.body!.getReader();
-              const decoder = new TextDecoder();
-              while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
-                for (const line of lines) {
-                  if (line.startsWith('data: ')) {
-                    const data = line.slice(6);
-                    if (data === '[DONE]') continue;
-                    try {
-                      const json = JSON.parse(data);
-                      const text = json.choices[0]?.delta?.content || '';
-                      if (text) res.write(`data: ${JSON.stringify({ text })}\n\n`);
-                    } catch (e) { /* skip partial JSON */ }
-                  }
-                }
-              }
-              return res.end();
-            } else if (provider === 'gemini') {
-              // Gemini doesn't use standard SSE for streamGenerateContent, it's a bit more involved
-              // We'll simulate it for now by letting the user know it's not implemented yet for Gemini or just doing a full response.
-              // Actually, Gemini supports streaming via a different URL.
-              const fetchRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-1.5-pro'}:streamGenerateContent?alt=sse&key=${apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  contents: [{ parts: [{ text: prompt }] }]
-                })
-              });
-
-              if (!fetchRes.ok) {
-                const errData = await fetchRes.json() as any;
-                res.write(`data: ${JSON.stringify({ error: errData.error?.message || 'Gemini API error' })}\n\n`);
-                return res.end();
-              }
-
-              const reader = fetchRes.body!.getReader();
-              const decoder = new TextDecoder();
-              while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                const chunk = decoder.decode(value);
-                const lines = chunk.split('\n');
-                for (const line of lines) {
-                  if (line.startsWith('data: ')) {
-                    const data = line.slice(6);
-                    try {
-                      const json = JSON.parse(data);
-                      const text = json.candidates[0]?.content?.parts[0]?.text || '';
-                      if (text) res.write(`data: ${JSON.stringify({ text })}\n\n`);
-                    } catch (e) { /* skip partial JSON */ }
-                  }
-                }
-              }
-              return res.end();
-            } else if (provider === 'augment') {
-              const { spawn } = await import('child_process');
-              const env = { ...process.env, AUGMENT_SESSION_AUTH: apiKey };
-              
-              // When shell: true is used, we need to pass a single command string with properly escaped arguments.
-              // We escape backslashes, double quotes, dollar signs, and backticks.
-              const escapedPrompt = prompt
-                .replace(/\\/g, '\\\\')
-                .replace(/"/g, '\\"')
-                .replace(/\$/g, '\\$')
-                .replace(/`/g, '\\`');
-
-              const child = spawn(`npx --no-install auggie --print --quiet "${escapedPrompt}"`, { env, shell: true });
-
-              child.stdout.on('data', (data) => {
-                const text = data.toString();
-                if (text) res.write(`data: ${JSON.stringify({ text })}\n\n`);
-              });
-
-              child.stderr.on('data', (data) => {
-                console.error(`Augment CLI Error: ${data.toString()}`);
-              });
-
-              child.on('close', () => {
-                res.end();
-              });
-
-              req.on('close', () => {
-                child.kill();
-              });
-              
-              return; // Handled by events
-            } else {
-              res.write(`data: ${JSON.stringify({ error: `Streaming not yet supported for provider: ${provider}` })}\n\n`);
-              return res.end();
-            }
-          }
-
+          const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+          const config = unmaskSettings(rawConfig || {}, existing);
+          const provider = config.ai?.provider || 'openai';
+          const apiKey = config.ai?.api_key;
+          if (!apiKey) throw new Error('LLM API key missing');
+          
           let resultText = '';
-
           if (provider === 'openai') {
-            const res = await fetch('https://api.openai.com/v1/chat/completions', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-              body: JSON.stringify({
-                model: model || 'gpt-4-turbo',
-                messages: [{ role: 'user', content: prompt }]
-              })
+            const r = await fetch('https://api.openai.com/v1/chat/completions', {
+              method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+              body: JSON.stringify({ model: config.ai?.model || 'gpt-4-turbo', messages: [{ role: 'user', content: prompt }] })
             });
-            const data = await res.json() as any;
-            if (!res.ok) throw new Error(data.error?.message || 'OpenAI API error');
-            resultText = data.choices[0].message.content;
+            const d = await r.json() as any;
+            resultText = d.choices[0].message.content;
           } else if (provider === 'gemini') {
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-1.5-pro'}:generateContent?key=${apiKey}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
-              })
+            const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${config.ai?.model || 'gemini-1.5-pro'}:generateContent?key=${apiKey}`, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
             });
-            const data = await res.json() as any;
-            if (!res.ok) throw new Error(data.error?.message || 'Gemini API error');
-            resultText = data.candidates[0].content.parts[0].text;
-          } else if (provider === 'anthropic') {
-            const res = await fetch('https://api.anthropic.com/v1/messages', {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json', 
-                'x-api-key': apiKey,
-                'anthropic-version': '2023-06-01'
-              },
-              body: JSON.stringify({
-                model: model || 'claude-3-opus-20240229',
-                max_tokens: 1024,
-                messages: [{ role: 'user', content: prompt }]
-              })
-            });
-            const data = await res.json() as any;
-            if (!res.ok) throw new Error(data.error?.message || 'Anthropic API error');       
-            resultText = data.content[0].text;
-            } else if (provider === 'augment') {
-            const { exec } = await import('child_process');
-            const { promisify } = await import('util');
-            const execAsync = promisify(exec);
-            
-            // Use the standard environment variable name for the Augment provider
+            const d = await r.json() as any;
+            resultText = d.candidates[0].content.parts[0].text;
+          } else if (provider === 'augment') {
             const env = { ...process.env, AUGMENT_SESSION_AUTH: apiKey };
-            
-            try {
-              // Pass the prompt to 'auggie'. We escape backslashes, double quotes, dollar signs, and backticks.
-              const escapedPrompt = prompt
-                .replace(/\\/g, '\\\\')
-                .replace(/"/g, '\\"')
-                .replace(/\$/g, '\\$')
-                .replace(/`/g, '\\`');
-
-              const { stdout, stderr } = await execAsync(`npx --no-install auggie --print --quiet "${escapedPrompt}"`, { env });
-              
-              if (stderr && stdout.trim() === '') {
-                throw new Error(stderr);
-              }
-              resultText = stdout.trim();
-            } catch (execError: any) {
-              throw new Error(`Augment CLI (auggie) execution failed: ${execError.message}`);
-            }
-            } else {
-            throw new Error(`Unsupported LLM provider: ${provider}`);
-            }
+            const { stdout } = await execPromise(`npx --no-install auggie --print --quiet "${prompt.replace(/"/g, '\\"')}"`, { env });
+            resultText = stdout.trim();
+          }
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
           res.end(JSON.stringify({ success: true, text: resultText }));
         } catch (e: any) {
-          if (!res.writableEnded) {
-            res.setHeader('Content-Type', 'application/json');
-            res.statusCode = e.message === 'Payload Too Large' ? 413 : 500;
-            res.end(JSON.stringify({ success: false, error: e.message }));
-          }
+          res.statusCode = 500;
+          res.end(JSON.stringify({ success: false, error: e.message }));
         }
       } else if (req.url === '/api/aws/sso/login' && req.method === 'POST') {
         try {
           const body = await readBody(req);
           const { profile, sso_start_url, sso_region, sso_account_id, sso_role_name } = JSON.parse(body);
-          
           let envVars = { ...process.env };
           let profileName = profile || 'temp-sso-profile';
-
-          if (!profile && sso_start_url && sso_region && sso_account_id && sso_role_name) {
+          if (!profile && sso_start_url) {
             const tempConfigPath = path.join(os.tmpdir(), `aws_config_${crypto.randomBytes(4).toString('hex')}`);
-            const configContent = `[profile ${profileName}]\nsso_start_url = ${sso_start_url}\nsso_region = ${sso_region}\nsso_account_id = ${sso_account_id}\nsso_role_name = ${sso_role_name}\nregion = ${sso_region}\n`;
-            fs.writeFileSync(tempConfigPath, configContent);
+            fs.writeFileSync(tempConfigPath, `[profile ${profileName}]\nsso_start_url = ${sso_start_url}\nsso_region = ${sso_region}\nsso_account_id = ${sso_account_id}\nsso_role_name = ${sso_role_name}\nregion = ${sso_region}\n`);
             envVars.AWS_CONFIG_FILE = tempConfigPath;
-            console.log(`[AWS_DEBUG] Using temporary AWS config: ${tempConfigPath}`);
           }
-
-          // Initiates browser flow for SSO login
-          const cmd = `aws sso login --profile ${profileName}`;
-          
-          // Use spawn for long running interactive-ish process
-          const child = spawn(cmd, { shell: true, stdio: 'inherit', env: envVars });
-          
+          spawn(`aws sso login --profile ${profileName}`, { shell: true, stdio: 'inherit', env: envVars });
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
-          res.end(JSON.stringify({ success: true, message: 'AWS SSO Login initiated in your browser.' }));
+          res.end(JSON.stringify({ success: true, message: 'Login initiated' }));
         } catch (e: any) {
-          res.setHeader('Content-Type', 'application/json');
           res.statusCode = 500;
           res.end(JSON.stringify({ success: false, error: e.message }));
         }
@@ -1064,39 +552,23 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
         try {
           const body = await readBody(req);
           const { profile, sso_start_url, sso_region, sso_account_id, sso_role_name } = JSON.parse(body);
-          
           let envVars = { ...process.env };
           let profileName = profile || 'temp-sso-profile';
-          let tempConfigPath = '';
-
-          if (!profile && sso_start_url && sso_region && sso_account_id && sso_role_name) {
-            tempConfigPath = path.join(os.tmpdir(), `aws_config_${crypto.randomBytes(4).toString('hex')}`);
-            const configContent = `[profile ${profileName}]\nsso_start_url = ${sso_start_url}\nsso_region = ${sso_region}\nsso_account_id = ${sso_account_id}\nsso_role_name = ${sso_role_name}\nregion = ${sso_region}\n`;
-            fs.writeFileSync(tempConfigPath, configContent);
-            envVars.AWS_CONFIG_FILE = tempConfigPath;
+          let tempPath = '';
+          if (!profile && sso_start_url) {
+            tempPath = path.join(os.tmpdir(), `aws_config_${crypto.randomBytes(4).toString('hex')}`);
+            fs.writeFileSync(tempPath, `[profile ${profileName}]\nsso_start_url = ${sso_start_url}\nsso_region = ${sso_region}\nsso_account_id = ${sso_account_id}\nsso_role_name = ${sso_role_name}\nregion = ${sso_region}\n`);
+            envVars.AWS_CONFIG_FILE = tempPath;
           }
-
-          const cmd = `aws configure export-credentials --profile ${profileName}`;
-          const { stdout } = await execPromise(cmd, { env: envVars });
+          const { stdout } = await execPromise(`aws configure export-credentials --profile ${profileName}`, { env: envVars });
+          if (tempPath) try { fs.unlinkSync(tempPath); } catch(e) {}
           const creds = JSON.parse(stdout);
-          
-          if (tempConfigPath && fs.existsSync(tempConfigPath)) {
-            try { fs.unlinkSync(tempConfigPath); } catch(e) {}
-          }
-
-          // Return credentials so frontend can store them as temporary overrides
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
-          res.end(JSON.stringify({ 
-            success: true, 
-            accessKey: creds.AccessKeyId,
-            secretKey: creds.SecretAccessKey,
-            sessionToken: creds.SessionToken
-          }));
+          res.end(JSON.stringify({ success: true, accessKey: creds.AccessKeyId, secretKey: creds.SecretAccessKey, sessionToken: creds.SessionToken }));
         } catch (e: any) {
-          res.setHeader('Content-Type', 'application/json');
           res.statusCode = 500;
-          res.end(JSON.stringify({ success: false, error: e.message || 'Failed to fetch SSO credentials. Ensure you are logged in.' }));
+          res.end(JSON.stringify({ success: false, error: e.message }));
         }
       } else {
         next();

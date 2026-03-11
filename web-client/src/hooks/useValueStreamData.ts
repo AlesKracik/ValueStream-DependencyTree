@@ -306,34 +306,33 @@ export function useValueStreamData(
         setData(prev => {
             if (!prev) return prev;
             
-            // Ensure auth methods are explicitly stored if missing
-            const defaults = {
-                mongo_auth_method: prev.settings.mongo_auth_method || 'scram',
-                customer_mongo_auth_method: prev.settings.customer_mongo_auth_method || 'scram'
-            };
-            const newSettings = { ...prev.settings, ...defaults, ...updates };
+            // Shallow merge at root for Partial<Settings>
+            const newSettings = { ...prev.settings, ...updates };
             
             let newSprints = prev.sprints;
             // If fiscal start month changed, recompute all sprint quarters
-            if (updates.fiscal_year_start_month !== undefined && updates.fiscal_year_start_month !== prev.settings.fiscal_year_start_month) {
+            const oldFiscalMonth = prev.settings.general?.fiscal_year_start_month;
+            const newFiscalMonth = newSettings.general?.fiscal_year_start_month;
+
+            if (newFiscalMonth !== undefined && newFiscalMonth !== oldFiscalMonth) {
                 newSprints = prev.sprints.map(s => ({
                     ...s,
-                    quarter: calculateQuarter(s.end_date, updates.fiscal_year_start_month!)
+                    quarter: calculateQuarter(s.end_date, newFiscalMonth)
                 }));
-                // Persist all updated sprints immediately (important consistency change)
+                // Persist all updated sprints immediately
                 newSprints.forEach(s => persistEntity('sprints', 'POST', s, showAlert));
             }
 
             // Check if we need to refresh data (critical connection settings changed)
+            // We check if the specific nested objects were provided in 'updates'
             const needsRefresh = (
-                updates.mongo_uri !== undefined || 
-                updates.mongo_db !== undefined ||
-                updates.mongo_auth_method !== undefined ||
-                updates.customer_mongo_uri !== undefined ||
-                updates.customer_mongo_db !== undefined ||
-                updates.customer_mongo_auth_method !== undefined ||
-                updates.jira_base_url !== undefined || 
-                updates.jira_api_token !== undefined
+                updates.persistence?.mongo?.app?.uri !== undefined || 
+                updates.persistence?.mongo?.app?.db !== undefined ||
+                updates.persistence?.mongo?.app?.auth?.method !== undefined ||
+                updates.persistence?.mongo?.customer?.uri !== undefined ||
+                updates.persistence?.mongo?.customer?.db !== undefined ||
+                updates.jira?.base_url !== undefined || 
+                updates.jira?.api_token !== undefined
             );
 
             if (needsRefresh) {
@@ -355,7 +354,7 @@ export function useValueStreamData(
             if (!prev) return prev;
             const newSprint = {
                 ...sprint,
-                quarter: calculateQuarter(sprint.end_date, prev.settings.fiscal_year_start_month || 1)
+                quarter: calculateQuarter(sprint.end_date, prev.settings.general?.fiscal_year_start_month || 1)
             };
             persistEntity('sprints', 'POST', newSprint, showAlert);
             return {
@@ -372,7 +371,7 @@ export function useValueStreamData(
         const updatedSprint = { ...existing, ...updates };
         // If end date is provided (or start date, though quarter is based on end), recompute quarter
         if (updates.end_date || updates.start_date) {
-            updatedSprint.quarter = calculateQuarter(updatedSprint.end_date, data?.settings.fiscal_year_start_month || 1);
+            updatedSprint.quarter = calculateQuarter(updatedSprint.end_date, data?.settings.general?.fiscal_year_start_month || 1);
         }
 
         setData(prev => {

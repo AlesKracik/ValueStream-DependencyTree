@@ -34,7 +34,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
   const { showConfirm } = useValueStreamContext();
 
-  const [localFormData, setFormData] = useState<Partial<Settings>>({});
+  const [localFormData, setFormData] = useState<Settings>(settings);
   const [isTesting, setIsTesting] = useState(false);
   const [availableDbs, setAvailableDbs] = useState<string[]>([]);
   const [mongoTestResult, setMongoTestResult] = useState<{ success: boolean; message: string; exists?: boolean } | null>(null);
@@ -53,21 +53,36 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleAWSSSOLOGIN = async (type: 'application' | 'customer') => {
-    const isCustomer = type === 'customer';
-    const profile = isCustomer ? (localFormData.customer_mongo_aws_profile || settings.customer_mongo_aws_profile) : (localFormData.mongo_aws_profile || settings.mongo_aws_profile);
-    const sso_start_url = isCustomer ? (localFormData.customer_mongo_aws_sso_start_url || settings.customer_mongo_aws_sso_start_url) : (localFormData.mongo_aws_sso_start_url || settings.mongo_aws_sso_start_url);
-    const sso_region = isCustomer ? (localFormData.customer_mongo_aws_sso_region || settings.customer_mongo_aws_sso_region) : (localFormData.mongo_aws_sso_region || settings.mongo_aws_sso_region);
-    const sso_account_id = isCustomer ? (localFormData.customer_mongo_aws_sso_account_id || settings.customer_mongo_aws_sso_account_id) : (localFormData.mongo_aws_sso_account_id || settings.mongo_aws_sso_account_id);
-    const sso_role_name = isCustomer ? (localFormData.customer_mongo_aws_sso_role_name || settings.customer_mongo_aws_sso_role_name) : (localFormData.mongo_aws_sso_role_name || settings.mongo_aws_sso_role_name);
+  const updateFormData = (path: string, value: any) => {
+    setFormData(prev => {
+        const newData = { ...prev };
+        const parts = path.split('.');
+        let current: any = newData;
+        for (let i = 0; i < parts.length - 1; i++) {
+            current[parts[i]] = { ...current[parts[i]] };
+            current = current[parts[i]];
+        }
+        current[parts[parts.length - 1]] = value;
+        return newData;
+    });
+  };
 
+  const handleAWSSSOLOGIN = async (role: 'app' | 'customer') => {
+    const mongo = localFormData.persistence.mongo[role];
+    const { auth } = mongo;
     setIsSSOLoginLoading(true);
     setSSOMessage(null);
     try {
         const res = await authorizedFetch('/api/aws/sso/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ profile, sso_start_url, sso_region, sso_account_id, sso_role_name })
+            body: JSON.stringify({ 
+                profile: auth.aws_profile, 
+                sso_start_url: auth.aws_sso_start_url, 
+                sso_region: auth.aws_sso_region, 
+                sso_account_id: auth.aws_sso_account_id, 
+                sso_role_name: auth.aws_sso_role_name 
+            })
         });
         const data = await res.json();
         setSSOMessage({ success: data.success, message: data.message || data.error });
@@ -78,35 +93,53 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
   };
 
-  const handleFetchSSOCredentials = async (type: 'application' | 'customer') => {
-    const isCustomer = type === 'customer';
-    const profile = isCustomer ? (localFormData.customer_mongo_aws_profile || settings.customer_mongo_aws_profile) : (localFormData.mongo_aws_profile || settings.mongo_aws_profile);
-    const sso_start_url = isCustomer ? (localFormData.customer_mongo_aws_sso_start_url || settings.customer_mongo_aws_sso_start_url) : (localFormData.mongo_aws_sso_start_url || settings.mongo_aws_sso_start_url);
-    const sso_region = isCustomer ? (localFormData.customer_mongo_aws_sso_region || settings.customer_mongo_aws_sso_region) : (localFormData.mongo_aws_sso_region || settings.mongo_aws_sso_region);
-    const sso_account_id = isCustomer ? (localFormData.customer_mongo_aws_sso_account_id || settings.customer_mongo_aws_sso_account_id) : (localFormData.mongo_aws_sso_account_id || settings.mongo_aws_sso_account_id);
-    const sso_role_name = isCustomer ? (localFormData.customer_mongo_aws_sso_role_name || settings.customer_mongo_aws_sso_role_name) : (localFormData.mongo_aws_sso_role_name || settings.mongo_aws_sso_role_name);
-
+  const handleFetchSSOCredentials = async (role: 'app' | 'customer') => {
+    const mongo = localFormData.persistence.mongo[role];
+    const { auth } = mongo;
     setIsSSOLoginLoading(true);
     setSSOMessage(null);
     try {
         const res = await authorizedFetch('/api/aws/sso/credentials', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ profile, sso_start_url, sso_region, sso_account_id, sso_role_name })
+            body: JSON.stringify({ 
+                profile: auth.aws_profile, 
+                sso_start_url: auth.aws_sso_start_url, 
+                sso_region: auth.aws_sso_region, 
+                sso_account_id: auth.aws_sso_account_id, 
+                sso_role_name: auth.aws_sso_role_name 
+            })
         });
         const data = await res.json();
         if (data.success) {
-            const updates: Partial<Settings> = type === 'customer' ? {
-                customer_mongo_aws_access_key: data.accessKey,
-                customer_mongo_aws_secret_key: data.secretKey,
-                customer_mongo_aws_session_token: data.sessionToken
-            } : {
-                mongo_aws_access_key: data.accessKey,
-                mongo_aws_secret_key: data.secretKey,
-                mongo_aws_session_token: data.sessionToken
+            const authUpdates = {
+                ...auth,
+                aws_access_key: data.accessKey,
+                aws_secret_key: data.secretKey,
+                aws_session_token: data.sessionToken
             };
-            setFormData(prev => ({ ...prev, ...updates }));
-            onUpdateSettings(updates);
+            
+            setFormData(prev => {
+                const newData = { ...prev };
+                newData.persistence.mongo[role] = {
+                    ...newData.persistence.mongo[role],
+                    auth: authUpdates
+                };
+                return newData;
+            });
+
+            onUpdateSettings({
+                persistence: {
+                    ...localFormData.persistence,
+                    mongo: {
+                        ...localFormData.persistence.mongo,
+                        [role]: {
+                            ...localFormData.persistence.mongo[role],
+                            auth: authUpdates
+                        }
+                    }
+                }
+            });
             setSSOMessage({ success: true, message: 'Temporary credentials fetched and applied!' });
         } else {
             setSSOMessage({ success: false, message: data.error });
@@ -120,57 +153,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
   useEffect(() => {
     if (settings) {
-      setFormData({
-        jira_base_url: settings.jira_base_url,
-        jira_api_version: settings.jira_api_version || "3",
-        jira_api_token: settings.jira_api_token || "",
-        mongo_uri: settings.mongo_uri || "",
-        mongo_db: settings.mongo_db || "",
-        mongo_auth_method: settings.mongo_auth_method || "scram",
-        mongo_use_proxy: settings.mongo_use_proxy ?? false,
-        mongo_tunnel_name: settings.mongo_tunnel_name || "",
-        mongo_aws_auth_type: settings.mongo_aws_auth_type || "static",
-        mongo_aws_access_key: settings.mongo_aws_access_key || "",
-        mongo_aws_secret_key: settings.mongo_aws_secret_key || "",
-        mongo_aws_session_token: settings.mongo_aws_session_token || "",
-        mongo_aws_role_arn: settings.mongo_aws_role_arn || "",
-        mongo_aws_external_id: settings.mongo_aws_external_id || "",
-        mongo_aws_role_session_name: settings.mongo_aws_role_session_name || "",
-        mongo_aws_profile: settings.mongo_aws_profile || "",
-        mongo_aws_sso_start_url: settings.mongo_aws_sso_start_url || "",
-        mongo_aws_sso_region: settings.mongo_aws_sso_region || "",
-        mongo_aws_sso_account_id: settings.mongo_aws_sso_account_id || "",
-        mongo_aws_sso_role_name: settings.mongo_aws_sso_role_name || "",
-        mongo_oidc_token: settings.mongo_oidc_token || "",
-        customer_mongo_db: settings.customer_mongo_db || "",
-        customer_mongo_auth_method: settings.customer_mongo_auth_method || "scram",
-        customer_mongo_use_proxy: settings.customer_mongo_use_proxy ?? false,
-        customer_mongo_tunnel_name: settings.customer_mongo_tunnel_name || "",
-        customer_mongo_aws_auth_type: settings.customer_mongo_aws_auth_type || "static",
-        customer_mongo_aws_access_key: settings.customer_mongo_aws_access_key || "",
-        customer_mongo_aws_secret_key: settings.customer_mongo_aws_secret_key || "",
-        customer_mongo_aws_session_token: settings.customer_mongo_aws_session_token || "",
-        customer_mongo_aws_role_arn: settings.customer_mongo_aws_role_arn || "",
-        customer_mongo_aws_external_id: settings.customer_mongo_aws_external_id || "",
-        customer_mongo_aws_role_session_name: settings.customer_mongo_aws_role_session_name || "",
-        customer_mongo_aws_profile: settings.customer_mongo_aws_profile || "",
-        customer_mongo_aws_sso_start_url: settings.customer_mongo_aws_sso_start_url || "",
-        customer_mongo_aws_sso_region: settings.customer_mongo_aws_sso_region || "",
-        customer_mongo_aws_sso_account_id: settings.customer_mongo_aws_sso_account_id || "",
-        customer_mongo_aws_sso_role_name: settings.customer_mongo_aws_sso_role_name || "",
-        customer_mongo_oidc_token: settings.customer_mongo_oidc_token || "",
-        customer_mongo_uri: settings.customer_mongo_uri || "",
-        customer_mongo_collection: settings.customer_mongo_collection || "",
-        customer_mongo_custom_query: settings.customer_mongo_custom_query || "",
-        customer_jql_new: settings.customer_jql_new || "",
-        customer_jql_in_progress: settings.customer_jql_in_progress || "",
-        customer_jql_noop: settings.customer_jql_noop || "",
-        llm_provider: settings.llm_provider || "openai",
-        llm_api_key: settings.llm_api_key || "",
-        llm_model: settings.llm_model || "",
-        fiscal_year_start_month: settings.fiscal_year_start_month || 1,
-        sprint_duration_days: settings.sprint_duration_days || 14,
-      });
+      setFormData(settings);
     }
   }, [settings]);
 
@@ -199,29 +182,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     });
   };
 
-  const handleTestConnection = async (type: 'application' | 'customer' = 'application') => {
-    const isCustomer = type === 'customer';
-    const uriField = isCustomer ? 'customer_mongo_uri' : 'mongo_uri';
-    const dbField = isCustomer ? 'customer_mongo_db' : 'mongo_db';
-    const authField = isCustomer ? 'customer_mongo_auth_method' : 'mongo_auth_method';
-    const useProxyField = isCustomer ? 'customer_mongo_use_proxy' : 'mongo_use_proxy';
-    const tunnelField = isCustomer ? 'customer_mongo_tunnel_name' : 'mongo_tunnel_name';
-    const akField = isCustomer ? 'customer_mongo_aws_access_key' : 'mongo_aws_access_key';
-    const skField = isCustomer ? 'customer_mongo_aws_secret_key' : 'mongo_aws_secret_key';
-    const stField = isCustomer ? 'customer_mongo_aws_session_token' : 'mongo_aws_session_token';
-    const otField = isCustomer ? 'customer_mongo_oidc_token' : 'mongo_oidc_token';
-
+  const handleTestConnection = async (role: 'app' | 'customer' = 'app') => {
+    const mongo = localFormData.persistence.mongo[role];
+    const isCustomer = role === 'customer';
+    
     const body: any = { 
-      [uriField]: localFormData[uriField] || settings[uriField],
-      [dbField]: localFormData[dbField] || settings[dbField],
-      [authField]: localFormData[authField] || settings[authField],
-      [useProxyField]: localFormData[useProxyField] || settings[useProxyField],
-      [tunnelField]: localFormData[tunnelField] || settings[tunnelField],
-      [akField]: localFormData[akField] || settings[akField],
-      [skField]: localFormData[skField] || settings[skField],
-      [stField]: localFormData[stField] || settings[stField],
-      [otField]: localFormData[otField] || settings[otField],
-      connection_type: isCustomer ? 'customer' : 'app',
+        persistence: {
+            mongo: {
+                [role]: mongo
+            }
+        },
+        connection_type: role
     };
 
     if (isCustomer) {
@@ -233,7 +204,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
 
     try {
-      // Fetch available databases
       const dbRes = await authorizedFetch("/api/mongo/databases", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -245,14 +215,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         else setAvailableDbs(dbData.databases || []);
       }
 
-      // Test specific database
-      const testBody = {
-          ...body,
-      };
       const response = await authorizedFetch("/api/mongo/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(testBody),
+        body: JSON.stringify(body),
       });
       const resData = await response.json();
       if (response.ok && resData.success) {
@@ -279,11 +245,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   const handleJiraTestConnection = async () => {
-    const jira_base_url = localFormData.jira_base_url || settings.jira_base_url;
-    const jira_api_token = localFormData.jira_api_token || settings.jira_api_token;
-    const jira_api_version = localFormData.jira_api_version || settings.jira_api_version || "3";
+    const { jira } = localFormData;
 
-    if (!jira_base_url || !jira_api_token) {
+    if (!jira.base_url || !jira.api_token) {
       setJiraTestResult({ success: false, message: "Base URL and PAT are required to test." });
       return;
     }
@@ -294,9 +258,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          jira_base_url,
-          jira_api_token,
-          jira_api_version,
+          jira_base_url: jira.base_url,
+          jira_api_token: jira.api_token,
+          jira_api_version: jira.api_version,
         }),
       });
       const resData = await response.json();
@@ -389,10 +353,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       setImportSyncResult({ success: true, message: "No epics with Jira keys found to sync." });
       return;
     }
-    const jira_base_url = localFormData.jira_base_url || settings.jira_base_url;
-    const jira_api_token = localFormData.jira_api_token || settings.jira_api_token;
+    const { jira } = localFormData;
 
-    if (!jira_base_url || !jira_api_token) {
+    if (!jira.base_url || !jira.api_token) {
       setImportSyncResult({ success: false, message: "Base URL and PAT are required to sync." });
       return;
     }
@@ -406,9 +369,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       setSyncProgress(`Syncing ${i + 1}/${epicsWithKeys.length}: ${epic.jira_key}`);
       try {
         const issueData = await syncJiraIssue(epic.jira_key, {
-            jira_base_url,
-            jira_api_version: localFormData.jira_api_version || settings.jira_api_version || "3",
-            jira_api_token,
+            jira_base_url: jira.base_url,
+            jira_api_version: jira.api_version,
+            jira_api_token: jira.api_token,
         });
         
         const updates = parseJiraIssue(issueData, data.teams);
@@ -426,10 +389,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
   const handleImportFromJira = async () => {
     if (!data) return;
-    const jira_base_url = localFormData.jira_base_url || settings.jira_base_url;
-    const jira_api_token = localFormData.jira_api_token || settings.jira_api_token;
+    const { jira } = localFormData;
 
-    if (!jira_base_url || !jira_api_token) {
+    if (!jira.base_url || !jira.api_token) {
       setImportSyncResult({ success: false, message: "Base URL and PAT are required to import." });
       return;
     }
@@ -453,9 +415,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           jql: finalJql,
-          jira_base_url,
-          jira_api_version: localFormData.jira_api_version || settings.jira_api_version || "3",
-          jira_api_token,
+          jira_base_url: jira.base_url,
+          jira_api_version: jira.api_version,
+          jira_api_token: jira.api_token,
         }),
       });
       const resData = await response.json();
@@ -662,11 +624,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                         Authentication Method:
                         <select
-                          value={localFormData.mongo_auth_method || "scram"}
+                          value={localFormData.persistence.mongo.app.auth.method}
                           onChange={(e) => {
                               const val = e.target.value as any;
-                              setFormData({ ...localFormData, mongo_auth_method: val });
-                              onUpdateSettings({ mongo_auth_method: val });
+                              updateFormData('persistence.mongo.app.auth.method', val);
+                              onUpdateSettings({ 
+                                persistence: { 
+                                    ...localFormData.persistence, 
+                                    mongo: { 
+                                        ...localFormData.persistence.mongo, 
+                                        app: { 
+                                            ...localFormData.persistence.mongo.app, 
+                                            auth: { ...localFormData.persistence.mongo.app.auth, method: val } 
+                                        } 
+                                    } 
+                                } 
+                              });
                           }}
                         >
                           <option value="scram">SCRAM (URI-based)</option>
@@ -679,10 +652,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         MongoDB URI:
                         <input
                           type="text"
-                          placeholder={localFormData.mongo_auth_method === 'scram' ? "mongodb://username:password@localhost:27017" : "mongodb://localhost:27017"}
-                          value={localFormData.mongo_uri || ""}
-                          onChange={(e) => setFormData({ ...localFormData, mongo_uri: e.target.value })}
-                          onBlur={() => onUpdateSettings({ mongo_uri: localFormData.mongo_uri })}
+                          placeholder={localFormData.persistence.mongo.app.auth.method === 'scram' ? "mongodb://username:password@localhost:27017" : "mongodb://localhost:27017"}
+                          value={localFormData.persistence.mongo.app.uri || ""}
+                          onChange={(e) => updateFormData('persistence.mongo.app.uri', e.target.value)}
+                          onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                         />
                       </label>
 
@@ -690,25 +663,33 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db", cursor: 'pointer' }}>
                           <input
                             type="checkbox"
-                            checked={localFormData.mongo_use_proxy || false}
+                            checked={localFormData.persistence.mongo.app.use_proxy || false}
                             onChange={(e) => {
                               const val = e.target.checked;
-                              setFormData({ ...localFormData, mongo_use_proxy: val });
-                              onUpdateSettings({ mongo_use_proxy: val });
+                              updateFormData('persistence.mongo.app.use_proxy', val);
+                              onUpdateSettings({ 
+                                persistence: { 
+                                    ...localFormData.persistence, 
+                                    mongo: { 
+                                        ...localFormData.persistence.mongo, 
+                                        app: { ...localFormData.persistence.mongo.app, use_proxy: val } 
+                                    } 
+                                } 
+                              });
                             }}
                           />
                           Use SOCKS Proxy (from .env)
                         </label>
 
-                        {localFormData.mongo_use_proxy && (
+                        {localFormData.persistence.mongo.app.use_proxy && (
                           <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db" }}>
                             Tunnel Name:
                             <input
                               type="text"
                               placeholder="app"
-                              value={localFormData.mongo_tunnel_name || ""}
-                              onChange={(e) => setFormData({ ...localFormData, mongo_tunnel_name: e.target.value })}
-                              onBlur={() => onUpdateSettings({ mongo_tunnel_name: localFormData.mongo_tunnel_name })}
+                              value={localFormData.persistence.mongo.app.tunnel_name || ""}
+                              onChange={(e) => updateFormData('persistence.mongo.app.tunnel_name', e.target.value)}
+                              onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                               style={{ width: '120px', padding: '4px 8px' }}
                             />
                           </label>
@@ -723,9 +704,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               type="text"
                               placeholder="Value Stream"
                               list="mongo-dbs"
-                              value={localFormData.mongo_db || ""}
-                              onChange={(e) => setFormData({ ...localFormData, mongo_db: e.target.value })}
-                              onBlur={() => onUpdateSettings({ mongo_db: localFormData.mongo_db })}
+                              value={localFormData.persistence.mongo.app.db || ""}
+                              onChange={(e) => updateFormData('persistence.mongo.app.db', e.target.value)}
+                              onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                               style={{
                                 borderColor: mongoTestResult?.success && !mongoTestResult.exists ? '#f59e0b' : undefined
                               }}
@@ -750,18 +731,29 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         </div>
                       </label>
 
-                      {localFormData.mongo_auth_method === 'aws' && (
+                      {localFormData.persistence.mongo.app.auth.method === 'aws' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
                           <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>AWS IAM Credentials</div>
                           
                           <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                             AWS Authentication Type:
                             <select
-                              value={localFormData.mongo_aws_auth_type || "static"}
+                              value={localFormData.persistence.mongo.app.auth.aws_auth_type || "static"}
                               onChange={(e) => {
                                   const val = e.target.value as any;
-                                  setFormData({ ...localFormData, mongo_aws_auth_type: val });
-                                  onUpdateSettings({ mongo_aws_auth_type: val });
+                                  updateFormData('persistence.mongo.app.auth.aws_auth_type', val);
+                                  onUpdateSettings({ 
+                                    persistence: { 
+                                        ...localFormData.persistence, 
+                                        mongo: { 
+                                            ...localFormData.persistence.mongo, 
+                                            app: { 
+                                                ...localFormData.persistence.mongo.app, 
+                                                auth: { ...localFormData.persistence.mongo.app.auth, aws_auth_type: val } 
+                                            } 
+                                        } 
+                                    } 
+                                  });
                               }}
                             >
                               <option value="static">Static Credentials</option>
@@ -775,13 +767,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 <input
                                     type="text"
                                     placeholder="default"
-                                    value={localFormData.mongo_aws_profile || ""}
-                                    onChange={(e) => setFormData({ ...localFormData, mongo_aws_profile: e.target.value })}
-                                    onBlur={() => onUpdateSettings({ mongo_aws_profile: localFormData.mongo_aws_profile })}
+                                    value={localFormData.persistence.mongo.app.auth.aws_profile || ""}
+                                    onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_profile', e.target.value)}
+                                    onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                 />
                             </label>
 
-                            {!localFormData.mongo_aws_profile && (
+                            {!localFormData.persistence.mongo.app.auth.aws_profile && (
                                 <div style={{ marginBottom: '16px', padding: '12px', border: '1px dashed #374151', borderRadius: '4px' }}>
                                     <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px' }}>Manual SSO Configuration (No Profile):</div>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -790,9 +782,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             <input
                                                 type="text"
                                                 placeholder="https://..."
-                                                value={localFormData.mongo_aws_sso_start_url || ""}
-                                                onChange={(e) => setFormData({ ...localFormData, mongo_aws_sso_start_url: e.target.value })}
-                                                onBlur={() => onUpdateSettings({ mongo_aws_sso_start_url: localFormData.mongo_aws_sso_start_url })}
+                                                value={localFormData.persistence.mongo.app.auth.aws_sso_start_url || ""}
+                                                onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_sso_start_url', e.target.value)}
+                                                onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                             />
                                         </label>
                                         <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
@@ -800,9 +792,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             <input
                                                 type="text"
                                                 placeholder="us-east-1"
-                                                value={localFormData.mongo_aws_sso_region || ""}
-                                                onChange={(e) => setFormData({ ...localFormData, mongo_aws_sso_region: e.target.value })}
-                                                onBlur={() => onUpdateSettings({ mongo_aws_sso_region: localFormData.mongo_aws_sso_region })}
+                                                value={localFormData.persistence.mongo.app.auth.aws_sso_region || ""}
+                                                onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_sso_region', e.target.value)}
+                                                onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                             />
                                         </label>
                                         <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
@@ -810,9 +802,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             <input
                                                 type="text"
                                                 placeholder="123456789012"
-                                                value={localFormData.mongo_aws_sso_account_id || ""}
-                                                onChange={(e) => setFormData({ ...localFormData, mongo_aws_sso_account_id: e.target.value })}
-                                                onBlur={() => onUpdateSettings({ mongo_aws_sso_account_id: localFormData.mongo_aws_sso_account_id })}
+                                                value={localFormData.persistence.mongo.app.auth.aws_sso_account_id || ""}
+                                                onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_sso_account_id', e.target.value)}
+                                                onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                             />
                                         </label>
                                         <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
@@ -820,9 +812,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             <input
                                                 type="text"
                                                 placeholder="AWSReadOnlyAccess"
-                                                value={localFormData.mongo_aws_sso_role_name || ""}
-                                                onChange={(e) => setFormData({ ...localFormData, mongo_aws_sso_role_name: e.target.value })}
-                                                onBlur={() => onUpdateSettings({ mongo_aws_sso_role_name: localFormData.mongo_aws_sso_role_name })}
+                                                value={localFormData.persistence.mongo.app.auth.aws_sso_role_name || ""}
+                                                onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_sso_role_name', e.target.value)}
+                                                onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                             />
                                         </label>
                                     </div>
@@ -833,7 +825,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 <button
                                     type="button"
                                     className="btn-primary"
-                                    onClick={() => handleAWSSSOLOGIN('application')}
+                                    onClick={() => handleAWSSSOLOGIN('app')}
                                     disabled={isSSOLoginLoading}
                                     style={{ fontSize: '12px', padding: '6px 10px' }}
                                 >
@@ -842,7 +834,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 <button
                                     type="button"
                                     className="btn-primary"
-                                    onClick={() => handleFetchSSOCredentials('application')}
+                                    onClick={() => handleFetchSSOCredentials('app')}
                                     disabled={isSSOLoginLoading}
                                     style={{ fontSize: '12px', padding: '6px 10px' }}
                                 >
@@ -856,33 +848,33 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                             )}
                           </div>
 
-                          {localFormData.mongo_aws_auth_type === 'static' ? (
+                          {localFormData.persistence.mongo.app.auth.aws_auth_type === 'static' ? (
                             <>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                                 Access Key ID:
                                 <input
                                   type="text"
-                                  value={localFormData.mongo_aws_access_key || ""}
-                                  onChange={(e) => setFormData({ ...localFormData, mongo_aws_access_key: e.target.value })}
-                                  onBlur={() => onUpdateSettings({ mongo_aws_access_key: localFormData.mongo_aws_access_key })}
+                                  value={localFormData.persistence.mongo.app.auth.aws_access_key || ""}
+                                  onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_access_key', e.target.value)}
+                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                 />
                               </label>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                                 Secret Access Key:
                                 <input
                                   type="password"
-                                  value={localFormData.mongo_aws_secret_key || ""}
-                                  onChange={(e) => setFormData({ ...localFormData, mongo_aws_secret_key: e.target.value })}
-                                  onBlur={() => onUpdateSettings({ mongo_aws_secret_key: localFormData.mongo_aws_secret_key })}
+                                  value={localFormData.persistence.mongo.app.auth.aws_secret_key || ""}
+                                  onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_secret_key', e.target.value)}
+                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                 />
                               </label>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                                 Session Token (Optional):
                                 <input
                                   type="password"
-                                  value={localFormData.mongo_aws_session_token || ""}
-                                  onChange={(e) => setFormData({ ...localFormData, mongo_aws_session_token: e.target.value })}
-                                  onBlur={() => onUpdateSettings({ mongo_aws_session_token: localFormData.mongo_aws_session_token })}
+                                  value={localFormData.persistence.mongo.app.auth.aws_session_token || ""}
+                                  onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_session_token', e.target.value)}
+                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                 />
                               </label>
                             </>
@@ -893,18 +885,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 <input
                                   type="text"
                                   placeholder="arn:aws:iam::123456789012:role/MyRole"
-                                  value={localFormData.mongo_aws_role_arn || ""}
-                                  onChange={(e) => setFormData({ ...localFormData, mongo_aws_role_arn: e.target.value })}
-                                  onBlur={() => onUpdateSettings({ mongo_aws_role_arn: localFormData.mongo_aws_role_arn })}
+                                  value={localFormData.persistence.mongo.app.auth.aws_role_arn || ""}
+                                  onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_role_arn', e.target.value)}
+                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                 />
                               </label>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                                 External ID (Optional):
                                 <input
                                   type="text"
-                                  value={localFormData.mongo_aws_external_id || ""}
-                                  onChange={(e) => setFormData({ ...localFormData, mongo_aws_external_id: e.target.value })}
-                                  onBlur={() => onUpdateSettings({ mongo_aws_external_id: localFormData.mongo_aws_external_id })}
+                                  value={localFormData.persistence.mongo.app.auth.aws_external_id || ""}
+                                  onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_external_id', e.target.value)}
+                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                 />
                               </label>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
@@ -912,9 +904,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 <input
                                   type="text"
                                   placeholder="ValueStreamSession"
-                                  value={localFormData.mongo_aws_role_session_name || ""}
-                                  onChange={(e) => setFormData({ ...localFormData, mongo_aws_role_session_name: e.target.value })}
-                                  onBlur={() => onUpdateSettings({ mongo_aws_role_session_name: localFormData.mongo_aws_role_session_name })}
+                                  value={localFormData.persistence.mongo.app.auth.aws_role_session_name || ""}
+                                  onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_role_session_name', e.target.value)}
+                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                 />
                               </label>
                             </>
@@ -922,7 +914,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         </div>
                       )}
 
-                      {localFormData.mongo_auth_method === 'oidc' && (
+                      {localFormData.persistence.mongo.app.auth.method === 'oidc' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
                           <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>OIDC Configuration</div>
                           <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
@@ -930,9 +922,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                             <input
                               type="password"
                               placeholder="eyJhbG..."
-                              value={localFormData.mongo_oidc_token || ""}
-                              onChange={(e) => setFormData({ ...localFormData, mongo_oidc_token: e.target.value })}
-                              onBlur={() => onUpdateSettings({ mongo_oidc_token: localFormData.mongo_oidc_token })}
+                              value={localFormData.persistence.mongo.app.auth.oidc_token || ""}
+                              onChange={(e) => updateFormData('persistence.mongo.app.auth.oidc_token', e.target.value)}
+                              onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                             />
                           </label>
                         </div>
@@ -941,9 +933,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       <button
                         type="button"
                         className="btn-primary"
-                        onClick={() => handleTestConnection('application')}
+                        onClick={() => handleTestConnection('app')}
                         style={{ alignSelf: "flex-start", marginTop: "4px" }}
-                        disabled={isTesting || (!localFormData.mongo_uri && !settings.mongo_uri)}
+                        disabled={isTesting || (!localFormData.persistence.mongo.app.uri && !settings.persistence.mongo.app.uri)}
                       >
                         {isTesting ? "Testing Mongo..." : "Test Mongo Connection"}
                       </button>
@@ -977,7 +969,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                           type="button"
                           className="btn-primary"
                           onClick={handleExportMongo}
-                          disabled={isTesting || (!localFormData.mongo_uri && !settings.mongo_uri)}
+                          disabled={isTesting || (!localFormData.persistence.mongo.app.uri && !settings.persistence.mongo.app.uri)}
                         >
                           {isTesting ? "Exporting..." : "Export to JSON"}
                         </button>
@@ -985,7 +977,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                           type="button"
                           className="btn-primary"
                           onClick={() => fileInputRef.current?.click()}
-                          disabled={isTesting || (!localFormData.mongo_uri && !settings.mongo_uri)}
+                          disabled={isTesting || (!localFormData.persistence.mongo.app.uri && !settings.persistence.mongo.app.uri)}
                         >
                           {isTesting ? "Importing..." : "Import from JSON"}
                         </button>
@@ -1005,11 +997,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                         Authentication Method:
                         <select
-                          value={localFormData.customer_mongo_auth_method || "scram"}
+                          value={localFormData.persistence.mongo.customer.auth.method}
                           onChange={(e) => {
                               const val = e.target.value as any;
-                              setFormData({ ...localFormData, customer_mongo_auth_method: val });
-                              onUpdateSettings({ customer_mongo_auth_method: val });
+                              updateFormData('persistence.mongo.customer.auth.method', val);
+                              onUpdateSettings({ 
+                                persistence: { 
+                                    ...localFormData.persistence, 
+                                    mongo: { 
+                                        ...localFormData.persistence.mongo, 
+                                        customer: { 
+                                            ...localFormData.persistence.mongo.customer, 
+                                            auth: { ...localFormData.persistence.mongo.customer.auth, method: val } 
+                                        } 
+                                    } 
+                                } 
+                              });
                           }}
                         >
                           <option value="scram">SCRAM (URI-based)</option>
@@ -1022,10 +1025,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         Customer MongoDB URI:
                         <input
                           type="text"
-                          placeholder={localFormData.customer_mongo_auth_method === 'scram' ? "mongodb://username:password@localhost:27017" : "mongodb://localhost:27017"}
-                          value={localFormData.customer_mongo_uri || ""}
-                          onChange={(e) => setFormData({ ...localFormData, customer_mongo_uri: e.target.value })}
-                          onBlur={() => onUpdateSettings({ customer_mongo_uri: localFormData.customer_mongo_uri })}
+                          placeholder={localFormData.persistence.mongo.customer.auth.method === 'scram' ? "mongodb://username:password@localhost:27017" : "mongodb://localhost:27017"}
+                          value={localFormData.persistence.mongo.customer.uri || ""}
+                          onChange={(e) => updateFormData('persistence.mongo.customer.uri', e.target.value)}
+                          onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                         />
                       </label>
 
@@ -1033,25 +1036,33 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db", cursor: 'pointer' }}>
                           <input
                             type="checkbox"
-                            checked={localFormData.customer_mongo_use_proxy || false}
+                            checked={localFormData.persistence.mongo.customer.use_proxy || false}
                             onChange={(e) => {
                               const val = e.target.checked;
-                              setFormData({ ...localFormData, customer_mongo_use_proxy: val });
-                              onUpdateSettings({ customer_mongo_use_proxy: val });
+                              updateFormData('persistence.mongo.customer.use_proxy', val);
+                              onUpdateSettings({ 
+                                persistence: { 
+                                    ...localFormData.persistence, 
+                                    mongo: { 
+                                        ...localFormData.persistence.mongo, 
+                                        customer: { ...localFormData.persistence.mongo.customer, use_proxy: val } 
+                                    } 
+                                } 
+                              });
                             }}
                           />
                           Use SOCKS Proxy (from .env)
                         </label>
 
-                        {localFormData.customer_mongo_use_proxy && (
+                        {localFormData.persistence.mongo.customer.use_proxy && (
                           <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db" }}>
                             Tunnel Name:
                             <input
                               type="text"
                               placeholder="customer"
-                              value={localFormData.customer_mongo_tunnel_name || ""}
-                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_tunnel_name: e.target.value })}
-                              onBlur={() => onUpdateSettings({ customer_mongo_tunnel_name: localFormData.customer_mongo_tunnel_name })}
+                              value={localFormData.persistence.mongo.customer.tunnel_name || ""}
+                              onChange={(e) => updateFormData('persistence.mongo.customer.tunnel_name', e.target.value)}
+                              onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                               style={{ width: '120px', padding: '4px 8px' }}
                             />
                           </label>
@@ -1066,9 +1077,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               type="text"
                               placeholder="Value Stream"
                               list="customer-mongo-dbs"
-                              value={localFormData.customer_mongo_db || ""}
-                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_db: e.target.value })}
-                              onBlur={() => onUpdateSettings({ customer_mongo_db: localFormData.customer_mongo_db })}
+                              value={localFormData.persistence.mongo.customer.db || ""}
+                              onChange={(e) => updateFormData('persistence.mongo.customer.db', e.target.value)}
+                              onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                             />
                             <datalist id="customer-mongo-dbs">
                               {availableCustomerDbs.map(db => <option key={db} value={db} />)}
@@ -1095,24 +1106,35 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         <input
                           type="text"
                           placeholder="Customers"
-                          value={localFormData.customer_mongo_collection || ""}
-                          onChange={(e) => setFormData({ ...localFormData, customer_mongo_collection: e.target.value })}
-                          onBlur={() => onUpdateSettings({ customer_mongo_collection: localFormData.customer_mongo_collection })}
+                          value={localFormData.persistence.mongo.customer.collection || ""}
+                          onChange={(e) => updateFormData('persistence.mongo.customer.collection', e.target.value)}
+                          onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                         />
                       </label>
 
-                      {localFormData.customer_mongo_auth_method === 'aws' && (
+                      {localFormData.persistence.mongo.customer.auth.method === 'aws' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
                           <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>AWS IAM Credentials (Customer)</div>
                           
                           <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                             AWS Authentication Type:
                             <select
-                              value={localFormData.customer_mongo_aws_auth_type || "static"}
+                              value={localFormData.persistence.mongo.customer.auth.aws_auth_type || "static"}
                               onChange={(e) => {
                                   const val = e.target.value as any;
-                                  setFormData({ ...localFormData, customer_mongo_aws_auth_type: val });
-                                  onUpdateSettings({ customer_mongo_aws_auth_type: val });
+                                  updateFormData('persistence.mongo.customer.auth.aws_auth_type', val);
+                                  onUpdateSettings({ 
+                                    persistence: { 
+                                        ...localFormData.persistence, 
+                                        mongo: { 
+                                            ...localFormData.persistence.mongo, 
+                                            customer: { 
+                                                ...localFormData.persistence.mongo.customer, 
+                                                auth: { ...localFormData.persistence.mongo.customer.auth, aws_auth_type: val } 
+                                            } 
+                                        } 
+                                    } 
+                                  });
                               }}
                             >
                               <option value="static">Static Credentials</option>
@@ -1126,13 +1148,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 <input
                                     type="text"
                                     placeholder="default"
-                                    value={localFormData.customer_mongo_aws_profile || ""}
-                                    onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_profile: e.target.value })}
-                                    onBlur={() => onUpdateSettings({ customer_mongo_aws_profile: localFormData.customer_mongo_aws_profile })}
+                                    value={localFormData.persistence.mongo.customer.auth.aws_profile || ""}
+                                    onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_profile', e.target.value)}
+                                    onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                 />
                             </label>
 
-                            {!localFormData.customer_mongo_aws_profile && (
+                            {!localFormData.persistence.mongo.customer.auth.aws_profile && (
                                 <div style={{ marginBottom: '16px', padding: '12px', border: '1px dashed #374151', borderRadius: '4px' }}>
                                     <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px' }}>Manual SSO Configuration (No Profile):</div>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -1141,9 +1163,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             <input
                                                 type="text"
                                                 placeholder="https://..."
-                                                value={localFormData.customer_mongo_aws_sso_start_url || ""}
-                                                onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_sso_start_url: e.target.value })}
-                                                onBlur={() => onUpdateSettings({ customer_mongo_aws_sso_start_url: localFormData.customer_mongo_aws_sso_start_url })}
+                                                value={localFormData.persistence.mongo.customer.auth.aws_sso_start_url || ""}
+                                                onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_sso_start_url', e.target.value)}
+                                                onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                             />
                                         </label>
                                         <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
@@ -1151,9 +1173,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             <input
                                                 type="text"
                                                 placeholder="us-east-1"
-                                                value={localFormData.customer_mongo_aws_sso_region || ""}
-                                                onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_sso_region: e.target.value })}
-                                                onBlur={() => onUpdateSettings({ customer_mongo_aws_sso_region: localFormData.customer_mongo_aws_sso_region })}
+                                                value={localFormData.persistence.mongo.customer.auth.aws_sso_region || ""}
+                                                onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_sso_region', e.target.value)}
+                                                onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                             />
                                         </label>
                                         <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
@@ -1161,9 +1183,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             <input
                                                 type="text"
                                                 placeholder="123456789012"
-                                                value={localFormData.customer_mongo_aws_sso_account_id || ""}
-                                                onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_sso_account_id: e.target.value })}
-                                                onBlur={() => onUpdateSettings({ customer_mongo_aws_sso_account_id: localFormData.customer_mongo_aws_sso_account_id })}
+                                                value={localFormData.persistence.mongo.customer.auth.aws_sso_account_id || ""}
+                                                onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_sso_account_id', e.target.value)}
+                                                onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                             />
                                         </label>
                                         <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
@@ -1171,9 +1193,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             <input
                                                 type="text"
                                                 placeholder="AWSReadOnlyAccess"
-                                                value={localFormData.customer_mongo_aws_sso_role_name || ""}
-                                                onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_sso_role_name: e.target.value })}
-                                                onBlur={() => onUpdateSettings({ customer_mongo_aws_sso_role_name: localFormData.customer_mongo_aws_sso_role_name })}
+                                                value={localFormData.persistence.mongo.customer.auth.aws_sso_role_name || ""}
+                                                onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_sso_role_name', e.target.value)}
+                                                onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                             />
                                         </label>
                                     </div>
@@ -1207,33 +1229,33 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                             )}
                           </div>
 
-                          {localFormData.customer_mongo_aws_auth_type === 'static' ? (
+                          {localFormData.persistence.mongo.customer.auth.aws_auth_type === 'static' ? (
                             <>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                                 Access Key ID:
                                 <input
                                   type="text"
-                                  value={localFormData.customer_mongo_aws_access_key || ""}
-                                  onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_access_key: e.target.value })}
-                                  onBlur={() => onUpdateSettings({ customer_mongo_aws_access_key: localFormData.customer_mongo_aws_access_key })}
+                                  value={localFormData.persistence.mongo.customer.auth.aws_access_key || ""}
+                                  onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_access_key', e.target.value)}
+                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                 />
                               </label>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                                 Secret Access Key:
                                 <input
                                   type="password"
-                                  value={localFormData.customer_mongo_aws_secret_key || ""}
-                                  onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_secret_key: e.target.value })}
-                                  onBlur={() => onUpdateSettings({ customer_mongo_aws_secret_key: localFormData.customer_mongo_aws_secret_key })}
+                                  value={localFormData.persistence.mongo.customer.auth.aws_secret_key || ""}
+                                  onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_secret_key', e.target.value)}
+                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                 />
                               </label>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                                 Session Token (Optional):
                                 <input
                                   type="password"
-                                  value={localFormData.customer_mongo_aws_session_token || ""}
-                                  onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_session_token: e.target.value })}
-                                  onBlur={() => onUpdateSettings({ customer_mongo_aws_session_token: localFormData.customer_mongo_aws_session_token })}
+                                  value={localFormData.persistence.mongo.customer.auth.aws_session_token || ""}
+                                  onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_session_token', e.target.value)}
+                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                 />
                               </label>
                             </>
@@ -1244,18 +1266,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 <input
                                   type="text"
                                   placeholder="arn:aws:iam::123456789012:role/MyRole"
-                                  value={localFormData.customer_mongo_aws_role_arn || ""}
-                                  onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_role_arn: e.target.value })}
-                                  onBlur={() => onUpdateSettings({ customer_mongo_aws_role_arn: localFormData.customer_mongo_aws_role_arn })}
+                                  value={localFormData.persistence.mongo.customer.auth.aws_role_arn || ""}
+                                  onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_role_arn', e.target.value)}
+                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                 />
                               </label>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                                 External ID (Optional):
                                 <input
                                   type="text"
-                                  value={localFormData.customer_mongo_aws_external_id || ""}
-                                  onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_external_id: e.target.value })}
-                                  onBlur={() => onUpdateSettings({ customer_mongo_aws_external_id: localFormData.customer_mongo_aws_external_id })}
+                                  value={localFormData.persistence.mongo.customer.auth.aws_external_id || ""}
+                                  onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_external_id', e.target.value)}
+                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                 />
                               </label>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
@@ -1263,9 +1285,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 <input
                                   type="text"
                                   placeholder="ValueStreamSession"
-                                  value={localFormData.customer_mongo_aws_role_session_name || ""}
-                                  onChange={(e) => setFormData({ ...localFormData, customer_mongo_aws_role_session_name: e.target.value })}
-                                  onBlur={() => onUpdateSettings({ customer_mongo_aws_role_session_name: localFormData.customer_mongo_aws_role_session_name })}
+                                  value={localFormData.persistence.mongo.customer.auth.aws_role_session_name || ""}
+                                  onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_role_session_name', e.target.value)}
+                                  onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                                 />
                               </label>
                             </>
@@ -1273,7 +1295,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         </div>
                       )}
 
-                      {localFormData.customer_mongo_auth_method === 'oidc' && (
+                      {localFormData.persistence.mongo.customer.auth.method === 'oidc' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
                           <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>OIDC Configuration (Customer)</div>
                           <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
@@ -1281,9 +1303,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                             <input
                               type="password"
                               placeholder="eyJhbG..."
-                              value={localFormData.customer_mongo_oidc_token || ""}
-                              onChange={(e) => setFormData({ ...localFormData, customer_mongo_oidc_token: e.target.value })}
-                              onBlur={() => onUpdateSettings({ customer_mongo_oidc_token: localFormData.customer_mongo_oidc_token })}
+                              value={localFormData.persistence.mongo.customer.auth.oidc_token || ""}
+                              onChange={(e) => updateFormData('persistence.mongo.customer.auth.oidc_token', e.target.value)}
+                              onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                             />
                           </label>
                         </div>
@@ -1294,7 +1316,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         className="btn-primary"
                         onClick={() => handleTestConnection('customer')}
                         style={{ alignSelf: "flex-start", marginTop: "4px" }}
-                        disabled={isTestingCustomer || (!localFormData.customer_mongo_uri && !settings.customer_mongo_uri)}
+                        disabled={isTestingCustomer || (!localFormData.persistence.mongo.customer.uri && !settings.persistence.mongo.customer.uri)}
                       >
                         {isTestingCustomer ? "Testing Customer Mongo..." : "Test Customer Mongo Connection"}
                       </button>
@@ -1329,9 +1351,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         </span>
                         <textarea
                           placeholder='[{"$match": {"customer_id": "{{CUSTOMER_ID}}"}}, {"$lookup": {"from": "Clusters", "localField": "customer_id", "foreignField": "customer_id", "as": "clusters"}}, {"$project": {"customer_id": 1, "status": 1, "clusters": 1}}]'
-                          value={localFormData.customer_mongo_custom_query || ""}
-                          onChange={(e) => setFormData({ ...localFormData, customer_mongo_custom_query: e.target.value })}
-                          onBlur={() => onUpdateSettings({ customer_mongo_custom_query: localFormData.customer_mongo_custom_query })}
+                          value={localFormData.persistence.mongo.customer.custom_query || ""}
+                          onChange={(e) => updateFormData('persistence.mongo.customer.custom_query', e.target.value)}
+                          onBlur={() => onUpdateSettings({ persistence: localFormData.persistence })}
                           rows={12}
                           style={{ fontFamily: 'monospace', fontSize: '12px', resize: 'vertical' }}
                         />
@@ -1406,20 +1428,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     <input
                       type="url"
                       placeholder="https://yourdomain.atlassian.net"
-                      value={localFormData.jira_base_url || ""}
-                      onChange={(e) => setFormData({ ...localFormData, jira_base_url: e.target.value })}
-                      onBlur={() => onUpdateSettings({ jira_base_url: localFormData.jira_base_url })}
+                      value={localFormData.jira.base_url || ""}
+                      onChange={(e) => updateFormData('jira.base_url', e.target.value)}
+                      onBlur={() => onUpdateSettings({ jira: localFormData.jira })}
                     />
                   </label>
 
                   <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                     Jira API Version:
                     <select
-                      value={localFormData.jira_api_version || "3"}
+                      value={localFormData.jira.api_version}
                       onChange={(e) => {
                           const val = e.target.value as "2" | "3";
-                          setFormData({ ...localFormData, jira_api_version: val });
-                          onUpdateSettings({ jira_api_version: val });
+                          updateFormData('jira.api_version', val);
+                          onUpdateSettings({ jira: { ...localFormData.jira, api_version: val } });
                       }}
                     >
                       <option value="2">2</option>
@@ -1432,9 +1454,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     <input
                       type="password"
                       placeholder="Your Jira PAT"
-                      value={localFormData.jira_api_token || ""}
-                      onChange={(e) => setFormData({ ...localFormData, jira_api_token: e.target.value })}
-                      onBlur={() => onUpdateSettings({ jira_api_token: localFormData.jira_api_token })}
+                      value={localFormData.jira.api_token || ""}
+                      onChange={(e) => updateFormData('jira.api_token', e.target.value)}
+                      onBlur={() => onUpdateSettings({ jira: localFormData.jira })}
                     />
                   </label>
 
@@ -1443,7 +1465,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       type="button"
                       className="btn-primary"
                       onClick={handleJiraTestConnection}
-                      disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira_base_url && !settings.jira_base_url) && (!localFormData.jira_api_token && !settings.jira_api_token))}
+                      disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira.base_url && !settings.jira.base_url) && (!localFormData.jira.api_token && !settings.jira.api_token))}
                     >
                       {isTesting ? "Testing..." : "Test Connection"}
                     </button>
@@ -1484,7 +1506,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       className="btn-primary"
                       onClick={handleImportFromJira}
                       style={{ alignSelf: "flex-start" }}
-                      disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira_base_url && !settings.jira_base_url) && (!localFormData.jira_api_token && !settings.jira_api_token)) || !importJql.trim()}
+                      disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira.base_url && !settings.jira.base_url) && (!localFormData.jira.api_token && !settings.jira.api_token)) || !importJql.trim()}
                     >
                       {isImporting ? importProgress : "Import from Jira"}
                     </button>
@@ -1493,7 +1515,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       className="btn-primary"
                       onClick={handleSyncAllFromJira}
                       style={{ alignSelf: "flex-start" }}
-                      disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira_base_url && !settings.jira_base_url) && (!localFormData.jira_api_token && !settings.jira_api_token))}
+                      disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira.base_url && !settings.jira.base_url) && (!localFormData.jira.api_token && !settings.jira.api_token))}
                     >
                       {isSyncing ? syncProgress : "Sync Epics from Jira"}
                     </button>
@@ -1527,12 +1549,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     <input
                       type="text"
                       placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'New'"
-                      value={localFormData.customer_jql_new || ""}
-                      onChange={(e) => {
-                          const val = e.target.value;
-                          setFormData({ ...localFormData, customer_jql_new: val });
-                          onUpdateSettings({ customer_jql_new: val });
-                      }}
+                      value={localFormData.jira.customer_jql_new || ""}
+                      onChange={(e) => updateFormData('jira.customer_jql_new', e.target.value)}
+                      onBlur={() => onUpdateSettings({ jira: localFormData.jira })}
                     />
                   </label>
                   <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
@@ -1540,12 +1559,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     <input
                       type="text"
                       placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'In Progress'"
-                      value={localFormData.customer_jql_in_progress || ""}
-                      onChange={(e) => {
-                          const val = e.target.value;
-                          setFormData({ ...localFormData, customer_jql_in_progress: val });
-                          onUpdateSettings({ customer_jql_in_progress: val });
-                      }}
+                      value={localFormData.jira.customer_jql_in_progress || ""}
+                      onChange={(e) => updateFormData('jira.customer_jql_in_progress', e.target.value)}
+                      onBlur={() => onUpdateSettings({ jira: localFormData.jira })}
                     />
                   </label>
                   <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
@@ -1553,12 +1569,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     <input
                       type="text"
                       placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'Blocked'"
-                      value={localFormData.customer_jql_noop || ""}
-                      onChange={(e) => {
-                          const val = e.target.value;
-                          setFormData({ ...localFormData, customer_jql_noop: val });
-                          onUpdateSettings({ customer_jql_noop: val });
-                      }}
+                      value={localFormData.jira.customer_jql_noop || ""}
+                      onChange={(e) => updateFormData('jira.customer_jql_noop', e.target.value)}
+                      onBlur={() => onUpdateSettings({ jira: localFormData.jira })}
                     />
                   </label>
                 </>
@@ -1574,11 +1587,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                 Fiscal Year Start Month:
                 <select
-                  value={localFormData.fiscal_year_start_month || 1}
+                  value={localFormData.general.fiscal_year_start_month}
                   onChange={(e) => {
                       const val = parseInt(e.target.value);
-                      setFormData({ ...localFormData, fiscal_year_start_month: val });
-                      onUpdateSettings({ fiscal_year_start_month: val });
+                      updateFormData('general.fiscal_year_start_month', val);
+                      onUpdateSettings({ general: { ...localFormData.general, fiscal_year_start_month: val } });
                   }}
                 >
                   <option value={1}>January (Calendar Year)</option>
@@ -1605,11 +1618,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   type="number"
                   min="1"
                   max="365"
-                  value={localFormData.sprint_duration_days || 14}
+                  value={localFormData.general.sprint_duration_days}
                   onChange={(e) => {
                       const val = parseInt(e.target.value);
-                      setFormData({ ...localFormData, sprint_duration_days: val });
-                      onUpdateSettings({ sprint_duration_days: val });
+                      updateFormData('general.sprint_duration_days', val);
+                      onUpdateSettings({ general: { ...localFormData.general, sprint_duration_days: val } });
                   }}
                 />
               </label>
@@ -1621,11 +1634,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                 LLM Provider:
                 <select
-                  value={localFormData.llm_provider || "openai"}
+                  value={localFormData.ai.provider}
                   onChange={(e) => {
                       const val = e.target.value as any;
-                      setFormData({ ...localFormData, llm_provider: val });
-                      onUpdateSettings({ llm_provider: val });
+                      updateFormData('ai.provider', val);
+                      onUpdateSettings({ ai: { ...localFormData.ai, provider: val } });
                   }}
                 >
                   <option value="openai">OpenAI</option>
@@ -1636,25 +1649,25 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               </label>
 
               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
-                {localFormData.llm_provider === 'augment' ? 'Augment Session Auth:' : 'LLM API Key:'}
+                {localFormData.ai.provider === 'augment' ? 'Augment Session Auth:' : 'LLM API Key:'}
                 <input
                   type="password"
-                  placeholder={localFormData.llm_provider === 'augment' ? "Session token..." : "sk-..."}
-                  value={localFormData.llm_api_key || ""}
-                  onChange={(e) => setFormData({ ...localFormData, llm_api_key: e.target.value })}
-                  onBlur={() => onUpdateSettings({ llm_api_key: localFormData.llm_api_key })}
+                  placeholder={localFormData.ai.provider === 'augment' ? "Session token..." : "sk-..."}
+                  value={localFormData.ai.api_key || ""}
+                  onChange={(e) => updateFormData('ai.api_key', e.target.value)}
+                  onBlur={() => onUpdateSettings({ ai: localFormData.ai })}
                 />
               </label>
 
-              {localFormData.llm_provider !== 'augment' && (
+              {localFormData.ai.provider !== 'augment' && (
                 <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
                   LLM Model (Optional):
                   <input
                     type="text"
                     placeholder="gpt-4-turbo"
-                    value={localFormData.llm_model || ""}
-                    onChange={(e) => setFormData({ ...localFormData, llm_model: e.target.value })}
-                    onBlur={() => onUpdateSettings({ llm_model: localFormData.llm_model })}
+                    value={localFormData.ai.model || ""}
+                    onChange={(e) => updateFormData('ai.model', e.target.value)}
+                    onBlur={() => onUpdateSettings({ ai: localFormData.ai })}
                   />
                 </label>
               )}
@@ -1665,7 +1678,3 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     </PageWrapper>
   );
 };
-
-
-
-

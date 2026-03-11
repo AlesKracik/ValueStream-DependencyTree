@@ -96,56 +96,65 @@ export interface Sprint {
   is_archived?: boolean;
 }
 
-export interface Settings {
-  jira_base_url: string;
-  jira_api_version: '2' | '3';
-  jira_api_token?: string;
-  mongo_uri?: string;
-  mongo_db?: string;
-  mongo_auth_method?: 'scram' | 'aws' | 'oidc';
-  mongo_use_proxy?: boolean;
-  mongo_tunnel_name?: string;
-  mongo_aws_auth_type?: 'static' | 'role';
-  mongo_aws_access_key?: string;
-  mongo_aws_secret_key?: string;
-  mongo_aws_session_token?: string;
-  mongo_aws_role_arn?: string;
-  mongo_aws_external_id?: string;
-  mongo_aws_role_session_name?: string;
-  mongo_aws_profile?: string;
-  mongo_aws_sso_start_url?: string;
-  mongo_aws_sso_region?: string;
-  mongo_aws_sso_account_id?: string;
-  mongo_aws_sso_role_name?: string;
-  mongo_oidc_token?: string;
+export interface GeneralSettings {
+  fiscal_year_start_month: number;
+  sprint_duration_days: number;
+}
+
+export interface JiraSettings {
+  base_url: string;
+  api_version: '2' | '3';
+  api_token?: string;
   customer_jql_new?: string;
   customer_jql_in_progress?: string;
   customer_jql_noop?: string;
-  llm_provider?: 'openai' | 'gemini' | 'anthropic' | 'augment';
-  llm_api_key?: string;
-  llm_model?: string;
-  fiscal_year_start_month?: number; // 1-12, default 1
-  sprint_duration_days?: number; // default 14
-  customer_mongo_uri?: string;
-  customer_mongo_db?: string;
-  customer_mongo_auth_method?: 'scram' | 'aws' | 'oidc';
-  customer_mongo_use_proxy?: boolean;
-  customer_mongo_tunnel_name?: string;
-  customer_mongo_aws_auth_type?: 'static' | 'role';
-  customer_mongo_aws_access_key?: string;
-  customer_mongo_aws_secret_key?: string;
-  customer_mongo_aws_session_token?: string;
-  customer_mongo_aws_role_arn?: string;
-  customer_mongo_aws_external_id?: string;
-  customer_mongo_aws_role_session_name?: string;
-  customer_mongo_aws_profile?: string;
-  customer_mongo_aws_sso_start_url?: string;
-  customer_mongo_aws_sso_region?: string;
-  customer_mongo_aws_sso_account_id?: string;
-  customer_mongo_aws_sso_role_name?: string;
-  customer_mongo_oidc_token?: string;
-  customer_mongo_collection?: string;
-  customer_mongo_custom_query?: string;
+}
+
+export interface MongoAuthSettings {
+  method: 'scram' | 'aws' | 'oidc';
+  aws_auth_type?: 'static' | 'role';
+  aws_access_key?: string;
+  aws_secret_key?: string;
+  aws_session_token?: string;
+  aws_role_arn?: string;
+  aws_external_id?: string;
+  aws_role_session_name?: string;
+  aws_profile?: string;
+  aws_sso_start_url?: string;
+  aws_sso_region?: string;
+  aws_sso_account_id?: string;
+  aws_sso_role_name?: string;
+  oidc_token?: string;
+}
+
+export interface MongoConfig {
+  uri: string;
+  db: string;
+  auth: MongoAuthSettings;
+  use_proxy: boolean;
+  tunnel_name?: string;
+  collection?: string; // only for customer
+  custom_query?: string; // only for customer
+}
+
+export interface PersistenceSettings {
+  mongo: {
+    app: MongoConfig;
+    customer: MongoConfig;
+  };
+}
+
+export interface AISettings {
+  provider: 'openai' | 'gemini' | 'anthropic' | 'augment';
+  api_key?: string;
+  model?: string;
+}
+
+export interface Settings {
+  general: GeneralSettings;
+  persistence: PersistenceSettings;
+  jira: JiraSettings;
+  ai: AISettings;
 }
 
 export interface ValueStreamParameters {
