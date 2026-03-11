@@ -32,7 +32,7 @@ An interactive React ValueStream designed to visualize the flow of value from cu
 4.  **Initial Setup & SSH Tunneling:**
     - Open `http://localhost:5173`.
     - Go to **Settings** (Sidebar) and configure your **MongoDB** connection under the **Persistence** tab. Configuration is organized hierarchically by role (Application vs. Customer).
-    - **AWS SSO:** If using AWS IAM authentication, you can use the integrated **SSO Login** buttons to authenticate via browser and fetch temporary credentials directly into your settings.
+    - **AWS SSO:** If using AWS IAM authentication with the **Static Credentials** type, you can use the integrated **SSO Login** buttons to authenticate via browser and fetch temporary credentials directly into your settings.
     - **SSH Tunneling (Local):** If your MongoDB is behind one or more SSH bastions, start SOCKS5 tunnels in a separate terminal:
       - **Windows:** `.\scripts\start-tunnel.ps1 all` (or `app`, `customer`)
       - **MacOS/Linux:** `./scripts/start-tunnel.sh all` (or `app`, `customer`)
