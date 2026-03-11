@@ -293,6 +293,21 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
               dbData.workItems = workItems.map(({ _id, ...rest }) => rest);
               dbData.teams = teams.map(({ _id, ...rest }) => rest);
               dbData.epics = epics.map(({ _id, ...rest }) => rest);
+
+              // Calculate global metrics for scaling
+              if (dbData.workItems.length > 0) {
+                dbData.metrics.maxScore = Math.max(...dbData.workItems.map((f: any) => f.score || 0), 1);
+                // maxRoi is used for edge thickness, also compute it
+                dbData.metrics.maxRoi = Math.max(...dbData.workItems.map((f: any) => {
+                    if (!f.total_effort_mds) return 0;
+                    const totalTcv = (f.customer_targets || []).reduce((sum: number, t: any) => {
+                        const cust = dbData.customers.find((c: any) => c.id === t.customer_id);
+                        if (!cust) return sum;
+                        return sum + (t.tcv_type === 'existing' ? (cust.existing_tcv || 0) : (cust.potential_tcv || 0));
+                    }, 0);
+                    return totalTcv / f.total_effort_mds;
+                }), 0.0001);
+              }
             } catch (mongoErr) { console.error('MongoDB load error:', mongoErr); }
           } else if (fs.existsSync(mockDataPath)) {
             const mockData = JSON.parse(fs.readFileSync(mockDataPath, 'utf-8'));
