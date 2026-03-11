@@ -104,11 +104,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                profile: auth.aws_profile, 
-                sso_start_url: auth.aws_sso_start_url, 
-                sso_region: auth.aws_sso_region, 
-                sso_account_id: auth.aws_sso_account_id, 
-                sso_role_name: auth.aws_sso_role_name 
+                role,
+                persistence: {
+                    mongo: {
+                        [role]: {
+                            auth: {
+                                aws_profile: auth.aws_profile,
+                                aws_sso_start_url: auth.aws_sso_start_url,
+                                aws_sso_region: auth.aws_sso_region,
+                                aws_sso_account_id: auth.aws_sso_account_id,
+                                aws_sso_role_name: auth.aws_sso_role_name
+                            }
+                        }
+                    }
+                }
             })
         });
         const data = await res.json();
@@ -130,11 +139,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                profile: auth.aws_profile, 
-                sso_start_url: auth.aws_sso_start_url, 
-                sso_region: auth.aws_sso_region, 
-                sso_account_id: auth.aws_sso_account_id, 
-                sso_role_name: auth.aws_sso_role_name 
+                role,
+                persistence: {
+                    mongo: {
+                        [role]: {
+                            auth: {
+                                aws_profile: auth.aws_profile,
+                                aws_sso_start_url: auth.aws_sso_start_url,
+                                aws_sso_region: auth.aws_sso_region,
+                                aws_sso_account_id: auth.aws_sso_account_id,
+                                aws_sso_role_name: auth.aws_sso_role_name
+                            }
+                        }
+                    }
+                }
             })
         });
         const data = await res.json();

@@ -545,7 +545,19 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
       } else if (req.url === '/api/aws/sso/login' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const { profile, sso_start_url, sso_region, sso_account_id, sso_role_name } = JSON.parse(body);
+          const rawConfig = JSON.parse(body);
+          const settingsPath = path.resolve(__dirname, 'settings.json');
+          const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+          const config = unmaskSettings(rawConfig, existing);
+          
+          const role = config.role || 'app';
+          const auth = config.persistence?.mongo?.[role]?.auth || {};
+          const profile = auth.aws_profile;
+          const sso_start_url = auth.aws_sso_start_url;
+          const sso_region = auth.aws_sso_region;
+          const sso_account_id = auth.aws_sso_account_id;
+          const sso_role_name = auth.aws_sso_role_name;
+
           let envVars = { ...process.env };
           let profileName = profile || 'temp-sso-profile';
           if (!profile && sso_start_url) {
@@ -586,7 +598,19 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
       } else if (req.url === '/api/aws/sso/credentials' && req.method === 'POST') {
         try {
           const body = await readBody(req);
-          const { profile, sso_start_url, sso_region, sso_account_id, sso_role_name } = JSON.parse(body);
+          const rawConfig = JSON.parse(body);
+          const settingsPath = path.resolve(__dirname, 'settings.json');
+          const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+          const config = unmaskSettings(rawConfig, existing);
+          
+          const role = config.role || 'app';
+          const auth = config.persistence?.mongo?.[role]?.auth || {};
+          const profile = auth.aws_profile;
+          const sso_start_url = auth.aws_sso_start_url;
+          const sso_region = auth.aws_sso_region;
+          const sso_account_id = auth.aws_sso_account_id;
+          const sso_role_name = auth.aws_sso_role_name;
+
           let envVars = { ...process.env };
           let profileName = profile || 'temp-sso-profile';
           let tempPath = '';
