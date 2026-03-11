@@ -141,10 +141,13 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
     }
 
     if (effectiveHost && effectivePort) {
-      options.proxyHost = effectiveHost;
-      options.proxyPort = Number(effectivePort);
-      options.proxyUsername = '';
-      options.proxyPassword = '';
+      options.proxyOptions = {
+        proxyHost: effectiveHost,
+        proxyPort: Number(effectivePort),
+        proxyUsername: '',
+        proxyPassword: ''
+      };
+      console.log(`[MONGO_DEBUG] Proxy options applied: ${effectiveHost}:${effectivePort}`);
     }
   }
 
