@@ -27,7 +27,8 @@
                     "required": ["fiscal_year_start_month", "sprint_duration_days"],
                     "properties": {
                         "fiscal_year_start_month": { "type": "integer", "minimum": 1, "maximum": 12 },
-                        "sprint_duration_days": { "type": "integer", "minimum": 1 }
+                        "sprint_duration_days": { "type": "integer", "minimum": 1 },
+                        "theme": { "type": "string", "enum": ["dark", "filips"] }
                     }
                 },
                 "persistence": {
@@ -96,6 +97,7 @@
                     "existing_tcv_valid_from": { "type": "string", "format": "date" },
                     "existing_tcv_duration_months": { "type": "number", "minimum": 0 },
                     "potential_tcv": { "type": "number", "minimum": 0 },
+                    "potential_tcv_valid_from": { "type": "string", "format": "date" },
                     "potential_tcv_duration_months": { "type": "number", "minimum": 0 },
                     "tcv_history": {
                         "type": "array",
@@ -128,9 +130,15 @@
                                 "expiration_date": {
                                     "type": "string",
                                     "format": "date"
-                                }
+                                },
+                                "created_at": { "type": "string", "format": "date-time" },
+                                "updated_at": { "type": "string", "format": "date-time" }
                             }
                         }
+                    },
+                    "jira_support_issues": {
+                        "type": "array",
+                        "items": { "$ref": "#/definitions/jiraIssue" }
                     }
                 }
             }
@@ -209,6 +217,7 @@
                     "effort_md": { "type": "number", "minimum": 0 },
                     "target_start": { "type": "string", "format": "date" },
                     "target_end": { "type": "string", "format": "date" },
+                    "external_url": { "type": "string" },
                     "sprint_effort_overrides": {
                         "type": "object",
                         "additionalProperties": { "type": "number", "minimum": 0 }
@@ -274,6 +283,19 @@
         }
     },
     "definitions": {
+        "jiraIssue": {
+            "type": "object",
+            "required": ["key", "summary", "status", "priority", "url", "last_updated"],
+            "properties": {
+                "key": { "type": "string" },
+                "summary": { "type": "string" },
+                "status": { "type": "string" },
+                "priority": { "type": "string" },
+                "url": { "type": "string" },
+                "last_updated": { "type": "string", "format": "date-time" },
+                "category": { "type": "string", "enum": ["new", "in_progress", "noop"] }
+            }
+        },
         "mongoConfig": {
             "type": "object",
             "required": ["uri", "db", "use_proxy", "auth"],
