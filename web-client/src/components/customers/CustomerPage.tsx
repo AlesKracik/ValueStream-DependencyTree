@@ -136,6 +136,41 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         }
     }, [healthData.newIssues, healthData.inProgressIssues, healthData.noopIssues, healthData.loading, healthData.error, customer?.id, isNew, loading, updateCustomer]);
 
+    // Automatic cleanup of expired support issues
+    useEffect(() => {
+        if (isNew || loading || !customer || !customer.support_issues) return;
+
+        const today = new Date().toISOString().split('T')[0];
+        const validIssues = customer.support_issues.filter(issue => {
+            if (!issue.expiration_date) return true;
+            return issue.expiration_date >= today;
+        });
+
+        if (validIssues.length !== customer.support_issues.length) {
+            updateCustomer(customer.id, { support_issues: validIssues }, true);
+        }
+    }, [customer?.id, customer?.support_issues, isNew, loading, updateCustomer]);
+
+    // Handle scrolling to a focused support issue
+    useEffect(() => {
+        if (focusedIssueId) {
+            const timer = setTimeout(() => {
+                const element = document.getElementById(`issue-${focusedIssueId}`);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Visual highlight
+                    const originalOutline = element.style.outline;
+                    element.style.outline = '2px solid var(--accent-primary)';
+                    element.style.outlineOffset = '4px';
+                    setTimeout(() => {
+                        element.style.outline = originalOutline;
+                    }, 3000);
+                }
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, [focusedIssueId]);
+
     const targetedWorkItems = (isNew && data)
         ? newCustomerWorkItems.map(ncf => data.workItems.find(f => f.id === ncf.workItemId)!).filter(Boolean)
         : data?.workItems.filter(f => f.customer_targets.some(ct => ct.customer_id === customerId)) || [];
@@ -755,6 +790,60 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                     <strong>{healthData.inProgressIssues.length}</strong> In Progress
                                 </div>
                             </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                {[...healthData.newIssues, ...healthData.inProgressIssues, ...healthData.noopIssues].map(issue => {
+                                    const isLinked = (customer?.support_issues || []).some(si => si.related_jiras?.includes(issue.key));
+                                    
+                                    return (
+                                        <div key={issue.key} style={{ 
+                                            display: 'flex', 
+                                            justifyContent: 'space-between', 
+                                            alignItems: 'center',
+                                            padding: '12px',
+                                            backgroundColor: 'var(--bg-secondary)',
+                                            borderRadius: '6px',
+                                            border: '1px solid var(--border-primary)'
+                                        }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <a href={issue.url} target="_blank" rel="noreferrer" style={{ fontWeight: 'bold', color: 'var(--accent-text)', textDecoration: 'none' }}>
+                                                        {issue.key}
+                                                    </a>
+                                                    <span style={{ 
+                                                        fontSize: '10px', 
+                                                        padding: '2px 6px', 
+                                                        borderRadius: '4px', 
+                                                        backgroundColor: issue.category === 'new' ? 'var(--status-danger)' : (issue.category === 'in_progress' ? 'var(--status-warning)' : 'var(--accent-primary)'),
+                                                        color: 'white',
+                                                        fontWeight: 'bold'
+                                                    }}>
+                                                        {issue.status}
+                                                    </span>
+                                                </div>
+                                                <span style={{ fontSize: '13px' }}>{issue.summary}</span>
+                                            </div>
+                                            
+                                            {!isLinked && (
+                                                <select 
+                                                    style={{ width: '160px', fontSize: '12px' }}
+                                                    value=""
+                                                    onChange={(e) => handleLinkJira(issue, e.target.value)}
+                                                >
+                                                    <option value="" disabled>Link to...</option>
+                                                    <option value="NEW">+ Create New Support Issue</option>
+                                                    {customer?.support_issues?.map(si => (
+                                                        <option key={si.id} value={si.id}>Link to: {si.description.substring(0, 20)}...</option>
+                                                    ))}
+                                                </select>
+                                            )}
+                                            {isLinked && (
+                                                <span style={{ fontSize: '11px', color: 'var(--status-success)', fontWeight: 'bold' }}>✓ Linked</span>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         </div>
                     )}
                 </div>
@@ -771,6 +860,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
             loading={loading}
             error={error}
             data={data}
+            initialTabId={focusedIssueId ? 'support' : undefined}
             actions={
                 <div style={{ display: 'flex', gap: '12px' }}>
                     {!isNew && <button className="btn-danger" onClick={handleDelete}>Delete</button>}

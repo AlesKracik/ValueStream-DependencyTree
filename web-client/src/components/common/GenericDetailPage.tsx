@@ -35,6 +35,12 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
 }) => {
     const [activeTabId, setActiveTabId] = useState(initialTabId || (tabs.length > 0 ? tabs[0].id : ''));
 
+    React.useEffect(() => {
+        if (initialTabId && initialTabId !== activeTabId) {
+            setActiveTabId(initialTabId);
+        }
+    }, [initialTabId]);
+
     const handleTabClick = (id: string) => {
         setActiveTabId(id);
         if (onTabChange) onTabChange(id);
