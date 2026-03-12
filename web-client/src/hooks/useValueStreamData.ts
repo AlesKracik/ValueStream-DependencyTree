@@ -103,6 +103,12 @@ export function useValueStreamData(
             }
             const json = await response.json();
             setData(json);
+            // Cache theme immediately if available
+            const theme = json.settings?.general?.theme;
+            if (theme) {
+                localStorage.setItem('vst-theme', theme);
+                document.documentElement.setAttribute('data-theme', theme);
+            }
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             setError(err as Error);
@@ -334,6 +340,12 @@ export function useValueStreamData(
 
             const newSettings = deepMerge(prev.settings, updates);
             
+            // Sync theme to localStorage if it was updated
+            if (updates.general?.theme) {
+                localStorage.setItem('vst-theme', updates.general.theme);
+                document.documentElement.setAttribute('data-theme', updates.general.theme);
+            }
+
             let newSprints = prev.sprints;
             // If fiscal start month changed, recompute all sprint quarters
             const oldFiscalMonth = prev.settings.general?.fiscal_year_start_month;

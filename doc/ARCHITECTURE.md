@@ -348,6 +348,26 @@ Detailed documentation for each system block:
 - [Jira Integration](JIRA_INTEGRATION.md)
 - [Persistence & Migration](PERSISTENCE.md)
 
+## Theming System
+
+The application features a centralized, CSS-variable-based theming system supporting multiple visual modes.
+
+### 1. Central Palette (`index.css`)
+All colors, shadows, and interactive states are defined using CSS variables in `src/index.css`.
+- **Default (Dark Mode):** Variables are defined under `:root`.
+- **Filips Mode:** A "muted dim" pastel theme defined under the `[data-theme='filips']` selector. This theme uses soft slate-grey backgrounds and more defined, high-contrast text and node colors for readability.
+
+### 2. Application Logic
+- **State:** The user's theme choice is stored in the `general.theme` setting ('dark' or 'filips').
+- **Injection:** The `App.tsx` component monitors this setting and applies the corresponding `data-theme` attribute to the `document.documentElement`.
+- **Global Styles:** All components and CSS modules reference the central variables (e.g., `var(--bg-primary)`, `var(--text-highlight)`), ensuring the theme choice is obeyed system-wide without local color overrides.
+
+### 3. Caching & Performance
+To prevent a "flash of dark theme" during page reloads:
+- **LocalStorage Sync:** The `useValueStreamData` hook automatically caches the user's theme choice in `localStorage` (`vst-theme`).
+- **Pre-render Initialization:** An inline script in `index.html` checks `localStorage` and applies the theme attribute *before* the React application initializes, ensuring a seamless visual experience.
+
+
 
 
 

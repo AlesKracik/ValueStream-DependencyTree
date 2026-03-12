@@ -36,11 +36,13 @@ export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
         return Math.round(val).toLocaleString();
     };
 
+    const iconSize = Math.max(10, nodeSize * 0.15);
+
     return (
         <BaseCircleNode
             size={nodeSize}
             label={data.label}
-            backgroundColor="#8b5cf6"
+            backgroundColor="var(--node-workitem-bg)"
             tooltip={data.description}
             handles={handles}
         >
@@ -48,26 +50,27 @@ export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
                 display: 'flex', 
                 gap: '4px', 
                 marginBottom: '-2px',
-                fontSize: `${Math.max(10, nodeSize * 0.15)}px`
+                alignItems: 'center',
+                justifyContent: 'center'
             }}>
                 {data.isGlobal && (
-                    <div title="Relates to all existing customers">🌐</div>
+                    <div title="Relates to all existing customers" style={{ fontSize: `${iconSize}px`, filter: 'var(--icon-filter)' }}>🌐</div>
                 )}
                 {data.releasedInSprintId && (
-                    <div title={`Released in Sprint ${data.releasedInSprintId}`}>📦</div>
+                    <div title={`Released in Sprint ${data.releasedInSprintId}`} style={{ fontSize: `${iconSize}px`, filter: 'var(--icon-filter)' }}>📦</div>
                 )}
                 {data.hasDatelessEpics && (
-                    <div title="Has epics without target dates" style={{ color: '#f87171' }}>🕒</div>
+                    <div title="Has epics without target dates" style={{ color: 'var(--status-danger)', fontSize: `${iconSize}px`, filter: 'var(--icon-filter)' }}>🕒</div>
                 )}
                 {data.hasUnestimatedEffort && (
-                    <div title="Effort is not estimated (0 MDs)" style={{ color: '#fbbf24' }}>📏</div>
+                    <div title="Effort is not estimated (0 MDs)" style={{ fontSize: `${iconSize}px`, filter: 'var(--icon-filter)' }}>📏</div>
                 )}
             </div>
 
             <div style={{ 
                 fontWeight: 'bold', 
                 fontSize: `${Math.max(10, nodeSize * 0.22)}px`, 
-                color: '#fcd34d' 
+                color: 'var(--node-score)' 
             }}>
                 {formatScore(data.score)}
             </div>

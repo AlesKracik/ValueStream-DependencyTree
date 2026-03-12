@@ -1,92 +1,82 @@
 import React, { useState } from 'react';
-import { setAdminSecret } from '../utils/api';
+import { authorizedFetch } from '../utils/api';
 
 interface LoginPageProps {
     onLogin: () => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
-    const [secret, setSecret] = useState('');
+    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setLoading(true);
         setError('');
 
-        // Try to fetch auth status with this secret to verify it
         try {
-            const res = await fetch('/api/auth/status', {
-                headers: { 'Authorization': `Bearer ${secret}` }
+            const response = await authorizedFetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password }),
             });
-            if (res.ok) {
-                setAdminSecret(secret);
+
+            if (response.ok) {
                 onLogin();
             } else {
-                setError('Invalid Admin Secret');
+                setError('Invalid password');
             }
         } catch (err) {
-            setError('Failed to connect to server');
+            setError('Connection error');
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
         <div style={{
             display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
             justifyContent: 'center',
+            alignItems: 'center',
             height: '100vh',
-            backgroundColor: '#111827',
-            color: 'white',
-            fontFamily: 'sans-serif'
+            width: '100vw',
+            backgroundColor: 'var(--bg-primary)',
         }}>
-            <form onSubmit={handleSubmit} style={{
-                backgroundColor: '#1f2937',
-                padding: '32px',
+            <div style={{
+                padding: '40px',
+                backgroundColor: 'var(--bg-secondary)',
                 borderRadius: '8px',
+                width: '100%',
+                maxWIdth: '400px',
                 boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                width: '320px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '16px'
+                gap: '20px'
             }}>
-                <h1 style={{ margin: 0, fontSize: '20px', textAlign: 'center' }}>ValueStream Login</h1>
-                <p style={{ margin: 0, fontSize: '14px', color: '#9ca3af', textAlign: 'center' }}>
-                    Please enter the Admin Secret to continue.
+                <h1 style={{ margin: 0, fontSize: '24px', color: 'var(--text-highlight)', textAlign: 'center' }}>Value Stream</h1>
+                <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                    Enter password to access the dependency tree
                 </p>
-                
-                <input
-                    type="password"
-                    placeholder="Admin Secret"
-                    value={secret}
-                    onChange={(e) => setSecret(e.target.value)}
-                    style={{
-                        padding: '10px',
-                        borderRadius: '4px',
-                        border: '1px solid #374151',
-                        backgroundColor: '#374151',
-                        color: 'white',
-                        outline: 'none'
-                    }}
-                    autoFocus
-                />
-
-                {error && <p style={{ color: '#f87171', fontSize: '12px', margin: 0 }}>{error}</p>}
-
-                <button type="submit" style={{
-                    padding: '10px',
-                    borderRadius: '4px',
-                    border: 'none',
-                    backgroundColor: '#3b82f6',
-                    color: 'white',
-                    fontWeight: 'bold',
-                    cursor: 'pointer'
-                }}>
-                    Login
-                </button>
-            </form>
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Password"
+                        autoFocus
+                    />
+                    {error && <p style={{ color: 'var(--status-danger-text)', fontSize: '12px', margin: 0 }}>{error}</p>}
+                    <button
+                        type="submit"
+                        className="btn-primary"
+                        disabled={loading}
+                        style={{ width: '100%' }}
+                    >
+                        {loading ? 'Logging in...' : 'Login'}
+                    </button>
+                </form>
+            </div>
         </div>
     );
 };
-
-

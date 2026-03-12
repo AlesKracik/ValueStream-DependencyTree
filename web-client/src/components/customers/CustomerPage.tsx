@@ -53,13 +53,13 @@ const JiraKeysInput: React.FC<JiraKeysInputProps> = ({ value, onChange, jiraBase
 
     return (
         <div style={{ flex: 1, marginRight: '16px' }}>
-            <label style={{ fontSize: '13px', color: '#94a3b8', display: 'block', marginBottom: '8px' }}>Related Jiras (comma separated keys)</label>
+            <label style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>Related Jiras (comma separated keys)</label>
             <input 
                 type="text"
                 value={inputValue}
                 onChange={handleChange}
                 placeholder="e.g. PROJ-123, PROJ-456"
-                style={{ width: '100%', backgroundColor: '#0f172a' }}
+                style={{ width: '100%', backgroundColor: 'var(--bg-primary)' }}
             />
             <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
                 {value.map(key => (
@@ -68,7 +68,7 @@ const JiraKeysInput: React.FC<JiraKeysInputProps> = ({ value, onChange, jiraBase
                         href={`${jiraBaseUrl}/browse/${key}`}
                         target="_blank"
                         rel="noreferrer"
-                        style={{ fontSize: '12px', color: '#60a5fa', textDecoration: 'none', backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(59, 130, 246, 0.3)' }}
+                        style={{ fontSize: '12px', color: 'var(--accent-text)', textDecoration: 'none', backgroundColor: 'var(--accent-primary-bg)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--accent-primary-bg)' }}
                     >
                         {key} ↗
                     </a>
@@ -313,16 +313,16 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     };
 
     const renderValue = (val: any): React.ReactNode => {
-        if (val === null || val === undefined) return <span style={{ color: '#64748b', fontStyle: 'italic' }}>null</span>;
+        if (val === null || val === undefined) return <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>null</span>;
         if (Array.isArray(val)) {
-            if (val.length === 0) return <span style={{ color: '#64748b' }}>[]</span>;
+            if (val.length === 0) return <span style={{ color: 'var(--text-muted)' }}>[]</span>;
             return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px', width: '100%' }}>
                     {val.map((item, idx) => (
                         <div key={idx} style={{
                             padding: '12px',
-                            backgroundColor: 'rgba(255,255,255,0.02)',
-                            border: '1px solid #334155',
+                            backgroundColor: 'var(--bg-page-muted)',
+                            border: '1px solid var(--border-primary)',
                             borderRadius: '6px'
                         }}>
                             {renderValue(item)}
@@ -360,7 +360,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                     gridColumn: isComplex ? '1 / -1' : 'auto',
                                     marginTop: isComplex ? '8px' : '0'
                                 }}>
-                                    <div style={{ fontWeight: 'bold', color: '#94a3b8', fontSize: '13px', whiteSpace: 'nowrap' }}>{k}:</div>
+                                    <div style={{ fontWeight: 'bold', color: 'var(--text-muted)', fontSize: '13px', whiteSpace: 'nowrap' }}>{k}:</div>
                                     <div style={{ 
                                         fontSize: '14px', 
                                         wordBreak: 'break-all',
@@ -461,7 +461,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                     setNewCustDraft(prev => ({ ...prev, existing_tcv: val }));
                                                 }}
                                                 placeholder="0"
-                                                style={!isNew ? { backgroundColor: '#1e293b', border: 'none' } : {}}
+                                                style={!isNew ? { backgroundColor: 'var(--bg-secondary)', border: 'none' } : {}}
                                             />
                                         </div>
                                     </label>
@@ -475,7 +475,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                 if (!isNew) return;
                                                 setNewCustDraft(prev => ({ ...prev, existing_tcv_valid_from: e.target.value }));
                                             }}
-                                            style={!isNew ? { backgroundColor: '#1e293b', border: 'none' } : {}}
+                                            style={!isNew ? { backgroundColor: 'var(--bg-secondary)', border: 'none' } : {}}
                                         />
                                     </label>
                                     <label>
@@ -491,7 +491,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                             }}
                                             min="0"
                                             placeholder="12"
-                                            style={!isNew ? { backgroundColor: '#1e293b', border: 'none' } : {}}
+                                            style={!isNew ? { backgroundColor: 'var(--bg-secondary)', border: 'none' } : {}}
                                         />
                                     </label>
                                 </div>
@@ -550,7 +550,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                             </div>
                         </section>
 
-                        <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #334155', marginBottom: '24px', marginTop: '24px' }}>
+                        <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid var(--border-primary)', marginBottom: '24px', marginTop: '24px' }}>
                             {!isNew && (
                                 <button
                                     onClick={() => setActiveTab('customFields')}
@@ -558,8 +558,8 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                         background: 'none',
                                         border: 'none',
                                         padding: '12px 16px',
-                                        color: activeTab === 'customFields' ? '#60a5fa' : '#94a3b8',
-                                        borderBottom: activeTab === 'customFields' ? '2px solid #60a5fa' : '2px solid transparent',
+                                        color: activeTab === 'customFields' ? 'var(--accent-text)' : 'var(--text-muted)',
+                                        borderBottom: activeTab === 'customFields' ? '2px solid var(--accent-text)' : '2px solid transparent',
                                         cursor: 'pointer',
                                         fontSize: '15px',
                                         fontWeight: activeTab === 'customFields' ? 'bold' : '500',
@@ -575,8 +575,8 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                     background: 'none',
                                     border: 'none',
                                     padding: '12px 16px',
-                                    color: activeTab === 'workItems' ? '#60a5fa' : '#94a3b8',
-                                    borderBottom: activeTab === 'workItems' ? '2px solid #60a5fa' : '2px solid transparent',
+                                    color: activeTab === 'workItems' ? 'var(--accent-text)' : 'var(--text-muted)',
+                                    borderBottom: activeTab === 'workItems' ? '2px solid var(--accent-text)' : '2px solid transparent',
                                     cursor: 'pointer',
                                     fontSize: '15px',
                                     fontWeight: activeTab === 'workItems' ? 'bold' : '500',
@@ -593,8 +593,8 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                             background: 'none',
                                             border: 'none',
                                             padding: '12px 16px',
-                                            color: activeTab === 'history' ? '#60a5fa' : '#94a3b8',
-                                            borderBottom: activeTab === 'history' ? '2px solid #60a5fa' : '2px solid transparent',
+                                            color: activeTab === 'history' ? 'var(--accent-text)' : 'var(--text-muted)',
+                                            borderBottom: activeTab === 'history' ? '2px solid var(--accent-text)' : '2px solid transparent',
                                             cursor: 'pointer',
                                             fontSize: '15px',
                                             fontWeight: activeTab === 'history' ? 'bold' : '500',
@@ -609,8 +609,8 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                             background: 'none',
                                             border: 'none',
                                             padding: '12px 16px',
-                                            color: activeTab === 'support' ? '#60a5fa' : '#94a3b8',
-                                            borderBottom: activeTab === 'support' ? '2px solid #60a5fa' : '2px solid transparent',
+                                            color: activeTab === 'support' ? 'var(--accent-text)' : 'var(--text-muted)',
+                                            borderBottom: activeTab === 'support' ? '2px solid var(--accent-text)' : '2px solid transparent',
                                             cursor: 'pointer',
                                             fontSize: '15px',
                                             fontWeight: activeTab === 'support' ? 'bold' : '500',
@@ -621,10 +621,10 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                         }}
                                     >
                                         Support ({customer.support_issues?.length || 0})
-                                        {healthData.healthStatus === 'New / Untriaged' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#ef4444' }}></span>}
-                                        {healthData.healthStatus === 'Active Work' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#f59e0b' }}></span>}
-                                        {healthData.healthStatus === 'Blocked / Pending' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#3b82f6' }}></span>}
-                                        {healthData.healthStatus === 'Healthy' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981' }}></span>}
+                                        {healthData.healthStatus === 'New / Untriaged' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--status-danger)' }}></span>}
+                                        {healthData.healthStatus === 'Active Work' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--status-warning)' }}></span>}
+                                        {healthData.healthStatus === 'Blocked / Pending' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)' }}></span>}
+                                        {healthData.healthStatus === 'Healthy' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--status-success)' }}></span>}
                                     </button>
                                 </>
                             )}
@@ -633,26 +633,26 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                         {activeTab === 'customFields' && !isNew && (
                             <section className={styles.card}>
                                 <h2>MongoDB Custom Data</h2>
-                                {customFields.loading && <div style={{ color: '#9ca3af' }}>Loading custom fields...</div>}
+                                {customFields.loading && <div style={{ color: 'var(--text-muted)' }}>Loading custom fields...</div>}
                                 {customFields.error && (
-                                    <div style={{ color: '#fca5a5', textAlign: 'center', padding: '40px', backgroundColor: '#451a1a', borderRadius: '8px', border: '1px dashed #ef4444' }}>
-                                        <div style={{ fontSize: '16px', marginBottom: '8px', color: '#fecaca', fontWeight: 'bold' }}>Query Error</div>
+                                    <div style={{ color: 'var(--status-danger)', textAlign: 'center', padding: '40px', backgroundColor: 'var(--status-danger-bg)', borderRadius: '8px', border: '1px dashed var(--status-danger)' }}>
+                                        <div style={{ fontSize: '16px', marginBottom: '8px', color: 'var(--status-danger)', fontWeight: 'bold' }}>Query Error</div>
                                         <p style={{ margin: 0, fontSize: '14px' }}>{customFields.error}</p>
                                     </div>
                                 )}
                                 {!customFields.loading && !customFields.error && (
                                     <>
                                         {!customer?.customer_id ? (
-                                            <div style={{ color: '#9ca3af', textAlign: 'center', padding: '40px', backgroundColor: '#1e293b', borderRadius: '8px', border: '1px dashed #334155' }}>
-                                                <div style={{ fontSize: '16px', marginBottom: '8px', color: '#e2e8f0' }}>Customer ID Not Defined</div>
+                                            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px', backgroundColor: 'var(--bg-secondary)', borderRadius: '8px', border: '1px dashed var(--border-primary)' }}>
+                                                <div style={{ fontSize: '16px', marginBottom: '8px', color: 'var(--text-highlight)' }}>Customer ID Not Defined</div>
                                                 <p style={{ margin: 0, fontSize: '14px' }}>
                                                     This customer does not have a <strong>Customer ID</strong> defined. 
                                                     Please set the Customer ID in the Customer Details section above to fetch custom MongoDB data.
                                                 </p>
                                             </div>
                                         ) : customFields.data.length === 0 ? (
-                                            <div style={{ color: '#9ca3af', textAlign: 'center', padding: '40px', backgroundColor: '#1e293b', borderRadius: '8px', border: '1px dashed #334155' }}>
-                                                <div style={{ fontSize: '16px', marginBottom: '8px', color: '#e2e8f0' }}>No Data Found</div>
+                                            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px', backgroundColor: 'var(--bg-secondary)', borderRadius: '8px', border: '1px dashed var(--border-primary)' }}>
+                                                <div style={{ fontSize: '16px', marginBottom: '8px', color: 'var(--text-highlight)' }}>No Data Found</div>
                                                 <p style={{ margin: 0, fontSize: '14px' }}>
                                                     The custom MongoDB query returned no results for this customer ID (<strong>{customer.customer_id}</strong>).
                                                     Check your query in the Persistence settings.
@@ -663,8 +663,8 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                 {customFields.data.map((item, idx) => (
                                                     <div key={idx} style={{ 
                                                         padding: '20px', 
-                                                        backgroundColor: 'rgba(255,255,255,0.03)', 
-                                                        border: '1px solid #334155', 
+                                                        backgroundColor: 'var(--bg-page-muted)', 
+                                                        border: '1px solid var(--border-primary)', 
                                                         borderRadius: '8px' 
                                                     }}>
                                                         {renderValue(item)}
@@ -721,8 +721,8 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                             return (
                                                 <div key={issue.id} id={`issue-${issue.id}`} style={{ 
                                                     padding: '20px', 
-                                                    backgroundColor: 'rgba(255,255,255,0.03)', 
-                                                    border: '1px solid #334155', 
+                                                    backgroundColor: 'var(--bg-page-muted)', 
+                                                    border: '1px solid var(--border-primary)', 
                                                     borderRadius: '8px',
                                                     display: 'flex',
                                                     flexDirection: 'column',
@@ -731,17 +731,17 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                 }}>
                                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: '16px' }}>
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                            <label style={{ fontSize: '13px', color: '#94a3b8' }}>Description</label>
+                                                            <label style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Description</label>
                                                             <textarea 
                                                                 value={issue.description}
                                                                 onChange={e => updateIssue({ description: e.target.value })}
                                                                 placeholder="Describe the support issue..."
-                                                                style={{ minHeight: '80px', width: '100%', backgroundColor: '#0f172a', resize: 'vertical' }}
+                                                                style={{ minHeight: '80px', width: '100%', backgroundColor: 'var(--bg-primary)', resize: 'vertical' }}
                                                             />
                                                         </div>
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                                <label style={{ fontSize: '13px', color: '#94a3b8' }}>Status</label>
+                                                                <label style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Status</label>
                                                                 <select 
                                                                     value={issue.status}
                                                                     onChange={e => {
@@ -766,7 +766,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                             </div>
                                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                                    <label style={{ fontSize: '13px', color: '#94a3b8' }}>Expiration Date</label>
+                                                                    <label style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Expiration Date</label>
                                                                     {issue.expiration_date && (
                                                                         <button 
                                                                             onClick={() => updateIssue({ expiration_date: undefined })}
@@ -774,7 +774,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                                                 fontSize: '11px', 
                                                                                 background: 'none', 
                                                                                 border: 'none', 
-                                                                                color: '#60a5fa', 
+                                                                                color: 'var(--accent-text)', 
                                                                                 cursor: 'pointer',
                                                                                 padding: 0
                                                                             }}
@@ -790,13 +790,13 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                                     style={{ width: '100%' }}
                                                                 />
                                                                 {!issue.expiration_date && (
-                                                                    <div style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>No expiration</div>
+                                                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>No expiration</div>
                                                                 )}
                                                             </div>
                                                         </div>
                                                     </div>
                                                     
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid #334155', paddingTop: '16px' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid var(--border-primary)', paddingTop: '16px' }}>
                                                         <JiraKeysInput 
                                                             value={issue.related_jiras || []} 
                                                             onChange={keys => updateIssue({ related_jiras: keys })}
@@ -809,7 +809,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                         })}
 
                                         {(customer.support_issues || []).length === 0 && (
-                                            <div style={{ color: '#9ca3af', textAlign: 'center', padding: '40px', backgroundColor: 'rgba(255,255,255,0.01)', borderRadius: '8px', border: '1px dashed #334155' }}>
+                                            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px', backgroundColor: 'var(--bg-page-muted)', borderRadius: '8px', border: '1px dashed var(--border-primary)' }}>
                                                 No manual support issues tracked for this customer.
                                             </div>
                                         )}
@@ -821,25 +821,25 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                                             <h2>Support Overview (Jira)</h2>
                                             <div style={{ display: 'flex', gap: '16px' }}>
-                                                <div style={{ textAlign: 'center', padding: '8px 16px', backgroundColor: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid #ef4444' }}>
-                                                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#ef4444' }}>{healthData.newIssues.length}</div>
-                                                    <div style={{ fontSize: '12px', color: '#fca5a5' }}>New / Untriaged</div>
+                                                <div style={{ textAlign: 'center', padding: '8px 16px', backgroundColor: 'var(--status-danger-bg)', borderRadius: '8px', border: '1px solid var(--status-danger)' }}>
+                                                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--status-danger)' }}>{healthData.newIssues.length}</div>
+                                                    <div style={{ fontSize: '12px', color: 'var(--status-danger)' }}>New / Untriaged</div>
                                                 </div>
-                                                <div style={{ textAlign: 'center', padding: '8px 16px', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '8px', border: '1px solid #f59e0b' }}>
-                                                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f59e0b' }}>{healthData.inProgressIssues.length}</div>
-                                                    <div style={{ fontSize: '12px', color: '#fcd34d' }}>Active Work</div>
+                                                <div style={{ textAlign: 'center', padding: '8px 16px', backgroundColor: 'var(--status-warning-bg)', borderRadius: '8px', border: '1px solid var(--status-warning)' }}>
+                                                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--status-warning)' }}>{healthData.inProgressIssues.length}</div>
+                                                    <div style={{ fontSize: '12px', color: 'var(--status-warning)' }}>Active Work</div>
                                                 </div>
-                                                <div style={{ textAlign: 'center', padding: '8px 16px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px', border: '1px solid #3b82f6' }}>
-                                                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#3b82f6' }}>{healthData.noopIssues.length}</div>
-                                                    <div style={{ fontSize: '12px', color: '#93c5fd' }}>Blocked / Pending</div>
+                                                <div style={{ textAlign: 'center', padding: '8px 16px', backgroundColor: 'var(--accent-primary-bg)', borderRadius: '8px', border: '1px solid var(--accent-primary)' }}>
+                                                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--accent-primary)' }}>{healthData.noopIssues.length}</div>
+                                                    <div style={{ fontSize: '12px', color: 'var(--accent-primary)' }}>Blocked / Pending</div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        {healthData.loading && <div style={{ color: '#9ca3af' }}>Loading Jira data...</div>}
+                                        {healthData.loading && <div style={{ color: 'var(--text-muted)' }}>Loading Jira data...</div>}
                                         {healthData.error && (
-                                            <div style={{ color: '#fca5a5', textAlign: 'center', padding: '40px', backgroundColor: '#451a1a', borderRadius: '8px', border: '1px dashed #ef4444' }}>
-                                                <div style={{ fontSize: '16px', marginBottom: '8px', color: '#fecaca', fontWeight: 'bold' }}>Jira Integration Error</div>
+                                            <div style={{ color: 'var(--status-danger)', textAlign: 'center', padding: '40px', backgroundColor: 'var(--status-danger-bg)', borderRadius: '8px', border: '1px dashed var(--status-danger)' }}>
+                                                <div style={{ fontSize: '16px', marginBottom: '8px', color: 'var(--status-danger)', fontWeight: 'bold' }}>Jira Integration Error</div>
                                                 <p style={{ margin: 0, fontSize: '14px' }}>
                                                     {healthData.error}
                                                 </p>
@@ -862,17 +862,17 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                     <tbody>
                                                         {[...healthData.newIssues, ...healthData.inProgressIssues, ...healthData.noopIssues].map(issue => (
                                                             <tr key={issue.key}>
-                                                                <td><a href={issue.url} target="_blank" rel="noreferrer" style={{ color: '#60a5fa' }}>{issue.key}</a></td>
+                                                                <td><a href={issue.url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-text)' }}>{issue.key}</a></td>
                                                                 <td>{issue.summary}</td>
                                                                 <td>
                                                                     <span style={{ 
                                                                         padding: '2px 6px', 
                                                                         borderRadius: '4px', 
                                                                         fontSize: '12px',
-                                                                        backgroundColor: healthData.newIssues.includes(issue) ? 'rgba(239, 68, 68, 0.2)' : 
-                                                                                        healthData.inProgressIssues.includes(issue) ? 'rgba(245, 158, 11, 0.2)' : 'rgba(59, 130, 246, 0.2)',
-                                                                        color: healthData.newIssues.includes(issue) ? '#f87171' : 
-                                                                              healthData.inProgressIssues.includes(issue) ? '#fbbf24' : '#60a5fa'
+                                                                        backgroundColor: healthData.newIssues.includes(issue) ? 'var(--status-danger-bg)' : 
+                                                                                        healthData.inProgressIssues.includes(issue) ? 'var(--status-warning-bg)' : 'var(--accent-primary-bg)',
+                                                                        color: healthData.newIssues.includes(issue) ? 'var(--status-danger)' : 
+                                                                              healthData.inProgressIssues.includes(issue) ? 'var(--status-warning)' : 'var(--accent-text)'
                                                                     }}>
                                                                         {issue.status}
                                                                     </span>
@@ -880,13 +880,13 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                                 <td>{issue.priority}</td>
                                                                 <td>
                                                                     {linkedJiraKeysMap.has(issue.key) ? (
-                                                                        <div style={{ fontSize: '12px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'pre-wrap' }}>
-                                                                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }}></span>
+                                                                        <div style={{ fontSize: '12px', color: 'var(--status-success)', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'pre-wrap' }}>
+                                                                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--status-success)' }}></span>
                                                                             Linked: {linkedJiraKeysMap.get(issue.key)?.description || linkedJiraKeysMap.get(issue.key)?.id}
                                                                         </div>
                                                                     ) : (
                                                                         <select 
-                                                                            style={{ fontSize: '12px', padding: '2px 4px', backgroundColor: '#1e293b' }}
+                                                                            style={{ fontSize: '12px', padding: '2px 4px', backgroundColor: 'var(--bg-secondary)' }}
                                                                             onChange={(e) => {
                                                                                 handleLinkJira(issue, e.target.value);
                                                                                 e.target.value = ''; // reset
@@ -905,7 +905,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                         ))}
                                                         {healthData.newIssues.length === 0 && healthData.inProgressIssues.length === 0 && healthData.noopIssues.length === 0 && (
                                                             <tr>
-                                                                <td colSpan={5} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No issues found matching the JQL queries.</td>
+                                                                <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '16px' }}>No issues found matching the JQL queries.</td>
                                                             </tr>
                                                         )}
                                                     </tbody>
@@ -990,7 +990,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                                 ))}
                                                             </select>
                                                         ) : (
-                                                            <span style={{ color: '#94a3b8' }}>${customer.potential_tcv.toLocaleString()}</span>
+                                                            <span style={{ color: 'var(--text-muted)' }}>${customer.potential_tcv.toLocaleString()}</span>
                                                         )}
                                                     </td>
                                                     <td>
@@ -1011,7 +1011,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                         })}
                                         {targetedWorkItems.length === 0 && (
                                             <tr>
-                                                <td colSpan={6} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No targeted work items found.</td>
+                                                <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '16px' }}>No targeted work items found.</td>
                                             </tr>
                                         )}
                                     </tbody>
@@ -1086,7 +1086,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                         ))}
                                         {(!customer.tcv_history || customer.tcv_history.length === 0) && (
                                             <tr>
-                                                <td colSpan={3} style={{ textAlign: 'center', color: '#9ca3af', padding: '16px' }}>No historical entries. Update the Actual TCV to populate history.</td>
+                                                <td colSpan={3} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '16px' }}>No historical entries. Update the Actual TCV to populate history.</td>
                                             </tr>
                                         )}
                                     </tbody>

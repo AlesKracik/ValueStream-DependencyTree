@@ -181,15 +181,15 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
                 width: `${visualWidth}px`,
                 transform: `translateX(${visualLeft}px)`,
                 height: '40px',
-                backgroundColor: data.color || '#8b5cf6',
+                backgroundColor: data.color || 'var(--node-workitem-bg)',
                 borderRadius: '6px',
                 display: 'flex',
                 alignItems: 'center',
                 padding: '0 12px',
-                color: '#fff',
+                color: 'var(--text-highlight)',
                 fontWeight: 'bold',
                 fontSize: '12px',
-                boxShadow: '0 2px 4px -1px rgb(0 0 0 / 0.1)',
+                boxShadow: '0 2px 4px -1px var(--bg-shadow)',
                 border: '1px solid rgba(255,255,255,0.2)',
                 boxSizing: 'border-box',
                 whiteSpace: 'nowrap',
@@ -274,7 +274,7 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
                         href={sanitizeUrl(`${data.jiraBaseUrl}/browse/${data.jiraKey}`)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ color: 'white', textDecoration: 'underline', width: '100%', pointerEvents: 'auto' }}
+                        style={{ color: 'var(--text-highlight)', textDecoration: 'underline', width: '100%', pointerEvents: 'auto' }}
                     >
                         {data.label}
                     </a>
@@ -308,6 +308,3 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
 });
 
 export default GanttBarNode;
-
-
-

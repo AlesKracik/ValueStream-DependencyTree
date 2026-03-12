@@ -44,33 +44,33 @@ const styles: Record<string, React.CSSProperties> = {
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        backgroundColor: 'var(--bg-shadow)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 2000
     },
     modal: {
-        backgroundColor: '#1f2937',
-        border: '1px solid #374151',
+        backgroundColor: 'var(--bg-secondary)',
+        border: '1px solid var(--border-primary)',
         borderRadius: '8px',
         padding: '24px',
         width: '400px',
         maxWidth: '90%',
-        color: '#f9fafb',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)'
+        color: 'var(--text-primary)',
+        boxShadow: '0 20px 25px -5px var(--bg-shadow)'
     },
     title: {
         marginTop: 0,
         marginBottom: '16px',
         fontSize: '18px',
-        borderBottom: '1px solid #374151',
+        borderBottom: '1px solid var(--border-primary)',
         paddingBottom: '10px'
     },
     message: {
         marginBottom: '24px',
         fontSize: '14px',
-        color: '#d1d5db',
+        color: 'var(--text-secondary)',
         lineHeight: '1.5'
     },
     buttonGroup: {
@@ -81,14 +81,14 @@ const styles: Record<string, React.CSSProperties> = {
     cancelBtn: {
         padding: '8px 16px',
         backgroundColor: 'transparent',
-        border: '1px solid #4b5563',
-        color: '#d1d5db',
+        border: '1px solid var(--border-hover)',
+        color: 'var(--text-secondary)',
         borderRadius: '4px',
         cursor: 'pointer'
     },
     confirmBtn: {
         padding: '8px 16px',
-        backgroundColor: '#3b82f6',
+        backgroundColor: 'var(--accent-primary)',
         border: 'none',
         color: 'white',
         borderRadius: '4px',

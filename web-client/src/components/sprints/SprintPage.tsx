@@ -104,10 +104,10 @@ export const SprintPage: React.FC<SprintPageProps> = ({
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'active': return '#2563eb';
+            case 'active': return 'var(--accent-primary)';
             case 'past':
-            case 'future': return '#475569';
-            default: return '#334155';
+            case 'future': return 'var(--text-muted)';
+            default: return 'var(--border-secondary)';
         }
     };
 
@@ -139,7 +139,7 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                                         <div key={s.id} className={styles.listItem} style={{ 
                                             cursor: 'default',
                                             borderLeft: `4px solid ${getStatusColor(status)}`,
-                                            backgroundColor: status === 'active' ? 'rgba(37, 99, 235, 0.05)' : undefined
+                                            backgroundColor: status === 'active' ? 'var(--accent-primary-bg)' : undefined
                                         }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <div style={{ flex: 1 }}>
@@ -150,7 +150,7 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                                                         style={{ 
                                                             background: 'none', 
                                                             border: 'none', 
-                                                            color: '#f1f5f9', 
+                                                            color: 'var(--text-primary)', 
                                                             fontWeight: 'bold', 
                                                             fontSize: '16px',
                                                             outline: 'none', 
@@ -194,7 +194,7 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                                                                 Archive
                                                             </button>
                                                         ) : (
-                                                            <span title="Only the first past sprint or the last sprint can be managed." style={{ color: '#475569', fontSize: '12px', cursor: 'help', width: '55px', textAlign: 'center' }}>Locked</span>
+                                                            <span title="Only the first past sprint or the last sprint can be managed." style={{ color: 'var(--text-muted)', fontSize: '12px', cursor: 'help', width: '55px', textAlign: 'center' }}>Locked</span>
                                                         )}
                                                     </div>
                                                 </div>
@@ -206,8 +206,8 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                                     ))}
                         {isCreating && (
                             <div className={styles.listItem} style={{ 
-                                border: '2px dashed #3b82f6', 
-                                backgroundColor: 'rgba(59, 130, 246, 0.05)',
+                                border: '2px dashed var(--accent-primary)', 
+                                backgroundColor: 'var(--accent-primary-bg)',
                                 marginTop: '12px'
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -220,7 +220,7 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                                             style={{ 
                                                 background: 'none', 
                                                 border: 'none', 
-                                                color: '#60a5fa', 
+                                                color: 'var(--accent-text)', 
                                                 fontWeight: 'bold', 
                                                 fontSize: '16px',
                                                 outline: 'none', 
@@ -228,7 +228,7 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                                                 marginBottom: '4px'
                                             }}
                                         />
-                                        <div className={styles.itemDetails} style={{ color: '#60a5fa' }}>
+                                        <div className={styles.itemDetails} style={{ color: 'var(--accent-text)' }}>
                                             {newSprintDraft.start_date} to {newSprintDraft.end_date} (Draft)
                                         </div>
                                     </div>
@@ -239,7 +239,7 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                                             fontWeight: 'bold',
                                             padding: '2px 8px',
                                             borderRadius: '10px',
-                                            backgroundColor: '#3b82f6',
+                                            backgroundColor: 'var(--accent-primary)',
                                             color: 'white'
                                         }}>
                                             NEW
@@ -262,7 +262,3 @@ export const SprintPage: React.FC<SprintPageProps> = ({
         </PageWrapper>
     );
 };
-
-
-
-

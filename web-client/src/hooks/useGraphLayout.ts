@@ -481,7 +481,7 @@ export function useGraphLayout(
                             type: 'default',
                             style: {
                                 strokeWidth: normalizedStrokeWidth,
-                                stroke: '#b0b0b0',
+                                stroke: 'var(--edge-color)',
                             },
                         });
                     }
@@ -637,7 +637,7 @@ export function useGraphLayout(
                 type: 'default',
                 style: {
                     strokeWidth: normalizedStrokeWidth,
-                    stroke: '#b0b0b0',
+                    stroke: 'var(--edge-color)',
                 },
             });
         });
@@ -707,7 +707,7 @@ export function useGraphLayout(
 
                             // Progress-Aware Color Logic: Sprints older than Active Sprint are frozen
                             const isFrozen = sprintEnd < activeSprintStartDate;
-                            const baseColor = isFrozen ? '#475569' : '#8b5cf6'; // Slate Blue for past, Purple for future
+                            const baseColor = isFrozen ? 'var(--node-frozen-bg)' : 'var(--node-workitem-bg)'; // Slate Blue for past, Purple for future
 
                             segments.push({
                                 startOffsetPixels: segmentOffsetPixels,
@@ -729,7 +729,7 @@ export function useGraphLayout(
                         data: {
                             label: `${epic.name || workItem?.name || 'Task'} (${epic.effort_md} MDs)`,
                             width: visibleDuration * PIXELS_PER_DAY,
-                            color: '#8b5cf6',
+                            color: 'var(--node-workitem-bg)',
                             jiraKey: epic.jira_key,
                             jiraBaseUrl: data?.settings?.jira_base_url,
                             epicId: epic.id,
@@ -746,7 +746,7 @@ export function useGraphLayout(
                         type: 'default',
                         style: {
                             strokeWidth: 1.5,
-                            stroke: '#b0b0b0',
+                            stroke: 'var(--edge-color)',
                             opacity: 0.5,
                         },
                     });
@@ -770,7 +770,7 @@ export function useGraphLayout(
                             animated: true,
                             style: {
                                 strokeWidth: 2,
-                                stroke: '#f97316', // Orange to stand out against grey structural edges
+                                stroke: 'var(--status-warning)', // Orange to stand out against grey structural edges
                                 zIndex: 1000
                             }
                         });
@@ -1012,7 +1012,7 @@ export function useGraphLayout(
                     e.style = {
                         ...e.style,
                         opacity: isHighlighted ? 1 : 0.05,
-                        stroke: isHighlighted ? '#3b82f6' : (e.style?.stroke || '#b0b0b0'), // make highlighted edges blue for visibility
+                        stroke: isHighlighted ? 'var(--accent-primary)' : (e.style?.stroke || 'var(--border-hover)'), // make highlighted edges blue for visibility
                         transition: 'all 0.2s'
                     };
                 });

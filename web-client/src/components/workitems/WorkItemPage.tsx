@@ -179,20 +179,20 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
 
                     <div className={styles.content}>
                         <section className={styles.card}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #374151', paddingBottom: '12px', marginBottom: '24px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-secondary)', paddingBottom: '12px', marginBottom: '24px' }}>
                                 <h2 style={{ margin: 0, border: 'none', padding: 0 }}>Work Item Details</h2>
                                 <div style={{ display: 'flex', gap: '24px' }}>
-                                    <div style={{ fontSize: '14px', color: '#94a3b8' }}>
-                                        <span style={{ fontWeight: 'bold', color: '#60a5fa', marginRight: '8px' }}>Total Effort:</span>
-                                        <span style={{ color: '#f1f5f9' }}>{calculatedEffort.toLocaleString()} MDs</span>
+                                    <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
+                                        <span style={{ fontWeight: 'bold', color: 'var(--accent-text)', marginRight: '8px' }}>Total Effort:</span>
+                                        <span style={{ color: 'var(--text-primary)' }}>{calculatedEffort.toLocaleString()} MDs</span>
                                     </div>
-                                    <div style={{ fontSize: '14px', color: '#94a3b8' }}>
-                                        <span style={{ fontWeight: 'bold', color: '#60a5fa', marginRight: '8px' }}>TCV Impact:</span>
-                                        <span style={{ color: '#f1f5f9' }}>${calculatedTcv.toLocaleString()}</span>
+                                    <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
+                                        <span style={{ fontWeight: 'bold', color: 'var(--accent-text)', marginRight: '8px' }}>TCV Impact:</span>
+                                        <span style={{ color: 'var(--text-primary)' }}>${calculatedTcv.toLocaleString()}</span>
                                     </div>
-                                    <div style={{ fontSize: '14px', color: '#94a3b8' }}>
-                                        <span style={{ fontWeight: 'bold', color: '#60a5fa', marginRight: '8px' }}>RICE Score:</span>
-                                        <span style={{ color: '#f1f5f9' }}>{Math.round(workItem.score || 0).toLocaleString()}</span>
+                                    <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
+                                        <span style={{ fontWeight: 'bold', color: 'var(--accent-text)', marginRight: '8px' }}>RICE Score:</span>
+                                        <span style={{ color: 'var(--text-primary)' }}>{Math.round(workItem.score || 0).toLocaleString()}</span>
                                     </div>
                                 </div>
                             </div>
@@ -266,15 +266,15 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                             </div>
                         </section>
 
-                        <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #334155', marginBottom: '24px', marginTop: '24px' }}>
+                        <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid var(--border-primary)', marginBottom: '24px', marginTop: '24px' }}>
                             <button
                                 onClick={() => setActiveTab('customers')}
                                 style={{
                                     background: 'none',
                                     border: 'none',
                                     padding: '12px 16px',
-                                    color: activeTab === 'customers' ? '#60a5fa' : '#94a3b8',
-                                    borderBottom: activeTab === 'customers' ? '2px solid #60a5fa' : '2px solid transparent',
+                                    color: activeTab === 'customers' ? 'var(--accent-text)' : 'var(--text-muted)',
+                                    borderBottom: activeTab === 'customers' ? '2px solid var(--accent-text)' : '2px solid transparent',
                                     cursor: 'pointer',
                                     fontSize: '15px',
                                     fontWeight: activeTab === 'customers' ? 'bold' : '500',
@@ -289,8 +289,8 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                     background: 'none',
                                     border: 'none',
                                     padding: '12px 16px',
-                                    color: activeTab === 'epics' ? '#60a5fa' : '#94a3b8',
-                                    borderBottom: activeTab === 'epics' ? '2px solid #60a5fa' : '2px solid transparent',
+                                    color: activeTab === 'epics' ? 'var(--accent-text)' : 'var(--text-muted)',
+                                    borderBottom: activeTab === 'epics' ? '2px solid var(--accent-text)' : '2px solid transparent',
                                     cursor: 'pointer',
                                     fontSize: '15px',
                                     fontWeight: activeTab === 'epics' ? 'bold' : '500',
@@ -317,14 +317,14 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                             }
                                         }}
                                     />
-                                    <label htmlFor="global-checkbox" style={{ fontWeight: '600', color: '#60a5fa', cursor: 'pointer' }}>
+                                    <label htmlFor="global-checkbox" style={{ fontWeight: '600', color: 'var(--accent-text)', cursor: 'pointer' }}>
                                         ALL CUSTOMERS (Global)
                                     </label>
                                 </div>
 
                                 {workItem.all_customers_target ? (
                                     <div style={{ padding: '16px', backgroundColor: 'rgba(96, 165, 250, 0.05)', borderRadius: '8px', border: '1px solid rgba(96, 165, 250, 0.2)' }}>
-                                        <p style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#94a3b8' }}>
+                                        <p style={{ margin: '0 0 12px 0', fontSize: '14px', color: 'var(--text-muted)' }}>
                                             This initiative relates to all customers (e.g. core maintenance, tech debt).
                                         </p>
                                         <div className={styles.formGrid}>
@@ -409,7 +409,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                                         ))}
                                                                     </select>
                                                                 ) : (
-                                                                    <span style={{ color: '#94a3b8' }}>${customer.potential_tcv.toLocaleString()}</span>
+                                                                    <span style={{ color: 'var(--text-muted)' }}>${customer.potential_tcv.toLocaleString()}</span>
                                                                 )}
                                                             </td>
                                                             <td>
@@ -434,7 +434,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                     );
                                                 })}
                                                 {targetedCustomers.length === 0 && (
-                                                    <tr><td colSpan={5} style={{ textAlign: 'center', color: '#94a3b8', padding: '24px' }}>No customers targeted yet.</td></tr>
+                                                    <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>No customers targeted yet.</td></tr>
                                                 )}
                                             </tbody>
                                         </table>
@@ -464,9 +464,9 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                     {epics.map(epic => (
                                         <div key={epic.id} style={{ 
                                             padding: '16px', 
-                                            backgroundColor: '#111827', 
+                                            backgroundColor: 'var(--bg-tertiary)', 
                                             borderRadius: '8px', 
-                                            border: '1px solid #374151' 
+                                            border: '1px solid var(--border-secondary)' 
                                         }}>
                                             {/* Line 1: Key, Name, Actions */}
                                             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
@@ -484,7 +484,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                             target="_blank" 
                                                             rel="noopener noreferrer" 
                                                             title="Open in Jira"
-                                                            style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '14px' }}
+                                                            style={{ color: 'var(--accent-text)', textDecoration: 'none', fontSize: '14px' }}
                                                         >
                                                             ↗
                                                         </a>
@@ -512,7 +512,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                             {/* Line 2: Team, Effort, Start, End */}
                                             <div style={{ display: 'flex', gap: '24px', alignItems: 'center', fontSize: '13px' }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '25%' }}>
-                                                    <span style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>Team:</span>
+                                                    <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Team:</span>
                                                     <select
                                                         value={epic.team_id}
                                                         onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, team_id: e.target.value } : ev)) : updateEpic(epic.id, { team_id: e.target.value })}
@@ -522,7 +522,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                     </select>
                                                 </div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100px' }}>
-                                                    <span style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>Effort:</span>
+                                                    <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Effort:</span>
                                                     <input
                                                         type="number"
                                                         value={epic.effort_md}
@@ -534,7 +534,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                     />
                                                 </div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '180px' }}>
-                                                    <span style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>Start:</span>
+                                                    <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Start:</span>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
                                                         <input
                                                             type="date"
@@ -554,7 +554,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                     </div>
                                                 </div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '180px' }}>
-                                                    <span style={{ color: '#94a3b8', whiteSpace: 'nowrap' }}>End:</span>
+                                                    <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>End:</span>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
                                                         <input
                                                             type="date"
@@ -577,7 +577,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                         </div>
                                     ))}
                                     {epics.length === 0 && (
-                                        <div style={{ textAlign: 'center', color: '#94a3b8', padding: '24px' }}>No epics linked yet.</div>
+                                        <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>No epics linked yet.</div>
                                     )}
                                 </div>
 
@@ -587,7 +587,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                         <button className="btn-primary" onClick={handleAddEpic}>+ New Epic</button>
                                     </div>
 
-                                    <div style={{ marginTop: '16px', borderTop: '1px solid #334155', paddingTop: '16px' }}>
+                                    <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-primary)', paddingTop: '16px' }}>
                                         <h3>Link Existing Epic</h3>
                                         <SearchableDropdown
                                             options={data?.epics

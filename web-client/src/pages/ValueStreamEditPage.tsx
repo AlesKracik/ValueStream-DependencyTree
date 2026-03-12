@@ -132,7 +132,7 @@ export const ValueStreamEditPage: React.FC<ValueStreamEditPageProps> = ({
 
                         <section className={styles.card}>
                             <h2>Time Range</h2>
-                            <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '16px' }}>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '16px' }}>
                                 Limit the ValueStream to a specific range of sprints.
                             </p>
                             <div className={styles.formGrid}>
@@ -165,7 +165,7 @@ export const ValueStreamEditPage: React.FC<ValueStreamEditPageProps> = ({
 
                         <section className={styles.card}>
                             <h2>Structural Filters</h2>
-                            <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '16px' }}>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '16px' }}>
                                 Pre-set filters for this ValueStream view.
                             </p>
                             <div className={styles.formGrid}>

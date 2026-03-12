@@ -142,8 +142,8 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             header: 'Customer', 
             render: (d) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>{d.customerName}</span>
-                    <span title={`TCV Category: ${d.category}`} style={{ fontSize: '14px', filter: 'grayscale(0.2)' }}>
+                    <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>{d.customerName}</span>
+                    <span title={`TCV Category: ${d.category}`} style={{ fontSize: '14px' }}>
                         {'💰'.repeat(d.category)}
                     </span>
                 </div>
@@ -159,7 +159,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                 return (
                     <span style={{ 
                         fontSize: '10px', 
-                        backgroundColor: isNew ? '#10b981' : '#3b82f6', 
+                        backgroundColor: isNew ? 'var(--status-success)' : 'var(--accent-primary)', 
                         color: 'white', 
                         padding: '2px 6px', 
                         borderRadius: '10px',
@@ -175,7 +175,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             header: 'Description', 
             render: (d) => (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <span style={{ fontWeight: 'normal', whiteSpace: 'pre-wrap' }}>{d.description}</span>
+                    <span style={{ fontWeight: 'normal', whiteSpace: 'pre-wrap', color: 'var(--text-primary)' }}>{d.description}</span>
                     {d.linkedJiras && (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                             {d.linkedJiras.map(jira => (
@@ -189,24 +189,25 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                                     }}
                                     style={{ 
                                         fontSize: '10px', 
-                                        backgroundColor: '#f1f5f9', 
-                                        border: '1px solid #cbd5e1',
+                                        backgroundColor: 'var(--bg-tertiary)', 
+                                        border: '1px solid var(--border-secondary)',
                                         borderRadius: '4px',
                                         padding: '1px 6px',
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '4px',
                                         cursor: jira.url ? 'pointer' : 'default',
-                                        color: '#475569'
+                                        color: 'var(--text-primary)'
                                     }}
                                     title={`Jira Status: ${jira.status}`}
                                 >
                                     <span style={{ fontWeight: 'bold' }}>{jira.key}</span>
                                     <span style={{ 
                                         fontSize: '9px', 
-                                        color: '#64748b',
-                                        borderLeft: '1px solid #cbd5e1',
-                                        paddingLeft: '4px'
+                                        color: 'var(--text-muted)',
+                                        borderLeft: '1px solid var(--border-secondary)',
+                                        paddingLeft: '4px',
+                                        fontWeight: 'bold'
                                     }}>{jira.status}</span>
                                 </div>
                             ))}
@@ -225,12 +226,13 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                     <span style={{ 
                         padding: '2px 8px', 
                         borderRadius: '4px', 
-                        backgroundColor: (status === 'done' || status === 'resolved' || status === 'closed') ? '#22c55e' : 
-                                       (status === 'to do' || status === 'new' || status === 'open') ? '#ef4444' : 
-                                       (status === 'work in progress' || status === 'in progress' || status === 'in_progress' || status === 'active') ? '#f59e0b' : '#3b82f6',
+                        backgroundColor: (status === 'done' || status === 'resolved' || status === 'closed') ? 'var(--status-success)' : 
+                                       (status === 'to do' || status === 'new' || status === 'open') ? 'var(--status-danger)' : 
+                                       (status === 'work in progress' || status === 'in progress' || status === 'in_progress' || status === 'active') ? 'var(--status-warning)' : 'var(--accent-primary)',
                         fontSize: '11px',
                         color: 'white',
-                        display: 'inline-block'
+                        display: 'inline-block',
+                        fontWeight: 'bold'
                     }}>
                         {d.status}
                     </span>

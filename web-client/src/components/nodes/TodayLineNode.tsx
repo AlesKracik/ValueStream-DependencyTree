@@ -11,7 +11,7 @@ export const TodayLineNode = memo(({ data }: { data: TodayLineNodeData }) => {
             style={{
                 width: '2px',
                 height: `${data.height}px`,
-                backgroundColor: '#ef4444',
+                backgroundColor: 'var(--status-danger)',
                 position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
@@ -23,14 +23,14 @@ export const TodayLineNode = memo(({ data }: { data: TodayLineNodeData }) => {
             <div style={{
                 position: 'absolute',
                 top: '-25px',
-                backgroundColor: '#ef4444',
+                backgroundColor: 'var(--status-danger)',
                 color: 'white',
                 padding: '2px 8px',
                 borderRadius: '4px',
                 fontSize: '11px',
                 fontWeight: 'bold',
                 whiteSpace: 'nowrap',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                boxShadow: '0 2px 4px var(--bg-shadow)',
                 pointerEvents: 'auto'
             }}
                 title="Current Date"

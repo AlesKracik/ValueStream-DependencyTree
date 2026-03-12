@@ -530,15 +530,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           <h1>Settings</h1>
         </div>
 
-        <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid #374151', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid var(--border-secondary)', marginBottom: '24px' }}>
           <button
             onClick={() => setTab("general")}
             style={{
               background: 'none',
               border: 'none',
               padding: '8px 16px',
-              color: activeTab === "general" ? '#60a5fa' : '#9ca3af',
-              borderBottom: activeTab === "general" ? '2px solid #60a5fa' : '2px solid transparent',
+              color: activeTab === "general" ? 'var(--accent-text)' : 'var(--text-muted)',
+              borderBottom: activeTab === "general" ? '2px solid var(--accent-text)' : '2px solid transparent',
               cursor: 'pointer',
               fontSize: '15px',
               fontWeight: activeTab === "general" ? 'bold' : 'normal',
@@ -552,8 +552,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               background: 'none',
               border: 'none',
               padding: '8px 16px',
-              color: activeTab === "persistence" ? '#60a5fa' : '#9ca3af',
-              borderBottom: activeTab === "persistence" ? '2px solid #60a5fa' : '2px solid transparent',
+              color: activeTab === "persistence" ? 'var(--accent-text)' : 'var(--text-muted)',
+              borderBottom: activeTab === "persistence" ? '2px solid var(--accent-text)' : '2px solid transparent',
               cursor: 'pointer',
               fontSize: '15px',
               fontWeight: activeTab === "persistence" ? 'bold' : 'normal',
@@ -567,8 +567,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               background: 'none',
               border: 'none',
               padding: '8px 16px',
-              color: activeTab === "jira" ? '#60a5fa' : '#9ca3af',
-              borderBottom: activeTab === "jira" ? '2px solid #60a5fa' : '2px solid transparent',
+              color: activeTab === "jira" ? 'var(--accent-text)' : 'var(--text-muted)',
+              borderBottom: activeTab === "jira" ? '2px solid var(--accent-text)' : '2px solid transparent',
               cursor: 'pointer',
               fontSize: '15px',
               fontWeight: activeTab === "jira" ? 'bold' : 'normal',
@@ -582,8 +582,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               background: 'none',
               border: 'none',
               padding: '8px 16px',
-              color: activeTab === "ai" ? '#60a5fa' : '#9ca3af',
-              borderBottom: activeTab === "ai" ? '2px solid #60a5fa' : '2px solid transparent',
+              color: activeTab === "ai" ? 'var(--accent-text)' : 'var(--text-muted)',
+              borderBottom: activeTab === "ai" ? '2px solid var(--accent-text)' : '2px solid transparent',
               cursor: 'pointer',
               fontSize: '15px',
               fontWeight: activeTab === "ai" ? 'bold' : 'normal',
@@ -596,15 +596,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           {activeTab === "persistence" && (
             <>
-              <div style={{ display: 'flex', gap: '12px', borderBottom: '1px solid #374151', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', gap: '12px', borderBottom: '1px solid var(--border-secondary)', marginBottom: '20px' }}>
                 <button
                   onClick={() => setSubTab("mongo")}
                   style={{
                     background: 'none',
                     border: 'none',
                     padding: '8px 12px',
-                    color: activeSubTab === "mongo" ? '#60a5fa' : '#9ca3af',
-                    borderBottom: activeSubTab === "mongo" ? '2px solid #60a5fa' : '2px solid transparent',
+                    color: activeSubTab === "mongo" ? 'var(--accent-text)' : 'var(--text-muted)',
+                    borderBottom: activeSubTab === "mongo" ? '2px solid var(--accent-text)' : '2px solid transparent',
                     cursor: 'pointer',
                     fontSize: '14px',
                     fontWeight: activeSubTab === "mongo" ? 'bold' : 'normal',
@@ -618,8 +618,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     background: 'none',
                     border: 'none',
                     padding: '8px 12px',
-                    color: activeSubTab === "file" ? '#60a5fa' : '#9ca3af',
-                    borderBottom: activeSubTab === "file" ? '2px solid #60a5fa' : '2px solid transparent',
+                    color: activeSubTab === "file" ? 'var(--accent-text)' : 'var(--text-muted)',
+                    borderBottom: activeSubTab === "file" ? '2px solid var(--accent-text)' : '2px solid transparent',
                     cursor: 'pointer',
                     fontSize: '14px',
                     fontWeight: activeSubTab === "file" ? 'bold' : 'normal',
@@ -631,15 +631,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
               {activeSubTab === "mongo" && (
                 <>
-                  <div style={{ display: 'flex', gap: '12px', borderBottom: '1px solid #1f2937', marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', gap: '12px', borderBottom: '1px solid var(--border-primary)', marginBottom: '20px' }}>
                     <button
                       onClick={() => setSubSubTab("application")}
                       style={{
                         background: 'none',
                         border: 'none',
                         padding: '6px 12px',
-                        color: activeSubSubTab === "application" ? '#60a5fa' : '#9ca3af',
-                        borderBottom: activeSubSubTab === "application" ? '2px solid #60a5fa' : '2px solid transparent',
+                        color: activeSubSubTab === "application" ? 'var(--accent-text)' : 'var(--text-muted)',
+                        borderBottom: activeSubSubTab === "application" ? '2px solid var(--accent-text)' : '2px solid transparent',
                         cursor: 'pointer',
                         fontSize: '13px',
                         fontWeight: activeSubSubTab === "application" ? 'bold' : 'normal',
@@ -653,8 +653,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         background: 'none',
                         border: 'none',
                         padding: '6px 12px',
-                        color: activeSubSubTab === "customer" ? '#60a5fa' : '#9ca3af',
-                        borderBottom: activeSubSubTab === "customer" ? '2px solid #60a5fa' : '2px solid transparent',
+                        color: activeSubSubTab === "customer" ? 'var(--accent-text)' : 'var(--text-muted)',
+                        borderBottom: activeSubSubTab === "customer" ? '2px solid var(--accent-text)' : '2px solid transparent',
                         cursor: 'pointer',
                         fontSize: '13px',
                         fontWeight: activeSubSubTab === "customer" ? 'bold' : 'normal',
@@ -666,7 +666,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
                   {activeSubSubTab === "application" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                         Authentication Method:
                         <select
                           value={localFormData.persistence.mongo.app.auth.method}
@@ -691,7 +691,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         </select>
                       </label>
 
-                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                         MongoDB URI:
                         <input
                           type="text"
@@ -703,7 +703,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       </label>
 
                       <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-                        <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db", cursor: 'pointer' }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "var(--text-secondary)", cursor: 'pointer' }}>
                           <input
                             type="checkbox"
                             checked={localFormData.persistence.mongo.app.use_proxy || false}
@@ -726,7 +726,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         </label>
 
                         {localFormData.persistence.mongo.app.use_proxy && (
-                          <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db" }}>
+                          <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "var(--text-secondary)" }}>
                             Tunnel Name:
                             <input
                               type="text"
@@ -740,7 +740,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         )}
                       </div>
 
-                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                         MongoDB Database Name:
                         <div style={{ position: 'relative', display: 'flex', gap: '8px', alignItems: 'center' }}>
                           <div style={{ flex: 1, position: 'relative' }}>
@@ -752,7 +752,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               onChange={(e) => updateFormData('persistence.mongo.app.db', e.target.value)}
                               onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, db: localFormData.persistence.mongo.app.db } } } })}
                               style={{
-                                borderColor: mongoTestResult?.success && !mongoTestResult.exists ? '#f59e0b' : undefined
+                                borderColor: mongoTestResult?.success && !mongoTestResult.exists ? 'var(--status-warning)' : undefined
                               }}
                             />
                             <datalist id="mongo-dbs">
@@ -764,9 +764,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               fontSize: '11px', 
                               padding: '2px 6px', 
                               borderRadius: '4px', 
-                              backgroundColor: mongoTestResult.exists ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                              color: mongoTestResult.exists ? '#10b981' : '#f59e0b',
-                              border: `1px solid ${mongoTestResult.exists ? '#10b981' : '#f59e0b'}`,
+                              backgroundColor: mongoTestResult.exists ? 'var(--status-success-bg)' : 'var(--status-warning-bg)',
+                              color: mongoTestResult.exists ? 'var(--status-success)' : 'var(--status-warning)',
+                              border: `1px solid ${mongoTestResult.exists ? 'var(--status-success)' : 'var(--status-warning)'}`,
                               whiteSpace: 'nowrap'
                             }}>
                               {mongoTestResult.exists ? 'Exists' : 'New'}
@@ -776,10 +776,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       </label>
 
                       {localFormData.persistence.mongo.app.auth.method === 'aws' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>AWS IAM Credentials</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid var(--border-secondary)', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--accent-text)' }}>AWS IAM Credentials</div>
                           
-                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                             AWS Authentication Type:
                             <select
                               value={localFormData.persistence.mongo.app.auth.aws_auth_type || "static"}
@@ -806,8 +806,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
                           {localFormData.persistence.mongo.app.auth.aws_auth_type === 'static' ? (
                             <>
-                              <div style={{ padding: '12px', border: '1px solid #1f2937', borderRadius: '4px', backgroundColor: 'rgba(0,0,0,0.1)' }}>
-                                <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem", marginBottom: '8px' }}>
+                              <div style={{ padding: '12px', border: '1px solid var(--border-primary)', borderRadius: '4px', backgroundColor: 'rgba(0,0,0,0.1)' }}>
+                                <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem", marginBottom: '8px' }}>
                                     AWS Profile (Optional for SSO):
                                     <input
                                         type="text"
@@ -819,10 +819,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 </label>
 
                                 {!localFormData.persistence.mongo.app.auth.aws_profile && (
-                                    <div style={{ marginBottom: '16px', padding: '12px', border: '1px dashed #374151', borderRadius: '4px' }}>
-                                        <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px' }}>Manual SSO Configuration (No Profile):</div>
+                                    <div style={{ marginBottom: '16px', padding: '12px', border: '1px dashed var(--border-secondary)', borderRadius: '4px' }}>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>Manual SSO Configuration (No Profile):</div>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
                                                 SSO Start URL:
                                                 <input
                                                     type="text"
@@ -832,7 +832,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                     onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_sso_start_url: localFormData.persistence.mongo.app.auth.aws_sso_start_url } } } } })}
                                                 />
                                             </label>
-                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
                                                 SSO Region:
                                                 <input
                                                     type="text"
@@ -842,7 +842,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                     onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_sso_region: localFormData.persistence.mongo.app.auth.aws_sso_region } } } } })}
                                                 />
                                             </label>
-                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
                                                 SSO Account ID:
                                                 <input
                                                     type="text"
@@ -852,7 +852,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                     onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_sso_account_id: localFormData.persistence.mongo.app.auth.aws_sso_account_id } } } } })}
                                                 />
                                             </label>
-                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
                                                 SSO Role Name:
                                                 <input
                                                     type="text"
@@ -890,13 +890,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     <div style={{ 
                                         fontSize: '12px', 
                                         marginTop: '8px', 
-                                        color: ssoMessage.success ? '#34d399' : '#f87171',
+                                        color: ssoMessage.success ? 'var(--status-success)' : 'var(--status-danger-text)',
                                         whiteSpace: 'pre-wrap',
                                         wordBreak: 'break-all',
                                         backgroundColor: 'rgba(0,0,0,0.2)',
                                         padding: '8px',
                                         borderRadius: '4px',
-                                        border: `1px solid ${ssoMessage.success ? 'rgba(52, 211, 153, 0.2)' : 'rgba(248, 113, 113, 0.2)'}`
+                                        border: `1px solid ${ssoMessage.success ? 'var(--status-success-bg)' : 'var(--status-danger-bg)'}`
                                     }}>
                                         {(() => {
                                             const codeMatch = ssoMessage.message.match(/([A-Z0-9]{4}-[A-Z0-9]{4})/);
@@ -918,9 +918,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                         
                                                     return (
                                                         <div key={i} style={{ margin: '8px 0' }}>
-                                                            <div style={{ color: '#9ca3af', marginBottom: '4px' }}>Authorization URL:</div>
+                                                            <div style={{ color: 'var(--text-muted)', marginBottom: '4px' }}>Authorization URL:</div>
                                                             <a href={finalUrl} target="_blank" rel="noopener noreferrer" style={{ 
-                                                                color: '#60a5fa', 
+                                                                color: 'var(--accent-text)', 
                                                                 textDecoration: 'underline', 
                                                                 fontWeight: 'bold',
                                                                 display: 'block',
@@ -941,7 +941,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                     return (
                                                         <React.Fragment key={i}>
                                                             {subParts[0]}
-                                                            <span style={{ color: '#f59e0b', fontWeight: 'bold', padding: '0 4px', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '2px' }}>{code}</span>
+                                                            <span style={{ color: 'var(--status-warning)', fontWeight: 'bold', padding: '0 4px', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '2px' }}>{code}</span>
                                                             {subParts[1]}
                                                         </React.Fragment>
                                                     );
@@ -953,7 +953,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 )}
                               </div>
 
-                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                                 Access Key ID:
                                 <input
                                   type="text"
@@ -962,7 +962,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_access_key: localFormData.persistence.mongo.app.auth.aws_access_key } } } } })}
                                 />
                               </label>
-                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                                 Secret Access Key:
                                 <input
                                   type="password"
@@ -971,7 +971,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_secret_key: localFormData.persistence.mongo.app.auth.aws_secret_key } } } } })}
                                 />
                               </label>
-                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                                 Session Token (Optional):
                                 <input
                                   type="password"
@@ -983,7 +983,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                             </>
                           ) : (
                             <>
-                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                                 Role ARN:
                                 <input
                                   type="text"
@@ -993,7 +993,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_role_arn: localFormData.persistence.mongo.app.auth.aws_role_arn } } } } })}
                                 />
                               </label>
-                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                                 External ID (Optional):
                                 <input
                                   type="text"
@@ -1002,7 +1002,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_external_id: localFormData.persistence.mongo.app.auth.aws_external_id } } } } })}
                                 />
                               </label>
-                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                                 Role Session Name (Optional):
                                 <input
                                   type="text"
@@ -1018,9 +1018,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       )}
 
                       {localFormData.persistence.mongo.app.auth.method === 'oidc' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>OIDC Configuration</div>
-                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid var(--border-secondary)', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--accent-text)' }}>OIDC Configuration</div>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                             Access Token:
                             <input
                               type="password"
@@ -1049,9 +1049,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                             padding: "10px",
                             borderRadius: "4px",
                             fontSize: "14px",
-                            backgroundColor: mongoTestResult.success ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
-                            color: mongoTestResult.success ? "#34d399" : "#f87171",
-                            border: `1px solid ${mongoTestResult.success ? "#059669" : "#b91c1c"}`,
+                            backgroundColor: mongoTestResult.success ? "var(--status-success-bg)" : "var(--status-danger-bg)",
+                            color: mongoTestResult.success ? "var(--status-success)" : "var(--status-danger-text)",
+                            border: `1px solid ${mongoTestResult.success ? "var(--status-success)" : "var(--status-danger-border)"}`,
                             marginTop: "8px",
                           }}
                         >
@@ -1059,12 +1059,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         </div>
                       )}
 
-                      <hr style={{ borderColor: "#374151", width: "100%", margin: "16px 0 8px 0" }} />
+                      <hr style={{ borderColor: "var(--border-secondary)", width: "100%", margin: "16px 0 8px 0" }} />
                       
-                      <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#e5e7eb" }}>
+                      <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "var(--text-primary)" }}>
                         Export & Import Data
                       </h3>
-                      <p style={{ color: "#9ca3af", fontSize: "13px", margin: "0 0 8px 0" }}>
+                      <p style={{ color: "var(--text-muted)", fontSize: "13px", margin: "0 0 8px 0" }}>
                         Manage your database content via staticImport.json files.
                       </p>
                       <div style={{ display: 'flex', gap: '8px' }}>
@@ -1097,7 +1097,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
                   {activeSubSubTab === "customer" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                         Authentication Method:
                         <select
                           value={localFormData.persistence.mongo.customer.auth.method}
@@ -1122,7 +1122,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         </select>
                       </label>
 
-                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                         Customer MongoDB URI:
                         <input
                           type="text"
@@ -1134,7 +1134,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       </label>
 
                       <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-                        <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db", cursor: 'pointer' }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "var(--text-secondary)", cursor: 'pointer' }}>
                           <input
                             type="checkbox"
                             checked={localFormData.persistence.mongo.customer.use_proxy || false}
@@ -1157,7 +1157,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         </label>
 
                         {localFormData.persistence.mongo.customer.use_proxy && (
-                          <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "#d1d5db" }}>
+                          <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "var(--text-secondary)" }}>
                             Tunnel Name:
                             <input
                               type="text"
@@ -1171,7 +1171,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         )}
                       </div>
 
-                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                         Customer MongoDB Database Name:
                         <div style={{ position: 'relative', display: 'flex', gap: '8px', alignItems: 'center' }}>
                           <div style={{ flex: 1, position: 'relative' }}>
@@ -1192,9 +1192,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               fontSize: '11px', 
                               padding: '2px 6px', 
                               borderRadius: '4px', 
-                              backgroundColor: customerMongoTestResult.exists ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
-                              color: customerMongoTestResult.exists ? '#10b981' : '#f59e0b',
-                              border: `1px solid ${customerMongoTestResult.exists ? '#10b981' : '#f59e0b'}`,
+                              backgroundColor: customerMongoTestResult.exists ? 'var(--status-success-bg)' : 'var(--status-warning-bg)',
+                              color: customerMongoTestResult.exists ? 'var(--status-success)' : 'var(--status-warning)',
+                              border: `1px solid ${customerMongoTestResult.exists ? 'var(--status-success)' : 'var(--status-warning)'}`,
                               whiteSpace: 'nowrap'
                             }}>
                               {customerMongoTestResult.exists ? 'Exists' : 'New'}
@@ -1203,7 +1203,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         </div>
                       </label>
 
-                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                         Customer MongoDB Collection:
                         <input
                           type="text"
@@ -1215,10 +1215,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       </label>
 
                       {localFormData.persistence.mongo.customer.auth.method === 'aws' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>AWS IAM Credentials (Customer)</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid var(--border-secondary)', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--accent-text)' }}>AWS IAM Credentials (Customer)</div>
                           
-                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                             AWS Authentication Type:
                             <select
                               value={localFormData.persistence.mongo.customer.auth.aws_auth_type || "static"}
@@ -1245,8 +1245,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
                           {localFormData.persistence.mongo.customer.auth.aws_auth_type === 'static' ? (
                             <>
-                              <div style={{ padding: '12px', border: '1px solid #1f2937', borderRadius: '4px', backgroundColor: 'rgba(0,0,0,0.1)' }}>
-                                <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem", marginBottom: '8px' }}>
+                              <div style={{ padding: '12px', border: '1px solid var(--border-primary)', borderRadius: '4px', backgroundColor: 'rgba(0,0,0,0.1)' }}>
+                                <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem", marginBottom: '8px' }}>
                                     AWS Profile (Optional for SSO):
                                     <input
                                         type="text"
@@ -1258,10 +1258,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 </label>
 
                                 {!localFormData.persistence.mongo.customer.auth.aws_profile && (
-                                    <div style={{ marginBottom: '16px', padding: '12px', border: '1px dashed #374151', borderRadius: '4px' }}>
-                                        <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px' }}>Manual SSO Configuration (No Profile):</div>
+                                    <div style={{ marginBottom: '16px', padding: '12px', border: '1px dashed var(--border-secondary)', borderRadius: '4px' }}>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>Manual SSO Configuration (No Profile):</div>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
                                                 SSO Start URL:
                                                 <input
                                                     type="text"
@@ -1271,7 +1271,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                     onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_sso_start_url: localFormData.persistence.mongo.customer.auth.aws_sso_start_url } } } } })}
                                                 />
                                             </label>
-                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
                                                 SSO Region:
                                                 <input
                                                     type="text"
@@ -1281,7 +1281,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                     onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_sso_region: localFormData.persistence.mongo.customer.auth.aws_sso_region } } } } })}
                                                 />
                                             </label>
-                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
                                                 SSO Account ID:
                                                 <input
                                                     type="text"
@@ -1291,7 +1291,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                     onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_sso_account_id: localFormData.persistence.mongo.customer.auth.aws_sso_account_id } } } } })}
                                                 />
                                             </label>
-                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "#9ca3af" }}>
+                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
                                                 SSO Role Name:
                                                 <input
                                                     type="text"
@@ -1329,13 +1329,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     <div style={{ 
                                         fontSize: '12px', 
                                         marginTop: '8px', 
-                                        color: ssoMessage.success ? '#34d399' : '#f87171',
+                                        color: ssoMessage.success ? 'var(--status-success)' : 'var(--status-danger-text)',
                                         whiteSpace: 'pre-wrap',
                                         wordBreak: 'break-all',
                                         backgroundColor: 'rgba(0,0,0,0.2)',
                                         padding: '8px',
                                         borderRadius: '4px',
-                                        border: `1px solid ${ssoMessage.success ? 'rgba(52, 211, 153, 0.2)' : 'rgba(248, 113, 113, 0.2)'}`
+                                        border: `1px solid ${ssoMessage.success ? 'var(--status-success-bg)' : 'var(--status-danger-bg)'}`
                                     }}>
                                         {(() => {
                                             const codeMatch = ssoMessage.message.match(/([A-Z0-9]{4}-[A-Z0-9]{4})/);
@@ -1357,9 +1357,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                         
                                                     return (
                                                         <div key={i} style={{ margin: '8px 0' }}>
-                                                            <div style={{ color: '#9ca3af', marginBottom: '4px' }}>Authorization URL:</div>
+                                                            <div style={{ color: 'var(--text-muted)', marginBottom: '4px' }}>Authorization URL:</div>
                                                             <a href={finalUrl} target="_blank" rel="noopener noreferrer" style={{ 
-                                                                color: '#60a5fa', 
+                                                                color: 'var(--accent-text)', 
                                                                 textDecoration: 'underline', 
                                                                 fontWeight: 'bold',
                                                                 display: 'block',
@@ -1380,7 +1380,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                     return (
                                                         <React.Fragment key={i}>
                                                             {subParts[0]}
-                                                            <span style={{ color: '#f59e0b', fontWeight: 'bold', padding: '0 4px', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '2px' }}>{code}</span>
+                                                            <span style={{ color: 'var(--status-warning)', fontWeight: 'bold', padding: '0 4px', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '2px' }}>{code}</span>
                                                             {subParts[1]}
                                                         </React.Fragment>
                                                     );
@@ -1392,7 +1392,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 )}
                               </div>
 
-                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                                 Access Key ID:
                                 <input
                                   type="text"
@@ -1401,7 +1401,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_access_key: localFormData.persistence.mongo.customer.auth.aws_access_key } } } } })}
                                 />
                               </label>
-                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                                 Secret Access Key:
                                 <input
                                   type="password"
@@ -1410,7 +1410,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_secret_key: localFormData.persistence.mongo.customer.auth.aws_secret_key } } } } })}
                                 />
                               </label>
-                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                                 Session Token (Optional):
                                 <input
                                   type="password"
@@ -1422,7 +1422,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                             </>
                           ) : (
                             <>
-                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                                 Role ARN:
                                 <input
                                   type="text"
@@ -1432,7 +1432,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_role_arn: localFormData.persistence.mongo.customer.auth.aws_role_arn } } } } })}
                                 />
                               </label>
-                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                                 External ID (Optional):
                                 <input
                                   type="text"
@@ -1441,7 +1441,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                   onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_external_id: localFormData.persistence.mongo.customer.auth.aws_external_id } } } } })}
                                 />
                               </label>
-                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                                 Role Session Name (Optional):
                                 <input
                                   type="text"
@@ -1457,9 +1457,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       )}
 
                       {localFormData.persistence.mongo.customer.auth.method === 'oidc' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid #374151', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
-                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>OIDC Configuration (Customer)</div>
-                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '12px', border: '1px solid var(--border-secondary)', borderRadius: '6px', backgroundColor: 'rgba(255,255,255,0.02)' }}>
+                          <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--accent-text)' }}>OIDC Configuration (Customer)</div>
+                          <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                             Access Token:
                             <input
                               type="password"
@@ -1488,9 +1488,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                             padding: "10px",
                             borderRadius: "4px",
                             fontSize: "14px",
-                            backgroundColor: customerMongoTestResult.success ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
-                            color: customerMongoTestResult.success ? "#34d399" : "#f87171",
-                            border: `1px solid ${customerMongoTestResult.success ? "#059669" : "#b91c1c"}`,
+                            backgroundColor: customerMongoTestResult.success ? "var(--status-success-bg)" : "var(--status-danger-bg)",
+                            color: customerMongoTestResult.success ? "var(--status-success)" : "var(--status-danger-text)",
+                            border: `1px solid ${customerMongoTestResult.success ? "var(--status-success)" : "var(--status-danger-border)"}`,
                             marginTop: "8px",
                           }}
                         >
@@ -1498,11 +1498,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         </div>
                       )}
 
-                      <hr style={{ borderColor: "#374151", width: "100%", margin: "16px 0 8px 0" }} />
+                      <hr style={{ borderColor: "var(--border-secondary)", width: "100%", margin: "16px 0 8px 0" }} />
 
-                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "100%" }}>
+                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "100%" }}>
                         Custom MongoDB Query (JSON/Aggregation):
-                        <span style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>
                           Enter a JSON-formatted query or aggregation pipeline to fetch custom fields or nested collections. 
                           Use <code>{"{{CUSTOMER_ID}}"}</code> as a placeholder. It will be replaced with a single ID (e.g. <code>"CUST-123"</code>) on detail pages, 
                           or a match object (e.g. <code>{"{\"$in\": [\"CUST-1\",\"CUST-2\"]}"}</code>) on the list page.
@@ -1525,7 +1525,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               )}
 
               {activeSubTab === "file" && (
-                <div style={{ color: "#9ca3af", fontSize: "14px" }}>
+                <div style={{ color: "var(--text-muted)", fontSize: "14px" }}>
                   File-based persistence configuration will be available here.
                 </div>
               )}
@@ -1534,15 +1534,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
           {activeTab === "jira" && (
             <>
-              <div style={{ display: 'flex', gap: '12px', borderBottom: '1px solid #374151', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', gap: '12px', borderBottom: '1px solid var(--border-secondary)', marginBottom: '20px' }}>
                 <button
                   onClick={() => setSubTab("common")}
                   style={{
                     background: 'none',
                     border: 'none',
                     padding: '8px 12px',
-                    color: activeSubTab === "common" ? '#60a5fa' : '#9ca3af',
-                    borderBottom: activeSubTab === "common" ? '2px solid #60a5fa' : '2px solid transparent',
+                    color: activeSubTab === "common" ? 'var(--accent-text)' : 'var(--text-muted)',
+                    borderBottom: activeSubTab === "common" ? '2px solid var(--accent-text)' : '2px solid transparent',
                     cursor: 'pointer',
                     fontSize: '14px',
                     fontWeight: activeSubTab === "common" ? 'bold' : 'normal',
@@ -1556,8 +1556,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     background: 'none',
                     border: 'none',
                     padding: '8px 12px',
-                    color: activeSubTab === "epics" ? '#60a5fa' : '#9ca3af',
-                    borderBottom: activeSubTab === "epics" ? '2px solid #60a5fa' : '2px solid transparent',
+                    color: activeSubTab === "epics" ? 'var(--accent-text)' : 'var(--text-muted)',
+                    borderBottom: activeSubTab === "epics" ? '2px solid var(--accent-text)' : '2px solid transparent',
                     cursor: 'pointer',
                     fontSize: '14px',
                     fontWeight: activeSubTab === "epics" ? 'bold' : 'normal',
@@ -1571,8 +1571,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     background: 'none',
                     border: 'none',
                     padding: '8px 12px',
-                    color: activeSubTab === "customer" ? '#60a5fa' : '#9ca3af',
-                    borderBottom: activeSubTab === "customer" ? '2px solid #60a5fa' : '2px solid transparent',
+                    color: activeSubTab === "customer" ? 'var(--accent-text)' : 'var(--text-muted)',
+                    borderBottom: activeSubTab === "customer" ? '2px solid var(--accent-text)' : '2px solid transparent',
                     cursor: 'pointer',
                     fontSize: '14px',
                     fontWeight: activeSubTab === "customer" ? 'bold' : 'normal',
@@ -1584,7 +1584,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
               {activeSubTab === "common" && (
                 <>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                     Jira Base URL:
                     <input
                       type="url"
@@ -1595,7 +1595,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     />
                   </label>
 
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                     Jira API Version:
                     <select
                       value={localFormData.jira.api_version}
@@ -1610,7 +1610,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     </select>
                   </label>
 
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                     Jira Personal Access Token (PAT):
                     <input
                       type="password"
@@ -1638,9 +1638,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         padding: "10px",
                         borderRadius: "4px",
                         fontSize: "14px",
-                        backgroundColor: jiraTestResult.success ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
-                        color: jiraTestResult.success ? "#34d399" : "#f87171",
-                        border: `1px solid ${jiraTestResult.success ? "#059669" : "#b91c1c"}`,
+                        backgroundColor: jiraTestResult.success ? "var(--status-success-bg)" : "var(--status-danger-bg)",
+                        color: jiraTestResult.success ? "var(--status-success)" : "var(--status-danger-text)",
+                        border: `1px solid ${jiraTestResult.success ? "var(--status-success)" : "var(--status-danger-border)"}`,
                         marginTop: "8px",
                       }}
                     >
@@ -1652,7 +1652,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
               {activeSubTab === "epics" && (
                 <>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                     Import JQL Query:
                     <input
                       type="text"
@@ -1688,9 +1688,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         padding: "10px",
                         borderRadius: "4px",
                         fontSize: "14px",
-                        backgroundColor: importSyncResult.success ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)",
-                        color: importSyncResult.success ? "#34d399" : "#f87171",
-                        border: `1px solid ${importSyncResult.success ? "#059669" : "#b91c1c"}`,
+                        backgroundColor: importSyncResult.success ? "var(--status-success-bg)" : "var(--status-danger-bg)",
+                        color: importSyncResult.success ? "var(--status-success)" : "var(--status-danger-text)",
+                        border: `1px solid ${importSyncResult.success ? "var(--status-success)" : "var(--status-danger-border)"}`,
                         marginTop: "8px",
                       }}
                     >
@@ -1702,10 +1702,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
               {activeSubTab === "customer" && (
                 <>
-                  <p style={{ color: "#9ca3af", fontSize: "13px", margin: "0 0 8px 0" }}>
+                  <p style={{ color: "var(--text-muted)", fontSize: "13px", margin: "0 0 8px 0" }}>
                     Use <code>{"{{CUSTOMER_ID}}"}</code> as a placeholder for the customer ID.
                   </p>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                     New / Untriaged JQL:
                     <input
                       type="text"
@@ -1715,7 +1715,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, customer_jql_new: localFormData.jira.customer_jql_new } })}
                     />
                   </label>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                     Active Work JQL:
                     <input
                       type="text"
@@ -1725,7 +1725,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, customer_jql_in_progress: localFormData.jira.customer_jql_in_progress } })}
                     />
                   </label>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                     Blocked / Pending JQL (Customer or 3rd Party):
                     <input
                       type="text"
@@ -1742,10 +1742,28 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
           {activeTab === "general" && (
             <>
-              <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "#e5e7eb", borderBottom: "1px solid #374151", paddingBottom: "4px" }}>
+              <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "var(--text-primary)", borderBottom: "1px solid var(--border-secondary)", paddingBottom: "4px" }}>
+                Theme
+              </h3>
+              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem", marginBottom: "20px" }}>
+                Color Palette:
+                <select
+                  value={localFormData.general?.theme || 'dark'}
+                  onChange={(e) => {
+                      const val = e.target.value as 'dark' | 'filips';
+                      updateFormData('general.theme', val);
+                      onUpdateSettings({ general: { ...localFormData.general, ...localFormData.general, theme: val } });
+                  }}
+                >
+                  <option value="dark">Dark mode</option>
+                  <option value="filips">Filips mode</option>
+                </select>
+              </label>
+
+              <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "var(--text-primary)", borderBottom: "1px solid var(--border-secondary)", paddingBottom: "4px" }}>
                 Time
               </h3>
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                 Fiscal Year Start Month:
                 <select
                   value={localFormData.general?.fiscal_year_start_month || 1}
@@ -1770,9 +1788,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 </select>
               </label>
 
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                 Sprint Duration (Days):
-                <span style={{ fontSize: "12px", color: "#9ca3af", marginTop: "-2px", marginBottom: "4px" }}>
+                <span style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "-2px", marginBottom: "4px" }}>
                   Defines the default end date when creating new sprints. Does not affect existing sprints.
                 </span>
                 <input
@@ -1792,7 +1810,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
           {activeTab === "ai" && (
             <>
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                 LLM Provider:
                 <select
                   value={localFormData.ai?.provider || 'openai'}
@@ -1809,7 +1827,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 </select>
               </label>
 
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                 {localFormData.ai?.provider === 'augment' ? 'Augment Session Auth:' : 'LLM API Key:'}
                 <input
                   type="password"
@@ -1821,7 +1839,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               </label>
 
               {localFormData.ai?.provider !== 'augment' && (
-                <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "#d1d5db", maxWidth: "32rem" }}>
+                <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                   LLM Model (Optional):
                   <input
                     type="text"

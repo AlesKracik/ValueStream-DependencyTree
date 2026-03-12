@@ -74,9 +74,9 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                 style={{
                     width: '100%',
                     padding: '8px 12px',
-                    backgroundColor: '#374151',
-                    color: '#fff',
-                    border: '1px solid #4b5563',
+                    backgroundColor: 'var(--bg-tertiary)',
+                    color: 'var(--text-primary)',
+                    border: '1px solid var(--border-secondary)',
                     borderRadius: '4px',
                     boxSizing: 'border-box',
                     fontSize: '14px'
@@ -89,15 +89,15 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                     left: 0,
                     right: 0,
                     zIndex: 1000,
-                    backgroundColor: '#1f2937',
-                    border: '1px solid #4b5563',
+                    backgroundColor: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-primary)',
                     borderRadius: '4px',
                     marginTop: '4px',
                     padding: 0,
                     listStyle: 'none',
                     maxHeight: '200px',
                     overflowY: 'auto',
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)'
+                    boxShadow: '0 10px 15px -3px var(--bg-shadow)'
                 }}>
                     {filteredOptions.map(option => (
                         <li
@@ -106,11 +106,11 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                             style={{
                                 padding: '8px 12px',
                                 cursor: 'pointer',
-                                color: '#e5e7eb',
+                                color: 'var(--text-primary)',
                                 fontSize: '14px',
-                                borderBottom: '1px solid #374151'
+                                borderBottom: '1px solid var(--border-secondary)'
                             }}
-                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#374151')}
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-tertiary)')}
                             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                         >
                             {option.label}
@@ -125,12 +125,12 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                     left: 0,
                     right: 0,
                     zIndex: 1000,
-                    backgroundColor: '#1f2937',
-                    border: '1px solid #4b5563',
+                    backgroundColor: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-primary)',
                     borderRadius: '4px',
                     marginTop: '4px',
                     padding: '8px 12px',
-                    color: '#9ca3af',
+                    color: 'var(--text-muted)',
                     fontSize: '14px'
                 }}>
                     No options found

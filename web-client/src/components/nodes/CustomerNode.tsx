@@ -41,7 +41,7 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
             type: 'source' as const, 
             position: Position.Right, 
             id: 'potential', 
-            style: { background: '#60a5fa', width: '6px', height: '6px', right: '-3px', top: outerSize / 2 } 
+            style: { background: 'var(--accent-text)', width: '6px', height: '6px', right: '-3px', top: outerSize / 2 } 
         }
     ];
 
@@ -62,8 +62,8 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
         <BaseCircleNode
             size={outerSize}
             label={data.label}
-            backgroundColor="rgba(59, 130, 246, 0.15)"
-            borderColor="rgba(59, 130, 246, 0.6)"
+            backgroundColor="var(--node-customer-bg)"
+            borderColor="var(--node-customer-border)"
             borderStyle="dashed"
             borderWidth={2}
             handles={handles}
@@ -80,9 +80,9 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
             {/* Total Text (Delta/Potential) */}
             <span style={{ 
                 fontSize: outerFontSize, 
-                color: '#60a5fa', 
+                color: 'var(--accent-text)', 
                 fontWeight: 'bold',
-                textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+                textShadow: '0 1px 2px var(--bg-shadow)',
                 zIndex: 1
             }}>
                 {formatTcv(data.potentialTcv, data.potentialTcvDuration)}
@@ -98,13 +98,13 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
                     width: `${innerSize}px`,
                     height: `${innerSize}px`,
                     borderRadius: '50%',
-                    backgroundColor: '#3b82f6', // Solid Light Blue
+                    backgroundColor: 'var(--node-customer-inner)', // Solid Light Blue
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#fff',
-                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                    color: 'var(--text-highlight)',
+                    boxShadow: '0 4px 6px -1px var(--bg-shadow)',
                     border: innerSize > 0 ? '2px solid rgba(255, 255, 255, 0.3)' : 'none',
                     transition: 'all 0.2s',
                     textAlign: 'center',
@@ -118,7 +118,7 @@ export const CustomerNode = memo(({ data }: { data: CustomerNodeData }) => {
                         fontWeight: 'bold', 
                         fontSize: innerFontSize, 
                         opacity: 1,
-                        textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                        textShadow: '0 1px 2px var(--bg-shadow)'
                     }}>
                         {formatTcv(data.existingTcv, data.existingTcvDuration)}
                     </div>

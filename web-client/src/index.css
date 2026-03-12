@@ -3,9 +3,66 @@
   line-height: 1.5;
   font-weight: 400;
 
+  /* Theme Variables - Default: Dark mode */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #111827;
+  --bg-input-focus: #0f172a;
+  --bg-input-disabled: #1f2937;
+  --bg-page: #242424;
+  --bg-page-muted: rgba(255, 255, 255, 0.01);
+  --bg-shadow: rgba(0, 0, 0, 0.5);
+  
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-highlight: #e2e8f0;
+  --text-link: #646cff;
+  --text-link-hover: #535bf2;
+
+  /* Node Specific Colors */
+  --node-customer-bg: rgba(59, 130, 246, 0.15);
+  --node-customer-border: rgba(59, 130, 246, 0.6);
+  --node-customer-inner: #3b82f6;
+  --node-workitem-bg: #8b5cf6;
+  --node-frozen-bg: #475569;
+  --node-team-bg: #4b5563;
+  --node-score: #fcd34d;
+  
+  --node-sprint-bg: #1f2937;
+  --node-sprint-border: #374151;
+  --node-sprint-text: #f3f4f6;
+  --node-sprint-over-bg: #7f1d1d;
+  --node-sprint-over-border: #ef4444;
+  --node-sprint-over-text: #fca5a5;
+  --node-sprint-allocated-bg: #14532d;
+  --node-sprint-allocated-border: #22c55e;
+  --node-sprint-allocated-text: #86efac;
+  
+  --border-primary: #334155;
+  --border-secondary: #374151;
+  --border-hover: #4b5563;
+  --edge-color: #4b5563;
+  
+  --accent-primary: #3b82f6;
+  --accent-primary-bg: rgba(59, 130, 246, 0.1);
+  --accent-secondary: #1d4ed8;
+  --accent-focus: #3b82f6;
+  --accent-text: #60a5fa;
+  
+  --status-success: #10b981;
+  --status-success-bg: rgba(16, 185, 129, 0.2);
+  --status-warning: #f59e0b;
+  --status-warning-bg: rgba(245, 158, 11, 0.1);
+  --status-danger: #ef4444;
+  --status-danger-bg: rgba(239, 68, 68, 0.1);
+  --status-danger-text: #f87171;
+  --status-danger-border: #b91c1c;
+  --icon-filter: none;
+
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color: var(--text-primary);
+  background-color: var(--bg-page);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -13,13 +70,73 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+[data-theme='filips'] {
+  --bg-primary: #f3f4f6;        /* Lighter Slate */
+  --bg-secondary: #e5e7eb;
+  --bg-tertiary: #ffffff;
+  --bg-input-focus: #ffffff;
+  --bg-input-disabled: #e5e7eb;
+  --bg-page: #f9fafb;           /* Bright Off-white base */
+  --bg-page-muted: rgba(0, 0, 0, 0.02);
+  --bg-shadow: rgba(0, 0, 0, 0.08);
+  
+  --text-primary: #0f172a;      /* Near Black */
+  --text-secondary: #1e293b;    /* Very Dark Slate */
+  --text-muted: #1e293b;        /* Darkened from #334155 for visibility */
+  --text-highlight: #000000;
+  --text-link: #2563eb;
+  --text-link-hover: #1d4ed8;
+
+  /* Node Specific Colors - Muted Pastel (Something in between) */
+  --node-customer-bg: #7dd3fc;        /* Defined Pastel Blue */
+  --node-customer-border: #38bdf8;
+  --node-customer-inner: #0284c7;
+  --node-workitem-bg: #d8b4fe;        /* Defined Pastel Purple */
+  --node-frozen-bg: #cbd5e1;
+  --node-team-bg: #94a3b8;            /* Defined Muted Slate */
+  --node-score: #92400e;              /* Deep readable gold */
+
+  --node-sprint-bg: #e2e8f0;
+  --node-sprint-border: #94a3b8;
+  --node-sprint-text: #0f172a;        /* Matched to text-primary */
+  --node-sprint-over-bg: #fca5a5;     /* Muted Pastel Red */
+  --node-sprint-over-border: #f87171;
+  --node-sprint-over-text: #7f1d1d;
+  --node-sprint-allocated-bg: #86efac;  /* Muted Pastel Green */
+  --node-sprint-allocated-border: #4ade80;
+  --node-sprint-allocated-text: #064e3b;
+  
+  --border-primary: #cbd5e1;
+  --border-secondary: #94a3b8;
+  --border-hover: #64748b;
+  --edge-color: #cbd5e1;
+  
+  --accent-primary: #93c5fd;          /* Stronger Pastel Blue */
+  --accent-primary-bg: #dbeafe;
+  --accent-secondary: #3b82f6;
+  --accent-focus: #2563eb;
+  --accent-text: #3b82f6;        /* Aligned with dark mode blue but readable on light */
+  
+  --status-success: #16a34a;
+  --status-success-bg: #dcfce7;
+  --status-warning: #d97706;    /* Darkened for visibility on light bg */
+  --status-warning-bg: #fef3c7;
+  --status-danger: #dc2626;
+  --status-danger-bg: #fee2e2;
+  --status-danger-text: #991b1b;
+  --status-danger-border: #f87171;
+  --icon-filter: brightness(0.6) contrast(1.2);
+
+  color-scheme: light;
+}
+
 a {
   font-weight: 500;
-  color: #646cff;
+  color: var(--text-link);
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  color: var(--text-link-hover);
 }
 
 body {
@@ -28,6 +145,8 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
 }
 
 h1 {
@@ -53,9 +172,20 @@ button {
   line-height: 1.25;
 }
 
+[data-theme='filips'] button {
+  background-color: #bfdbfe;
+  color: #0f172a;
+  border-color: #93c5fd;
+}
+
 button:hover {
   background-color: #4b5563;
   border-color: #6b7280;
+}
+
+[data-theme='filips'] button:hover {
+  background-color: #93c5fd;
+  border-color: #60a5fa;
 }
 
 button:disabled {
@@ -65,46 +195,52 @@ button:disabled {
 
 button:focus,
 button:focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid var(--accent-focus);
   outline-offset: 2px;
 }
 
 /* Primary Button (Blue) */
 .btn-primary {
-  background-color: #2563eb;
-  border-color: #1d4ed8;
+  background-color: var(--accent-primary);
+  border-color: var(--accent-secondary);
   color: white;
 }
 
 .btn-primary:hover {
-  background-color: #1d4ed8;
-  border-color: #1e40af;
+  background-color: var(--accent-secondary);
+  border-color: var(--accent-focus);
 }
 
 /* Danger Button (Red) */
 .btn-danger {
-  background-color: #991b1b;
-  border-color: #7f1d1d;
-  color: #fca5a5;
+  background-color: var(--status-danger);
+  border-color: var(--status-danger-border);
+  color: #fff;
+}
+
+[data-theme='filips'] .btn-danger {
+    background-color: var(--status-danger);
+    border-color: var(--status-danger-border);
+    color: white;
 }
 
 .btn-danger:hover {
-  background-color: #b91c1c;
+  background-color: var(--status-danger-border);
   color: white;
-  border-color: #991b1b;
+  border-color: var(--status-danger);
 }
 
 /* Secondary/Ghost Button */
 .btn-secondary {
   background-color: transparent;
-  border: 1px solid #4b5563;
-  color: #d1d5db;
+  border: 1px solid var(--border-hover);
+  color: var(--text-secondary);
 }
 
 .btn-secondary:hover {
-  background-color: #374151;
-  border-color: #6b7280;
-  color: white;
+  background-color: var(--bg-secondary);
+  border-color: var(--border-primary);
+  color: var(--text-highlight);
 }
 
 /* Global Input Styles */
@@ -116,10 +252,10 @@ input[type="password"],
 input[type="email"],
 select,
 textarea {
-  background-color: #111827;
-  border: 1px solid #374151;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-secondary);
   border-radius: 6px;
-  color: #f9fafb;
+  color: var(--text-primary);
   padding: 8px 12px;
   font-size: 14px;
   font-family: inherit;
@@ -132,15 +268,15 @@ textarea {
 input:hover,
 select:hover,
 textarea:hover {
-  border-color: #4b5563;
+  border-color: var(--border-hover);
 }
 
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: #3b82f6;
+  border-color: var(--accent-focus);
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-  background-color: #0f172a;
+  background-color: var(--bg-input-focus);
 }
 
 input:disabled,
@@ -148,7 +284,7 @@ select:disabled,
 textarea:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background-color: #1f2937;
+  background-color: var(--bg-input-disabled);
 }
 
 /* Specific fix for date/select height consistency */
@@ -165,19 +301,18 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   transition: opacity 0.2s;
 }
 
+[data-theme='filips'] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0);
+}
+
 input[type="date"]::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
 }
 
 @media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
+  /* We'll let the theme toggle handle this, but keeping a fallback */
+  :root:not([data-theme='dark']) {
+    /* If the user hasn't explicitly set a theme, we could follow system, 
+       but for this task we want explicit control via Settings. */
   }
 }

@@ -23,17 +23,17 @@ export const TeamNode = memo(({ data }: { data: TeamNodeData }) => {
         <BaseCircleNode
             size={nodeSize}
             label={data.label}
-            backgroundColor="#4b5563"
+            backgroundColor="var(--node-team-bg)"
             handles={handles}
         >
             <div style={{ 
                 fontWeight: 'bold', 
                 fontSize: `${Math.max(10, nodeSize * 0.18)}px`,
-                opacity: 1
+                color: 'var(--text-highlight)'
             }}>
                 {data.capacityMds}
             </div>
-            <div style={{ fontSize: `${Math.max(8, nodeSize * 0.1)}px`, opacity: 0.8 }}>MDs</div>
+            <div style={{ fontSize: `${Math.max(8, nodeSize * 0.1)}px`, color: 'var(--text-primary)', fontWeight: 'bold' }}>MDs</div>
         </BaseCircleNode>
     );
 });

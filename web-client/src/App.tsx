@@ -125,6 +125,11 @@ function MainAppContent() {
   const { showAlert } = useNotificationContext();
   const globalState = useValueStreamData(undefined, undefined, 1000, showAlert);
 
+  useEffect(() => {
+    const theme = globalState.data?.settings?.general?.theme || 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [globalState.data?.settings?.general?.theme]);
+
   return (
     <ValueStreamProvider value={{ data: globalState.data, updateEpic: globalState.updateEpic }}>
       <BrowserRouter>

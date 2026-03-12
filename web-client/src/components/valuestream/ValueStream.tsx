@@ -371,7 +371,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                             >
                                 &lt;
                             </button>
-                            <span style={{ color: '#9ca3af', fontSize: '14px', alignSelf: 'center', padding: '0 8px' }}>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '14px', alignSelf: 'center', padding: '0 8px' }}>
                                 Sprints
                             </span>
                             <button
@@ -511,7 +511,6 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                     maxZoom={1.5}
                     proOptions={{ hideAttribution: true }}
                 >
-                    <Background color="#1a1a1a" variant={BackgroundVariant.Lines} gap={100} />
                     <ValueStreamControls data={data} nodes={nodes} setViewState={setViewState} />
                 </ReactFlow>
             </div>

@@ -6,19 +6,28 @@
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
 }
 
-.loading, .error, .empty {
+.loading, .empty {
     display: flex;
     justify-content: center;
     align-items: center;
     height: 200px;
-    color: #94a3b8;
+    color: var(--text-muted);
     font-size: 16px;
     text-align: center;
     padding: 40px;
 }
 
 .error {
-    color: #f87171;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 200px;
+    color: var(--status-danger-text);
+    font-size: 16px;
+    text-align: center;
+    padding: 40px;
 }

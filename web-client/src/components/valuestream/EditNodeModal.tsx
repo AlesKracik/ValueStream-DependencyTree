@@ -176,14 +176,14 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                         const epicSum = workItemEpics.reduce((sum, e) => sum + (e.effort_md || 0), 0);
                         
                         return (
-                            <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '-8px', padding: '0 4px' }}>
-                                Effective total: <span style={{ color: '#60a5fa', fontWeight: 'bold' }}>{calculatedEffort} MDs</span>
+                            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '-8px', padding: '0 4px' }}>
+                                Effective total: <span style={{ color: 'var(--accent-text)', fontWeight: 'bold' }}>{calculatedEffort} MDs</span>
                                 {epicSum > 0 && <span> (Epic sum: {epicSum} MDs takes precedence)</span>}
                             </div>
                         );
                     })()}
                     
-                    <div style={{ padding: '12px', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderRadius: '6px', marginBottom: '16px', marginTop: '8px' }}>
+                    <div style={{ padding: '12px', backgroundColor: 'var(--accent-primary-bg)', borderRadius: '6px', marginBottom: '16px', marginTop: '8px' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginBottom: formData.all_customers_target ? '12px' : '0' }}>
                             <input 
                                 type="checkbox" 
@@ -196,14 +196,14 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                                     });
                                 }} 
                             />
-                            <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#60a5fa' }}>Relates to ALL Customers (Global)</span>
+                            <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--accent-text)' }}>Relates to ALL Customers (Global)</span>
                         </label>
 
                         {formData.all_customers_target && (
                             <div style={{ display: 'flex', gap: '12px' }}>
                                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                     <select
-                                        style={{ width: '100%', padding: '6px', borderRadius: '4px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563' }}
+                                        style={{ width: '100%', padding: '6px', borderRadius: '4px', backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-primary)' }}
                                         value={formData.all_customers_target.tcv_type}
                                         onChange={e => setFormData({ 
                                             ...formData, 
@@ -214,11 +214,11 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                                         <option value="potential">Potential TCV</option>
                                     </select>
                                     {formData.all_customers_target.tcv_type === 'existing' && (
-                                        <span style={{ fontSize: '10px', color: '#94a3b8' }}>Always uses latest actual TCV</span>
+                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Always uses latest actual TCV</span>
                                     )}
                                 </div>
                                 <select
-                                    style={{ flex: 1, height: 'fit-content', padding: '6px', borderRadius: '4px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563' }}
+                                    style={{ flex: 1, height: 'fit-content', padding: '6px', borderRadius: '4px', backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-primary)' }}
                                     value={formData.all_customers_target.priority || 'Must-have'}
                                     onChange={e => setFormData({ 
                                         ...formData, 
@@ -235,17 +235,17 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
 
                     {!formData.all_customers_target && (
                         <div style={{ marginTop: '16px' }}>
-                            <h3 style={{ fontSize: '14px', color: '#e2e8f0', marginBottom: '8px' }}>Customer Targets Prioritization</h3>
+                            <h3 style={{ fontSize: '14px', color: 'var(--text-highlight)', marginBottom: '8px' }}>Customer Targets Prioritization</h3>
                             {(formData.customer_targets || []).map((target: any, idx: number) => {
                                 const cst = data.customers.find(c => c.id === target.customer_id);
                                 return (
-                                    <div key={`${target.customer_id}-${target.tcv_type}`} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px', padding: '8px', backgroundColor: '#1e293b', borderRadius: '4px' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: '#cbd5e1' }}>
+                                    <div key={`${target.customer_id}-${target.tcv_type}`} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px', padding: '8px', backgroundColor: 'var(--bg-secondary)', borderRadius: '4px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: 'var(--text-secondary)' }}>
                                             <span style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 'bold' }}>
                                                 {cst?.name || target.customer_id} ({target.tcv_type})
                                             </span>
                                             <select
-                                                style={{ padding: '4px 8px', borderRadius: '4px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', cursor: 'pointer' }}
+                                                style={{ padding: '4px 8px', borderRadius: '4px', backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-primary)', cursor: 'pointer' }}
                                                 value={target.priority || 'Must-have'}
                                                 onChange={e => {
                                                     const newTargets = [...formData.customer_targets];
@@ -260,9 +260,9 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                                         </div>
                                         {target.tcv_type === 'existing' && cst?.tcv_history && cst.tcv_history.length > 0 && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                <span style={{ fontSize: '11px', color: '#94a3b8' }}>History:</span>
+                                                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>History:</span>
                                                 <select
-                                                    style={{ flex: 1, padding: '4px 8px', borderRadius: '4px', backgroundColor: '#374151', color: '#fff', border: '1px solid #4b5563', cursor: 'pointer', fontSize: '11px' }}
+                                                    style={{ flex: 1, padding: '4px 8px', borderRadius: '4px', backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-primary)', cursor: 'pointer', fontSize: '11px' }}
                                                     value={target.tcv_history_id || 'latest'}
                                                     onChange={e => {
                                                         const newTargets = [...formData.customer_targets];
@@ -333,20 +333,20 @@ const styles: Record<string, React.CSSProperties> = {
         zIndex: 1000
     },
     modal: {
-        backgroundColor: '#1f2937',
-        border: '1px solid #374151',
+        backgroundColor: 'var(--bg-secondary)',
+        border: '1px solid var(--border-primary)',
         borderRadius: '8px',
         padding: '24px',
         width: '400px',
         maxWidth: '90%',
-        color: '#f9fafb',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)'
+        color: 'var(--text-primary)',
+        boxShadow: '0 20px 25px -5px var(--bg-shadow)'
     },
     title: {
         marginTop: 0,
         marginBottom: '20px',
         fontSize: '18px',
-        borderBottom: '1px solid #374151',
+        borderBottom: '1px solid var(--border-primary)',
         paddingBottom: '10px'
     },
     formContainer: {
@@ -359,14 +359,14 @@ const styles: Record<string, React.CSSProperties> = {
         flexDirection: 'column',
         gap: '6px',
         fontSize: '14px',
-        color: '#d1d5db'
+        color: 'var(--text-secondary)'
     },
     input: {
         padding: '8px 12px',
         borderRadius: '4px',
-        border: '1px solid #4b5563',
-        backgroundColor: '#111827',
-        color: '#f9fafb',
+        border: '1px solid var(--border-secondary)',
+        backgroundColor: 'var(--bg-tertiary)',
+        color: 'var(--text-primary)',
         fontSize: '14px'
     },
     buttonGroup: {
@@ -378,14 +378,14 @@ const styles: Record<string, React.CSSProperties> = {
     cancelBtn: {
         padding: '8px 16px',
         backgroundColor: 'transparent',
-        border: '1px solid #4b5563',
-        color: '#d1d5db',
+        border: '1px solid var(--border-hover)',
+        color: 'var(--text-secondary)',
         borderRadius: '4px',
         cursor: 'pointer'
     },
     saveBtn: {
         padding: '8px 16px',
-        backgroundColor: '#8b5cf6',
+        backgroundColor: 'var(--accent-primary)',
         border: 'none',
         color: 'white',
         borderRadius: '4px',

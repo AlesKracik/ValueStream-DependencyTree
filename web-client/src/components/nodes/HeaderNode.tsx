@@ -10,7 +10,7 @@ export const HeaderNode = memo(({ data }: { data: HeaderNodeData }) => {
       padding: '10px 20px',
       borderRadius: '8px',
       backgroundColor: 'transparent',
-      color: '#94a3b8',
+      color: 'var(--text-muted)',
       fontSize: '18px',
       fontWeight: 'bold',
       textTransform: 'uppercase',
@@ -18,7 +18,7 @@ export const HeaderNode = memo(({ data }: { data: HeaderNodeData }) => {
       textAlign: 'center',
       width: '220px',
       boxSizing: 'border-box',
-      borderBottom: '2px solid #334155'
+      borderBottom: '2px solid var(--border-primary)'
     }}>
       {data.label}
     </div>

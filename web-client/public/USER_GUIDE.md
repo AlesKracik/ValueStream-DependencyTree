@@ -231,3 +231,20 @@ Configuration and security parameters that govern the platform.
 *   **Jira Integration:** Configure JQL templates for automated ticket discovery.
 *   **AI Settings (Optional):** Configure LLM providers (OpenAI, Gemini, Anthropic) for potential future enhancements.
 *   **Security:** Masking for sensitive credentials and session-based `ADMIN_SECRET` protection.
+
+### 🎨 Theming & Accessibility
+
+The platform supports multiple visual modes to accommodate different environments and preferences.
+
+**Switching Themes:**
+1.  Navigate to the **Settings** page.
+2.  Open the **General Project** tab.
+3.  Locate the **Color Palette** dropdown.
+4.  Choose between **Dark mode** (Default) or **Filips mode**.
+
+**Available Modes:**
+-   **Dark mode:** A high-contrast dark interface optimized for low-light environments.
+-   **Filips mode:** A "muted dim" pastel theme using a soft slate-grey base and high-contrast text. This mode is designed for maximum readability in bright environments while maintaining a distinct, modern aesthetic.
+
+*Note: Your theme preference is automatically saved to your browser and will be applied instantly upon your next visit.*
+

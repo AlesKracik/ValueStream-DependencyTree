@@ -99,6 +99,7 @@ export interface Sprint {
 export interface GeneralSettings {
   fiscal_year_start_month: number;
   sprint_duration_days: number;
+  theme?: 'dark' | 'filips';
 }
 
 export interface JiraSettings {
