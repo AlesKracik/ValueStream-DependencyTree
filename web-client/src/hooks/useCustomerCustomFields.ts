@@ -20,7 +20,7 @@ export function useCustomerCustomFields(customerOrCustomers: Customer | Customer
         async function fetchData() {
             const customerMongo = settings?.persistence?.mongo?.customer;
             if (customerIds.length === 0 || !customerMongo?.uri || !customerMongo?.custom_query) {
-                setData([]);
+                setData(prev => prev.length === 0 ? prev : []);
                 return;
             }
 
@@ -35,7 +35,8 @@ export function useCustomerCustomFields(customerOrCustomers: Customer | Customer
                 
                 const queryStr = customerMongo.custom_query.replace(/"?{{CUSTOMER_ID}}"?/g, JSON.stringify(replacementValue));
 
-                const response = await authorizedFetch('/api/mongo/query', {                    method: 'POST',
+                const response = await authorizedFetch('/api/mongo/query', {
+                    method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         persistence: {
@@ -53,7 +54,7 @@ export function useCustomerCustomFields(customerOrCustomers: Customer | Customer
                     setData(resData.data || []);
                 } else {
                     setError(resData.error || 'Failed to fetch custom fields');
-                    setData([]);
+                    setData(prev => prev.length === 0 ? prev : []);
                 }
             } catch (err: unknown) {
                 console.error('Error fetching custom fields:', err);
@@ -65,7 +66,8 @@ export function useCustomerCustomFields(customerOrCustomers: Customer | Customer
         }
 
         fetchData();
-    }, [customerIdsKey, customerIds, settings]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [customerIdsKey, settings]);
 
     return { data, loading, error };
 }
