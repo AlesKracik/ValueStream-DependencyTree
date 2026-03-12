@@ -529,141 +529,73 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           <h1>Settings</h1>
         </div>
 
-        <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid var(--border-secondary)', marginBottom: '24px' }}>
-          <button
-            onClick={() => setTab("general")}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: '8px 16px',
-              color: activeTab === "general" ? 'var(--accent-text)' : 'var(--text-muted)',
-              borderBottom: activeTab === "general" ? '2px solid var(--accent-text)' : '2px solid transparent',
-              cursor: 'pointer',
-              fontSize: '15px',
-              fontWeight: activeTab === "general" ? 'bold' : 'normal',
-            }}
-          >
-            General Project
-          </button>
-          <button
-            onClick={() => setTab("persistence")}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: '8px 16px',
-              color: activeTab === "persistence" ? 'var(--accent-text)' : 'var(--text-muted)',
-              borderBottom: activeTab === "persistence" ? '2px solid var(--accent-text)' : '2px solid transparent',
-              cursor: 'pointer',
-              fontSize: '15px',
-              fontWeight: activeTab === "persistence" ? 'bold' : 'normal',
-            }}
-          >
-            Persistence
-          </button>
-          <button
-            onClick={() => setTab("jira")}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: '8px 16px',
-              color: activeTab === "jira" ? 'var(--accent-text)' : 'var(--text-muted)',
-              borderBottom: activeTab === "jira" ? '2px solid var(--accent-text)' : '2px solid transparent',
-              cursor: 'pointer',
-              fontSize: '15px',
-              fontWeight: activeTab === "jira" ? 'bold' : 'normal',
-            }}
-          >
-            Jira Integration
-          </button>
-          <button
-            onClick={() => setTab("ai")}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: '8px 16px',
-              color: activeTab === "ai" ? 'var(--accent-text)' : 'var(--text-muted)',
-              borderBottom: activeTab === "ai" ? '2px solid var(--accent-text)' : '2px solid transparent',
-              cursor: 'pointer',
-              fontSize: '15px',
-              fontWeight: activeTab === "ai" ? 'bold' : 'normal',
-            }}
-          >
-            AI & LLM
-          </button>
-        </div>
+        <div className={styles.tabContainer}>
+          <nav className={styles.tabHeader}>
+            <button
+              onClick={() => setTab("general")}
+              className={`${styles.tabButton} ${activeTab === "general" ? styles.activeTab : ''}`}
+            >
+              General Project
+            </button>
+            <button
+              onClick={() => setTab("persistence")}
+              className={`${styles.tabButton} ${activeTab === "persistence" ? styles.activeTab : ''}`}
+            >
+              Persistence
+            </button>
+            <button
+              onClick={() => setTab("jira")}
+              className={`${styles.tabButton} ${activeTab === "jira" ? styles.activeTab : ''}`}
+            >
+              Jira Integration
+            </button>
+            <button
+              onClick={() => setTab("ai")}
+              className={`${styles.tabButton} ${activeTab === "ai" ? styles.activeTab : ''}`}
+            >
+              AI & LLM
+            </button>
+          </nav>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          {activeTab === "persistence" && (
-            <>
-              <div style={{ display: 'flex', gap: '12px', borderBottom: '1px solid var(--border-secondary)', marginBottom: '20px' }}>
-                <button
-                  onClick={() => setSubTab("mongo")}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    padding: '8px 12px',
-                    color: activeSubTab === "mongo" ? 'var(--accent-text)' : 'var(--text-muted)',
-                    borderBottom: activeSubTab === "mongo" ? '2px solid var(--accent-text)' : '2px solid transparent',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: activeSubTab === "mongo" ? 'bold' : 'normal',
-                  }}
-                >
-                  Mongo
-                </button>
-                <button
-                  onClick={() => setSubTab("file")}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    padding: '8px 12px',
-                    color: activeSubTab === "file" ? 'var(--accent-text)' : 'var(--text-muted)',
-                    borderBottom: activeSubTab === "file" ? '2px solid var(--accent-text)' : '2px solid transparent',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: activeSubTab === "file" ? 'bold' : 'normal',
-                  }}
-                >
-                  File
-                </button>
-              </div>
-
-              {activeSubTab === "mongo" && (
-                <>
-                  <div style={{ display: 'flex', gap: '12px', borderBottom: '1px solid var(--border-primary)', marginBottom: '20px' }}>
+          <div className={styles.tabContent}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {activeTab === "persistence" && (
+                <div className={styles.tabContainer}>
+                  <nav className={styles.tabHeader}>
                     <button
-                      onClick={() => setSubSubTab("application")}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        padding: '6px 12px',
-                        color: activeSubSubTab === "application" ? 'var(--accent-text)' : 'var(--text-muted)',
-                        borderBottom: activeSubSubTab === "application" ? '2px solid var(--accent-text)' : '2px solid transparent',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        fontWeight: activeSubSubTab === "application" ? 'bold' : 'normal',
-                      }}
+                      onClick={() => setSubTab("mongo")}
+                      className={`${styles.tabButton} ${activeSubTab === "mongo" ? styles.activeTab : ''}`}
                     >
-                      Application
+                      Mongo
                     </button>
                     <button
-                      onClick={() => setSubSubTab("customer")}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        padding: '6px 12px',
-                        color: activeSubSubTab === "customer" ? 'var(--accent-text)' : 'var(--text-muted)',
-                        borderBottom: activeSubSubTab === "customer" ? '2px solid var(--accent-text)' : '2px solid transparent',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        fontWeight: activeSubSubTab === "customer" ? 'bold' : 'normal',
-                      }}
+                      onClick={() => setSubTab("file")}
+                      className={`${styles.tabButton} ${activeSubTab === "file" ? styles.activeTab : ''}`}
                     >
-                      Customer
+                      File
                     </button>
-                  </div>
+                  </nav>
 
-                  {activeSubSubTab === "application" && (
+                  <div className={styles.tabContent}>
+                    {activeSubTab === "mongo" && (
+                      <div className={styles.tabContainer}>
+                        <nav className={styles.tabHeader}>
+                          <button
+                            onClick={() => setSubSubTab("application")}
+                            className={`${styles.tabButton} ${activeSubSubTab === "application" ? styles.activeTab : ''}`}
+                          >
+                            Application
+                          </button>
+                          <button
+                            onClick={() => setSubSubTab("customer")}
+                            className={`${styles.tabButton} ${activeSubSubTab === "customer" ? styles.activeTab : ''}`}
+                          >
+                            Customer
+                          </button>
+                        </nav>
+
+                        <div className={styles.tabContent}>
+                          {activeSubSubTab === "application" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                       <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                         Authentication Method:
@@ -1520,223 +1452,200 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       </label>
                     </div>
                   )}
-                </>
-              )}
-
-              {activeSubTab === "file" && (
-                <div style={{ color: "var(--text-muted)", fontSize: "14px" }}>
-                  File-based persistence configuration will be available here.
                 </div>
-              )}
-            </>
-          )}
+              </div>
+            )}
+
+            {activeSubTab === "file" && (
+              <div style={{ color: "var(--text-muted)", fontSize: "14px" }}>
+                File-based persistence configuration will be available here.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
           {activeTab === "jira" && (
-            <>
-              <div style={{ display: 'flex', gap: '12px', borderBottom: '1px solid var(--border-secondary)', marginBottom: '20px' }}>
+            <div className={styles.tabContainer}>
+              <nav className={styles.tabHeader}>
                 <button
                   onClick={() => setSubTab("common")}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    padding: '8px 12px',
-                    color: activeSubTab === "common" ? 'var(--accent-text)' : 'var(--text-muted)',
-                    borderBottom: activeSubTab === "common" ? '2px solid var(--accent-text)' : '2px solid transparent',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: activeSubTab === "common" ? 'bold' : 'normal',
-                  }}
+                  className={`${styles.tabButton} ${activeSubTab === "common" ? styles.activeTab : ''}`}
                 >
                   Common
                 </button>
                 <button
                   onClick={() => setSubTab("epics")}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    padding: '8px 12px',
-                    color: activeSubTab === "epics" ? 'var(--accent-text)' : 'var(--text-muted)',
-                    borderBottom: activeSubTab === "epics" ? '2px solid var(--accent-text)' : '2px solid transparent',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: activeSubTab === "epics" ? 'bold' : 'normal',
-                  }}
+                  className={`${styles.tabButton} ${activeSubTab === "epics" ? styles.activeTab : ''}`}
                 >
                   Epics
                 </button>
                 <button
                   onClick={() => setSubTab("customer")}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    padding: '8px 12px',
-                    color: activeSubTab === "customer" ? 'var(--accent-text)' : 'var(--text-muted)',
-                    borderBottom: activeSubTab === "customer" ? '2px solid var(--accent-text)' : '2px solid transparent',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: activeSubTab === "customer" ? 'bold' : 'normal',
-                  }}
+                  className={`${styles.tabButton} ${activeSubTab === "customer" ? styles.activeTab : ''}`}
                 >
                   Customer
                 </button>
+              </nav>
+
+              <div className={styles.tabContent}>
+                {activeSubTab === "common" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                      Jira Base URL:
+                      <input
+                        type="url"
+                        placeholder="https://yourdomain.atlassian.net"
+                        value={localFormData.jira.base_url || ""}
+                        onChange={(e) => updateFormData('jira.base_url', e.target.value)}
+                        onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, base_url: localFormData.jira.base_url } })}
+                      />
+                    </label>
+
+                    <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                      Jira API Version:
+                      <select
+                        value={localFormData.jira.api_version}
+                        onChange={(e) => {
+                            const val = e.target.value as "2" | "3";
+                            updateFormData('jira.api_version', val);
+                            onUpdateSettings({ jira: { ...localFormData.jira, api_version: val } });
+                        }}
+                      >
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                      </select>
+                    </label>
+
+                    <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                      Jira Personal Access Token (PAT):
+                      <input
+                        type="password"
+                        placeholder="Your Jira PAT"
+                        value={localFormData.jira.api_token || ""}
+                        onChange={(e) => updateFormData('jira.api_token', e.target.value)}
+                        onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, api_token: localFormData.jira.api_token } })}
+                      />
+                    </label>
+
+                    <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={handleJiraTestConnection}
+                        disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira.base_url && !settings.jira.base_url) && (!localFormData.jira.api_token && !settings.jira.api_token))}
+                      >
+                        {isTesting ? "Testing..." : "Test Connection"}
+                      </button>
+                    </div>
+
+                    {jiraTestResult && (
+                      <div
+                        style={{
+                          padding: "10px",
+                          borderRadius: "4px",
+                          fontSize: "14px",
+                          backgroundColor: jiraTestResult.success ? "var(--status-success-bg)" : "var(--status-danger-bg)",
+                          color: jiraTestResult.success ? "var(--status-success)" : "var(--status-danger-text)",
+                          border: `1px solid ${jiraTestResult.success ? "var(--status-success)" : "var(--status-danger-border)"}`,
+                          marginTop: "8px",
+                        }}
+                      >
+                        {jiraTestResult.message}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeSubTab === "epics" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                      Import JQL Query:
+                      <input
+                        type="text"
+                        placeholder="project = PROJ AND issuetype = Epic"
+                        value={importJql}
+                        onChange={(e) => setImportJql(e.target.value)}
+                      />
+                    </label>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={handleImportFromJira}
+                        style={{ alignSelf: "flex-start" }}
+                        disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira.base_url && !settings.jira.base_url) && (!localFormData.jira.api_token && !settings.jira.api_token)) || !importJql.trim()}
+                      >
+                        {isImporting ? importProgress : "Import from Jira"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={handleSyncAllFromJira}
+                        style={{ alignSelf: "flex-start" }}
+                        disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira.base_url && !settings.jira.base_url) && (!localFormData.jira.api_token && !settings.jira.api_token))}
+                      >
+                        {isSyncing ? syncProgress : "Sync Epics from Jira"}
+                      </button>
+                    </div>
+
+                    {importSyncResult && (
+                      <div
+                        style={{
+                          padding: "10px",
+                          borderRadius: "4px",
+                          fontSize: "14px",
+                          backgroundColor: importSyncResult.success ? "var(--status-success-bg)" : "var(--status-danger-bg)",
+                          color: importSyncResult.success ? "var(--status-success)" : "var(--status-danger-text)",
+                          border: `1px solid ${importSyncResult.success ? "var(--status-success)" : "var(--status-danger-border)"}`,
+                          marginTop: "8px",
+                        }}
+                      >
+                        {importSyncResult.message}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeSubTab === "customer" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    <p style={{ color: "var(--text-muted)", fontSize: "13px", margin: "0 0 8px 0" }}>
+                      Use <code>{"{{CUSTOMER_ID}}"}</code> as a placeholder for the customer ID.
+                    </p>
+                    <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                      New / Untriaged JQL:
+                      <input
+                        type="text"
+                        placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'New'"
+                        value={localFormData.jira.customer_jql_new || ""}
+                        onChange={(e) => updateFormData('jira.customer_jql_new', e.target.value)}
+                        onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, customer_jql_new: localFormData.jira.customer_jql_new } })}
+                      />
+                    </label>
+                    <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                      Active Work JQL:
+                      <input
+                        type="text"
+                        placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'In Progress'"
+                        value={localFormData.jira.customer_jql_in_progress || ""}
+                        onChange={(e) => updateFormData('jira.customer_jql_in_progress', e.target.value)}
+                        onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, customer_jql_in_progress: localFormData.jira.customer_jql_in_progress } })}
+                      />
+                    </label>
+                    <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                      Blocked / Pending JQL (Customer or 3rd Party):
+                      <input
+                        type="text"
+                        placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'Blocked'"
+                        value={localFormData.jira.customer_jql_noop || ""}
+                        onChange={(e) => updateFormData('jira.customer_jql_noop', e.target.value)}
+                        onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, customer_jql_noop: localFormData.jira.customer_jql_noop } })}
+                      />
+                    </label>
+                  </div>
+                )}
               </div>
-
-              {activeSubTab === "common" && (
-                <>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-                    Jira Base URL:
-                    <input
-                      type="url"
-                      placeholder="https://yourdomain.atlassian.net"
-                      value={localFormData.jira.base_url || ""}
-                      onChange={(e) => updateFormData('jira.base_url', e.target.value)}
-                      onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, base_url: localFormData.jira.base_url } })}
-                    />
-                  </label>
-
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-                    Jira API Version:
-                    <select
-                      value={localFormData.jira.api_version}
-                      onChange={(e) => {
-                          const val = e.target.value as "2" | "3";
-                          updateFormData('jira.api_version', val);
-                          onUpdateSettings({ jira: { ...localFormData.jira, api_version: val } });
-                      }}
-                    >
-                      <option value="2">2</option>
-                      <option value="3">3</option>
-                    </select>
-                  </label>
-
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-                    Jira Personal Access Token (PAT):
-                    <input
-                      type="password"
-                      placeholder="Your Jira PAT"
-                      value={localFormData.jira.api_token || ""}
-                      onChange={(e) => updateFormData('jira.api_token', e.target.value)}
-                      onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, api_token: localFormData.jira.api_token } })}
-                    />
-                  </label>
-
-                  <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-                    <button
-                      type="button"
-                      className="btn-primary"
-                      onClick={handleJiraTestConnection}
-                      disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira.base_url && !settings.jira.base_url) && (!localFormData.jira.api_token && !settings.jira.api_token))}
-                    >
-                      {isTesting ? "Testing..." : "Test Connection"}
-                    </button>
-                  </div>
-
-                  {jiraTestResult && (
-                    <div
-                      style={{
-                        padding: "10px",
-                        borderRadius: "4px",
-                        fontSize: "14px",
-                        backgroundColor: jiraTestResult.success ? "var(--status-success-bg)" : "var(--status-danger-bg)",
-                        color: jiraTestResult.success ? "var(--status-success)" : "var(--status-danger-text)",
-                        border: `1px solid ${jiraTestResult.success ? "var(--status-success)" : "var(--status-danger-border)"}`,
-                        marginTop: "8px",
-                      }}
-                    >
-                      {jiraTestResult.message}
-                    </div>
-                  )}
-                </>
-              )}
-
-              {activeSubTab === "epics" && (
-                <>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-                    Import JQL Query:
-                    <input
-                      type="text"
-                      placeholder="project = PROJ AND issuetype = Epic"
-                      value={importJql}
-                      onChange={(e) => setImportJql(e.target.value)}
-                    />
-                  </label>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
-                    <button
-                      type="button"
-                      className="btn-primary"
-                      onClick={handleImportFromJira}
-                      style={{ alignSelf: "flex-start" }}
-                      disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira.base_url && !settings.jira.base_url) && (!localFormData.jira.api_token && !settings.jira.api_token)) || !importJql.trim()}
-                    >
-                      {isImporting ? importProgress : "Import from Jira"}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-primary"
-                      onClick={handleSyncAllFromJira}
-                      style={{ alignSelf: "flex-start" }}
-                      disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira.base_url && !settings.jira.base_url) && (!localFormData.jira.api_token && !settings.jira.api_token))}
-                    >
-                      {isSyncing ? syncProgress : "Sync Epics from Jira"}
-                    </button>
-                  </div>
-
-                  {importSyncResult && (
-                    <div
-                      style={{
-                        padding: "10px",
-                        borderRadius: "4px",
-                        fontSize: "14px",
-                        backgroundColor: importSyncResult.success ? "var(--status-success-bg)" : "var(--status-danger-bg)",
-                        color: importSyncResult.success ? "var(--status-success)" : "var(--status-danger-text)",
-                        border: `1px solid ${importSyncResult.success ? "var(--status-success)" : "var(--status-danger-border)"}`,
-                        marginTop: "8px",
-                      }}
-                    >
-                      {importSyncResult.message}
-                    </div>
-                  )}
-                </>
-              )}
-
-              {activeSubTab === "customer" && (
-                <>
-                  <p style={{ color: "var(--text-muted)", fontSize: "13px", margin: "0 0 8px 0" }}>
-                    Use <code>{"{{CUSTOMER_ID}}"}</code> as a placeholder for the customer ID.
-                  </p>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-                    New / Untriaged JQL:
-                    <input
-                      type="text"
-                      placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'New'"
-                      value={localFormData.jira.customer_jql_new || ""}
-                      onChange={(e) => updateFormData('jira.customer_jql_new', e.target.value)}
-                      onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, customer_jql_new: localFormData.jira.customer_jql_new } })}
-                    />
-                  </label>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-                    Active Work JQL:
-                    <input
-                      type="text"
-                      placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'In Progress'"
-                      value={localFormData.jira.customer_jql_in_progress || ""}
-                      onChange={(e) => updateFormData('jira.customer_jql_in_progress', e.target.value)}
-                      onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, customer_jql_in_progress: localFormData.jira.customer_jql_in_progress } })}
-                    />
-                  </label>
-                  <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-                    Blocked / Pending JQL (Customer or 3rd Party):
-                    <input
-                      type="text"
-                      placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'Blocked'"
-                      value={localFormData.jira.customer_jql_noop || ""}
-                      onChange={(e) => updateFormData('jira.customer_jql_noop', e.target.value)}
-                      onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, customer_jql_noop: localFormData.jira.customer_jql_noop } })}
-                    />
-                  </label>
-                </>
-              )}
-            </>
+            </div>
           )}
 
           {activeTab === "general" && (
@@ -1853,6 +1762,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           )}
         </div>
       </div>
-    </PageWrapper>
+    </div>
+  </div>
+</PageWrapper>
   );
 };

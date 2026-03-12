@@ -163,3 +163,57 @@
     letter-spacing: 0.05em;
     border-left: 4px solid var(--accent-text);
 }
+
+/* Tab Styles */
+.tabContainer {
+    margin-top: 8px;
+}
+
+.tabHeader {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid var(--border-secondary);
+    padding-left: 4px;
+}
+
+.tabButton {
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-bottom: none;
+    color: var(--text-muted);
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    margin-bottom: -1px;
+    z-index: 1;
+}
+
+.tabButton:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-tertiary);
+}
+
+.activeTab {
+    color: var(--accent-text);
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-secondary);
+    border-bottom: 1px solid var(--bg-secondary);
+    font-weight: 600;
+}
+
+.tabContent {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-secondary);
+    border-top: none;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    padding: 24px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
