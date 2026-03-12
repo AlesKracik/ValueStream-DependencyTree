@@ -25,11 +25,15 @@ export interface WorkItem {
 }
 ```
 
-## Prioritization Logic (RICE Score)
+## Prioritization Logic (RICE Score / ROI)
 The score is calculated server-side in the Vite backend plugin (`vite.config.ts`):
-- **Impact:** Sum of TCV from all targeted customers, weighted by priority.
-- **Effort:** The maximum of `total_effort_mds` or the sum of effort from connected Epics.
 - **Formula:** `Score = Total Impact / Effort`.
+- **Impact (Total TCV):** The contribution of a customer's TCV to a Work Item's Impact depends on the target priority:
+    - **Must-have**: Contributes **100%** of the associated Customer TCV.
+    - **Should-have**: Contributes a **shared portion** of the Customer TCV. Calculated as: `(Customer TCV) / (Total number of 'Should-have' Work Items for that particular Customer)`.
+    - **Nice-to-have**: Contributes **0%** (does not add to the TCV/Impact).
+- **Effort:** The `total_effort_mds` defined on the Work Item.
+- **Safety:** To avoid division by zero, the effective effort used in the calculation has a floor of 1 Man-Day. Reach and Confidence are currently implicitly 1.0.
 
 ### Historical Targeting
 When targeting **Existing TCV**, a Work Item can be tied to a specific historical value using `tcv_history_id`. 
@@ -40,7 +44,6 @@ When targeting **Existing TCV**, a Work Item can be tied to a specific historica
 ```mermaid
 graph LR
     TCV[Customer TCV (Actual or History)] --> Impact
-    Priority[Target Priority] --> Impact
     Impact --> Score
     Effort[Man-Days] --> Score
     Score --> Scaling[Visual Node Size]

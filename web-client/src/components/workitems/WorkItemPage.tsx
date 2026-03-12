@@ -53,7 +53,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
 
     const epics = isNew ? newWorkItemEpics : data?.epics.filter(e => e.work_item_id === workItemId) || [];
     const calculatedEffort = workItem && data ? calculateWorkItemEffort(workItem, epics) : 0;
-    const calculatedTcv = workItem && data ? calculateWorkItemTcv(workItem, data.customers) : 0;
+    const calculatedTcv = workItem && data ? calculateWorkItemTcv(workItem, data.customers, data.workItems) : 0;
 
     const handleAddEpic = () => {
         const newId = generateId('e');

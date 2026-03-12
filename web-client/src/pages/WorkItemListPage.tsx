@@ -19,7 +19,7 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
         { 
             label: 'TCV', 
             key: 'tcv', 
-            getValue: (w) => data ? calculateWorkItemTcv(w, data.customers) : 0 
+            getValue: (w) => data ? calculateWorkItemTcv(w, data.customers, data.workItems) : 0 
         },
         { 
             label: 'Effort', 
@@ -49,7 +49,7 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
         },
         { 
             header: 'TCV', 
-            render: (w) => data ? `$${calculateWorkItemTcv(w, data.customers).toLocaleString()}` : '$0',
+            render: (w) => data ? `$${calculateWorkItemTcv(w, data.customers, data.workItems).toLocaleString()}` : '$0',
             flex: 1,
             sortKey: 'tcv'
         },

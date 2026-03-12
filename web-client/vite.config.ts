@@ -10,6 +10,7 @@ import { spawn, exec } from 'child_process'
 import { promisify } from 'util'
 import { getDb, startMongoCleanup, isSafeUrl } from './src/utils/mongoServer'
 import { checkAuth } from './src/utils/authServer'
+import { calculateWorkItemScore, calculateWorkItemTcv } from './src/utils/businessLogic'
 
 const execPromise = promisify(exec);
 
@@ -289,18 +290,33 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
               dbData.teams = teams.map(({ _id, ...rest }) => rest);
               dbData.epics = epics.map(({ _id, ...rest }) => rest);
 
+              // Recompute all scores and TCVs based on weighted rules
+              dbData.workItems = dbData.workItems.map((wi: any) => ({
+                ...wi,
+                score: calculateWorkItemScore(wi, dbData.customers, dbData.workItems, dbData.epics)
+              }));
+
               // Calculate global metrics for scaling
               if (dbData.workItems.length > 0) {
-                dbData.metrics.maxScore = Math.max(...dbData.workItems.map((f: any) => f.score || 0), 1);
-                // maxRoi is used for edge thickness, also compute it
-                dbData.metrics.maxRoi = Math.max(...dbData.workItems.map((f: any) => {
-                    if (!f.total_effort_mds) return 0;
-                    const totalTcv = (f.customer_targets || []).reduce((sum: number, t: any) => {
+                dbData.metrics.maxScore = Math.max(...dbData.workItems.map((wi: any) => wi.score || 0), 1);
+                
+                // maxRoi is used for edge thickness, compute based on individual link ROI
+                dbData.metrics.maxRoi = Math.max(...dbData.workItems.map((wi: any) => {
+                    const effort = Math.max(wi.total_effort_mds || 0, 1);
+                    const targets = wi.customer_targets || [];
+                    if (targets.length === 0 && !wi.all_customers_target) return 0;
+                    
+                    // For global targets or per-customer targets, find the highest ROI among links
+                    if (wi.all_customers_target) {
+                        return Math.max(...dbData.customers.map((c: any) => (c.existing_tcv || 0) / effort), 0);
+                    }
+                    
+                    return Math.max(...targets.map((t: any) => {
                         const cust = dbData.customers.find((c: any) => c.id === t.customer_id);
-                        if (!cust) return sum;
-                        return sum + (t.tcv_type === 'existing' ? (cust.existing_tcv || 0) : (cust.potential_tcv || 0));
-                    }, 0);
-                    return totalTcv / f.total_effort_mds;
+                        if (!cust) return 0;
+                        const tcv = t.tcv_type === 'existing' ? (cust.existing_tcv || 0) : (cust.potential_tcv || 0);
+                        return tcv / effort;
+                    }), 0);
                 }), 0.0001);
               }
             } catch (mongoErr) { console.error('MongoDB load error:', mongoErr); }

@@ -1,8 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { calculateWorkItemEffort, calculateWorkItemTcv, calculateEpicEffortPerSprint, calculateEpicIntensityRatio, parseJiraIssue } from '../businessLogic';
+import { 
+    calculateWorkItemEffort, 
+    calculateWorkItemTcv, 
+    calculateWorkItemScore,
+    calculateEpicEffortPerSprint, 
+    calculateEpicIntensityRatio, 
+    parseJiraIssue 
+} from '../businessLogic';
 import type { WorkItem, Epic, Customer, Sprint, Team } from '../../types/models';
 
 describe('businessLogic', () => {
+    // ... parseJiraIssue tests remain the same ...
     describe('parseJiraIssue', () => {
         const mockTeams: Team[] = [
             { id: 't1', name: 'Team Alpha', jira_team_id: '101', total_capacity_mds: 0 },
@@ -171,30 +179,56 @@ describe('businessLogic', () => {
             { id: 'c2', name: 'Cust 2', existing_tcv: 200, potential_tcv: 0 }
         ];
 
-        it('calculates TCV for specific customer targets (existing)', () => {
+        it('calculates TCV for specific customer targets (existing, Must-have)', () => {
             const workItem: WorkItem = {
                 id: 'f1',
                 name: 'F1',
                 total_effort_mds: 0,
                 score: 0,
                 customer_targets: [
-                    { customer_id: 'c1', tcv_type: 'existing' }
+                    { customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }
                 ]
             };
-            expect(calculateWorkItemTcv(workItem, mockCustomers)).toBe(100);
+            expect(calculateWorkItemTcv(workItem, mockCustomers, [workItem])).toBe(100);
         });
 
-        it('calculates TCV for specific customer targets (potential)', () => {
+        it('calculates shared TCV for Should-have priority', () => {
+            const f1: WorkItem = {
+                id: 'f1',
+                name: 'F1',
+                total_effort_mds: 0,
+                score: 0,
+                customer_targets: [
+                    { customer_id: 'c1', tcv_type: 'existing', priority: 'Should-have' }
+                ]
+            };
+            const f2: WorkItem = {
+                id: 'f2',
+                name: 'F2',
+                total_effort_mds: 0,
+                score: 0,
+                customer_targets: [
+                    { customer_id: 'c1', tcv_type: 'existing', priority: 'Should-have' }
+                ]
+            };
+            const allWorkItems = [f1, f2];
+
+            // c1 has 100 existing_tcv. Shared between 2 should-haves = 50 each.
+            expect(calculateWorkItemTcv(f1, mockCustomers, allWorkItems)).toBe(50);
+            expect(calculateWorkItemTcv(f2, mockCustomers, allWorkItems)).toBe(50);
+        });
+
+        it('returns 0 for Nice-to-have priority', () => {
             const workItem: WorkItem = {
                 id: 'f1',
                 name: 'F1',
                 total_effort_mds: 0,
                 score: 0,
                 customer_targets: [
-                    { customer_id: 'c1', tcv_type: 'potential' }
+                    { customer_id: 'c1', tcv_type: 'existing', priority: 'Nice-to-have' }
                 ]
             };
-            expect(calculateWorkItemTcv(workItem, mockCustomers)).toBe(50);
+            expect(calculateWorkItemTcv(workItem, mockCustomers, [workItem])).toBe(0);
         });
 
         it('calculates TCV for specific customer targets (historical)', () => {
@@ -204,27 +238,27 @@ describe('businessLogic', () => {
                 total_effort_mds: 0,
                 score: 0,
                 customer_targets: [
-                    { customer_id: 'c1', tcv_type: 'existing', tcv_history_id: 'h1' }
+                    { customer_id: 'c1', tcv_type: 'existing', tcv_history_id: 'h1', priority: 'Must-have' }
                 ]
             };
-            expect(calculateWorkItemTcv(workItem, mockCustomers)).toBe(80);
+            expect(calculateWorkItemTcv(workItem, mockCustomers, [workItem])).toBe(80);
         });
 
-        it('sums TCV across multiple customers', () => {
-            const workItem: WorkItem = {
+        it('sums TCV across multiple customers with mixed priorities', () => {
+            const f1: WorkItem = {
                 id: 'f1',
                 name: 'F1',
                 total_effort_mds: 0,
                 score: 0,
                 customer_targets: [
-                    { customer_id: 'c1', tcv_type: 'existing' },
-                    { customer_id: 'c2', tcv_type: 'existing' }
+                    { customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }, // 100
+                    { customer_id: 'c2', tcv_type: 'existing', priority: 'Should-have' } // 200 / 1 = 200
                 ]
             };
-            expect(calculateWorkItemTcv(workItem, mockCustomers)).toBe(300);
+            expect(calculateWorkItemTcv(f1, mockCustomers, [f1])).toBe(300);
         });
 
-        it('calculates TCV for global work items (all customers)', () => {
+        it('calculates TCV for global work items (all customers) with Must-have', () => {
             const workItem: WorkItem = {
                 id: 'f1',
                 name: 'F1',
@@ -234,20 +268,67 @@ describe('businessLogic', () => {
                 all_customers_target: { tcv_type: 'existing', priority: 'Must-have' }
             };
             // 100 + 200 = 300
-            expect(calculateWorkItemTcv(workItem, mockCustomers)).toBe(300);
+            expect(calculateWorkItemTcv(workItem, mockCustomers, [workItem])).toBe(300);
         });
 
-        it('returns 0 if no customers match', () => {
+        it('calculates TCV for global work items (all customers) with Should-have', () => {
+            const f1: WorkItem = {
+                id: 'f1',
+                name: 'F1',
+                total_effort_mds: 0,
+                score: 0,
+                customer_targets: [],
+                all_customers_target: { tcv_type: 'existing', priority: 'Should-have' }
+            };
+            const f2: WorkItem = {
+                id: 'f2',
+                name: 'F2',
+                total_effort_mds: 0,
+                score: 0,
+                customer_targets: [
+                    { customer_id: 'c1', tcv_type: 'existing', priority: 'Should-have' }
+                ]
+            };
+            const allWorkItems = [f1, f2];
+
+            // For c1 (100): Shared between f1 (global) and f2. 100 / 2 = 50.
+            // For c2 (200): Only f1 (global) targets it as should-have. 200 / 1 = 200.
+            // Total for f1 = 50 + 200 = 250.
+            expect(calculateWorkItemTcv(f1, mockCustomers, allWorkItems)).toBe(250);
+        });
+    });
+
+    describe('calculateWorkItemScore', () => {
+        const mockCustomers: Customer[] = [
+            { id: 'c1', name: 'Cust 1', existing_tcv: 1000, potential_tcv: 0 }
+        ];
+
+        it('calculates score as Impact / Effort', () => {
+            const workItem: WorkItem = {
+                id: 'f1',
+                name: 'F1',
+                total_effort_mds: 10,
+                score: 0,
+                customer_targets: [
+                    { customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }
+                ]
+            };
+            // Impact = 1000, Effort = 10. Score = 100.
+            expect(calculateWorkItemScore(workItem, mockCustomers, [workItem], [])).toBe(100);
+        });
+
+        it('uses a floor of 1 MD for effort to avoid division by zero', () => {
             const workItem: WorkItem = {
                 id: 'f1',
                 name: 'F1',
                 total_effort_mds: 0,
                 score: 0,
                 customer_targets: [
-                    { customer_id: 'non-existent', tcv_type: 'existing' }
+                    { customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }
                 ]
             };
-            expect(calculateWorkItemTcv(workItem, mockCustomers)).toBe(0);
+            // Impact = 1000, Effort floor = 1. Score = 1000.
+            expect(calculateWorkItemScore(workItem, mockCustomers, [workItem], [])).toBe(1000);
         });
     });
 

@@ -94,33 +94,72 @@ export const calculateWorkItemEffort = (workItem: WorkItem, epics: Epic[]): numb
 
 /**
  * Calculates the total TCV impact for a work item based on its customer targets.
+ * Must-have: 100% of Customer TCV
+ * Should-have: Shared portion (Customer TCV / Count of all Should-have work items for that customer)
+ * Nice-to-have: 0%
  */
-export const calculateWorkItemTcv = (workItem: WorkItem, customers: Customer[]): number => {
+export const calculateWorkItemTcv = (workItem: WorkItem, customers: Customer[], allWorkItems: WorkItem[]): number => {
+    // Helper to get total number of Should-have targets for a specific customer
+    const getShouldHaveCount = (customerId: string) => {
+        return allWorkItems.reduce((count, w) => {
+            const hasShouldHave = (w.customer_targets || []).some(t => t.customer_id === customerId && t.priority === 'Should-have');
+            const globalShouldHave = w.all_customers_target?.priority === 'Should-have';
+            return count + (hasShouldHave || globalShouldHave ? 1 : 0);
+        }, 0);
+    };
+
     if (workItem.all_customers_target) {
+        const priority = workItem.all_customers_target.priority;
+        if (priority === 'Nice-to-have') return 0;
+
         const type = workItem.all_customers_target.tcv_type;
         return customers.reduce((sum, c) => {
             const val = type === 'existing' ? (c.existing_tcv || 0) : (c.potential_tcv || 0);
-            return sum + val;
+            if (priority === 'Must-have') return sum + val;
+            
+            // Should-have: Shared portion
+            const totalShouldHaves = getShouldHaveCount(c.id);
+            return sum + (totalShouldHaves > 0 ? val / totalShouldHaves : 0);
         }, 0);
     }
     
     return (workItem.customer_targets || []).reduce((sum, target) => {
+        if (target.priority === 'Nice-to-have') return sum;
+
         const customer = customers.find(c => c.id === target.customer_id);
         if (!customer) return sum;
         
-        let targetTcv = 0;
+        let customerTcv = 0;
         if (target.tcv_type === 'existing') {
             if (target.tcv_history_id && customer.tcv_history) {
                 const historyEntry = customer.tcv_history.find(h => h.id === target.tcv_history_id);
-                targetTcv = historyEntry ? historyEntry.value : customer.existing_tcv;
+                customerTcv = historyEntry ? historyEntry.value : customer.existing_tcv;
             } else {
-                targetTcv = customer.existing_tcv;
+                customerTcv = customer.existing_tcv;
             }
         } else {
-            targetTcv = customer.potential_tcv;
+            customerTcv = customer.potential_tcv;
         }
-        return sum + (targetTcv || 0);
+
+        if (target.priority === 'Must-have' || !target.priority) {
+            return sum + (customerTcv || 0);
+        } else if (target.priority === 'Should-have') {
+            const totalShouldHaves = getShouldHaveCount(customer.id);
+            return sum + (totalShouldHaves > 0 ? (customerTcv || 0) / totalShouldHaves : 0);
+        }
+        
+        return sum;
     }, 0);
+};
+
+/**
+ * Calculates the RICE/ROI Score for a work item.
+ * Score = Total Impact / Effort (min 1 MD)
+ */
+export const calculateWorkItemScore = (workItem: WorkItem, customers: Customer[], allWorkItems: WorkItem[], epics: Epic[]): number => {
+    const impact = calculateWorkItemTcv(workItem, customers, allWorkItems);
+    const effort = Math.max(calculateWorkItemEffort(workItem, epics), 1);
+    return impact / effort;
 };
 
 /**
