@@ -335,13 +335,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'staticImport.json';
+        link.download = 'valuestream_export.json';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        
-        setMongoTestResult({ success: true, message: "Export successful! staticImport.json download started." });
+        setMongoTestResult({ success: true, message: "Export successful! valuestream_export.json download started." });
       } else {
         setMongoTestResult({ success: false, message: resData.error || "Export failed" });
       }
@@ -1065,7 +1064,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         Export & Import Data
                       </h3>
                       <p style={{ color: "var(--text-muted)", fontSize: "13px", margin: "0 0 8px 0" }}>
-                        Manage your database content via staticImport.json files.
+                        Manage your database content via JSON backup files.
                       </p>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button

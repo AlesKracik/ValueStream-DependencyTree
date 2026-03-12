@@ -239,14 +239,10 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
           const url = new URL(req.url, `http://${req.headers.host}`);
           const valueStreamId = url.searchParams.get('valueStreamId');
           const settingsPath = path.resolve(__dirname, 'settings.json');
-          const mockDataPath = path.resolve(__dirname, 'public/staticImport.json');
 
           let settings: any = {};
           if (fs.existsSync(settingsPath)) {
             settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-          } else if (fs.existsSync(mockDataPath)) {
-            const mockData = JSON.parse(fs.readFileSync(mockDataPath, 'utf-8'));
-            settings = mockData.settings || {};
           }
 
           settings = migrateSettings(settings);
@@ -320,9 +316,6 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
                 }), 0.0001);
               }
             } catch (mongoErr) { console.error('MongoDB load error:', mongoErr); }
-          } else if (fs.existsSync(mockDataPath)) {
-            const mockData = JSON.parse(fs.readFileSync(mockDataPath, 'utf-8'));
-            dbData = { ...dbData, ...mockData, settings: dbData.settings };
           }
 
           res.setHeader('Content-Type', 'application/json');
@@ -659,7 +652,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, path.resolve(__dirname, '..'), '');
   return {
     plugins: [react(), PersistencePlugin(env)],
-    server: { watch: { ignored: ['**/public/staticImport.json'] } },
+    server: { watch: { ignored: [] } },
     test: { environment: 'jsdom', globals: true }
   }
 })

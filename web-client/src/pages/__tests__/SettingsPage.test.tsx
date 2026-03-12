@@ -135,7 +135,7 @@ describe('SettingsPage', () => {
 
         await waitFor(() => {
             expect(URL.createObjectURL).toHaveBeenCalled();
-            expect(screen.getByText(/Export successful! staticImport.json download started/i)).toBeDefined();
+            expect(screen.getByText(/Export successful! valuestream_export.json download started/i)).toBeDefined();
         });
     });
 

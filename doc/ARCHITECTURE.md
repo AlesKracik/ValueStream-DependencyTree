@@ -17,7 +17,6 @@ graph TD
     Backend -->|Persistence & Aggregation| Mongo
     Backend -->|Integration| Jira
     Backend -->|AI Generation| AI
-    Client -->|Local Fallback| Static[staticImport.json]
     
     subgraph "Networking Infrastructure"
         Proxy[SOCKS5 Proxy / SSH Tunnel]
@@ -38,7 +37,6 @@ graph TD
 - **Connectivity:** Systematic SOCKS5 proxy support for connecting to MongoDB clusters (like Atlas) behind secure SSH bastions.
 - **AI Integration:** Multi-provider support for LLMs including OpenAI, Gemini, Anthropic, and localized execution via the Augment (`auggie`) CLI.
 - **Schema Validation:** Draft-07 JSON schema at `public/schema.json`.
-- **Seeding:** Automatic seeding from `public/staticImport.json` if the primary database is empty.
 
 ## Data Flow & State Management
 
@@ -76,9 +74,8 @@ User actions (updates, deletes, adds) trigger local state changes via mutation f
 -   **Debounced Persistence:** Update operations are debounced by 1000ms. This bundles rapid changes (like typing a description) into a single API call.
 -   **Asynchronous Persistence:** Fire off background `fetch` requests (via `authorizedFetch`) to the `/api/entity` endpoints.
 
-### 6. Data Management & Seeding
-- **Export/Import:** The system allows exporting the entire database state to a JSON file and importing it back, facilitating environment migration.
-- **Auto-Seeding:** If the database is empty on load, it automatically seeds from `public/staticImport.json`.
+### 6. Data Management
+- **Export/Import:** The system allows exporting the entire database state to a portable JSON file and importing it back, facilitating environment migration.
 - **Query Engine:** A pass-through MongoDB query interface allows for advanced debugging and data exploration directly from the UI.
 
 ```mermaid
@@ -366,8 +363,3 @@ All colors, shadows, and interactive states are defined using CSS variables in `
 To prevent a "flash of dark theme" during page reloads:
 - **LocalStorage Sync:** The `useValueStreamData` hook automatically caches the user's theme choice in `localStorage` (`vst-theme`).
 - **Pre-render Initialization:** An inline script in `index.html` checks `localStorage` and applies the theme attribute *before* the React application initializes, ensuring a seamless visual experience.
-
-
-
-
-

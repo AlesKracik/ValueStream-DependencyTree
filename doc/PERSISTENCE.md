@@ -5,10 +5,6 @@ The application uses a dual-mode persistence strategy to balance ease of local d
 
 ## Data Storage
 - **MongoDB:** Primary storage for production-like environments. Entities are stored in collections named after their logical types: `customers`, `workItems`, `teams`, `epics`, `sprints`, and `valueStreams`.
-- **`staticImport.json`:** A fallback file-based storage used for seeding the database or sharing project state.
-
-## The Vite Persistence Plugin
-The "backend" logic resides in `web-client/vite.config.ts`. It utilizes `server.middlewares` to provide API endpoints:
 
 ## The Vite Backend Plugin
 The "backend" logic resides in `web-client/vite.config.ts`. It provides a comprehensive set of REST endpoints for data management, integration, and security.
@@ -105,7 +101,7 @@ The system includes an automatic migration handler to ensure data consistency.
 When the application loads, the backend automatically detects if `settings.json` is using the old flat structure. If so, it migrates all keys to the new nested format (`general`, `persistence`, `jira`, `ai`) and saves the file back to disk.
 
 ### Sprint Quarter Migration
-... (rest of the section)
+...
 
 ```mermaid
 graph TD
@@ -132,10 +128,3 @@ graph LR
     App[App Container] -->|Internal Network| Mongo[Mongo Container]
     Mongo -->|Mount| Volume[(Docker Volume: mongo-data)]
 ```
-
-## Seeding
-If the MongoDB database is empty on load, the plugin automatically reads `web-client/public/staticImport.json` and inserts the data into the corresponding collections.
-
-
-
-
