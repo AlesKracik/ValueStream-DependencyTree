@@ -60,7 +60,7 @@ describe('WorkItemNode', () => {
         const indicator = screen.getByTitle(/Effort is not estimated/i);
         expect(indicator).toBeDefined();
         expect(indicator.textContent).toContain('📏');
-        expect(indicator.style.color).toBe('rgb(251, 191, 36)'); // #fbbf24
+        expect(indicator.style.color).toBe('var(--status-warning)');
     });
 
     it('renders the dateless epics warning icon when hasDatelessEpics is true', () => {
@@ -69,7 +69,7 @@ describe('WorkItemNode', () => {
         const indicator = screen.getByTitle(/Has epics without target dates/i);
         expect(indicator).toBeDefined();
         expect(indicator.textContent).toContain('🕒');
-        expect(indicator.style.color).toBe('rgb(248, 113, 113)'); // #f87171
+        expect(indicator.style.color).toBe('var(--status-danger)');
     });
 
     it('does not render the unestimated effort warning icon when hasUnestimatedEffort is false', () => {

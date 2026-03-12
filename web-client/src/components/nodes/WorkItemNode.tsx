@@ -63,7 +63,7 @@ export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
                     <div title="Has epics without target dates" style={{ color: 'var(--status-danger)', fontSize: `${iconSize}px`, filter: 'var(--icon-filter)' }}>🕒</div>
                 )}
                 {data.hasUnestimatedEffort && (
-                    <div title="Effort is not estimated (0 MDs)" style={{ fontSize: `${iconSize}px`, filter: 'var(--icon-filter)' }}>📏</div>
+                    <div title="Effort is not estimated (0 MDs)" style={{ color: 'var(--status-warning)', fontSize: `${iconSize}px`, filter: 'var(--icon-filter)' }}>📏</div>
                 )}
             </div>
 

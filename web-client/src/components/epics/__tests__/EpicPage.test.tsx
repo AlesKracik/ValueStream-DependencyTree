@@ -4,6 +4,7 @@ import { EpicPage } from '../EpicPage';
 import { ValueStreamProvider, NotificationProvider } from '../../../contexts/ValueStreamContext';
 import type { ValueStreamData } from '../../../types/models';
 import * as api from '../../../utils/api';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
 vi.mock('../../../utils/api', async () => {
     const actual = await vi.importActual('../../../utils/api');
@@ -28,7 +29,7 @@ const mockData: ValueStreamData = {
             id: 'e1',
             jira_key: 'J-1',
             team_id: 't1',
-            effort_md: 10,
+            effort_mds: 10,
             target_start: '2026-01-05',
             target_end: '2026-02-25',
             sprint_effort_overrides: { 's_past': 5 }
@@ -40,13 +41,23 @@ describe('EpicPage', () => {
     const updateEpicSpy = vi.fn();
     
     const defaultProps = {
-        epicId: 'e1',
-        onBack: vi.fn(),
         data: mockData,
         loading: false,
-        error: null,
-        updateEpic: updateEpicSpy,
-        deleteEpic: vi.fn()
+        updateEpic: updateEpicSpy
+    };
+
+    const renderEpicPage = (props = defaultProps, epicId = 'e1') => {
+        return render(
+            <MemoryRouter initialEntries={[`/epics/${epicId}`]}>
+                <NotificationProvider>
+                    <ValueStreamProvider value={{ data: props.data || mockData, updateEpic: updateEpicSpy }}>
+                        <Routes>
+                            <Route path="/epics/:id" element={<EpicPage {...props} />} />
+                        </Routes>
+                    </ValueStreamProvider>
+                </NotificationProvider>
+            </MemoryRouter>
+        );
     };
 
     beforeEach(() => {
@@ -57,15 +68,9 @@ describe('EpicPage', () => {
 
     describe('Date Shift Logic', () => {
         it('prompts user and clears past work when shifting dates if they confirm', async () => {
-            render(
-                <NotificationProvider>
-                    <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
-                        <EpicPage {...defaultProps} />
-                    </ValueStreamProvider>
-                </NotificationProvider>
-            );
+            renderEpicPage();
             
-            const startInput = screen.getByLabelText(/Target Start:/i);
+            const startInput = screen.getByLabelText(/Target Start/i);
             // Shift start from 2026-01-05 to 2026-01-10 (still before end 2026-02-25)
             fireEvent.change(startInput, { target: { value: '2026-01-10' } });
             
@@ -87,15 +92,9 @@ describe('EpicPage', () => {
         });
 
         it('aborts date shift if user cancels the confirmation', async () => {
-            render(
-                <NotificationProvider>
-                    <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
-                        <EpicPage {...defaultProps} />
-                    </ValueStreamProvider>
-                </NotificationProvider>
-            );
+            renderEpicPage();
             
-            const startInput = screen.getByLabelText(/Target Start:/i);
+            const startInput = screen.getByLabelText(/Target Start/i);
             // Shift start from 2026-01-05 to 2026-01-10 (still before end 2026-02-25)
             fireEvent.change(startInput, { target: { value: '2026-01-10' } });
             
@@ -108,15 +107,9 @@ describe('EpicPage', () => {
         });
 
         it('does NOT prompt when shifting end date into the future', async () => {
-            render(
-                <NotificationProvider>
-                    <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
-                        <EpicPage {...defaultProps} />
-                    </ValueStreamProvider>
-                </NotificationProvider>
-            );
+            renderEpicPage();
             
-            const endInput = screen.getByLabelText(/Target End:/i);
+            const endInput = screen.getByLabelText(/Target End/i);
             // Current end is 2026-02-25. Shift to 2026-03-15 (future).
             fireEvent.change(endInput, { target: { value: '2026-03-15' } });
             
@@ -129,15 +122,9 @@ describe('EpicPage', () => {
         });
 
         it('shows an alert and prevents update if start date is not before end date', async () => {
-            render(
-                <NotificationProvider>
-                    <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
-                        <EpicPage {...defaultProps} />
-                    </ValueStreamProvider>
-                </NotificationProvider>
-            );
+            renderEpicPage();
             
-            const startInput = screen.getByLabelText(/Target Start:/i);
+            const startInput = screen.getByLabelText(/Target Start/i);
             // Current end is 2026-02-25. Setting start to 2026-02-26 (after end).
             fireEvent.change(startInput, { target: { value: '2026-02-26' } });
             
@@ -148,15 +135,9 @@ describe('EpicPage', () => {
         });
 
         it('shows an alert and prevents update if start date is equal to end date', async () => {
-            render(
-                <NotificationProvider>
-                    <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
-                        <EpicPage {...defaultProps} />
-                    </ValueStreamProvider>
-                </NotificationProvider>
-            );
+            renderEpicPage();
             
-            const startInput = screen.getByLabelText(/Target Start:/i);
+            const startInput = screen.getByLabelText(/Target Start/i);
             // Current end is 2026-02-25. Setting start to 2026-02-25.
             fireEvent.change(startInput, { target: { value: '2026-02-25' } });
             
@@ -175,13 +156,7 @@ describe('EpicPage', () => {
             // Mock syncJiraIssue to return an error
             (api.syncJiraIssue as any).mockRejectedValueOnce(new Error('Jira API Error'));
 
-            render(
-                <NotificationProvider>
-                    <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
-                        <EpicPage {...defaultProps} />
-                    </ValueStreamProvider>
-                </NotificationProvider>
-            );
+            renderEpicPage();
 
             // Click Sync button
             const syncButton = screen.getByText('Sync from Jira');
@@ -200,13 +175,7 @@ describe('EpicPage', () => {
             // Mock syncJiraIssue to throw
             (api.syncJiraIssue as any).mockRejectedValueOnce(new Error('Network Failure'));
 
-            render(
-                <NotificationProvider>
-                    <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
-                        <EpicPage {...defaultProps} />
-                    </ValueStreamProvider>
-                </NotificationProvider>
-            );
+            renderEpicPage();
 
             // Click Sync button
             const syncButton = screen.getByText('Sync from Jira');
@@ -232,13 +201,7 @@ describe('EpicPage', () => {
                 ]
             };
 
-            render(
-                <NotificationProvider>
-                    <ValueStreamProvider value={{ data: extendedData, updateEpic: updateEpicSpy }}>
-                        <EpicPage {...defaultProps} data={extendedData} />
-                    </ValueStreamProvider>
-                </NotificationProvider>
-            );
+            renderEpicPage({ ...defaultProps, data: extendedData });
 
             // Epic dates: 2026-01-05 to 2026-02-25
             // Sprints: 
@@ -256,6 +219,3 @@ describe('EpicPage', () => {
         vi.useRealTimers();
     });
 });
-
-
-

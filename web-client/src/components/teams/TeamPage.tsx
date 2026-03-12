@@ -17,27 +17,31 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
     const navigate = useNavigate();
     const isNew = id === 'new';
 
-    const [team, setLocalTeam] = useState<Partial<Team>>(
-        isNew ? {
-            name: '',
-            total_capacity_mds: 0,
-            country: 'Default',
-            sprint_capacity_overrides: {}
-        } : (data?.teams.find(t => t.id === id) || {})
-    );
+    const existingTeam = data?.teams.find(t => t.id === id);
+    const [newTeamDraft, setNewTeamDraft] = useState<Partial<Team>>({
+        name: '',
+        total_capacity_mds: 10,
+        country: 'Default',
+        sprint_capacity_overrides: {}
+    });
 
-    const handleSave = async () => {
-        if (!team.name) return;
+    const team = isNew ? newTeamDraft : (existingTeam || {});
+
+    const handleCreate = async () => {
+        if (!newTeamDraft.name) return;
+        const newId = await addTeam(newTeamDraft as Omit<Team, 'id'>);
+        navigate(`/team/${newId}`);
+    };
+
+    const handleFieldChange = (updates: Partial<Team>) => {
         if (isNew) {
-            const newId = await addTeam(team as Omit<Team, 'id'>);
-            navigate(`/team/${newId}`);
+            setNewTeamDraft(prev => ({ ...prev, ...updates }));
         } else if (id) {
-            await updateTeam(id, team);
+            updateTeam(id, updates);
         }
     };
 
     const handleOverrideChange = (sprintId: string, value: string) => {
-        if (!team.id) return;
         const overrides = { ...(team.sprint_capacity_overrides || {}) };
         
         if (value === '') {
@@ -48,9 +52,12 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
                 overrides[sprintId] = parsed;
             }
         }
-        setLocalTeam({ ...team, sprint_capacity_overrides: overrides });
-        updateTeam(team.id, { sprint_capacity_overrides: overrides });
+        handleFieldChange({ sprint_capacity_overrides: overrides });
     };
+
+    if (!isNew && !existingTeam && !loading) {
+        return <PageWrapper loading={loading} data={data}><div>Team not found</div></PageWrapper>;
+    }
 
     return (
         <PageWrapper loading={loading} data={data}>
@@ -58,8 +65,10 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
                 <header className={styles.header}>
                     <h1>{isNew ? 'Create New Team' : `Team: ${team.name}`}</h1>
                     <div style={{ display: 'flex', gap: '12px' }}>
-                        <button className="btn-secondary" onClick={() => navigate('/teams')}>Cancel</button>
-                        <button className="btn-primary" onClick={handleSave}>Save Changes</button>
+                        <button className="btn-secondary" onClick={() => navigate('/teams')}>Back</button>
+                        {isNew && (
+                            <button className="btn-primary" onClick={handleCreate}>Create Team</button>
+                        )}
                     </div>
                 </header>
 
@@ -72,7 +81,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
                                 <input 
                                     type="text" 
                                     value={team.name || ''} 
-                                    onChange={e => setLocalTeam({ ...team, name: e.target.value })}
+                                    onChange={e => handleFieldChange({ name: e.target.value })}
                                 />
                             </label>
                             <label>
@@ -80,14 +89,14 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
                                 <input 
                                     type="number" 
                                     value={team.total_capacity_mds || 0} 
-                                    onChange={e => setLocalTeam({ ...team, total_capacity_mds: parseFloat(e.target.value) })}
+                                    onChange={e => handleFieldChange({ total_capacity_mds: parseFloat(e.target.value) })}
                                 />
                             </label>
                             <label>
                                 Country (for Holidays)
                                 <select 
                                     value={team.country || 'Default'} 
-                                    onChange={e => setLocalTeam({ ...team, country: e.target.value })}
+                                    onChange={e => handleFieldChange({ country: e.target.value })}
                                 >
                                     <option value="Default">Default (No Holidays)</option>
                                     <option value="US">United States</option>

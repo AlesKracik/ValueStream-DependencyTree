@@ -4,6 +4,8 @@ import { PageWrapper } from '../layout/PageWrapper';
 import { useNavigate, useParams } from 'react-router-dom';
 import { calculateEpicEffortPerSprint } from '../../utils/businessLogic';
 import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers';
+import { useValueStreamContext } from '../../contexts/ValueStreamContext';
+import { syncJiraIssue } from '../../utils/api';
 import styles from '../customers/CustomerPage.module.css';
 
 interface EpicPageProps {
@@ -15,6 +17,8 @@ interface EpicPageProps {
 export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic }) => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { showAlert, showConfirm } = useValueStreamContext();
+    
     const epic = data?.epics.find(e => e.id === id);
     const team = data?.teams.find(t => t.id === epic?.team_id);
 
@@ -26,6 +30,21 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic })
     if (!epic) return <PageWrapper loading={loading} data={data}><div>Epic not found</div></PageWrapper>;
 
     const effortPerSprint = calculateEpicEffortPerSprint(epic, data?.sprints || []);
+
+    const handleSync = async () => {
+        try {
+            const jiraData = await syncJiraIssue(epic.jira_key || '', data?.settings || {});
+            if (jiraData) {
+                const updates: Partial<Epic> = {
+                    name: jiraData.fields.summary,
+                    effort_mds: (jiraData.fields.customfield_10005 || 0) / 8 // Example mapping
+                };
+                await updateEpic(epic.id, updates);
+            }
+        } catch (err: any) {
+            showAlert('Sync Failed', err.message || 'Unknown error');
+        }
+    };
 
     const handleOverrideChange = (sprintId: string, value: string) => {
         const overrides = { ...(epic.sprint_effort_overrides || {}) };
@@ -40,14 +59,21 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic })
         updateEpic(epic.id, { sprint_effort_overrides: overrides });
     };
 
-    const handleDateChange = (field: 'start' | 'end', value: string) => {
-        setLocalDates(prev => ({ ...prev, [field]: value }));
-        
+    const handleDateChange = async (field: 'start' | 'end', value: string) => {
+        const newStart = field === 'start' ? value : localDates.start;
+        const newEnd = field === 'end' ? value : localDates.end;
+
+        if (newStart && newEnd && new Date(newStart) >= new Date(newEnd)) {
+            showAlert('Invalid Dates', 'The Start Date must be before the End Date.');
+            return;
+        }
+
+        setLocalDates({ start: newStart, end: newEnd });
         const updates: Partial<Epic> = { [field === 'start' ? 'target_start' : 'target_end']: value };
         
-        // If we move the start date, we typically want to clear overrides as the distribution changes
         if (field === 'start' && epic.sprint_effort_overrides && Object.keys(epic.sprint_effort_overrides).length > 0) {
-            const confirmed = window.confirm(
+            const confirmed = await showConfirm(
+                'Historical Work Warning',
                 'Moving the start date will clear any historical work overrides for this epic. Do you want to proceed?'
             );
             if (!confirmed) {
@@ -57,7 +83,6 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic })
                 });
                 return;
             }
-            // Clear overrides as they are no longer valid for the new timeline
             updates.sprint_effort_overrides = undefined;
         }
 
@@ -69,7 +94,10 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic })
             <div className={styles.pageContainer}>
                 <header className={styles.header}>
                     <h1>Epic: {epic.name}</h1>
-                    <button className="btn-secondary" onClick={() => navigate(-1)}>Back</button>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                        <button className="btn-secondary" onClick={() => navigate(-1)}>Back</button>
+                        <button className="btn-primary" onClick={handleSync}>Sync from Jira</button>
+                    </div>
                 </header>
 
                 <div className={styles.content}>
@@ -201,3 +229,4 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic })
         </PageWrapper>
     );
 };
+
