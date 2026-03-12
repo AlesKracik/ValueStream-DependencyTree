@@ -61,8 +61,9 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
                 };
                 await updateEpic(epic.id, updates);
             }
-        } catch (err: any) {
-            showAlert('Sync Failed', err.message || 'Unknown error');
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Unknown error';
+            showAlert('Sync Failed', msg);
         }
     };
 

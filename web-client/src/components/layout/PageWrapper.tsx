@@ -4,7 +4,7 @@ import styles from './PageWrapper.module.css';
 interface PageWrapperProps {
     loading?: boolean;
     error?: Error | null;
-    data?: any;
+    data?: unknown;
     loadingMessage?: string;
     errorMessage?: string;
     emptyMessage?: string;

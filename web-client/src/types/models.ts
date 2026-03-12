@@ -219,5 +219,31 @@ export interface ValueStreamViewState {
   viewport?: { x: number; y: number; zoom: number };
 }
 
+export interface ValueStreamDataState {
+  data: ValueStreamData | null;
+  loading: boolean;
+  error: Error | null;
+  refreshData: () => void;
+  addCustomer: (customer: Customer) => void;
+  deleteCustomer: (id: string) => void;
+  updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
+  addWorkItem: (workItem: WorkItem) => void;
+  deleteWorkItem: (id: string) => void;
+  updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
+  addEpic: (epic: Epic) => void;
+  deleteEpic: (id: string) => void;
+  updateTeam: (id: string, updates: Partial<Team>, immediate?: boolean) => Promise<void>;
+  addTeam: (team: Team) => void;
+  deleteTeam: (id: string) => void;
+  updateEpic: (id: string, updates: Partial<Epic>, immediate?: boolean) => Promise<void>;
+  addSprint: (sprint: Sprint) => void;
+  updateSprint: (id: string, updates: Partial<Sprint>, immediate?: boolean) => Promise<void>;
+  deleteSprint: (id: string) => void;
+  updateSettings: (updates: Partial<Settings>) => void;
+  addValueStream: (valueStream: ValueStreamEntity) => void;
+  updateValueStream: (id: string, updates: Partial<ValueStreamEntity>, immediate?: boolean) => Promise<void>;
+  deleteValueStream: (id: string) => void;
+}
+
 
 

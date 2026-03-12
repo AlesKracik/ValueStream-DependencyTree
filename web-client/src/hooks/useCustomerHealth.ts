@@ -12,6 +12,15 @@ export interface CustomerHealthData {
     error: string | null;
 }
 
+interface InternalJiraIssue {
+    key: string;
+    fields: {
+        summary?: string;
+        status?: { name: string };
+        priority?: { name: string };
+    };
+}
+
 export const useCustomerHealth = (customer: Customer | undefined, settings: Settings | undefined) => {
     const [healthData, setHealthData] = useState<CustomerHealthData>({
         newIssues: [],
@@ -72,7 +81,7 @@ export const useCustomerHealth = (customer: Customer | undefined, settings: Sett
                     if (!response.ok || !resData.success) throw new Error(resData.error || 'Failed to fetch issues');
 
                     const now = new Date().toISOString();
-                    return (resData.data.issues || []).map((issue: any) => {
+                    return (resData.data.issues || []).map((issue: InternalJiraIssue) => {
                         const fields = issue.fields || {};
                         
                         return {
@@ -85,7 +94,7 @@ export const useCustomerHealth = (customer: Customer | undefined, settings: Sett
                             category
                         };
                     });
-                } catch (e: any) {
+                } catch (e: unknown) {
                     console.error("Error fetching Jira issues:", e);
                     return [];
                 }
@@ -137,17 +146,18 @@ export const useCustomerHealth = (customer: Customer | undefined, settings: Sett
                     loading: false,
                     error: null
                 });
-            } catch (error: any) {
+            } catch (error: unknown) {
+                const msg = error instanceof Error ? error.message : 'Error loading health data.';
                 setHealthData(prev => ({
                     ...prev,
                     loading: false,
-                    error: error.message || 'Error loading health data.'
+                    error: msg
                 }));
             }
         };
 
         fetchHealth();
-    }, [customer?.customer_id, customer?.support_issues, settings]); // Reduced dependency surface
+    }, [customer, settings]);
 
     return healthData;
 };

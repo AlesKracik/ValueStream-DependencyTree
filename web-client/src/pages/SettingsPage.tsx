@@ -31,6 +31,17 @@ const DEFAULT_SETTINGS: Settings = {
   ai: { provider: 'openai' }
 };
 
+interface MongoTestResult {
+  success: boolean;
+  message: string;
+  exists?: boolean;
+}
+
+interface SSOMessage {
+  success: boolean;
+  message: string;
+}
+
 export const SettingsPage: React.FC<SettingsPageProps> = ({
   settings,
   onUpdateSettings,
@@ -50,10 +61,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [localFormData, setFormData] = useState<Settings>(settings || DEFAULT_SETTINGS);
   const [isTesting, setIsTesting] = useState(false);
   const [availableDbs, setAvailableDbs] = useState<string[]>([]);
-  const [mongoTestResult, setMongoTestResult] = useState<{ success: boolean; message: string; exists?: boolean } | null>(null);
+  const [mongoTestResult, setMongoTestResult] = useState<MongoTestResult | null>(null);
   const [isTestingCustomer, setIsTestingCustomer] = useState(false);
   const [availableCustomerDbs, setAvailableCustomerDbs] = useState<string[]>([]);
-  const [customerMongoTestResult, setCustomerMongoTestResult] = useState<{ success: boolean; message: string; exists?: boolean } | null>(null);
+  const [customerMongoTestResult, setCustomerMongoTestResult] = useState<MongoTestResult | null>(null);
   const [jiraTestResult, setJiraTestResult] = useState<{ success: boolean; message: string; } | null>(null);
   const [importSyncResult, setImportSyncResult] = useState<{ success: boolean; message: string; } | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -62,35 +73,37 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<string>("");
   const [isSSOLoginLoading, setIsSSOLoginLoading] = useState(false);
-  const [ssoMessage, setSSOMessage] = useState<{ success: boolean; message: string } | null>(null);
+  const [ssoMessage, setSSOMessage] = useState<SSOMessage | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Deep merge helper to ensure we don't lose structure
-  const deepMerge = (target: any, source: any) => {
+  const deepMerge = (target: Settings, source: Partial<Settings>): Settings => {
     if (!source) return target;
-    const result = { ...target };
-    Object.keys(source).forEach(key => {
-      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-        result[key] = deepMerge(target[key] || {}, source[key]);
-      } else if (source[key] !== undefined) {
-        result[key] = source[key];
+    const result = { ...target } as Record<string, any>;
+    const src = source as Record<string, any>;
+    
+    Object.keys(src).forEach(key => {
+      if (src[key] && typeof src[key] === 'object' && !Array.isArray(src[key])) {
+        result[key] = deepMerge(result[key] || {}, src[key]);
+      } else if (src[key] !== undefined) {
+        result[key] = src[key];
       }
     });
-    return result;
+    return result as Settings;
   };
 
-  const updateFormData = (path: string, value: any) => {
+  const updateFormData = (path: string, value: unknown) => {
     setFormData(prev => {
-        const newData = { ...prev };
+        const newData = { ...prev } as Record<string, any>;
         const parts = path.split('.');
-        let current: any = newData;
+        let current = newData;
         for (let i = 0; i < parts.length - 1; i++) {
             current[parts[i]] = { ...current[parts[i]] };
             current = current[parts[i]];
         }
         current[parts[parts.length - 1]] = value;
-        return newData;
+        return newData as Settings;
     });
   };
 
@@ -122,8 +135,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         });
         const data = await res.json();
         setSSOMessage({ success: data.success, message: data.message || data.error });
-    } catch (e: any) {
-        setSSOMessage({ success: false, message: e.message || 'Failed to initiate SSO login' });
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Failed to initiate SSO login';
+        setSSOMessage({ success: false, message: msg });
     } finally {
         setIsSSOLoginLoading(false);
     }
@@ -189,8 +203,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         } else {
             setSSOMessage({ success: false, message: data.error });
         }
-    } catch (e: any) {
-        setSSOMessage({ success: false, message: e.message || 'Failed to fetch credentials' });
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Failed to fetch credentials';
+        setSSOMessage({ success: false, message: msg });
     } finally {
         setIsSSOLoginLoading(false);
     }
@@ -231,7 +246,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     const mongo = localFormData.persistence.mongo[role];
     const isCustomer = role === 'customer';
     
-    const body: any = { 
+    const body = { 
         persistence: {
             mongo: {
                 [role]: mongo
@@ -267,7 +282,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       });
       const resData = await response.json();
       if (response.ok && resData.success) {
-        const result = { 
+        const result: MongoTestResult = { 
           success: true, 
           exists: resData.exists,
           message: resData.message || "MongoDB connection successful!" 
@@ -275,12 +290,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         if (isCustomer) setCustomerMongoTestResult(result);
         else setMongoTestResult(result);
       } else {
-        const result = { success: false, message: resData.error || "MongoDB connection failed" };
+        const result: MongoTestResult = { success: false, message: resData.error || "MongoDB connection failed" };
         if (isCustomer) setCustomerMongoTestResult(result);
         else setMongoTestResult(result);
       }
-    } catch (e: any) {
-      const result = { success: false, message: e.message || "Network error occurred testing MongoDB connection." };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Network error occurred testing MongoDB connection.";
+      const result: MongoTestResult = { success: false, message: msg };
       if (isCustomer) setCustomerMongoTestResult(result);
       else setMongoTestResult(result);
     } finally {
@@ -314,8 +330,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       } else {
         setJiraTestResult({ success: false, message: resData.error || "Connection failed" });
       }
-    } catch (e: any) {
-      setJiraTestResult({ success: false, message: e.message || "Network error occurred testing connection." });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Network error occurred testing connection.";
+      setJiraTestResult({ success: false, message: msg });
     } finally {
       setIsTesting(false);
     }
@@ -344,8 +361,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       } else {
         setMongoTestResult({ success: false, message: resData.error || "Export failed" });
       }
-    } catch (e: any) {
-      setMongoTestResult({ success: false, message: e.message || "Network error occurred during export." });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Network error occurred during export.";
+      setMongoTestResult({ success: false, message: msg });
     } finally {
       setIsTesting(false);
     }
@@ -382,8 +400,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       } else {
         setMongoTestResult({ success: false, message: resData.error || "Import failed" });
       }
-    } catch (e: any) {
-      setMongoTestResult({ success: false, message: e.message || "Error during import. Ensure the file is a valid JSON export." });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error during import. Ensure the file is a valid JSON export.";
+      setMongoTestResult({ success: false, message: msg });
     } finally {
       setIsTesting(false);
       event.target.value = "";
@@ -421,7 +440,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         const updates = parseJiraIssue(issueData, data.teams);
         await updateEpic(epic.id, updates, true);
         successCount++;
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(`Error syncing ${epic.jira_key}:`, err);
         failCount++;
       }
@@ -502,15 +521,16 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             createCount++;
           }
           successCount++;
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error(`Error processing ${jiraKey}:`, err);
           failCount++;
         }
       }
       setImportSyncResult({ success: failCount === 0, message: `Import complete. Created ${createCount}, Updated ${updateCount}, Failed ${failCount}.` });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Import error:", err);
-      setImportSyncResult({ success: false, message: err.message || "Import failed." });
+      const msg = err instanceof Error ? err.message : "Import failed.";
+      setImportSyncResult({ success: false, message: msg });
     } finally {
       setIsImporting(false);
       setImportProgress("");
@@ -838,7 +858,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             
                                             return parts.map((part, i) => {
                                                 if (part.startsWith('http')) {
-                                                    let url = part.replace(/[.,]$/, '');
+                                                    const url = part.replace(/[.,]$/, '');
                                                     // Handle appending user_code for any official AWS SSO URL pattern
                                                     let finalUrl = url;
                                                     const isAWSSSOUrl = url.includes('device.sso') || url.includes('awsapps.com/start') || url.includes('.app.aws');
@@ -1277,7 +1297,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             
                                             return parts.map((part, i) => {
                                                 if (part.startsWith('http')) {
-                                                    let url = part.replace(/[.,]$/, '');
+                                                    const url = part.replace(/[.,]$/, '');
                                                     // Handle appending user_code for any official AWS SSO URL pattern
                                                     let finalUrl = url;
                                                     const isAWSSSOUrl = url.includes('device.sso') || url.includes('awsapps.com/start') || url.includes('.app.aws');

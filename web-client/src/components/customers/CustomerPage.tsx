@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import type { ValueStreamData, Customer, WorkItem, TcvHistoryEntry, SupportIssue } from '../../types/models';
+import { useLocation } from 'react-router-dom';
+import type { ValueStreamData, Customer, WorkItem, TcvHistoryEntry, SupportIssue, JiraIssue } from '../../types/models';
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import { generateId } from '../../utils/security';
@@ -30,13 +30,15 @@ interface JiraKeysInputProps {
 
 const JiraKeysInput: React.FC<JiraKeysInputProps> = ({ value, onChange, jiraBaseUrl }) => {
     const [inputValue, setInputValue] = useState(value.join(', '));
+    const [prevValueJoined, setPrevValueJoined] = useState(value.join(', '));
 
-    useEffect(() => {
-        const joined = value.join(', ');
-        if (joined !== inputValue && !inputValue.endsWith(',') && !inputValue.endsWith(', ')) {
-            setInputValue(joined);
+    const valueJoined = value.join(', ');
+    if (valueJoined !== prevValueJoined) {
+        setPrevValueJoined(valueJoined);
+        if (valueJoined !== inputValue && !inputValue.endsWith(',') && !inputValue.endsWith(', ')) {
+            setInputValue(valueJoined);
         }
-    }, [value]);
+    }
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
@@ -84,7 +86,6 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     updateWorkItem
 }) => {
     const { showConfirm } = useValueStreamContext();
-    const navigate = useNavigate();
     const isNew = customerId === 'new';
 
     // Draft states for new customer creation
@@ -134,7 +135,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         if (hasChanged) {
             updateCustomer(customer.id, { jira_support_issues: allFetchedIssues }, true);
         }
-    }, [healthData.newIssues, healthData.inProgressIssues, healthData.noopIssues, healthData.loading, healthData.error, customer?.id, isNew, loading, updateCustomer]);
+    }, [healthData.newIssues, healthData.inProgressIssues, healthData.noopIssues, healthData.linkedIssues, healthData.loading, healthData.error, customer, isNew, loading, updateCustomer]);
 
     // Automatic cleanup of expired support issues
     useEffect(() => {
@@ -149,7 +150,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         if (validIssues.length !== customer.support_issues.length) {
             updateCustomer(customer.id, { support_issues: validIssues }, true);
         }
-    }, [customer?.id, customer?.support_issues, isNew, loading, updateCustomer]);
+    }, [customer, isNew, loading, updateCustomer]);
 
     // Handle scrolling to a focused support issue
     useEffect(() => {
@@ -266,7 +267,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         }
     };
 
-    const handleLinkJira = async (jiraIssue: any, targetId: string) => {
+    const handleLinkJira = async (jiraIssue: JiraIssue, targetId: string) => {
         if (!targetId || !customer) return;
         
         if (targetId === 'NEW') {
@@ -298,7 +299,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         }
     };
 
-    const renderValue = (val: any): React.ReactNode => {
+    const renderValue = (val: unknown): React.ReactNode => {
         if (val === null || val === undefined) return <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>null</span>;
         if (Array.isArray(val)) {
             if (val.length === 0) return <span style={{ color: 'var(--text-muted)' }}>[]</span>;
@@ -318,6 +319,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
             );
         }
         if (typeof val === 'object') {
+            const obj = val as Record<string, unknown>;
             return (
                 <div style={{ 
                     display: 'grid', 
@@ -325,7 +327,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                     gap: '12px 24px', 
                     width: '100%' 
                 }}>
-                    {Object.entries(val)
+                    {Object.entries(obj)
                         .filter(([k]) => {
                             const lower = k.toLowerCase();
                             const isId = lower === 'id' ||
@@ -563,7 +565,13 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                     ? newCustomerWorkItems.find(ncf => ncf.workItemId === workItem.id)!
                                     : workItem.customer_targets.find(ct => ct.customer_id === customerId)!;
 
-                                const updateTarget = (updates: any) => {
+                                interface UpdateTargetParams {
+                                    tcv_type?: 'existing' | 'potential';
+                                    priority?: 'Must-have' | 'Should-have' | 'Nice-to-have';
+                                    tcv_history_id?: string;
+                                }
+
+                                const updateTarget = (updates: UpdateTargetParams) => {
                                     if (isNew) {
                                         setNewCustomerWorkItems(prev => prev.map(ncf => 
                                             ncf.workItemId === workItem.id ? { ...ncf, ...updates } : ncf
@@ -572,7 +580,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                         const newTargets = workItem.customer_targets.map(ct => 
                                             ct.customer_id === customerId ? { ...ct, ...updates } : ct
                                         );
-                                        updateWorkItem(workItem.id, { customer_targets: newTargets as any });
+                                        updateWorkItem(workItem.id, { customer_targets: newTargets });
                                     }
                                 };
 
@@ -652,10 +660,10 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                         if (workItem) {
                                             const newTargets = [...(workItem.customer_targets || []), {
                                                 customer_id: customerId,
-                                                tcv_type: 'existing',
-                                                priority: 'Should-have'
+                                                tcv_type: 'existing' as const,
+                                                priority: 'Should-have' as const
                                             }];
-                                            updateWorkItem(workItemId, { customer_targets: newTargets as any });
+                                            updateWorkItem(workItemId, { customer_targets: newTargets });
                                         }
                                     }
                                 }}

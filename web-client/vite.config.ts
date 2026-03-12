@@ -249,7 +249,7 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
           fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
 
           const hasAppDb = !!settings.persistence?.mongo?.app?.uri;
-          let dbData: any = {
+          const dbData: any = {
             settings: maskSettings(settings),
             customers: [], workItems: [], teams: [], epics: [], sprints: [], valueStreams: [],
             metrics: { maxScore: 1, maxRoi: 1 }
@@ -570,8 +570,8 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
           const sso_account_id = auth.aws_sso_account_id;
           const sso_role_name = auth.aws_sso_role_name;
 
-          let envVars = { ...process.env };
-          let profileName = profile || 'temp-sso-profile';
+          const envVars = { ...process.env };
+          const profileName = profile || 'temp-sso-profile';
           if (!profile && sso_start_url) {
             const tempConfigPath = path.join(os.tmpdir(), `aws_config_${crypto.randomBytes(4).toString('hex')}`);
             fs.writeFileSync(tempConfigPath, `[profile ${profileName}]\nsso_start_url = ${sso_start_url}\nsso_region = ${sso_region}\nsso_account_id = ${sso_account_id}\nsso_role_name = ${sso_role_name}\nregion = ${sso_region}\n`);
@@ -623,8 +623,8 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
           const sso_account_id = auth.aws_sso_account_id;
           const sso_role_name = auth.aws_sso_role_name;
 
-          let envVars = { ...process.env };
-          let profileName = profile || 'temp-sso-profile';
+          const envVars = { ...process.env };
+          const profileName = profile || 'temp-sso-profile';
           let tempPath = '';
           if (!profile && sso_start_url) {
             tempPath = path.join(os.tmpdir(), `aws_config_${crypto.randomBytes(4).toString('hex')}`);

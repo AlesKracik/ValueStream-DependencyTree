@@ -181,9 +181,8 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                             {d.linkedJiras.map(jira => (
                                 <div 
                                     key={jira.key} 
-                                    onClick={(e) => {
+                                    onClick={() => {
                                         if (jira.url) {
-                                            e.stopPropagation();
                                             window.open(jira.url, '_blank');
                                         }
                                     }}

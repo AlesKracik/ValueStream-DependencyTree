@@ -1,9 +1,10 @@
-import { memo, useState, useRef, useEffect } from 'react';
+import { memo, useState, useRef, useEffect, useCallback } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { addDays, format, parseISO } from 'date-fns';
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import { sanitizeUrl } from '../../utils/security';
 import { calculateEpicEffortPerSprint } from '../../utils/businessLogic';
+import type { Epic } from '../../types/models';
 
 export interface GanttBarNodeData {
     label: string;
@@ -53,7 +54,7 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
         }));
     };
 
-    const getActiveSprintStart = () => {
+    const getActiveSprintStart = useCallback(() => {
         if (!ValueStreamData) return new Date();
         const today = new Date();
         const activeSprint = ValueStreamData.sprints.find(s => {
@@ -62,7 +63,7 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
             return today >= start && today <= end;
         }) || ValueStreamData.sprints[0];
         return activeSprint ? parseISO(activeSprint.start_date) : new Date();
-    };
+    }, [ValueStreamData]);
 
     const onPointerUp = async (e: React.PointerEvent) => {
         if (!dragState.active) return;
@@ -104,7 +105,7 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
                     const activeSprintStart = getActiveSprintStart();
                     const isFutureEndShiftOnly = (newEndStr !== endStr) && (newStartStr === startStr) && parseISO(newEndStr) >= activeSprintStart;
 
-                    const updates: any = { 
+                    const updates: Partial<Epic> = { 
                         target_start: newStartStr,
                         target_end: newEndStr
                     };
@@ -161,7 +162,7 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
         if (needsUpdate) {
             updateEpic(data.epicId, { sprint_effort_overrides: newOverrides });
         }
-    }, [ValueStreamData, data.epicId, data.targetStart, data.targetEnd]);
+    }, [ValueStreamData, data.epicId, data.targetStart, data.targetEnd, getActiveSprintStart, updateEpic]);
 
     // Calculate visual dimensions based on drag state
     let visualWidth = data.width;

@@ -19,7 +19,7 @@ export const SprintCapacityNode = memo(({ data }: { data: SprintCapacityNodeData
     let borderColor = 'var(--node-sprint-border)';
     let textColor = 'var(--text-secondary)';
     let bgColor = 'var(--node-sprint-bg)';
-    let fontWeight = '500';
+    let fontWeight: '500' | 'bold' = '500';
 
     if (isOverallocated) {
         borderColor = 'var(--node-sprint-over-border)';
@@ -46,7 +46,7 @@ export const SprintCapacityNode = memo(({ data }: { data: SprintCapacityNodeData
                 borderLeft: '1px solid var(--node-sprint-border)',
                 color: textColor,
                 fontSize: '13px',
-                fontWeight: fontWeight as any,
+                fontWeight: fontWeight,
                 backgroundColor: bgColor,
                 transition: 'all 0.2s ease',
                 boxSizing: 'border-box'

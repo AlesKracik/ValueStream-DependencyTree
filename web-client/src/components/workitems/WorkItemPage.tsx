@@ -147,9 +147,10 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
             } else {
                 updateEpic(id, updates);
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error('Sync failed', err);
-            await showAlert('Sync Failed', err.message || 'An unexpected error occurred during sync.');
+            const msg = err instanceof Error ? err.message : 'An unexpected error occurred during sync.';
+            await showAlert('Sync Failed', msg);
         } finally {
             setSyncingId(null);
         }
@@ -318,9 +319,9 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                         
                                         if (!target) return null;
 
-                                        const updateTarget = (updates: any) => {
+                                        const updateTarget = (updates: Partial<{ tcv_type: 'existing' | 'potential'; priority: 'Must-have' | 'Should-have' | 'Nice-to-have'; tcv_history_id?: string }>) => {
                                             if (isNew) {
-                                                setNewWorkItemCustomers(prev => prev.map(c => c.customerId === customer.id ? { ...c, ...updates } : c));
+                                                setNewWorkItemCustomers(prev => prev.map(c => c.customerId === customer.id ? { ...c, ...updates } as typeof c : c));
                                             } else {
                                                 const newTargets = workItem?.customer_targets?.map(ct => ct.customer_id === customer.id ? { ...ct, ...updates } : ct);
                                                 updateWorkItem(workItemId, { customer_targets: newTargets });
@@ -331,7 +332,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                             <tr key={customer.id}>
                                                 <td>{customer.name}</td>
                                                 <td>
-                                                    <select value={target.tcv_type} onChange={e => updateTarget({ tcv_type: e.target.value })}>
+                                                    <select value={target.tcv_type} onChange={e => updateTarget({ tcv_type: e.target.value as 'existing' | 'potential' })}>
                                                         <option value="existing">Existing</option>
                                                         <option value="potential">Potential</option>
                                                     </select>
@@ -352,7 +353,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                     )}
                                                 </td>
                                                 <td>
-                                                    <select value={target.priority} onChange={e => updateTarget({ priority: e.target.value })}>
+                                                    <select value={target.priority} onChange={e => updateTarget({ priority: e.target.value as any })}>
                                                         <option value="Must-have">Must-have</option>
                                                         <option value="Should-have">Should-have</option>
                                                         <option value="Nice-to-have">Nice-to-have</option>
@@ -415,7 +416,13 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                         type="text"
                                         value={epic.jira_key}
                                         placeholder="Key"
-                                        onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, jira_key: e.target.value } : ev)) : updateEpic(epic.id, { jira_key: e.target.value })}
+                                        onChange={e => {
+                                            if (isNew) {
+                                                setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, jira_key: e.target.value } : ev));
+                                            } else {
+                                                updateEpic(epic.id, { jira_key: e.target.value });
+                                            }
+                                        }}
                                         style={{ flex: 1, minWidth: '60px' }}
                                     />
                                     {epic.jira_key && epic.jira_key !== 'TBD' && data?.settings.jira_base_url && (
@@ -435,7 +442,13 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                         type="text"
                                         value={epic.name}
                                         placeholder="Epic Name"
-                                        onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, name: e.target.value } : ev)) : updateEpic(epic.id, { name: e.target.value })}
+                                        onChange={e => {
+                                            if (isNew) {
+                                                setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, name: e.target.value } : ev));
+                                            } else {
+                                                updateEpic(epic.id, { name: e.target.value });
+                                            }
+                                        }}
                                         style={{ width: '100%' }}
                                     />
                                 </div>
@@ -454,7 +467,13 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                     <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Team:</span>
                                     <select
                                         value={epic.team_id}
-                                        onChange={e => isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, team_id: e.target.value } : ev)) : updateEpic(epic.id, { team_id: e.target.value })}
+                                        onChange={e => {
+                                            if (isNew) {
+                                                setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, team_id: e.target.value } : ev));
+                                            } else {
+                                                updateEpic(epic.id, { team_id: e.target.value });
+                                            }
+                                        }}
                                         style={{ width: '100%' }}
                                     >
                                         {data?.teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -467,7 +486,11 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                         value={epic.effort_md}
                                         onChange={e => {
                                             const val = parseInt(e.target.value) || 0;
-                                            isNew ? setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, effort_md: val } : ev)) : updateEpic(epic.id, { effort_md: val });
+                                            if (isNew) {
+                                                setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, effort_md: val } : ev));
+                                            } else {
+                                                updateEpic(epic.id, { effort_md: val });
+                                            }
                                         }}
                                         style={{ width: '100%' }}
                                     />
@@ -485,8 +508,11 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                     await showAlert('Invalid Dates', 'The Start Date must be before the End Date.');
                                                     return;
                                                 }
-                                                if (isNew) setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, target_start: newStart } : ev));
-                                                else updateEpic(epic.id, { target_start: newStart });
+                                                if (isNew) {
+                                                    setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, target_start: newStart } : ev));
+                                                } else {
+                                                    updateEpic(epic.id, { target_start: newStart });
+                                                }
                                             }}
                                         />
                                         {!epic.target_start && <span title="Missing start date" style={{ cursor: 'help' }}>⚠️</span>}
@@ -505,8 +531,11 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                     await showAlert('Invalid Dates', 'The Start Date must be before the End Date.');
                                                     return;
                                                 }
-                                                if (isNew) setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, target_end: newEnd } : ev));
-                                                else updateEpic(epic.id, { target_end: newEnd });
+                                                if (isNew) {
+                                                    setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, target_end: newEnd } : ev));
+                                                } else {
+                                                    updateEpic(epic.id, { target_end: newEnd });
+                                                }
                                             }}
                                         />
                                         {!epic.target_end && <span title="Missing end date" style={{ cursor: 'help' }}>⚠️</span>}

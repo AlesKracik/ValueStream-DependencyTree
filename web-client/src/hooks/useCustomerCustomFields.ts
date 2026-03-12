@@ -3,7 +3,7 @@ import { authorizedFetch } from '../utils/api';
 import type { Settings, Customer } from '../types/models';
 
 export function useCustomerCustomFields(customerOrCustomers: Customer | Customer[] | null | undefined, settings: Settings | null | undefined) {
-    const [data, setData] = useState<any[]>([]);
+    const [data, setData] = useState<Record<string, unknown>[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -55,16 +55,17 @@ export function useCustomerCustomFields(customerOrCustomers: Customer | Customer
                     setError(resData.error || 'Failed to fetch custom fields');
                     setData([]);
                 }
-            } catch (err: any) {
+            } catch (err: unknown) {
                 console.error('Error fetching custom fields:', err);
-                setError(err.message || 'Network error fetching custom fields');
+                const msg = err instanceof Error ? err.message : 'Network error fetching custom fields';
+                setError(msg);
             } finally {
                 setLoading(false);
             }
         }
 
         fetchData();
-    }, [customerIdsKey, settings]);
+    }, [customerIdsKey, customerIds, settings]);
 
     return { data, loading, error };
 }

@@ -11,6 +11,7 @@ interface EditNodeModalProps {
     onUpdateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
     onUpdateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
     onUpdateTeam: (id: string, updates: Partial<Team>, immediate?: boolean) => Promise<void>;
+    onUpdateEpic: (id: string, updates: Partial<any>, immediate?: boolean) => Promise<void>;
 }
 
 export const EditNodeModal: React.FC<EditNodeModalProps> = ({
@@ -19,7 +20,8 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
     data,
     onUpdateCustomer,
     onUpdateWorkItem,
-    onUpdateTeam
+    onUpdateTeam,
+    onUpdateEpic
 }) => {
     // Extract domain ID from node ID (e.g., 'customer-c1' -> 'c1', 'gantt-a1' -> 'a1')
     const extractId = (nodeId: string) => {
@@ -39,29 +41,27 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
     };
 
     const domainId = extractId(node.id);
-    const [formData, setFormData] = useState<any>({});
 
-    // Initialize form data based on node type
-    useEffect(() => {
+    const getInitialFormData = () => {
         if (node.type === 'customerNode') {
             const customer = data.customers.find(c => c.id === domainId);
             if (customer) {
-                setFormData({
+                return {
                     name: customer.name,
                     existing_tcv: customer.existing_tcv,
                     potential_tcv: customer.potential_tcv
-                });
+                };
             }
         } else if (node.type === 'workItemNode') {
             const workItem = data.workItems.find(f => f.id === domainId);
             if (workItem) {
-                setFormData({
+                return {
                     name: workItem.name,
                     total_effort_mds: workItem.total_effort_mds,
                     released_in_sprint_id: workItem.released_in_sprint_id || '',
                     all_customers_target: workItem.all_customers_target ? { ...workItem.all_customers_target } : undefined,
                     customer_targets: workItem.customer_targets ? JSON.parse(JSON.stringify(workItem.customer_targets)) : []
-                });
+                };
             }
 
         } else if (node.type === 'sprintCapacityNode') {
@@ -73,17 +73,26 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                 const sprint = data.sprints.find(s => s.id === sprintId);
                 if (team && sprint) {
                     const currentOverride = team.sprint_capacity_overrides?.[sprintId];
-                    setFormData({
+                    return {
                         teamId,
                         sprintId,
                         teamName: team.name,
                         sprintName: sprint.name,
                         override_capacity_mds: currentOverride !== undefined ? String(currentOverride) : ''
-                    });
+                    };
                 }
             }
         }
-    }, [node, domainId, data]);
+        return {};
+    };
+
+    const [formData, setFormData] = useState<Record<string, any>>(() => getInitialFormData());
+    const [prevNodeId, setPrevNodeId] = useState(node.id);
+
+    if (node.id !== prevNodeId) {
+        setPrevNodeId(node.id);
+        setFormData(getInitialFormData());
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -236,7 +245,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                     {!formData.all_customers_target && (
                         <div style={{ marginTop: '16px' }}>
                             <h3 style={{ fontSize: '14px', color: 'var(--text-highlight)', marginBottom: '8px' }}>Customer Targets Prioritization</h3>
-                            {(formData.customer_targets || []).map((target: any, idx: number) => {
+                            {(formData.customer_targets || []).map((target: { customer_id: string; tcv_type: string; priority: string; tcv_history_id?: string }, idx: number) => {
                                 const cst = data.customers.find(c => c.id === target.customer_id);
                                 return (
                                     <div key={`${target.customer_id}-${target.tcv_type}`} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px', padding: '8px', backgroundColor: 'var(--bg-secondary)', borderRadius: '4px' }}>
@@ -249,7 +258,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                                                 value={target.priority || 'Must-have'}
                                                 onChange={e => {
                                                     const newTargets = [...formData.customer_targets];
-                                                    newTargets[idx].priority = e.target.value;
+                                                    newTargets[idx] = { ...newTargets[idx], priority: e.target.value };
                                                     setFormData({ ...formData, customer_targets: newTargets });
                                                 }}
                                             >
@@ -266,12 +275,15 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                                                     value={target.tcv_history_id || 'latest'}
                                                     onChange={e => {
                                                         const newTargets = [...formData.customer_targets];
-                                                        newTargets[idx].tcv_history_id = e.target.value === 'latest' ? undefined : e.target.value;
+                                                        newTargets[idx] = { 
+                                                            ...newTargets[idx], 
+                                                            tcv_history_id: e.target.value === 'latest' ? undefined : e.target.value 
+                                                        };
                                                         setFormData({ ...formData, customer_targets: newTargets });
                                                     }}
                                                 >
                                                     <option value="latest">Latest Actual (${cst.existing_tcv.toLocaleString()})</option>
-                                                    {cst.tcv_history.map((h: any) => (
+                                                    {cst.tcv_history.map(h => (
                                                         <option key={h.id} value={h.id}>{h.valid_from}: ${h.value.toLocaleString()}</option>
                                                     ))}
                                                 </select>

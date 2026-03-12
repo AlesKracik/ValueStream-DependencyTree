@@ -5,6 +5,15 @@ import type { ValueStreamData, ValueStreamParameters } from '../types/models';
 import Holidays from 'date-holidays';
 import { calculateWorkItemEffort, calculateEpicEffortPerSprint, calculateEpicIntensityRatio } from '../utils/businessLogic';
 
+interface Holiday {
+    date: string;
+    type: string;
+}
+
+interface HolidayInput {
+    getHolidays: (year: number) => Holiday[];
+}
+
 export function useGraphLayout(
     data: ValueStreamData | null,
     hoveredNodeId: string | null = null,
@@ -785,12 +794,12 @@ export function useGraphLayout(
                 const ganttStartY = baseY - ((maxLanes - 1) * 45) / 2;
 
                 // Cache holiday checker for performance if country exists
-                let hd: any = null;
+                let hd: HolidayInput | null = null;
                 if (team.country) {
                     try {
-                        hd = new Holidays(team.country as any);
-                    } catch (e) {
-                        console.error(`Invalid country code: ${team.country}`);
+                        hd = new Holidays(team.country) as unknown as HolidayInput;
+                    } catch (err: unknown) {
+                        console.error(`Invalid country code: ${team.country}`, err);
                     }
                 }
 
@@ -809,7 +818,7 @@ export function useGraphLayout(
                             hList.push(...hd.getHolidays(sprintEndDate.getFullYear()));
                         }
 
-                        hList.forEach((h: any) => {
+                        hList.forEach((h: Holiday) => {
                             // Only count 'public' holidays, ignore 'optional', 'observance', etc.
                             if (h.type !== 'public') return;
                             

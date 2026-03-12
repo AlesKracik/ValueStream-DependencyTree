@@ -15,7 +15,7 @@ interface GenericDetailPageProps {
     tabs?: DetailTab[];
     loading?: boolean;
     error?: Error | null;
-    data?: any;
+    data?: unknown;
     actions?: React.ReactNode;
     initialTabId?: string;
     onTabChange?: (tabId: string) => void;

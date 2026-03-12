@@ -38,7 +38,7 @@ export const SprintPage: React.FC<SprintPageProps> = ({
             groups[q].push(s);
         });
         return groups;
-    }, [data?.sprints]);
+    }, [data]);
 
     const sortedQuarters = useMemo(() => {
         return Object.keys(groupedSprints).sort((a, b) => {

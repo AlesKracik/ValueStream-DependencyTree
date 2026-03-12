@@ -1,11 +1,11 @@
-import React from 'react';
-import { ReactFlow, Background, BackgroundVariant, Panel, useReactFlow } from '@xyflow/react';
+import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
+import { ReactFlow, Panel, useReactFlow } from '@xyflow/react';
 import type { Node } from '@xyflow/react';
 import { parseISO, differenceInDays } from 'date-fns';
 import '@xyflow/react/dist/style.css';
 
 import { useGraphLayout } from '../../hooks/useGraphLayout';
-import type { ValueStreamData, Customer, WorkItem, Team, ValueStreamViewState, ValueStreamParameters } from '../../types/models';
+import type { ValueStreamData, Customer, WorkItem, Team, ValueStreamViewState, ValueStreamParameters, Epic } from '../../types/models';
 import { CustomerNode } from '../nodes/CustomerNode';
 import { WorkItemNode } from '../nodes/WorkItemNode';
 import { TeamNode } from '../nodes/TeamNode';
@@ -36,7 +36,7 @@ interface ValueStreamControlsProps {
 const ValueStreamControls: React.FC<ValueStreamControlsProps> = ({ data, nodes, setViewState }) => {
     const { zoomIn, zoomOut, setViewport } = useReactFlow();
 
-    const handleFitView = React.useCallback(() => {
+    const handleFitView = useCallback(() => {
         // Shift sprint view logic
         if (data && data.sprints && data.sprints.length > 0) {
             const today = new Date();
@@ -123,6 +123,7 @@ export interface ValueStreamProps {
     updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
     updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
     updateTeam: (id: string, updates: Partial<Team>, immediate?: boolean) => Promise<void>;
+    updateEpic: (id: string, updates: Partial<Epic>, immediate?: boolean) => Promise<void>;
     currentValueStreamId?: string;
     
     viewState: ValueStreamViewState;
@@ -137,7 +138,7 @@ export interface ValueStreamProps {
 
 export const ValueStream: React.FC<ValueStreamProps> = ({
     data, loading, error,
-    updateCustomer, updateWorkItem, updateTeam, currentValueStreamId,
+    updateCustomer, updateWorkItem, updateTeam, updateEpic, currentValueStreamId,
      viewState, setViewState,
     onNavigateToCustomer,
     onNavigateToWorkItem,
@@ -147,12 +148,14 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
     onNavigateToValueStreamEdit
 }) => {
     const { setViewport } = useReactFlow();
-    const [hoveredNodeId, setHoveredNodeId] = React.useState<string | null>(null);
-    const [editingNode, setEditingNode] = React.useState<Node | null>(null);
+    const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+    const [editingNode, setEditingNode] = useState<Node | null>(null);
 
-    const currentValueStream = data?.valueStreams.find(d => d.id === currentValueStreamId);
+    const currentValueStream = useMemo(() => 
+        data?.valueStreams.find(d => d.id === currentValueStreamId),
+    [data, currentValueStreamId]);
     
-    const baseParams: ValueStreamParameters = {
+    const baseParams: ValueStreamParameters = useMemo(() => ({
         customerFilter: currentValueStream?.parameters?.customerFilter || '',
         workItemFilter: currentValueStream?.parameters?.workItemFilter || '',
         releasedFilter: currentValueStream?.parameters?.releasedFilter || 'all',
@@ -162,7 +165,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         epicFilter: currentValueStream?.parameters?.epicFilter || '',
         startSprintId: currentValueStream?.parameters?.startSprintId || '',
         endSprintId: currentValueStream?.parameters?.endSprintId || ''
-    };
+    }), [currentValueStream]);
 
     const { nodes, edges } = useGraphLayout(
         data,
@@ -181,7 +184,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
     );
 
     // Initial sprint offset and viewport calculation
-    React.useEffect(() => {
+    useEffect(() => {
         if (!data || !data.sprints || data.sprints.length === 0 || viewState.isInitialOffsetSet || nodes.length === 0) return;
 
         const today = new Date();
@@ -242,16 +245,16 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         }
     }, [data, setViewState, viewState.isInitialOffsetSet, nodes, setViewport, viewState.sprintOffset]);
 
-    const hoverTimeoutRef = React.useRef<number | null>(null);
+    const hoverTimeoutRef = useRef<number | null>(null);
 
-    const onNodeMouseEnter = React.useCallback((_: React.MouseEvent, node: Node) => {
+    const onNodeMouseEnter = useCallback((_: React.MouseEvent, node: Node) => {
         if (viewState.disableHoverHighlight) return;
         if (['headerNode', 'sprintCapacityNode', 'todayLineNode'].includes(node.type || '')) return;
         if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
         setHoveredNodeId(node.id);
     }, [viewState.disableHoverHighlight]);
 
-    const onNodeMouseLeave = React.useCallback(() => {
+    const onNodeMouseLeave = useCallback(() => {
         if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
         hoverTimeoutRef.current = window.setTimeout(() => {
             setHoveredNodeId(null);
@@ -259,13 +262,13 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
     }, []);
 
     // Cleanup timeout on unmount
-    React.useEffect(() => {
+    useEffect(() => {
         return () => {
             if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
         };
     }, []);
 
-    const onNodeClick = React.useCallback((_: React.MouseEvent, node: Node) => {
+    const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
         if (node.type === 'customerNode') {
             const customerId = node.id.replace('customer-', '');
             onNavigateToCustomer(customerId);
@@ -290,7 +293,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         }
     }, [onNavigateToCustomer, onNavigateToWorkItem, onNavigateToTeam, onNavigateToEpic, onNavigateToSprint]);
 
-    const onNodeContextMenu = React.useCallback(
+    const onNodeContextMenu = useCallback(
         (event: React.MouseEvent, node: Node) => {
             event.preventDefault();
             // Don't show modal for static layout elements
@@ -308,7 +311,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         [setViewState]
     );
 
-    const [localFilters, setLocalFilters] = React.useState({
+    const [localFilters, setLocalFilters] = useState({
         customerFilter: viewState.customerFilter,
         workItemFilter: viewState.workItemFilter,
         teamFilter: viewState.teamFilter,
@@ -317,8 +320,16 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         minScoreFilter: viewState.minScoreFilter
     });
 
-    // Update local filters when viewState changes (e.g. on initial load or ValueStream switch)
-    React.useEffect(() => {
+    const prevViewStateRef = useRef(viewState);
+    if (
+        prevViewStateRef.current.customerFilter !== viewState.customerFilter ||
+        prevViewStateRef.current.workItemFilter !== viewState.workItemFilter ||
+        prevViewStateRef.current.teamFilter !== viewState.teamFilter ||
+        prevViewStateRef.current.epicFilter !== viewState.epicFilter ||
+        prevViewStateRef.current.minTcvFilter !== viewState.minTcvFilter ||
+        prevViewStateRef.current.minScoreFilter !== viewState.minScoreFilter
+    ) {
+        prevViewStateRef.current = viewState;
         setLocalFilters({
             customerFilter: viewState.customerFilter,
             workItemFilter: viewState.workItemFilter,
@@ -327,10 +338,10 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
             minTcvFilter: viewState.minTcvFilter,
             minScoreFilter: viewState.minScoreFilter
         });
-    }, [viewState.customerFilter, viewState.workItemFilter, viewState.teamFilter, viewState.epicFilter, viewState.minTcvFilter, viewState.minScoreFilter]);
+    }
 
     // Debounce effect to update global viewState
-    React.useEffect(() => {
+    useEffect(() => {
         const timer = setTimeout(() => {
             setViewState(s => ({
                 ...s,
@@ -439,7 +450,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <select
                                 value={viewState.releasedFilter}
-                                onChange={e => setViewState((s: ValueStreamViewState) => ({ ...s, releasedFilter: e.target.value as any }))}
+                                onChange={e => setViewState((s: ValueStreamViewState) => ({ ...s, releasedFilter: e.target.value as 'all' | 'released' | 'unreleased' }))}
                                 style={{ width: '150px' }}
                             >
                                 <option value="all">Release: All</option>

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useMemo } from 'react';
 import type { ValueStreamData, Epic } from '../types/models';
 import { NotificationModal } from '../components/common/NotificationModal';
 
@@ -17,65 +17,68 @@ interface NotificationContextType {
 
 interface ValueStreamContextType extends NotificationContextType {
     data: ValueStreamData | null;
-    updateEpic: (id: string, updates: Partial<Epic>) => void;
+    updateEpic: (id: string, updates: Partial<Epic>, immediate?: boolean) => Promise<void>;
+    addEpic: (epic: Epic) => void;
+    deleteEpic: (id: string) => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | null>(null);
 const ValueStreamContext = createContext<ValueStreamContextType | null>(null);
 
-export const useNotificationContext = () => {
+export function useNotificationContext() {
     const context = useContext(NotificationContext);
     if (!context) {
         throw new Error('useNotificationContext must be used within a NotificationProvider');
     }
     return context;
-};
+}
 
-export const useValueStreamContext = () => {
+export function useValueStreamContext() {
     const context = useContext(ValueStreamContext);
     if (!context) {
         throw new Error('useValueStreamContext must be used within a ValueStreamProvider');
     }
     return context;
-};
+}
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [notification, setNotification] = useState<NotificationConfig | null>(null);
 
-    const showAlert = (title: string, message: string): Promise<void> => {
-        return new Promise((resolve) => {
-            setNotification({
-                title,
-                message,
-                type: 'alert',
-                onConfirm: () => {
-                    setNotification(null);
-                    resolve();
-                }
+    const notificationActions = useMemo(() => ({
+        showAlert: (title: string, message: string): Promise<void> => {
+            return new Promise((resolve) => {
+                setNotification({
+                    title,
+                    message,
+                    type: 'alert',
+                    onConfirm: () => {
+                        setNotification(null);
+                        resolve();
+                    }
+                });
             });
-        });
-    };
-
-    const showConfirm = (title: string, message: string): Promise<boolean> => {
-        return new Promise((resolve) => {
-            setNotification({
-                title,
-                message,
-                type: 'confirm',
-                onConfirm: () => {
-                    setNotification(null);
-                    resolve(true);
-                },
-                onCancel: () => {
-                    setNotification(null);
-                    resolve(false);
-                }
+        },
+        showConfirm: (title: string, message: string): Promise<boolean> => {
+            return new Promise((resolve) => {
+                setNotification({
+                    title,
+                    message,
+                    type: 'confirm',
+                    onConfirm: () => {
+                        setNotification(null);
+                        resolve(true);
+                    },
+                    onCancel: () => {
+                        setNotification(null);
+                        resolve(false);
+                    }
+                });
             });
-        });
-    };
+        }
+    }), []);
 
     return (
-        <NotificationContext.Provider value={{ showAlert, showConfirm }}>
+        <NotificationContext.Provider value={notificationActions}>
             {children}
             {notification && (
                 <NotificationModal
@@ -93,12 +96,23 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
 export const ValueStreamProvider: React.FC<{
     children: React.ReactNode;
-    value: { data: ValueStreamData | null; updateEpic: (id: string, updates: Partial<Epic>) => void };
+    value: { 
+        data: ValueStreamData | null; 
+        updateEpic: (id: string, updates: Partial<Epic>, immediate?: boolean) => Promise<void>;
+        addEpic: (epic: Epic) => void;
+        deleteEpic: (id: string) => void;
+    };
 }> = ({ children, value }) => {
     const { showAlert, showConfirm } = useNotificationContext();
 
+    const contextValue = useMemo(() => ({
+        ...value,
+        showAlert,
+        showConfirm
+    }), [value, showAlert, showConfirm]);
+
     return (
-        <ValueStreamContext.Provider value={{ ...value, showAlert, showConfirm }}>
+        <ValueStreamContext.Provider value={contextValue}>
             {children}
         </ValueStreamContext.Provider>
     );

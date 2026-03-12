@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Dispatch, SetStateAction } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useParams, Navigate } from 'react-router-dom';
 import { ReactFlowProvider } from '@xyflow/react';
 
@@ -25,10 +25,15 @@ import { LoginPage } from './pages/LoginPage';
 import { useValueStreamData } from './hooks/useValueStreamData';
 import { ValueStreamProvider, NotificationProvider, useNotificationContext, useValueStreamContext } from './contexts/ValueStreamContext';
 import { getAdminSecret } from './utils/api';
-import type { ValueStreamViewState } from './types/models';
+import type { ValueStreamViewState, ValueStreamDataState } from './types/models';
 import './App.css';
 
-function ValueStreamRouteWrapper({ ValueStreamViewState, setValueStreamViewState }: any) {
+interface ValueStreamRouteWrapperProps {
+  ValueStreamViewState: ValueStreamViewState;
+  setValueStreamViewState: Dispatch<SetStateAction<ValueStreamViewState>>;
+}
+
+function ValueStreamRouteWrapper({ ValueStreamViewState, setValueStreamViewState }: ValueStreamRouteWrapperProps) {
   const { id } = useParams();
   const navigate = useNavigate();
   const { showAlert } = useValueStreamContext();
@@ -59,41 +64,41 @@ function ValueStreamRouteWrapper({ ValueStreamViewState, setValueStreamViewState
       );
 }
 
-function CustomerPageRouteWrapper({ valueStreamState }: any) {
+function CustomerPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
   const { id } = useParams();
   const navigate = useNavigate();
   return <CustomerPage customerId={id!} onBack={() => navigate(-1)} addCustomer={valueStreamState.addCustomer} {...valueStreamState} />;
 }
 
-function WorkItemPageRouteWrapper({ valueStreamState }: any) {
+function WorkItemPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
   const { id } = useParams();
   const navigate = useNavigate();
   return <WorkItemPage workItemId={id!} onBack={() => navigate(-1)} {...valueStreamState} />;
 }
 
-function EpicPageRouteWrapper({ valueStreamState }: any) {
+function EpicPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
   const { id } = useParams();
   const navigate = useNavigate();
   return <EpicPage epicId={id!} onBack={() => navigate(-1)} deleteEpic={valueStreamState.deleteEpic} {...valueStreamState} />;
 }
 
-function TeamPageRouteWrapper({ valueStreamState }: any) {
+function TeamPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
   const { id } = useParams();
   const navigate = useNavigate();
   return <TeamPage teamId={id!} onBack={() => navigate(-1)} deleteTeam={valueStreamState.deleteTeam} {...valueStreamState} />;
 }
 
-function ValueStreamEditPageRouteWrapper({ valueStreamState }: any) {
+function ValueStreamEditPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
   const { id } = useParams();
   const navigate = useNavigate();
   return <ValueStreamEditPage valueStreamId={id!} onBack={() => navigate(-1)} {...valueStreamState} />;
 }
 
-function SprintPageRouteWrapper({ valueStreamState }: any) {
+function SprintPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
   return <SprintPage {...valueStreamState} />;
 }
 
-function SettingsPageRouteWrapper({ valueStreamState }: any) {
+function SettingsPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
   return (
     <SettingsPage 
       settings={valueStreamState.data?.settings || { jira_base_url: '', jira_api_version: '3' }} 
@@ -131,7 +136,12 @@ function MainAppContent() {
   }, [globalState.data?.settings?.general?.theme]);
 
   return (
-    <ValueStreamProvider value={{ data: globalState.data, updateEpic: globalState.updateEpic }}>
+    <ValueStreamProvider value={{ 
+      data: globalState.data, 
+      updateEpic: globalState.updateEpic,
+      addEpic: globalState.addEpic,
+      deleteEpic: globalState.deleteEpic
+    }}>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Navigate to="/valueStreams" replace />} />
