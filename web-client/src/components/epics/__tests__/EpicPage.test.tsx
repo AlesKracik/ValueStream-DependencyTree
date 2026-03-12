@@ -48,11 +48,11 @@ describe('EpicPage', () => {
 
     const renderEpicPage = (props = defaultProps, epicId = 'e1') => {
         return render(
-            <MemoryRouter initialEntries={[`/epics/${epicId}`]}>
+            <MemoryRouter initialEntries={[`/epic/${epicId}`]}>
                 <NotificationProvider>
                     <ValueStreamProvider value={{ data: props.data || mockData, updateEpic: updateEpicSpy }}>
                         <Routes>
-                            <Route path="/epics/:id" element={<EpicPage {...props} />} />
+                            <Route path="/epic/:id" element={<EpicPage {...props} />} />
                         </Routes>
                     </ValueStreamProvider>
                 </NotificationProvider>

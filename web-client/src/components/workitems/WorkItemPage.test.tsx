@@ -1,9 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { WorkItemPage } from './WorkItemPage';
 import { ValueStreamProvider, NotificationProvider } from '../../contexts/ValueStreamContext';
 import type { ValueStreamData } from '../../types/models';
 import * as api from '../../utils/api';
+import { MemoryRouter } from 'react-router-dom';
 
 vi.mock('../../utils/api', async () => {
     const actual = await vi.importActual('../../utils/api');
@@ -64,14 +65,24 @@ describe('WorkItemPage', () => {
         updateEpic: vi.fn()
     };
 
-    it('should show TCV history selection when targeting Existing TCV', () => {
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                    <WorkItemPage {...defaultProps} workItemId="f1" />
-                </ValueStreamProvider>
-            </NotificationProvider>
+    const renderPage = (props = defaultProps, workItemId = 'f1') => {
+        return render(
+            <MemoryRouter>
+                <NotificationProvider>
+                    <ValueStreamProvider value={{ data: props.data || mockData, updateEpic: vi.fn() }}>
+                        <WorkItemPage {...props} workItemId={workItemId} />
+                    </ValueStreamProvider>
+                </NotificationProvider>
+            </MemoryRouter>
         );
+    };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('should show TCV history selection when targeting Existing TCV', () => {
+        renderPage();
 
         // History dropdown should be visible because f1 targets existing TCV of c1 which has history
         const historySelect = screen.getByDisplayValue(/Latest Actual/i);
@@ -88,13 +99,7 @@ describe('WorkItemPage', () => {
     });
 
     it('should have Nice-to-have option in the priority dropdown for existing targets', () => {
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                    <WorkItemPage {...defaultProps} workItemId="f1" />
-                </ValueStreamProvider>
-            </NotificationProvider>
-        );
+        renderPage();
 
         const niceToHaveOptions = screen.getAllByRole('option', { name: 'Nice-to-have' }) as HTMLOptionElement[];
         expect(niceToHaveOptions.length).toBeGreaterThan(0);
@@ -102,13 +107,7 @@ describe('WorkItemPage', () => {
     });
 
     it('should have Nice-to-have option in the priority dropdown when adding a new target', () => {
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                    <WorkItemPage {...defaultProps} workItemId="new" />
-                </ValueStreamProvider>
-            </NotificationProvider>
-        );
+        renderPage(defaultProps, 'new');
 
         const customerInput = screen.getByPlaceholderText('Search for a customer to target...');
         
@@ -132,16 +131,10 @@ describe('WorkItemPage', () => {
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
         };
 
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: dataWithUnassigned, updateEpic: vi.fn() }}>
-                    <WorkItemPage {...defaultProps} data={dataWithUnassigned} workItemId="f1" />
-                </ValueStreamProvider>
-            </NotificationProvider>
-        );
+        renderPage({ ...defaultProps, data: dataWithUnassigned });
 
         // Switch to Epics tab
-        const epicsTab = screen.getByText(/Epics \(/i);
+        const epicsTab = screen.getByText(/Engineering Epics \(/i);
         fireEvent.click(epicsTab);
 
         const epicInput = screen.getByPlaceholderText('Search for an unassigned epic to link...');
@@ -153,13 +146,7 @@ describe('WorkItemPage', () => {
     });
 
     it('toggles global target row and hides individual customer search', () => {
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                    <WorkItemPage {...defaultProps} workItemId="f1" />
-                </ValueStreamProvider>
-            </NotificationProvider>
-        );
+        renderPage();
 
         const globalCheckbox = screen.getByLabelText(/ALL CUSTOMERS \(Global\)/i);
         expect(globalCheckbox).toBeDefined();
@@ -187,16 +174,10 @@ describe('WorkItemPage', () => {
 
         const updateEpicSpy = vi.fn();
 
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: dataWithEpic, updateEpic: updateEpicSpy }}>
-                    <WorkItemPage {...defaultProps} data={dataWithEpic} workItemId="f1" />
-                </ValueStreamProvider>
-            </NotificationProvider>
-        );
+        renderPage({ ...defaultProps, data: dataWithEpic, updateEpic: updateEpicSpy });
 
         // Switch to Epics tab
-        const epicsTab = screen.getByText(/Epics \(/i);
+        const epicsTab = screen.getByText(/Engineering Epics \(/i);
         fireEvent.click(epicsTab);
 
         // Since it's a table, let's find by value
@@ -220,16 +201,10 @@ describe('WorkItemPage', () => {
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
         };
 
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: dataWithDatelessEpic, updateEpic: vi.fn() }}>
-                    <WorkItemPage {...defaultProps} data={dataWithDatelessEpic} workItemId="f1" />
-                </ValueStreamProvider>
-            </NotificationProvider>
-        );
+        renderPage({ ...defaultProps, data: dataWithDatelessEpic });
 
         // Switch to Epics tab
-        const epicsTab = screen.getByText(/Epics \(/i);
+        const epicsTab = screen.getByText(/Engineering Epics \(/i);
         fireEvent.click(epicsTab);
 
         // Check for ⚠️ icon
@@ -245,13 +220,7 @@ describe('WorkItemPage', () => {
             ]
         };
 
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: dataWithDesc, updateEpic: vi.fn() }}>
-                    <WorkItemPage {...defaultProps} data={dataWithDesc} workItemId="f1" />
-                </ValueStreamProvider>
-            </NotificationProvider>
-        );
+        renderPage({ ...defaultProps, data: dataWithDesc });
 
         const textarea = screen.getByPlaceholderText(/Add a detailed description for this work item.../i) as HTMLTextAreaElement;
         expect(textarea.value).toBe('Initial description');
@@ -267,13 +236,7 @@ describe('WorkItemPage', () => {
             sprints: [{ id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY26 Q1' }]
         };
 
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: dataWithSprint, updateEpic: vi.fn() }}>
-                    <WorkItemPage {...defaultProps} data={dataWithSprint} workItemId="f1" />
-                </ValueStreamProvider>
-            </NotificationProvider>
-        );
+        renderPage({ ...defaultProps, data: dataWithSprint });
 
         // 1. Name Field
         const nameInput = screen.getByLabelText(/Name:/i) as HTMLInputElement;
@@ -282,7 +245,7 @@ describe('WorkItemPage', () => {
         expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', { name: 'Renamed Item' });
 
         // 2. Effort Field
-        const effortInput = screen.getByLabelText(/Total Effort \(MDs\):/i) as HTMLInputElement;
+        const effortInput = screen.getByLabelText(/Baseline Effort \(MDs\):/i) as HTMLInputElement;
         expect(effortInput.value).toBe('10');
         fireEvent.change(effortInput, { target: { value: '25' } });
         expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', { total_effort_mds: 25 });
@@ -292,16 +255,10 @@ describe('WorkItemPage', () => {
     });
 
     it('renders and saves a new work item', async () => {
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                    <WorkItemPage {...defaultProps} workItemId="new" />
-                </ValueStreamProvider>
-            </NotificationProvider>
-        );
+        renderPage(defaultProps, 'new');
 
         // Header should show "New Work Item" by default when name is empty
-        expect(screen.getByText('New Work Item')).toBeDefined();
+        expect(screen.getByText('Create New Work Item')).toBeDefined();
 
         // Name input should be empty and have placeholder
         const nameInput = screen.getByLabelText(/Name:/i) as HTMLInputElement;
@@ -310,10 +267,10 @@ describe('WorkItemPage', () => {
 
         fireEvent.change(nameInput, { target: { value: 'Brand New Feature' } });
         
-        // Header should update to the typed name
-        expect(screen.getByText('Brand New Feature')).toBeDefined();
+        // Header should update to show the title with name
+        expect(screen.getByText('Create New Work Item')).toBeDefined();
 
-        const createBtn = screen.getByText('Create Work Item');
+        const createBtn = screen.getByText('Save Work Item');
         fireEvent.click(createBtn);
 
         expect(defaultProps.addWorkItem).toHaveBeenCalledWith(expect.objectContaining({
@@ -333,16 +290,10 @@ describe('WorkItemPage', () => {
         // Mock syncJiraIssue to return an error
         (api.syncJiraIssue as any).mockRejectedValueOnce(new Error('Jira API Error'));
 
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: dataWithEpic, updateEpic: vi.fn() }}>
-                    <WorkItemPage {...defaultProps} data={dataWithEpic} workItemId="f1" />
-                </ValueStreamProvider>
-            </NotificationProvider>
-        );
+        renderPage({ ...defaultProps, data: dataWithEpic });
 
         // Switch to Epics tab
-        const epicsTab = screen.getByText(/Epics \(/i);
+        const epicsTab = screen.getByText(/Engineering Epics \(/i);
         fireEvent.click(epicsTab);
 
         // Click Sync button
@@ -368,16 +319,10 @@ describe('WorkItemPage', () => {
         // Mock syncJiraIssue to throw
         (api.syncJiraIssue as any).mockRejectedValueOnce(new Error('Network Failure'));
 
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: dataWithEpic, updateEpic: vi.fn() }}>
-                    <WorkItemPage {...defaultProps} data={dataWithEpic} workItemId="f1" />
-                </ValueStreamProvider>
-            </NotificationProvider>
-        );
+        renderPage({ ...defaultProps, data: dataWithEpic });
 
         // Switch to Epics tab
-        const epicsTab = screen.getByText(/Epics \(/i);
+        const epicsTab = screen.getByText(/Engineering Epics \(/i);
         fireEvent.click(epicsTab);
 
         // Click Sync button

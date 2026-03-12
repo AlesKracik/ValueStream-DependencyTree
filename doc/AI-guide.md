@@ -140,14 +140,15 @@ The application follows a consistent structure for managing entities (Customers,
     - Styles: `web-client/src/pages/List.module.css`.
 
 - **Detail Pages**: `web-client/src/components/{entity}/{Entity}Page.tsx`.
-    - Structured using `PageWrapper` for consistent loading/error/empty state handling.
-    - **Header**: Contains the entity name and a "Back" button (or "Create" for new entities).
-    - **Content**: Organized into logical `styles.card` sections.
-    - **Forms**: Use `styles.formGrid` for a standard multi-column layout of input fields.
+    - Leverages the **Detail Template**: `web-client/src/components/common/GenericDetailPage.tsx`.
+    - **Standardized Layout**:
+        - **Main Details Section**: The top section always displays the primary attributes of the entity in a standard form grid.
+        - **Tabbed Section**: Specific or complex information is organized into tabs below the main details (e.g., "Targeted Work Items", "Support & Health").
+    - **Header**: Features a standard header with a "Back" button and context-aware actions (e.g., Sync from Jira, Delete, or Create).
     - **Persistence**: 
-        - Existing entities: Auto-update on every field change (immediate persistence).
-        - New entities: Local draft state + a "Create" button for final submission.
-    - Styles: `web-client/src/components/customers/CustomerPage.module.css` (shared across most detail pages).
+        - Existing entities: Updates are persisted immediately on field change via the context.
+        - New entities: Uses local draft state with a final "Create" action.
+    - **Styles**: Managed via `web-client/src/components/common/GenericDetailPage.module.css`.
 
 ### ValueStream Visualization
 - **Custom Nodes**: `web-client/src/components/nodes/`.
@@ -160,6 +161,16 @@ The application follows a consistent structure for managing entities (Customers,
     - X=350: Work Items (`COL_WORKITEM_X`)
     - X=700: Teams (`COL_TEAM_X`)
     - X=950+: Gantt Timeline (`COL_GANTT_START_X`)
+
+### Support Page
+The Support Page (`web-client/src/pages/SupportPage.tsx`) provides a unified view of customer health and active issues:
+
+- **Issue Aggregation**: Flattens `support_issues` from all Customers into a single list using the `GenericListPage` template.
+- **Customer TCV Tiers**: Categorizes issues by customer "Strategic Importance" (TCV-based tiers 1-3).
+- **Jira Integration**: Displays real-time data for linked Jira issues (`jira_support_issues`).
+- **Activity Tracking**: Highlights items that were created or updated "Today".
+- **Automatic Cleanup**: Includes an effect that automatically removes expired support issues (`expiration_date < today`) from the database when the page is viewed.
+- **Health Hook**: `web-client/src/hooks/useCustomerHealth.ts` fetches and categorizes Jira issues using dynamic JQL based on the `customer_id`.
 
 ### Standard Modifications
 - **Adding a Field to an Entity**:

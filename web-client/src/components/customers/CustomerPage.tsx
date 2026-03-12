@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type { ValueStreamData, Customer, WorkItem, TcvHistoryEntry, SupportIssue } from '../../types/models';
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';
-import styles from './CustomerPage.module.css';
 import { generateId } from '../../utils/security';
 import { calculateWorkItemEffort } from '../../utils/businessLogic';
-import { PageWrapper } from '../layout/PageWrapper';
 import { useCustomerHealth } from '../../hooks/useCustomerHealth';
 import { useCustomerCustomFields } from '../../hooks/useCustomerCustomFields';
+import { GenericDetailPage, type DetailTab } from '../common/GenericDetailPage';
+import customerStyles from './CustomerPage.module.css';
 
 export interface CustomerPageProps {
     customerId: string;
@@ -31,7 +31,6 @@ interface JiraKeysInputProps {
 const JiraKeysInput: React.FC<JiraKeysInputProps> = ({ value, onChange, jiraBaseUrl }) => {
     const [inputValue, setInputValue] = useState(value.join(', '));
 
-    // Update local state if prop changes from outside
     useEffect(() => {
         const joined = value.join(', ');
         if (joined !== inputValue && !inputValue.endsWith(',') && !inputValue.endsWith(', ')) {
@@ -42,11 +41,6 @@ const JiraKeysInput: React.FC<JiraKeysInputProps> = ({ value, onChange, jiraBase
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
         setInputValue(val);
-        // Only trigger parent update if it looks like a valid list (not ending in comma)
-        // or just let it be and use onBlur for final sync.
-        // Actually, updating on every change is better for immediate feedback (like the links below),
-        // but we must NOT filter out the empty strings if we want to preserve the comma in the string.
-        // But the parent expects string[].
         const keys = val.split(',').map(s => s.trim()).filter(Boolean);
         onChange(keys);
     };
@@ -90,6 +84,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     updateWorkItem
 }) => {
     const { showConfirm } = useValueStreamContext();
+    const navigate = useNavigate();
     const isNew = customerId === 'new';
 
     // Draft states for new customer creation
@@ -106,50 +101,9 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
 
     const location = useLocation();
     const queryParams = new URLSearchParams(location.search);
-    const initialTab = queryParams.get('tab') as any;
     const focusedIssueId = queryParams.get('issueId');
 
-    const [activeTab, setActiveTab] = useState<'customFields' | 'workItems' | 'history' | 'support'>(
-        (initialTab && ['customFields', 'workItems', 'history', 'support'].includes(initialTab)) 
-            ? initialTab 
-            : 'customFields'
-    );
-
-    useEffect(() => {
-        if (focusedIssueId && activeTab === 'support' && !loading) {
-            const timer = setTimeout(() => {
-                const element = document.getElementById(`issue-${focusedIssueId}`);
-                if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    element.classList.add(styles.highlightedIssue);
-                    setTimeout(() => {
-                        element.classList.remove(styles.highlightedIssue);
-                    }, 3000);
-                }
-            }, 300);
-            return () => clearTimeout(timer);
-        }
-    }, [focusedIssueId, activeTab, loading]);
-
     const customer = isNew ? newCustDraft as Customer : data?.customers.find(c => c.id === customerId);
-
-    // Automatic cleanup of expired issues for this customer
-    useEffect(() => {
-        if (!customer || isNew || activeTab !== 'support' || loading) return;
-
-        const today = new Date().toISOString().split('T')[0];
-        if (!customer.support_issues || customer.support_issues.length === 0) return;
-
-        const validIssues = customer.support_issues.filter(issue => {
-            if (!issue.expiration_date) return true;
-            return issue.expiration_date >= today;
-        });
-
-        if (validIssues.length !== customer.support_issues.length) {
-            console.log(`Cleaning up ${customer.support_issues.length - validIssues.length} expired issues for customer ${customer.name}`);
-            updateCustomer(customer.id, { support_issues: validIssues }, true);
-        }
-    }, [customer?.id, activeTab, loading, updateCustomer]);
 
     const healthData = useCustomerHealth(customer, data?.settings);
     const customFields = useCustomerCustomFields(customer, data?.settings);
@@ -167,7 +121,6 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
 
         const existingJiraIssues = customer.jira_support_issues || [];
 
-        // Check if something meaningful changed (ignore last_updated timestamp for comparison)
         const hasChanged = allFetchedIssues.length !== existingJiraIssues.length ||
             allFetchedIssues.some(fetched => {
                 const existing = existingJiraIssues.find(e => e.key === fetched.key);
@@ -179,7 +132,6 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
             });
 
         if (hasChanged) {
-            console.log(`Syncing ${allFetchedIssues.length} Jira issues for customer ${customer.name}`);
             updateCustomer(customer.id, { jira_support_issues: allFetchedIssues }, true);
         }
     }, [healthData.newIssues, healthData.inProgressIssues, healthData.noopIssues, healthData.loading, healthData.error, customer?.id, isNew, loading, updateCustomer]);
@@ -205,7 +157,6 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                     potential_tcv_duration_months: newCustDraft.potential_tcv_duration_months
                 };
 
-                // Inject the drafted work items
                 const updatedWorkItems = data.workItems.map(f => {
                     const draftTarget = newCustomerWorkItems.find(ncf => ncf.workItemId === f.id);
                     if (draftTarget) {
@@ -342,7 +293,6 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                     {Object.entries(val)
                         .filter(([k]) => {
                             const lower = k.toLowerCase();
-                            // Skip IDs: exact 'id', '_id', or suffixes like '_id' or camelCase 'Id'
                             const isId = lower === 'id' ||
                                          lower === '_id' ||
                                          lower.endsWith('_id') ||
@@ -377,729 +327,456 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         }
         return String(val);
     };
-    const linkedJiraKeysMap = new Map<string, SupportIssue>();
-    (customer?.support_issues || []).forEach(si => {
-        (si.related_jiras || []).forEach(key => {
-            linkedJiraKeysMap.set(key, si);
-        });
-    });
 
-    return (
-        <PageWrapper 
-            loading={loading} 
-            error={error} 
-            data={data} 
-            loadingMessage="Loading customer details..."
-            emptyMessage="No data available."
-        >
-            {!customer ? (
-                <div className={styles.empty}>Customer not found.</div>
-            ) : (
-                <>
-                    <div className={styles.header}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                            <button className="btn-secondary" onClick={onBack}>
-                                ← Back
-                            </button>
-                            <h1>{isNew ? (newCustDraft.name || 'New Customer') : customer.name}</h1>
-                        </div>
-                        <div style={{ display: 'flex', gap: '16px' }}>
-                            {!isNew && (
-                                <button className="btn-danger" onClick={handleDelete}>
-                                    Delete Customer
-                                </button>
-                            )}
-                            {isNew ? (
-                                <button className="btn-primary" onClick={handleSave}>
-                                    Create
-                                </button>
-                            ) : null}
-                        </div>
-                    </div>
-
-                    <div className={styles.content}>
-                        <section className={styles.card}>
-                            <h2>Customer Details</h2>
-                            <div className={styles.formGrid}>
-                                <label>
-                                    Name:
-                                    <input 
-                                        type="text" 
-                                        value={isNew ? newCustDraft.name : customer.name} 
-                                        onChange={e => {
-                                            if (isNew) setNewCustDraft(prev => ({ ...prev, name: e.target.value }));
-                                            else updateCustomer(customer.id, { name: e.target.value });
-                                        }}
-                                        placeholder="New Customer"
-                                    />
-                                </label>
-
-                                <label>
-                                    Customer ID:
-                                    <input 
-                                        type="text" 
-                                        value={isNew ? (newCustDraft.customer_id || '') : (customer.customer_id || '')} 
-                                        onChange={e => {
-                                            if (isNew) setNewCustDraft(prev => ({ ...prev, customer_id: e.target.value }));
-                                            else updateCustomer(customer.id, { customer_id: e.target.value });
-                                        }}
-                                        placeholder="e.g. CUST-123"
-                                    />
-                                </label>
-                                
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    <label>
-                                        Actual Existing TCV ($):
-                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                            <input 
-                                                type={isNew ? "number" : "text"} 
-                                                readOnly={!isNew}
-                                                value={isNew ? (newCustDraft.existing_tcv ?? '') : (customer.existing_tcv || 0).toLocaleString()} 
-                                                onChange={e => {
-                                                    if (!isNew) return;
-                                                    const val = e.target.value === '' ? undefined : parseInt(e.target.value);
-                                                    setNewCustDraft(prev => ({ ...prev, existing_tcv: val }));
-                                                }}
-                                                placeholder="0"
-                                                style={!isNew ? { backgroundColor: 'var(--bg-secondary)', border: 'none' } : {}}
-                                            />
-                                        </div>
-                                    </label>
-                                    <label>
-                                        Valid From:
-                                        <input 
-                                            type="date" 
-                                            readOnly={!isNew}
-                                            value={isNew ? (newCustDraft.existing_tcv_valid_from || '') : (customer.existing_tcv_valid_from || '')} 
-                                            onChange={e => {
-                                                if (!isNew) return;
-                                                setNewCustDraft(prev => ({ ...prev, existing_tcv_valid_from: e.target.value }));
-                                            }}
-                                            style={!isNew ? { backgroundColor: 'var(--bg-secondary)', border: 'none' } : {}}
-                                        />
-                                    </label>
-                                    <label>
-                                        Existing Duration (mo):
-                                        <input 
-                                            type="number" 
-                                            readOnly={!isNew}
-                                            value={isNew ? (newCustDraft.existing_tcv_duration_months ?? '') : (customer.existing_tcv_duration_months || 0)} 
-                                            onChange={e => {
-                                                if (!isNew) return;
-                                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
-                                                setNewCustDraft(prev => ({ ...prev, existing_tcv_duration_months: val }));
-                                            }}
-                                            min="0"
-                                            placeholder="12"
-                                            style={!isNew ? { backgroundColor: 'var(--bg-secondary)', border: 'none' } : {}}
-                                        />
-                                    </label>
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    <label>
-                                        Potential TCV ($):
-                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                            <input 
-                                                type="number" 
-                                                value={isNew ? (newCustDraft.potential_tcv ?? '') : (customer.potential_tcv || 0)} 
-                                                onChange={e => {
-                                                    const val = e.target.value === '' ? undefined : parseInt(e.target.value);
-                                                    if (isNew) setNewCustDraft(prev => ({ ...prev, potential_tcv: val }));
-                                                    else updateCustomer(customer.id, { potential_tcv: val || 0 });
-                                                }}
-                                                placeholder="0"
-                                            />
-                                            {!isNew && (
-                                                <button 
-                                                    className="btn-primary" 
-                                                    style={{ padding: '4px 8px', fontSize: '12px', whiteSpace: 'nowrap' }} 
-                                                    onClick={handlePromotePotentialToExisting}
-                                                >
-                                                    Promote to Actual
-                                                </button>
-                                            )}
-                                        </div>
-                                    </label>
-                                    <label>
-                                        Valid From:
-                                        <input 
-                                            type="date" 
-                                            value={isNew ? (newCustDraft.potential_tcv_valid_from || '') : (customer.potential_tcv_valid_from || '')} 
-                                            onChange={e => {
-                                                if (isNew) setNewCustDraft(prev => ({ ...prev, potential_tcv_valid_from: e.target.value }));
-                                                else updateCustomer(customer.id, { potential_tcv_valid_from: e.target.value });
-                                            }}
-                                        />
-                                    </label>
-                                    <label>
-                                        Potential Duration (mo):
-                                        <input 
-                                            type="number" 
-                                            value={isNew ? (newCustDraft.potential_tcv_duration_months ?? '') : (customer.potential_tcv_duration_months || 0)} 
-                                            onChange={e => {
-                                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
-                                                if (isNew) setNewCustDraft(prev => ({ ...prev, potential_tcv_duration_months: val }));
-                                                else updateCustomer(customer.id, { potential_tcv_duration_months: val || 0 });
-                                            }}
-                                            min="0"
-                                            placeholder="12"
-                                        />
-                                    </label>
-                                </div>
-                            </div>
-                        </section>
-
-                        <div style={{ display: 'flex', gap: '16px', borderBottom: '1px solid var(--border-primary)', marginBottom: '24px', marginTop: '24px' }}>
-                            {!isNew && (
-                                <button
-                                    onClick={() => setActiveTab('customFields')}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        padding: '12px 16px',
-                                        color: activeTab === 'customFields' ? 'var(--accent-text)' : 'var(--text-muted)',
-                                        borderBottom: activeTab === 'customFields' ? '2px solid var(--accent-text)' : '2px solid transparent',
-                                        cursor: 'pointer',
-                                        fontSize: '15px',
-                                        fontWeight: activeTab === 'customFields' ? 'bold' : '500',
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    Custom Fields ({customFields.data.length})
-                                </button>
-                            )}
-                            <button
-                                onClick={() => setActiveTab('workItems')}
-                                style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    padding: '12px 16px',
-                                    color: activeTab === 'workItems' ? 'var(--accent-text)' : 'var(--text-muted)',
-                                    borderBottom: activeTab === 'workItems' ? '2px solid var(--accent-text)' : '2px solid transparent',
-                                    cursor: 'pointer',
-                                    fontSize: '15px',
-                                    fontWeight: activeTab === 'workItems' ? 'bold' : '500',
-                                    transition: 'all 0.2s'
+    const mainDetails = (
+        <>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 }}>
+                <label>
+                    Name:
+                    <input 
+                        type="text" 
+                        value={isNew ? newCustDraft.name : customer?.name} 
+                        onChange={e => {
+                            if (isNew) setNewCustDraft(prev => ({ ...prev, name: e.target.value }));
+                            else if (customer) updateCustomer(customer.id, { name: e.target.value });
+                        }}
+                        placeholder="New Customer"
+                    />
+                </label>
+                <label>
+                    Customer ID:
+                    <input 
+                        type="text" 
+                        value={isNew ? (newCustDraft.customer_id || '') : (customer?.customer_id || '')} 
+                        onChange={e => {
+                            if (isNew) setNewCustDraft(prev => ({ ...prev, customer_id: e.target.value }));
+                            else if (customer) updateCustomer(customer.id, { customer_id: e.target.value });
+                        }}
+                        placeholder="e.g. CUST-123"
+                    />
+                </label>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <label>
+                        Actual Existing TCV ($):
+                        <input 
+                            type={isNew ? "number" : "text"} 
+                            readOnly={!isNew}
+                            value={isNew ? (newCustDraft.existing_tcv ?? '') : (customer?.existing_tcv || 0).toLocaleString()} 
+                            onChange={e => {
+                                if (!isNew) return;
+                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                setNewCustDraft(prev => ({ ...prev, existing_tcv: val }));
+                            }}
+                            placeholder="0"
+                            style={!isNew ? { backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-secondary)' } : {}}
+                        />
+                    </label>
+                    <label>
+                        Potential TCV ($):
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <input 
+                                type="number" 
+                                value={isNew ? (newCustDraft.potential_tcv ?? '') : (customer?.potential_tcv || 0)} 
+                                onChange={e => {
+                                    const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                    if (isNew) setNewCustDraft(prev => ({ ...prev, potential_tcv: val }));
+                                    else if (customer) updateCustomer(customer.id, { potential_tcv: val || 0 });
                                 }}
-                            >
-                                Targeted Work Items ({targetedWorkItems.length})
-                            </button>
-                            {!isNew && (
-                                <>
-                                    <button
-                                        onClick={() => setActiveTab('history')}
-                                        style={{
-                                            background: 'none',
-                                            border: 'none',
-                                            padding: '12px 16px',
-                                            color: activeTab === 'history' ? 'var(--accent-text)' : 'var(--text-muted)',
-                                            borderBottom: activeTab === 'history' ? '2px solid var(--accent-text)' : '2px solid transparent',
-                                            cursor: 'pointer',
-                                            fontSize: '15px',
-                                            fontWeight: activeTab === 'history' ? 'bold' : '500',
-                                            transition: 'all 0.2s'
-                                        }}
-                                    >
-                                        TCV History ({customer.tcv_history?.length || 0})
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveTab('support')}
-                                        style={{
-                                            background: 'none',
-                                            border: 'none',
-                                            padding: '12px 16px',
-                                            color: activeTab === 'support' ? 'var(--accent-text)' : 'var(--text-muted)',
-                                            borderBottom: activeTab === 'support' ? '2px solid var(--accent-text)' : '2px solid transparent',
-                                            cursor: 'pointer',
-                                            fontSize: '15px',
-                                            fontWeight: activeTab === 'support' ? 'bold' : '500',
-                                            transition: 'all 0.2s',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px'
-                                        }}
-                                    >
-                                        Support ({customer.support_issues?.length || 0})
-                                        {healthData.healthStatus === 'New / Untriaged' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--status-danger)' }}></span>}
-                                        {healthData.healthStatus === 'Active Work' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--status-warning)' }}></span>}
-                                        {healthData.healthStatus === 'Blocked / Pending' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--accent-primary)' }}></span>}
-                                        {healthData.healthStatus === 'Healthy' && <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--status-success)' }}></span>}
-                                    </button>
-                                </>
+                                placeholder="0"
+                                style={{ flex: 1 }}
+                            />
+                            {!isNew && customer && (
+                                <button className="btn-primary" style={{ padding: '4px 8px', fontSize: '11px' }} onClick={handlePromotePotentialToExisting}>
+                                    Promote
+                                </button>
                             )}
                         </div>
+                    </label>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <label>
+                        Existing Valid From:
+                        <input 
+                            type="date" 
+                            readOnly={!isNew}
+                            value={isNew ? (newCustDraft.existing_tcv_valid_from || '') : (customer?.existing_tcv_valid_from || '')} 
+                            onChange={e => {
+                                if (!isNew) return;
+                                setNewCustDraft(prev => ({ ...prev, existing_tcv_valid_from: e.target.value }));
+                            }}
+                            style={!isNew ? { backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-secondary)' } : {}}
+                        />
+                    </label>
+                    <label>
+                        Potential Valid From:
+                        <input 
+                            type="date" 
+                            value={isNew ? (newCustDraft.potential_tcv_valid_from || '') : (customer?.potential_tcv_valid_from || '')} 
+                            onChange={e => {
+                                if (isNew) setNewCustDraft(prev => ({ ...prev, potential_tcv_valid_from: e.target.value }));
+                                else if (customer) updateCustomer(customer.id, { potential_tcv_valid_from: e.target.value });
+                            }}
+                        />
+                    </label>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <label>
+                        Existing Duration (mo):
+                        <input 
+                            type="number" 
+                            readOnly={!isNew}
+                            value={isNew ? (newCustDraft.existing_tcv_duration_months ?? '') : (customer?.existing_tcv_duration_months || 0)} 
+                            onChange={e => {
+                                if (!isNew) return;
+                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                setNewCustDraft(prev => ({ ...prev, existing_tcv_duration_months: val }));
+                            }}
+                            min="0"
+                            placeholder="12"
+                            style={!isNew ? { backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-secondary)' } : {}}
+                        />
+                    </label>
+                    <label>
+                        Potential Duration (mo):
+                        <input 
+                            type="number" 
+                            value={isNew ? (newCustDraft.potential_tcv_duration_months ?? '') : (customer?.potential_tcv_duration_months || 0)} 
+                            onChange={e => {
+                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                if (isNew) setNewCustDraft(prev => ({ ...prev, potential_tcv_duration_months: val }));
+                                else if (customer) updateCustomer(customer.id, { potential_tcv_duration_months: val || 0 });
+                            }}
+                            min="0"
+                            placeholder="12"
+                        />
+                    </label>
+                </div>
+            </div>
+        </>
+    );
 
-                        {activeTab === 'customFields' && !isNew && (
-                            <section className={styles.card}>
-                                <h2>MongoDB Custom Data</h2>
-                                {customFields.loading && <div style={{ color: 'var(--text-muted)' }}>Loading custom fields...</div>}
-                                {customFields.error && (
-                                    <div style={{ color: 'var(--status-danger)', textAlign: 'center', padding: '40px', backgroundColor: 'var(--status-danger-bg)', borderRadius: '8px', border: '1px dashed var(--status-danger)' }}>
-                                        <div style={{ fontSize: '16px', marginBottom: '8px', color: 'var(--status-danger)', fontWeight: 'bold' }}>Query Error</div>
-                                        <p style={{ margin: 0, fontSize: '14px' }}>{customFields.error}</p>
-                                    </div>
-                                )}
-                                {!customFields.loading && !customFields.error && (
-                                    <>
-                                        {!customer?.customer_id ? (
-                                            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px', backgroundColor: 'var(--bg-secondary)', borderRadius: '8px', border: '1px dashed var(--border-primary)' }}>
-                                                <div style={{ fontSize: '16px', marginBottom: '8px', color: 'var(--text-highlight)' }}>Customer ID Not Defined</div>
-                                                <p style={{ margin: 0, fontSize: '14px' }}>
-                                                    This customer does not have a <strong>Customer ID</strong> defined. 
-                                                    Please set the Customer ID in the Customer Details section above to fetch custom MongoDB data.
-                                                </p>
-                                            </div>
-                                        ) : customFields.data.length === 0 ? (
-                                            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px', backgroundColor: 'var(--bg-secondary)', borderRadius: '8px', border: '1px dashed var(--border-primary)' }}>
-                                                <div style={{ fontSize: '16px', marginBottom: '8px', color: 'var(--text-highlight)' }}>No Data Found</div>
-                                                <p style={{ margin: 0, fontSize: '14px' }}>
-                                                    The custom MongoDB query returned no results for this customer ID (<strong>{customer.customer_id}</strong>).
-                                                    Check your query in the Persistence settings.
-                                                </p>
-                                            </div>
-                                        ) : (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                                                {customFields.data.map((item, idx) => (
-                                                    <div key={idx} style={{ 
-                                                        padding: '20px', 
-                                                        backgroundColor: 'var(--bg-page-muted)', 
-                                                        border: '1px solid var(--border-primary)', 
-                                                        borderRadius: '8px' 
-                                                    }}>
-                                                        {renderValue(item)}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-                            </section>
-                        )}
-
-                        {activeTab === 'support' && !isNew && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                                <section className={styles.card}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                        <h2>Support Issues</h2>
-                                        <button 
-                                            className="btn-primary" 
-                                            onClick={() => {
-                                                const now = new Date().toISOString();
-                                                const newIssue: SupportIssue = {
-                                                    id: generateId('issue'),
-                                                    description: '',
-                                                    status: 'to do',
-                                                    related_jiras: [],
-                                                    expiration_date: undefined,
-                                                    created_at: now,
-                                                    updated_at: now
-                                                };
-                                                const currentIssues = customer.support_issues || [];
-                                                updateCustomer(customer.id, { support_issues: [newIssue, ...currentIssues] });
-                                            }}
-                                        >
-                                            + Add Issue
-                                        </button>
-                                    </div>
-
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                        {(customer.support_issues || []).map((issue, idx) => {
-                                            const updateIssue = (updates: Partial<SupportIssue>) => {
-                                                const newIssues = [...(customer.support_issues || [])];
-                                                newIssues[idx] = { ...issue, ...updates, updated_at: new Date().toISOString() };
-                                                updateCustomer(customer.id, { support_issues: newIssues });
-                                            };
-
-                                            const removeIssue = async () => {
-                                                const confirmed = await showConfirm('Remove Issue', 'Are you sure you want to remove this support issue?');
-                                                if (!confirmed) return;
-                                                const newIssues = (customer.support_issues || []).filter((_, i) => i !== idx);
-                                                updateCustomer(customer.id, { support_issues: newIssues });
-                                            };
-
-                                            return (
-                                                <div key={issue.id} id={`issue-${issue.id}`} style={{ 
-                                                    padding: '20px', 
-                                                    backgroundColor: 'var(--bg-page-muted)', 
-                                                    border: '1px solid var(--border-primary)', 
-                                                    borderRadius: '8px',
-                                                    display: 'flex',
-                                                    flexDirection: 'column',
-                                                    gap: '16px',
-                                                    transition: 'outline 0.3s ease'
-                                                }}>
-                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: '16px' }}>
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                            <label style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Description</label>
-                                                            <textarea 
-                                                                value={issue.description}
-                                                                onChange={e => updateIssue({ description: e.target.value })}
-                                                                placeholder="Describe the support issue..."
-                                                                style={{ minHeight: '80px', width: '100%', backgroundColor: 'var(--bg-primary)', resize: 'vertical' }}
-                                                            />
-                                                        </div>
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                                <label style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Status</label>
-                                                                <select 
-                                                                    value={issue.status}
-                                                                    onChange={e => {
-                                                                        const newStatus = e.target.value as any;
-                                                                        const updates: Partial<SupportIssue> = { status: newStatus };
-                                                                        if (newStatus === 'done' && !issue.expiration_date) {
-                                                                            const expiry = new Date();
-                                                                            expiry.setDate(expiry.getDate() + 5);
-                                                                            updates.expiration_date = expiry.toISOString().split('T')[0];
-                                                                        }
-                                                                        updateIssue(updates);
-                                                                    }}
-                                                                    style={{ width: '100%' }}
-                                                                >
-                                                                    <option value="to do">To Do</option>
-                                                                    <option value="work in progress">Work in Progress</option>
-                                                                    <option value="noop">Noop</option>
-                                                                    <option value="waiting for customer">Waiting for Customer</option>
-                                                                    <option value="waiting for other party">Waiting for Other Party</option>
-                                                                    <option value="done">Done</option>
-                                                                </select>
-                                                            </div>
-                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                                    <label style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Expiration Date</label>
-                                                                    {issue.expiration_date && (
-                                                                        <button 
-                                                                            onClick={() => updateIssue({ expiration_date: undefined })}
-                                                                            style={{ 
-                                                                                fontSize: '11px', 
-                                                                                background: 'none', 
-                                                                                border: 'none', 
-                                                                                color: 'var(--accent-text)', 
-                                                                                cursor: 'pointer',
-                                                                                padding: 0
-                                                                            }}
-                                                                        >
-                                                                            Never Expire
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                                <input 
-                                                                    type="date"
-                                                                    value={issue.expiration_date || ''}
-                                                                    onChange={e => updateIssue({ expiration_date: e.target.value || undefined })}
-                                                                    style={{ width: '100%' }}
-                                                                />
-                                                                {!issue.expiration_date && (
-                                                                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic' }}>No expiration</div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid var(--border-primary)', paddingTop: '16px' }}>
-                                                        <JiraKeysInput 
-                                                            value={issue.related_jiras || []} 
-                                                            onChange={keys => updateIssue({ related_jiras: keys })}
-                                                            jiraBaseUrl={data?.settings.jira_base_url}
-                                                        />
-                                                        <button className="btn-danger" onClick={removeIssue} style={{ padding: '8px 16px' }}>Remove</button>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-
-                                        {(customer.support_issues || []).length === 0 && (
-                                            <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px', backgroundColor: 'var(--bg-page-muted)', borderRadius: '8px', border: '1px dashed var(--border-primary)' }}>
-                                                No manual support issues tracked for this customer.
-                                            </div>
-                                        )}
-                                    </div>
-                                </section>
-
-                                {healthData.healthStatus !== 'Unknown' && (
-                                    <section className={styles.card}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                            <h2>Support Overview (Jira)</h2>
-                                            <div style={{ display: 'flex', gap: '16px' }}>
-                                                <div style={{ textAlign: 'center', padding: '8px 16px', backgroundColor: 'var(--status-danger-bg)', borderRadius: '8px', border: '1px solid var(--status-danger)' }}>
-                                                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--status-danger)' }}>{healthData.newIssues.length}</div>
-                                                    <div style={{ fontSize: '12px', color: 'var(--status-danger)' }}>New / Untriaged</div>
-                                                </div>
-                                                <div style={{ textAlign: 'center', padding: '8px 16px', backgroundColor: 'var(--status-warning-bg)', borderRadius: '8px', border: '1px solid var(--status-warning)' }}>
-                                                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--status-warning)' }}>{healthData.inProgressIssues.length}</div>
-                                                    <div style={{ fontSize: '12px', color: 'var(--status-warning)' }}>Active Work</div>
-                                                </div>
-                                                <div style={{ textAlign: 'center', padding: '8px 16px', backgroundColor: 'var(--accent-primary-bg)', borderRadius: '8px', border: '1px solid var(--accent-primary)' }}>
-                                                    <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--accent-primary)' }}>{healthData.noopIssues.length}</div>
-                                                    <div style={{ fontSize: '12px', color: 'var(--accent-primary)' }}>Blocked / Pending</div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {healthData.loading && <div style={{ color: 'var(--text-muted)' }}>Loading Jira data...</div>}
-                                        {healthData.error && (
-                                            <div style={{ color: 'var(--status-danger)', textAlign: 'center', padding: '40px', backgroundColor: 'var(--status-danger-bg)', borderRadius: '8px', border: '1px dashed var(--status-danger)' }}>
-                                                <div style={{ fontSize: '16px', marginBottom: '8px', color: 'var(--status-danger)', fontWeight: 'bold' }}>Jira Integration Error</div>
-                                                <p style={{ margin: 0, fontSize: '14px' }}>
-                                                    {healthData.error}
-                                                </p>
-                                            </div>
-                                        )}
-
-                                        {!healthData.loading && !healthData.error && (
-                                            <>
-                                                <h3 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '16px' }}>Issue List</h3>
-                                                <table className={styles.table}>
-                                                    <thead>
-                                                        <tr>
-                                                            <th>Key</th>
-                                                            <th>Summary</th>
-                                                            <th>Status</th>
-                                                            <th>Priority</th>
-                                                            <th>Link Status / Action</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {[...healthData.newIssues, ...healthData.inProgressIssues, ...healthData.noopIssues].map(issue => (
-                                                            <tr key={issue.key}>
-                                                                <td><a href={issue.url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent-text)' }}>{issue.key}</a></td>
-                                                                <td>{issue.summary}</td>
-                                                                <td>
-                                                                    <span style={{ 
-                                                                        padding: '2px 6px', 
-                                                                        borderRadius: '4px', 
-                                                                        fontSize: '12px',
-                                                                        backgroundColor: healthData.newIssues.includes(issue) ? 'var(--status-danger-bg)' : 
-                                                                                        healthData.inProgressIssues.includes(issue) ? 'var(--status-warning-bg)' : 'var(--accent-primary-bg)',
-                                                                        color: healthData.newIssues.includes(issue) ? 'var(--status-danger)' : 
-                                                                              healthData.inProgressIssues.includes(issue) ? 'var(--status-warning)' : 'var(--accent-text)'
-                                                                    }}>
-                                                                        {issue.status}
-                                                                    </span>
-                                                                </td>
-                                                                <td>{issue.priority}</td>
-                                                                <td>
-                                                                    {linkedJiraKeysMap.has(issue.key) ? (
-                                                                        <div style={{ fontSize: '12px', color: 'var(--status-success)', display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'pre-wrap' }}>
-                                                                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--status-success)' }}></span>
-                                                                            Linked: {linkedJiraKeysMap.get(issue.key)?.description || linkedJiraKeysMap.get(issue.key)?.id}
-                                                                        </div>
-                                                                    ) : (
-                                                                        <select 
-                                                                            style={{ fontSize: '12px', padding: '2px 4px', backgroundColor: 'var(--bg-secondary)' }}
-                                                                            onChange={(e) => {
-                                                                                handleLinkJira(issue, e.target.value);
-                                                                                e.target.value = ''; // reset
-                                                                            }}
-                                                                            value=""
-                                                                        >
-                                                                            <option value="" disabled>Link to...</option>
-                                                                            <option value="NEW">+ Create New Support Issue</option>
-                                                                            {(customer?.support_issues || []).map(si => (
-                                                                                <option key={si.id} value={si.id}>Link to: {si.description || si.id}</option>
-                                                                            ))}
-                                                                        </select>
-                                                                    )}
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                        {healthData.newIssues.length === 0 && healthData.inProgressIssues.length === 0 && healthData.noopIssues.length === 0 && (
-                                                            <tr>
-                                                                <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '16px' }}>No issues found matching the JQL queries.</td>
-                                                            </tr>
-                                                        )}
-                                                    </tbody>
-                                                </table>
-                                            </>
-                                        )}
-                                    </section>
-                                )}
+    const tabs: DetailTab[] = [
+        {
+            id: 'customFields',
+            label: `Custom Fields (${customFields.data.length})`,
+            content: (
+                <>
+                    {customFields.loading && <div style={{ color: 'var(--text-muted)' }}>Loading custom fields...</div>}
+                    {customFields.error && (
+                        <div style={{ color: 'var(--status-danger)', textAlign: 'center', padding: '40px', backgroundColor: 'var(--status-danger-bg)', borderRadius: '8px', border: '1px dashed var(--status-danger)' }}>
+                            <div style={{ fontSize: '16px', marginBottom: '8px', color: 'var(--status-danger)', fontWeight: 'bold' }}>Query Error</div>
+                            <p style={{ margin: 0, fontSize: '14px' }}>{customFields.error}</p>
                         </div>
                     )}
-
-                    {activeTab === 'workItems' && (
-                            <section className={styles.card}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                    <h2>Targeted Work Items</h2>
+                    {!customFields.loading && !customFields.error && (
+                        <>
+                            {!customer?.customer_id ? (
+                                <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px', backgroundColor: 'var(--bg-secondary)', borderRadius: '8px', border: '1px dashed var(--border-primary)' }}>
+                                    <div style={{ fontSize: '16px', marginBottom: '8px', color: 'var(--text-highlight)' }}>Customer ID Not Defined</div>
+                                    <p style={{ margin: 0, fontSize: '14px' }}>
+                                        Please set the Customer ID above to fetch data.
+                                    </p>
                                 </div>
+                            ) : customFields.data.length === 0 ? (
+                                <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '40px', backgroundColor: 'var(--bg-secondary)', borderRadius: '8px', border: '1px dashed var(--border-primary)' }}>
+                                    <div style={{ fontSize: '16px', marginBottom: '8px', color: 'var(--text-highlight)' }}>No Data Found</div>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                                    {customFields.data.map((item, idx) => (
+                                        <div key={idx} style={{ 
+                                            padding: '20px', 
+                                            backgroundColor: 'var(--bg-page-muted)', 
+                                            border: '1px solid var(--border-primary)', 
+                                            borderRadius: '8px' 
+                                        }}>
+                                            {renderValue(item)}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </>
+                    )}
+                </>
+            )
+        },
+        {
+            id: 'workItems',
+            label: `Targeted Work Items (${targetedWorkItems.length})`,
+            content: (
+                <>
+                    <table className={customerStyles.table}>
+                        <thead>
+                            <tr>
+                                <th>Work Item</th>
+                                <th>Effort (MDs)</th>
+                                <th>TCV Type</th>
+                                <th>TCV Selection</th>
+                                <th>Priority</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {targetedWorkItems.map(workItem => {
+                                const workItemEpics = data ? data.epics.filter(e => e.work_item_id === workItem.id) : [];
+                                const calculatedEffort = calculateWorkItemEffort(workItem, workItemEpics);
+                                
+                                const targetDef = isNew
+                                    ? newCustomerWorkItems.find(ncf => ncf.workItemId === workItem.id)!
+                                    : workItem.customer_targets.find(ct => ct.customer_id === customerId)!;
 
-                                <table className={styles.table}>
-                                    <thead>
-                                        <tr>
-                                            <th>Work Item</th>
-                                            <th>Effort (MDs)</th>
-                                            <th>TCV Type</th>
-                                            <th>TCV Selection</th>
-                                            <th>Priority</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {targetedWorkItems.map(workItem => {
-                                            const workItemEpics = data ? data.epics.filter(e => e.work_item_id === workItem.id) : [];
-                                            const calculatedEffort = calculateWorkItemEffort(workItem, workItemEpics);
-                                            
-                                            const targetDef = isNew
-                                                ? newCustomerWorkItems.find(ncf => ncf.workItemId === workItem.id)!
-                                                : workItem.customer_targets.find(ct => ct.customer_id === customerId)!;
+                                const updateTarget = (updates: any) => {
+                                    if (isNew) {
+                                        setNewCustomerWorkItems(prev => prev.map(ncf => 
+                                            ncf.workItemId === workItem.id ? { ...ncf, ...updates } : ncf
+                                        ));
+                                    } else {
+                                        const newTargets = workItem.customer_targets.map(ct => 
+                                            ct.customer_id === customerId ? { ...ct, ...updates } : ct
+                                        );
+                                        updateWorkItem(workItem.id, { customer_targets: newTargets as any });
+                                    }
+                                };
 
-                                            const updateTarget = (updates: Partial<typeof targetDef>) => {
-                                                if (isNew) {
-                                                    setNewCustomerWorkItems(prev => prev.map(ncf => 
-                                                        ncf.workItemId === workItem.id ? { ...ncf, ...updates } : ncf
-                                                    ));
-                                                } else {
-                                                    const newTargets = workItem.customer_targets.map(ct => 
-                                                        ct.customer_id === customerId ? { ...ct, ...updates } : ct
-                                                    );
-                                                    updateWorkItem(workItem.id, { customer_targets: newTargets as any });
-                                                }
-                                            };
+                                const removeTarget = () => {
+                                    if (isNew) {
+                                        setNewCustomerWorkItems(prev => prev.filter(ncf => ncf.workItemId !== workItem.id));
+                                    } else {
+                                        const newTargets = workItem.customer_targets.filter(ct => ct.customer_id !== customerId);
+                                        updateWorkItem(workItem.id, { customer_targets: newTargets });
+                                    }
+                                };
 
-                                            const removeTarget = () => {
-                                                if (isNew) {
-                                                    setNewCustomerWorkItems(prev => prev.filter(ncf => ncf.workItemId !== workItem.id));
-                                                } else {
-                                                    const newTargets = workItem.customer_targets.filter(ct => ct.customer_id !== customerId);
-                                                    updateWorkItem(workItem.id, { customer_targets: newTargets });
-                                                }
-                                            };
+                                return (
+                                    <tr key={workItem.id}>
+                                        <td>{workItem.name}</td>
+                                        <td>{calculatedEffort.toLocaleString()}</td>
+                                        <td>
+                                            <select 
+                                                value={targetDef.tcv_type}
+                                                onChange={e => updateTarget({ tcv_type: e.target.value as 'existing' | 'potential' })}
+                                            >
+                                                <option value="existing">Existing</option>
+                                                <option value="potential">Potential</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            {targetDef.tcv_type === 'existing' ? (
+                                                <select
+                                                    value={targetDef.tcv_history_id || 'latest'}
+                                                    onChange={e => updateTarget({ tcv_history_id: e.target.value === 'latest' ? undefined : e.target.value })}
+                                                >
+                                                    <option value="latest">Latest Actual (${customer?.existing_tcv.toLocaleString()})</option>
+                                                    {customer?.tcv_history?.map(h => (
+                                                        <option key={h.id} value={h.id}>{h.valid_from} (${h.value.toLocaleString()})</option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <span style={{ color: 'var(--text-muted)' }}>${customer?.potential_tcv.toLocaleString()}</span>
+                                            )}
+                                        </td>
+                                        <td>
+                                            <select 
+                                                value={targetDef.priority || 'Must-have'}
+                                                onChange={e => updateTarget({ priority: e.target.value as 'Must-have' | 'Should-have' | 'Nice-to-have' })}
+                                            >
+                                                <option value="Must-have">Must-have</option>
+                                                <option value="Should-have">Should-have</option>
+                                                <option value="Nice-to-have">Nice-to-have</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <button onClick={removeTarget} className="btn-danger">Remove</button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
 
-                                            return (
-                                                <tr key={workItem.id}>
-                                                    <td>{workItem.name}</td>
-                                                    <td>{calculatedEffort.toLocaleString()}</td>
-                                                    <td>
-                                                        <select 
-                                                            value={targetDef.tcv_type}
-                                                            onChange={e => updateTarget({ tcv_type: e.target.value as 'existing' | 'potential' })}
-                                                        >
-                                                            <option value="existing">Existing</option>
-                                                            <option value="potential">Potential</option>
-                                                        </select>
-                                                    </td>
-                                                    <td>
-                                                        {targetDef.tcv_type === 'existing' ? (
-                                                            <select
-                                                                value={targetDef.tcv_history_id || 'latest'}
-                                                                onChange={e => updateTarget({ tcv_history_id: e.target.value === 'latest' ? undefined : e.target.value })}
-                                                            >
-                                                                <option value="latest">Latest Actual (${customer.existing_tcv.toLocaleString()})</option>
-                                                                {customer.tcv_history?.map(h => (
-                                                                    <option key={h.id} value={h.id}>{h.valid_from} (${h.value.toLocaleString()})</option>
-                                                                ))}
-                                                            </select>
-                                                        ) : (
-                                                            <span style={{ color: 'var(--text-muted)' }}>${customer.potential_tcv.toLocaleString()}</span>
-                                                        )}
-                                                    </td>
-                                                    <td>
-                                                        <select 
-                                                            value={targetDef.priority || 'Must-have'}
-                                                            onChange={e => updateTarget({ priority: e.target.value as 'Must-have' | 'Should-have' | 'Nice-to-have' })}
-                                                        >
-                                                            <option value="Must-have">Must-have</option>
-                                                            <option value="Should-have">Should-have</option>
-                                                            <option value="Nice-to-have">Nice-to-have</option>
-                                                        </select>
-                                                    </td>
-                                                    <td>
-                                                        <button onClick={removeTarget} className="btn-danger">Remove</button>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                        {targetedWorkItems.length === 0 && (
-                                            <tr>
-                                                <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '16px' }}>No targeted work items found.</td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
+                    {data && (
+                        <div className={customerStyles.addWorkItemBox}>
+                            <h3>Add Work Item Target</h3>
+                            <SearchableDropdown
+                                options={data.workItems
+                                    .filter(f => !targetedWorkItems.find(tf => tf.id === f.id))
+                                    .map(f => ({ id: f.id, label: f.name }))
+                                }
+                                onSelect={(workItemId) => {
+                                    if (isNew) {
+                                        setNewCustomerWorkItems(prev => [...prev, {
+                                            workItemId,
+                                            tcv_type: 'existing',
+                                            priority: 'Should-have'
+                                        }]);
+                                    } else {
+                                        const workItem = data.workItems.find(f => f.id === workItemId);
+                                        if (workItem) {
+                                            const newTargets = [...(workItem.customer_targets || []), {
+                                                customer_id: customerId,
+                                                tcv_type: 'existing',
+                                                priority: 'Should-have'
+                                            }];
+                                            updateWorkItem(workItemId, { customer_targets: newTargets as any });
+                                        }
+                                    }
+                                }}
+                                placeholder="Search for a work item to add..."
+                            />
+                        </div>
+                    )}
+                </>
+            )
+        },
+        {
+            id: 'history',
+            label: `TCV History (${customer?.tcv_history?.length || 0})`,
+            content: (
+                <table className={customerStyles.table}>
+                    <thead>
+                        <tr>
+                            <th>Valid From</th>
+                            <th>Value ($)</th>
+                            <th>Duration (mo)</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {customer?.tcv_history?.map(entry => (
+                            <tr key={entry.id}>
+                                <td>{entry.valid_from}</td>
+                                <td>{entry.value.toLocaleString()}</td>
+                                <td>{entry.duration_months || '-'}</td>
+                                <td>
+                                    <button 
+                                        className="btn-danger" 
+                                        onClick={() => {
+                                            if (customer) {
+                                                const newHistory = customer.tcv_history?.filter(h => h.id !== entry.id);
+                                                updateCustomer(customer.id, { tcv_history: newHistory });
+                                            }
+                                        }}
+                                    >
+                                        Delete
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            )
+        },
+        {
+            id: 'support',
+            label: `Support & Health (${customer?.support_issues?.length || 0})`,
+            content: (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                    <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <h2 style={{ border: 'none', margin: 0, fontSize: '18px', color: 'var(--text-highlight)' }}>Support Issues</h2>
+                            <button 
+                                className="btn-primary" 
+                                onClick={() => {
+                                    if (customer) {
+                                        const now = new Date().toISOString();
+                                        const newIssue: SupportIssue = {
+                                            id: generateId('issue'),
+                                            description: '',
+                                            status: 'to do',
+                                            related_jiras: [],
+                                            expiration_date: undefined,
+                                            created_at: now,
+                                            updated_at: now
+                                        };
+                                        const currentIssues = customer.support_issues || [];
+                                        updateCustomer(customer.id, { support_issues: [newIssue, ...currentIssues] });
+                                    }
+                                }}
+                            >
+                                + Add Issue
+                            </button>
+                        </div>
 
-                                {data && (
-                                    <div className={styles.addWorkItemBox}>
-                                        <h3>Add Work Item Target</h3>
-                                        <div style={{ display: 'flex', gap: '12px' }}>
-                                            <SearchableDropdown
-                                                options={data.workItems
-                                                    .filter(f => !targetedWorkItems.find(tf => tf.id === f.id))
-                                                    .map(f => ({ id: f.id, label: f.name }))
-                                                }
-                                                onSelect={(workItemId) => {
-                                                    if (isNew) {
-                                                        setNewCustomerWorkItems(prev => [...prev, {
-                                                            workItemId,
-                                                            tcv_type: 'existing',
-                                                            priority: 'Should-have'
-                                                        }]);
-                                                    } else {
-                                                        const workItem = data.workItems.find(f => f.id === workItemId);
-                                                        if (workItem) {
-                                                            const newTargets = [...(workItem.customer_targets || []), {
-                                                                customer_id: customerId,
-                                                                tcv_type: 'existing',
-                                                                priority: 'Should-have'
-                                                            }];
-                                                            updateWorkItem(workItemId, { customer_targets: newTargets as any });
-                                                        }
-                                                    }
-                                                }}
-                                                placeholder="Search for a work item to add..."
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            {(customer?.support_issues || []).map((issue, idx) => {
+                                const updateIssue = (updates: Partial<SupportIssue>) => {
+                                    if (customer) {
+                                        const newIssues = [...(customer.support_issues || [])];
+                                        newIssues[idx] = { ...issue, ...updates, updated_at: new Date().toISOString() };
+                                        updateCustomer(customer.id, { support_issues: newIssues });
+                                    }
+                                };
+
+                                return (
+                                    <div key={issue.id} id={`issue-${issue.id}`} className={customerStyles.addWorkItemBox} style={{ backgroundColor: 'var(--bg-tertiary)', padding: '20px' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: '16px' }}>
+                                            <textarea 
+                                                value={issue.description}
+                                                onChange={e => updateIssue({ description: e.target.value })}
+                                                placeholder="Describe the issue..."
+                                                style={{ minHeight: '80px', backgroundColor: 'var(--bg-primary)' }}
                                             />
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                <select value={issue.status} onChange={e => updateIssue({ status: e.target.value as any })}>
+                                                    <option value="to do">To Do</option>
+                                                    <option value="work in progress">Work in Progress</option>
+                                                    <option value="waiting for customer">Waiting</option>
+                                                    <option value="done">Done</option>
+                                                </select>
+                                                <input type="date" value={issue.expiration_date || ''} onChange={e => updateIssue({ expiration_date: e.target.value || undefined })} />
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', borderTop: '1px solid var(--border-secondary)', paddingTop: '12px' }}>
+                                            <JiraKeysInput value={issue.related_jiras || []} onChange={keys => updateIssue({ related_jiras: keys })} jiraBaseUrl={data?.settings.jira_base_url} />
+                                            <button className="btn-danger" onClick={() => {
+                                                if (customer) {
+                                                    const newIssues = (customer.support_issues || []).filter((_, i) => i !== idx);
+                                                    updateCustomer(customer.id, { support_issues: newIssues });
+                                                }
+                                            }}>Remove</button>
                                         </div>
                                     </div>
-                                )}
-                            </section>
-                        )}
-
-                        {activeTab === 'history' && !isNew && (
-                            <section className={styles.card}>
-                                <h2>Existing TCV History</h2>
-                                <table className={styles.table}>
-                                    <thead>
-                                        <tr>
-                                            <th>Valid From</th>
-                                            <th>Value ($)</th>
-                                            <th>Duration (mo)</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {customer.tcv_history?.map(entry => (
-                                            <tr key={entry.id}>
-                                                <td>{entry.valid_from}</td>
-                                                <td>{entry.value.toLocaleString()}</td>
-                                                <td>{entry.duration_months || '-'}</td>
-                                                <td>
-                                                    <button 
-                                                        className="btn-danger" 
-                                                        onClick={() => {
-                                                            const newHistory = customer.tcv_history?.filter(h => h.id !== entry.id);
-                                                            updateCustomer(customer.id, { tcv_history: newHistory });
-                                                        }}
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {(!customer.tcv_history || customer.tcv_history.length === 0) && (
-                                            <tr>
-                                                <td colSpan={3} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '16px' }}>No historical entries. Update the Actual TCV to populate history.</td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </section>
-                        )}
-
+                                );
+                            })}
+                        </div>
                     </div>
-                </>
-            )}
-        </PageWrapper>
+
+                    {healthData.healthStatus !== 'Unknown' && (
+                        <div>
+                            <h2 style={{ marginBottom: '16px', fontSize: '18px', color: 'var(--text-highlight)' }}>Support Overview (Jira)</h2>
+                            <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+                                <div style={{ flex: 1, padding: '12px', borderRadius: '6px', backgroundColor: 'var(--status-danger-bg)', color: 'var(--status-danger)', border: '1px solid var(--status-danger)' }}>
+                                    <strong>{healthData.newIssues.length}</strong> New / Untriaged
+                                </div>
+                                <div style={{ flex: 1, padding: '12px', borderRadius: '6px', backgroundColor: 'var(--status-warning-bg)', color: 'var(--status-warning)', border: '1px solid var(--status-warning)' }}>
+                                    <strong>{healthData.inProgressIssues.length}</strong> In Progress
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )
+        }
+    ];
+
+    return (
+        <GenericDetailPage
+            entityTitle={isNew ? 'Create New Customer' : `Customer: ${customer?.name}`}
+            onBack={onBack}
+            mainDetails={mainDetails}
+            tabs={isNew ? [] : tabs}
+            loading={loading}
+            error={error}
+            data={data}
+            actions={
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    {!isNew && <button className="btn-danger" onClick={handleDelete}>Delete</button>}
+                    {isNew && <button className="btn-primary" onClick={handleSave}>Create</button>}
+                </div>
+            }
+        />
     );
 };
-
-
-

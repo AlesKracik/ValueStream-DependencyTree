@@ -74,13 +74,13 @@ function WorkItemPageRouteWrapper({ valueStreamState }: any) {
 function EpicPageRouteWrapper({ valueStreamState }: any) {
   const { id } = useParams();
   const navigate = useNavigate();
-  return <EpicPage epicId={id!} onBack={() => navigate(-1)} {...valueStreamState} />;
+  return <EpicPage epicId={id!} onBack={() => navigate(-1)} deleteEpic={valueStreamState.deleteEpic} {...valueStreamState} />;
 }
 
 function TeamPageRouteWrapper({ valueStreamState }: any) {
   const { id } = useParams();
   const navigate = useNavigate();
-  return <TeamPage teamId={id!} onBack={() => navigate(-1)} {...valueStreamState} />;
+  return <TeamPage teamId={id!} onBack={() => navigate(-1)} deleteTeam={valueStreamState.deleteTeam} {...valueStreamState} />;
 }
 
 function ValueStreamEditPageRouteWrapper({ valueStreamState }: any) {
