@@ -485,7 +485,18 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
           const api_version = jira.api_version || '3';
           const api_token = jira.api_token;
 
-          const apiUrl = `${new URL(base_url).origin}/rest/api/${api_version}/myself`;
+          if (!base_url) {
+              throw new Error('Jira Base URL is not configured in settings.');
+          }
+
+          let origin;
+          try {
+              origin = new URL(base_url).origin;
+          } catch (e) {
+              throw new Error(`Invalid Jira Base URL: "${base_url}". Please check your settings.`);
+          }
+
+          const apiUrl = `${origin}/rest/api/${api_version}/myself`;
           const jiraRes = await fetch(apiUrl, { headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${api_token}` } });
           if (!jiraRes.ok) throw new Error(`Jira error ${jiraRes.status}`);
           res.setHeader('Content-Type', 'application/json');
@@ -507,7 +518,18 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
           const api_token = jira.api_token;
           const jira_key = config.jira_key;
 
-          const apiUrl = `${new URL(base_url).origin}/rest/api/${api_version}/issue/${jira_key}?expand=names`;
+          if (!base_url) {
+              throw new Error('Jira Base URL is not configured in settings.');
+          }
+
+          let origin;
+          try {
+              origin = new URL(base_url).origin;
+          } catch (e) {
+              throw new Error(`Invalid Jira Base URL: "${base_url}". Please check your settings.`);
+          }
+
+          const apiUrl = `${origin}/rest/api/${api_version}/issue/${jira_key}?expand=names`;
           const jiraRes = await fetch(apiUrl, { headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${api_token}` } });
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
@@ -529,7 +551,18 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
           const api_token = jira.api_token;
           const jql = config.jql;
 
-          const apiUrl = `${new URL(base_url).origin}/rest/api/${api_version}/search`;
+          if (!base_url) {
+              throw new Error('Jira Base URL is not configured in settings.');
+          }
+
+          let origin;
+          try {
+              origin = new URL(base_url).origin;
+          } catch (e) {
+              throw new Error(`Invalid Jira Base URL: "${base_url}". Please check your settings.`);
+          }
+
+          const apiUrl = `${origin}/rest/api/${api_version}/search`;
           const jiraRes = await fetch(apiUrl, { 
             method: 'POST', 
             headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': `Bearer ${api_token}` },
