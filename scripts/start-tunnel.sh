@@ -23,6 +23,28 @@ fi
 echo -e "\033[0;90m[INFO] Loading environment variables from $ENV_FILE...\033[0m"
 export $(grep -v '^#' "$ENV_FILE" | xargs)
 
+# Array to keep track of started PIDs
+PIDS=()
+
+cleanup() {
+    echo -e "\n\033[0;33m[ACTION] Cleaning up tunnels...\033[0m"
+    for PID in "${PIDS[@]}"; do
+        if ps -p "$PID" > /dev/null; then
+            echo -e "\033[0;90m  - Stopping tunnel PID $PID...\033[0m"
+            kill "$PID" 2>/dev/null
+        fi
+    done
+    
+    # Also cleanup PID files
+    rm -f .tunnel.app.pid .tunnel.customer.pid
+    
+    echo -e "\033[0;32m[SUCCESS] Cleanup complete.\033[0m"
+    exit 0
+}
+
+# Register cleanup trap
+trap cleanup SIGINT SIGTERM EXIT
+
 start_tunnel() {
     NAME=$1
     PREFIX=$(echo "$NAME" | tr '[:lower:]' '[:upper:]')
@@ -59,7 +81,7 @@ start_tunnel() {
             kill "$OLD_PID"
             sleep 1
         fi
-        rm "$PID_FILE"
+        rm -f "$PID_FILE"
     fi
 
     echo -e "\033[0;36m[ACTION] Starting SOCKS5 tunnel for $NAME on 0.0.0.0:$PORT to $HOST...\033[0m"
@@ -68,6 +90,7 @@ start_tunnel() {
 
     if [ -n "$SSH_PID" ]; then
         echo "$SSH_PID" > "$PID_FILE"
+        PIDS+=("$SSH_PID")
         echo -e "\033[0;32m[SUCCESS] Tunnel for $NAME started (PID: $SSH_PID).\033[0m"
     else
         echo -e "\033[0;31m[ERROR] Failed to start SSH tunnel for $NAME.\033[0m"
@@ -80,3 +103,7 @@ if [ "$TARGET" == "all" ]; then
 else
     start_tunnel "$TARGET"
 fi
+
+echo -e "\n\033[0;35m[INFO] Tunnels are active. Press Ctrl+C to stop them and exit.\033[0m"
+# Wait for background processes
+wait

@@ -33,9 +33,10 @@ An interactive React ValueStream designed to visualize the flow of value from cu
     - Open `http://localhost:5173`.
     - Go to **Settings** (Sidebar) and configure your **MongoDB** connection under the **Persistence** tab. Configuration is organized hierarchically by role (Application vs. Customer).
     - **AWS SSO:** If using AWS IAM authentication with the **Static Credentials** type, you can use the integrated **SSO Login** buttons to authenticate via browser and fetch temporary credentials directly into your settings.
-    - **SSH Tunneling (Local):** If your MongoDB is behind one or more SSH bastions, start SOCKS5 tunnels in a separate terminal:
+    - **SSH Tunneling (Local):** If your MongoDB is behind one or more SSH bastions, start SOCKS5 tunnels in a separate terminal and **keep it open**:
       - **Windows:** `.\scripts\start-tunnel.ps1 all` (or `app`, `customer`)
       - **MacOS/Linux:** `./scripts/start-tunnel.sh all` (or `app`, `customer`)
+    - These scripts now run in the foreground and will automatically cleanup any SSH processes when you press `Ctrl+C`.
     - Ensure `SOCKS_PROXY_HOST=localhost` is set in your `.env` file.
     - In the application **Settings**, enable the **"Use Proxy"** toggle for each database and specify the **"Tunnel Name"** (e.g., `app` or `customer`) to match your `.env` prefix.
 

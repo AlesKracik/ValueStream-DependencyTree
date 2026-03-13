@@ -28,6 +28,8 @@ foreach ($line in Get-Content $EnvFile) {
     }
 }
 
+$Processes = New-Object System.Collections.Generic.List[System.Diagnostics.Process]
+
 function Start-Tunnel {
     param([string]$Name)
     
@@ -74,15 +76,40 @@ function Start-Tunnel {
 
     if ($sshProc) {
         $sshProc.Id | Out-File $PidFile -NoNewline
+        $Processes.Add($sshProc)
         Write-Host "[SUCCESS] Tunnel for $Name started (PID: $($sshProc.Id))." -ForegroundColor Green
     } else {
         Write-Host "[ERROR] Failed to start SSH tunnel for $Name." -ForegroundColor Red
     }
 }
 
-if ($Target -eq "all") {
-    Start-Tunnel "app"
-    Start-Tunnel "customer"
-} else {
-    Start-Tunnel $Target
+try {
+    if ($Target -eq "all") {
+        Start-Tunnel "app"
+        Start-Tunnel "customer"
+    } else {
+        Start-Tunnel $Target
+    }
+
+    if ($Processes.Count -gt 0) {
+        Write-Host "`n[INFO] Tunnels are active. Press Ctrl+C to stop them and exit." -ForegroundColor Magenta
+        # Wait for all processes to finish or for user interruption
+        $Processes | Wait-Process
+    }
+}
+finally {
+    if ($Processes.Count -gt 0) {
+        Write-Host "`n[ACTION] Cleaning up tunnels..." -ForegroundColor Yellow
+        foreach ($proc in $Processes) {
+            if (-not $proc.HasExited) {
+                Write-Host "  - Stopping tunnel PID $($proc.Id)..." -ForegroundColor Gray
+                Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            }
+        }
+        
+        # Cleanup PID files
+        Remove-Item .tunnel.app.pid, .tunnel.customer.pid -ErrorAction SilentlyContinue
+        
+        Write-Host "[SUCCESS] Cleanup complete." -ForegroundColor Green
+    }
 }
