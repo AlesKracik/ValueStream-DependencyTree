@@ -301,7 +301,7 @@ export function useGraphLayout(
 
             data.epics.forEach(epic => {
                 logicalEdges.push({
-                    id: `edge-${epic.work_item_id}-${epic.team_id}-${epic.id}`,
+                    id: `edge__${epic.work_item_id}__${epic.team_id}__${epic.id}`,
                     source: `workitem-${epic.work_item_id}`,
                     target: `team-${epic.team_id}`
                 });
@@ -337,10 +337,10 @@ export function useGraphLayout(
 
                 outgoingEdges.forEach(e => {
                     let nextEpicId = sourceEpicId;
-                    if (currentNodeId.startsWith('workitem-') && e.id.startsWith('edge-')) {
-                        const parts = e.id.split('-');
+                    if (currentNodeId.startsWith('workitem-') && e.id.startsWith('edge__')) {
+                        const parts = e.id.split('__');
                         if (parts.length >= 4) {
-                            nextEpicId = parts.slice(3).join('-');
+                            nextEpicId = parts[3];
                         }
                     }
                     traceDownstream(e.target, nextEpicId);
@@ -357,7 +357,7 @@ export function useGraphLayout(
                 let incomingEdges = logicalEdges.filter(e => e.target === currentNodeId);
 
                 if (currentNodeId.startsWith('team-') && sourceEpicId) {
-                    incomingEdges = incomingEdges.filter(e => e.id.endsWith(`-${sourceEpicId}`));
+                    incomingEdges = incomingEdges.filter(e => e.id.endsWith(`__${sourceEpicId}`));
                 }
 
                 incomingEdges.forEach(e => {
@@ -640,7 +640,7 @@ export function useGraphLayout(
             // Scale width based on remaining MDs, keeping min 2px and max 10px
             const normalizedStrokeWidth = Math.min(10, Math.max(2, (epic.effort_md / maxRemainingMd) * 10));
             edges.push({
-                id: `edge-${epic.work_item_id}-${epic.team_id}-${epic.id}`,
+                id: `edge__${epic.work_item_id}__${epic.team_id}__${epic.id}`,
                 source: `workitem-${epic.work_item_id}`,
                 target: `team-${epic.team_id}`,
                 type: 'default',
@@ -934,10 +934,10 @@ export function useGraphLayout(
 
                         let nextEpicId = sourceEpicId;
                         // Extract epic context when passing from WorkItem to Team
-                        if (currentNodeId.startsWith('workitem-') && e.id.startsWith('edge-')) {
-                            const parts = e.id.split('-');
+                        if (currentNodeId.startsWith('workitem-') && e.id.startsWith('edge__')) {
+                            const parts = e.id.split('__');
                             if (parts.length >= 4) {
-                                nextEpicId = parts.slice(3).join('-');
+                                nextEpicId = parts[3];
                             }
                         }
 
@@ -956,7 +956,7 @@ export function useGraphLayout(
 
                     // If at a team node, only follow incoming edges from the workitem that owns this epic
                     if (currentNodeId.startsWith('team-') && sourceEpicId) {
-                        incomingEdges = incomingEdges.filter(e => e.id.endsWith(`-${sourceEpicId}`));
+                        incomingEdges = incomingEdges.filter(e => e.id.endsWith(`__${sourceEpicId}`));
                     }
 
                     incomingEdges.forEach(e => {

@@ -6,6 +6,7 @@ import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers'
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import { syncJiraIssue } from '../../utils/api';
 import { GenericDetailPage, type DetailTab } from '../common/GenericDetailPage';
+import { SearchableDropdown } from '../common/SearchableDropdown';
 import customerStyles from '../customers/CustomerPage.module.css';
 
 interface EpicPageProps {
@@ -22,6 +23,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
     
     const epic = data?.epics.find(e => e.id === id);
     const team = data?.teams.find(t => t.id === epic?.team_id);
+    const workItem = data?.workItems.find(wi => wi.id === epic?.work_item_id);
 
     const [localDates, setLocalDates] = useState({
         start: epic?.target_start || '',
@@ -110,8 +112,21 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
         updateEpic(epic.id, updates);
     };
 
+    const workItemOptions = data?.workItems.map(wi => ({ id: wi.id, label: wi.name })) || [];
+    // Add "Unassigned" option
+    workItemOptions.unshift({ id: 'UNASSIGNED', label: '--- Unassigned ---' });
+
     const mainDetails = (
         <>
+            <label>
+                Name
+                <input 
+                    type="text" 
+                    value={epic.name || ''} 
+                    onChange={e => updateEpic(epic.id, { name: e.target.value })}
+                    placeholder="Epic Name"
+                />
+            </label>
             <label>
                 Jira Key
                 <input 
@@ -119,6 +134,18 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
                     value={epic.jira_key || ''} 
                     onChange={e => updateEpic(epic.id, { jira_key: e.target.value })}
                 />
+            </label>
+            <label>
+                Work Item
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <SearchableDropdown
+                        options={workItemOptions}
+                        onSelect={(wiId) => updateEpic(epic.id, { work_item_id: wiId === 'UNASSIGNED' ? undefined : wiId })}
+                        placeholder="Search for a work item..."
+                        clearOnSelect={false}
+                        initialValue={workItem?.name || 'Unassigned'}
+                    />
+                </div>
             </label>
             <label>
                 Target Start

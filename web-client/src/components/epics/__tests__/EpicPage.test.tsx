@@ -255,6 +255,68 @@ describe('EpicPage', () => {
         });
     });
 
+    describe('Work Item Selection', () => {
+        beforeEach(() => {
+            vi.useRealTimers();
+        });
+
+        const dataWithWorkItems: ValueStreamData = {
+            ...mockData,
+            workItems: [
+                { id: 'wi1', name: 'Work Item 1', total_effort_mds: 10, score: 50, customer_targets: [] },
+                { id: 'wi2', name: 'Work Item 2', total_effort_mds: 20, score: 30, customer_targets: [] }
+            ],
+            epics: [
+                {
+                    ...mockData.epics[0],
+                    work_item_id: 'wi1'
+                }
+            ]
+        };
+
+        it('renders the current Work Item name', () => {
+            renderEpicPage({ ...defaultProps, data: dataWithWorkItems });
+            const workItemInput = screen.getByPlaceholderText('Search for a work item...') as HTMLInputElement;
+            expect(workItemInput.value).toBe('Work Item 1');
+        });
+
+        it('updates the Work Item when selecting from dropdown', async () => {
+            renderEpicPage({ ...defaultProps, data: dataWithWorkItems });
+            
+            const workItemInput = screen.getByPlaceholderText('Search for a work item...');
+            
+            // Clear and Type to filter
+            fireEvent.change(workItemInput, { target: { value: '' } });
+            fireEvent.change(workItemInput, { target: { value: 'Work Item 2' } });
+            
+            // Wait for dropdown to filter and show option
+            const option = await screen.findByText('Work Item 2');
+            fireEvent.click(option);
+            
+            expect(updateEpicSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
+                work_item_id: 'wi2'
+            }));
+        });
+
+        it('updates to undefined when selecting Unassigned', async () => {
+            renderEpicPage({ ...defaultProps, data: dataWithWorkItems });
+            
+            const workItemInput = screen.getByPlaceholderText('Search for a work item...');
+            
+            // Clear and Type to filter
+            fireEvent.change(workItemInput, { target: { value: '' } });
+            fireEvent.change(workItemInput, { target: { value: 'Unassigned' } });
+            
+            // Wait for dropdown to filter and show option
+            const option = await screen.findByText('--- Unassigned ---');
+            fireEvent.click(option);
+            
+            expect(updateEpicSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
+                work_item_id: undefined
+            }));
+        });
+    });
+
     afterEach(() => {
         vi.useRealTimers();
     });

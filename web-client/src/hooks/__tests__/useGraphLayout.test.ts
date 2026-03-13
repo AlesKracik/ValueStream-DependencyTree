@@ -217,6 +217,30 @@ describe('useGraphLayout Math Engine', () => {
         expect((capNode?.data as any).holidayCount).toBe(1);
         expect((capNode?.data as any).totalCapacityMds).toBe(9);
     });
+
+    it('highlights the Epic (Gantt) when hovering the WorkItem even if IDs have dashes', () => {
+        const DASH_DATA: ValueStreamData = {
+            ...MOCK_DATA,
+            customers: [{ id: 'c-1', name: 'Cust 1', existing_tcv: 100, existing_tcv_valid_from: '2026-01-01', potential_tcv: 0 }],
+            workItems: [{
+                id: 'wi-1',
+                name: 'Work Item 1',
+                total_effort_mds: 10, score: 5,
+                customer_targets: [{ customer_id: 'c-1', tcv_type: 'existing', priority: 'Must-have' }]
+            }],
+            teams: [{ id: 't-1', name: 'Team Alpha', total_capacity_mds: 10 }],
+            epics: [{ id: 'e-1', jira_key: 'J-1', work_item_id: 'wi-1', team_id: 't-1', effort_md: 8, target_start: '2026-02-12', target_end: '2026-02-26' }]
+        };
+
+        // Hovering over WorkItem wi-1
+        const { result } = renderHook(() => useGraphLayout(DASH_DATA, 'workitem-wi-1'));
+        
+        const ganttNode = result.current.nodes.find(n => n.id === 'gantt-e-1');
+        expect(ganttNode).toBeDefined();
+        
+        // If it's highlighted, opacity should be 1. If NOT, it's 0.15.
+        expect(ganttNode?.style?.opacity).toBe(1);
+    });
 });
 
 

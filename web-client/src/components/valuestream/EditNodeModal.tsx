@@ -65,10 +65,8 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
             }
 
         } else if (node.type === 'sprintCapacityNode') {
-            const match = String(domainId).match(/^sprint-cap-(t\d+)-(s\d+)$/);
-            if (match && data) {
-                const teamId = match[1];
-                const sprintId = match[2];
+            const { teamId, sprintId } = node.data as { teamId: string, sprintId: string };
+            if (teamId && sprintId && data) {
                 const team = data.teams.find(t => t.id === teamId);
                 const sprint = data.sprints.find(s => s.id === sprintId);
                 if (team && sprint) {
