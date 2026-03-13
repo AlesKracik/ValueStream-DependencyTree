@@ -200,6 +200,29 @@ describe('EpicPage', () => {
                 expect(screen.queryByText('Network Failure')).not.toBeNull();
             }, { timeout: 2000 });
         });
+
+        it('passes correct jira settings to syncJiraIssue', async () => {
+            // Mock successful sync
+            (api.syncJiraIssue as any).mockResolvedValueOnce({ 
+                fields: { 
+                    summary: 'Synced Epic',
+                    customfield_10005: 80 // 10 MDs
+                } 
+            });
+
+            renderEpicPage();
+
+            // Click Sync button
+            const syncButton = screen.getByText('Sync from Jira');
+            await act(async () => {
+                fireEvent.click(syncButton);
+            });
+
+            await waitFor(() => {
+                // Verify syncJiraIssue was called with the nested jira settings, not the root settings object
+                expect(api.syncJiraIssue).toHaveBeenCalledWith('J-1', mockData.settings.jira);
+            });
+        });
     });
 
     describe('General Rendering', () => {

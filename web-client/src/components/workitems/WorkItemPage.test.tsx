@@ -363,6 +363,34 @@ describe('WorkItemPage', () => {
             expect(screen.getByText('Network Failure')).toBeDefined();
         });
     });
+
+    it('passes correct jira settings to syncJiraIssue', async () => {
+        const dataWithEpic: ValueStreamData = {
+            ...mockData,
+            epics: [
+                { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5 }
+            ],
+            teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
+        };
+
+        // Mock successful sync
+        (api.syncJiraIssue as any).mockResolvedValueOnce({ fields: { summary: 'Synced Epic' } });
+
+        renderPage({ ...defaultProps, data: dataWithEpic });
+
+        // Switch to Epics tab
+        const epicsTab = screen.getByText(/Engineering Epics \(/i);
+        fireEvent.click(epicsTab);
+
+        // Click Sync button
+        const syncButton = screen.getByText('Sync from Jira');
+        fireEvent.click(syncButton);
+
+        await waitFor(() => {
+            // Verify syncJiraIssue was called with the nested jira settings, not the root settings object
+            expect(api.syncJiraIssue).toHaveBeenCalledWith('E-1', mockData.settings.jira);
+        });
+    });
 });
 
 
