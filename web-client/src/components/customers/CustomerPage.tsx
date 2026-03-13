@@ -714,7 +714,24 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         },
         {
             id: 'support',
-            label: `Support & Health (${customer?.support_issues?.length || 0})`,
+            label: (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    Support & Health ({customer?.support_issues?.length || 0})
+                    {healthData.healthStatus !== 'Unknown' && healthData.healthStatus !== 'Healthy' && (
+                        <span 
+                            title={healthData.healthStatus}
+                            style={{ 
+                                width: '8px', 
+                                height: '8px', 
+                                borderRadius: '50%', 
+                                backgroundColor: healthData.healthStatus === 'New / Untriaged' ? 'var(--status-danger)' : 
+                                               (healthData.healthStatus === 'Active Work' ? 'var(--status-warning)' : 'var(--accent-primary)'),
+                                display: 'inline-block'
+                            }} 
+                        />
+                    )}
+                </div>
+            ),
             content: (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
                     <div>
@@ -796,6 +813,9 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                 </div>
                                 <div style={{ flex: 1, padding: '12px', borderRadius: '6px', backgroundColor: 'var(--status-warning-bg)', color: 'var(--status-warning)', border: '1px solid var(--status-warning)' }}>
                                     <strong>{healthData.inProgressIssues.length}</strong> In Progress
+                                </div>
+                                <div style={{ flex: 1, padding: '12px', borderRadius: '6px', backgroundColor: 'var(--accent-primary-bg)', color: 'var(--accent-primary)', border: '1px solid var(--accent-primary)' }}>
+                                    <strong>{healthData.noopIssues.length}</strong> Blocked / Pending
                                 </div>
                             </div>
 

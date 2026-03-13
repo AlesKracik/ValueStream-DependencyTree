@@ -508,6 +508,101 @@ describe('CustomerPage', () => {
         });
     });
 
+    it('displays all three health summary boxes in Support tab', async () => {
+        (api.authorizedFetch as any).mockImplementation((_url: string, options: any) => {
+            const body = JSON.parse(options.body || '{}');
+            if (body.jql && body.jql.includes('status = New')) {
+                return Promise.resolve({
+                    ok: true,
+                    json: async () => ({ 
+                        success: true, 
+                        data: { issues: [{ key: 'NEW-1', fields: { summary: 'New Issue', status: { name: 'New' } } }] } 
+                    })
+                });
+            }
+            if (body.jql && body.jql.includes("status = 'In Progress'")) {
+                return Promise.resolve({
+                    ok: true,
+                    json: async () => ({ 
+                        success: true, 
+                        data: { issues: [{ key: 'IP-1', fields: { summary: 'In Progress Issue', status: { name: 'In Progress' } } }] } 
+                    })
+                });
+            }
+            if (body.jql && body.jql.includes('status = Blocked')) {
+                return Promise.resolve({
+                    ok: true,
+                    json: async () => ({ 
+                        success: true, 
+                        data: { issues: [{ key: 'BLOCKED-1', fields: { summary: 'Blocked Issue', status: { name: 'Blocked' } } }] } 
+                    })
+                });
+            }
+            return Promise.resolve({
+                ok: true,
+                json: async () => ({ success: true, data: { issues: [] } })
+            });
+        });
+
+        await act(async () => {
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} />
+                </MemoryRouter>
+            );
+        });
+        
+        const supportTab = screen.getByText(/Support & Health/i);
+        await act(async () => {
+            fireEvent.click(supportTab);
+        });
+
+        await waitFor(() => {
+            const boxes = screen.getAllByText('1').map(el => el.parentElement?.textContent || '');
+            
+            expect(boxes.some(text => text.includes('New / Untriaged'))).toBe(true);
+            expect(boxes.some(text => text.includes('In Progress'))).toBe(true);
+            expect(boxes.some(text => text.includes('Blocked / Pending'))).toBe(true);
+        });
+    });
+
+    it('displays a status dot in the Support tab label when health status is not Healthy', async () => {
+        (api.authorizedFetch as any).mockImplementation((_url: string, options: any) => {
+            const body = JSON.parse(options.body || '{}');
+            // Mock one 'New' issue to trigger 'New / Untriaged' status
+            if (body.jql && body.jql.includes('status = New')) {
+                return Promise.resolve({
+                    ok: true,
+                    json: async () => ({ 
+                        success: true, 
+                        data: { issues: [{ key: 'NEW-1', fields: { summary: 'New Issue', status: { name: 'New' } } }] } 
+                    })
+                });
+            }
+            return Promise.resolve({
+                ok: true,
+                json: async () => ({ success: true, data: { issues: [] } })
+            });
+        });
+
+        await act(async () => {
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} />
+                </MemoryRouter>
+            );
+        });
+
+        await waitFor(() => {
+            const supportTab = screen.getByText(/Support & Health/i);
+            // The dot is a span with title matching healthStatus
+            const dot = supportTab.querySelector('span[title="New / Untriaged"]');
+            expect(dot).not.toBeNull();
+            // In New / Untriaged status, it should be var(--status-danger)
+            expect((dot as HTMLElement).style.backgroundColor).toBe('var(--status-danger)');
+        });
+    });
+
     it('shows "Customer ID Not Defined" in Custom Fields tab if customer_id is missing', async () => {
         const dataWithoutId: ValueStreamData = {
             ...mockData,

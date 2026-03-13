@@ -156,4 +156,46 @@ describe('useCustomerHealth', () => {
             body: expect.stringContaining('"jql":"key IN (\\"MISSING-101\\")"')
         }));
     });
+
+    it('should prioritize health status correctly (New > In Progress > Blocked)', async () => {
+        (api.authorizedFetch as any).mockImplementation(async (url: string, options: any) => {
+            const body = JSON.parse(options.body);
+            const jql = body.jql;
+
+            if (jql.includes('status = New')) {
+                return {
+                    ok: true,
+                    json: async () => ({
+                        success: true,
+                        data: { issues: [{ key: 'NEW-1', fields: { summary: 'New', status: { name: 'New' } } }] }
+                    })
+                };
+            }
+            if (jql.includes('status = "In Progress"')) {
+                return {
+                    ok: true,
+                    json: async () => ({
+                        success: true,
+                        data: { issues: [{ key: 'IP-1', fields: { summary: 'IP', status: { name: 'In Progress' } } }] }
+                    })
+                };
+            }
+            if (jql.includes('status = Blocked')) {
+                return {
+                    ok: true,
+                    json: async () => ({
+                        success: true,
+                        data: { issues: [{ key: 'BLOCKED-1', fields: { summary: 'Blocked', status: { name: 'Blocked' } } }] }
+                    })
+                };
+            }
+            return { ok: true, json: async () => ({ success: true, data: { issues: [] } }) };
+        });
+
+        const { result } = renderHook(() => useCustomerHealth(mockCustomer, mockSettings));
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        // When all types are present, New / Untriaged should win
+        expect(result.current.healthStatus).toBe('New / Untriaged');
+    });
 });
