@@ -41,6 +41,11 @@ export function checkAuth(
         };
     }
 
+    // Allow /api/auth/login to pass through to be handled by the server (Vite plugin)
+    if (url.startsWith('/api/auth/login')) {
+        return { authorized: true };
+    }
+
     // Regular API authorization
     if (isAuthRequired) {
         if (providedSecret !== adminSecret) {

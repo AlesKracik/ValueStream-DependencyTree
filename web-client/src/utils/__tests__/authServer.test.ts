@@ -46,6 +46,11 @@ describe('authServer utility', () => {
             expect(result.response).toEqual({ required: true, authenticated: true });
         });
 
+        it('allows /api/auth/login unconditionally to pass through to the server for body parsing', () => {
+            const result = checkAuth('/api/auth/login', {}, 'my-secret');
+            expect(result.authorized).toBe(true);
+        });
+
         it('is case-insensitive for headers if they are processed by Node middleware (passed as lowercase)', () => {
             const result = checkAuth('/api/loadData', { 'x-admin-secret': 'my-secret' }, 'my-secret');
             expect(result.authorized).toBe(true);

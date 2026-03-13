@@ -778,7 +778,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                 onChange={e => updateIssue({ description: e.target.value })}
                                                 placeholder="Describe the issue..."
                                                 style={{ minHeight: '80px', backgroundColor: 'var(--bg-primary)' }}
-                                            />
+                                            ></textarea>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                                     <label style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Status</label>
                                                     <select 
@@ -806,7 +806,6 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                     <label style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Expiration Date</label>
                                                     <input type="date" value={issue.expiration_date || ''} onChange={e => updateIssue({ expiration_date: e.target.value || undefined })} />
                                                 </div>
-                                            </div>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', borderTop: '1px solid var(--border-secondary)', paddingTop: '12px' }}>
                                             <JiraKeysInput value={issue.related_jiras || []} onChange={keys => updateIssue({ related_jiras: keys })} jiraBaseUrl={data?.settings.jira_base_url} />

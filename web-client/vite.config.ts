@@ -234,6 +234,27 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
         return res.end(JSON.stringify({ success: false, error: 'Unauthorized' }));
       }
 
+      if (req.url === '/api/auth/login' && req.method === 'POST') {
+        try {
+          const body = await readBody(req);
+          const { password } = JSON.parse(body);
+          const ADMIN_SECRET = process.env.ADMIN_SECRET || env.ADMIN_SECRET || env.VITE_ADMIN_SECRET;
+          
+          if (password === ADMIN_SECRET) {
+            res.setHeader('Content-Type', 'application/json');
+            res.statusCode = 200;
+            return res.end(JSON.stringify({ success: true }));
+          } else {
+            res.setHeader('Content-Type', 'application/json');
+            res.statusCode = 401;
+            return res.end(JSON.stringify({ success: false, error: 'Invalid password' }));
+          }
+        } catch (e: any) {
+          res.statusCode = 500;
+          return res.end(JSON.stringify({ success: false, error: e.message }));
+        }
+      }
+
       if (req.url?.startsWith('/api/loadData') && req.method === 'GET') {
         try {
           const url = new URL(req.url, `http://${req.headers.host}`);

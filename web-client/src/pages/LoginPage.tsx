@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { authorizedFetch } from '../utils/api';
+import { setAdminSecret } from '../utils/api';
 
 interface LoginPageProps {
     onLogin: () => void;
@@ -16,13 +16,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         setError('');
 
         try {
-            const response = await authorizedFetch('/api/auth/login', {
+            const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ password }),
             });
 
             if (response.ok) {
+                setAdminSecret(password);
                 onLogin();
             } else {
                 setError('Invalid password');
@@ -48,7 +49,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 backgroundColor: 'var(--bg-secondary)',
                 borderRadius: '8px',
                 width: '100%',
-                maxWIdth: '400px',
+                maxWidth: '360px',
+                margin: '20px',
                 boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
                 display: 'flex',
                 flexDirection: 'column',
