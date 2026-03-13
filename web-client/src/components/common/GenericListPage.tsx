@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import styles from '../../pages/List.module.css';
 import { PageWrapper } from '../layout/PageWrapper';
+import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 
 export type SortOption<T> = {
     label: string;
@@ -16,6 +17,7 @@ export type ListColumn<T> = {
 };
 
 interface GenericListPageProps<T> {
+    pageId?: string;
     title: string;
     items: T[];
     loading: boolean;
@@ -38,6 +40,7 @@ interface GenericListPageProps<T> {
 }
 
 export function GenericListPage<T extends { id: string }>({
+    pageId,
     title,
     items,
     loading,
@@ -55,9 +58,23 @@ export function GenericListPage<T extends { id: string }>({
     loadingMessage = "Loading...",
     emptyMessage = "No items found."
 }: GenericListPageProps<T>) {
-    const [filter, setFilter] = useState('');
-    const [sortBy, setSortBy] = useState<string | undefined>(defaultSortKey || (sortOptions.length > 0 ? sortOptions[0].key : undefined));
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    const { uiState, updateUiState } = useValueStreamContext();
+    
+    // Initial state from context if available
+    const savedState = pageId ? uiState[pageId] : null;
+    
+    const [filter, setFilter] = useState(savedState?.filter || '');
+    const [sortBy, setSortBy] = useState<string | undefined>(
+        savedState?.sortBy || defaultSortKey || (sortOptions.length > 0 ? sortOptions[0].key : undefined)
+    );
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(savedState?.sortOrder || 'asc');
+
+    // Update context when state changes
+    useEffect(() => {
+        if (pageId) {
+            updateUiState(pageId, { filter, sortBy, sortOrder });
+        }
+    }, [pageId, filter, sortBy, sortOrder, updateUiState]);
 
     const toggleSort = (key: string) => {
         if (sortBy === key) {

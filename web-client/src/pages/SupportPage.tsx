@@ -244,6 +244,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
 
     return (
         <GenericListPage<SupportIssueWithCustomer>
+            pageId="support"
             title="Support Issues"
             items={allIssues}
             loading={loading}

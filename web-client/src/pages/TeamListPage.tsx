@@ -26,6 +26,7 @@ export const TeamListPage: React.FC<Props> = ({ data, loading }) => {
 
     return (
         <GenericListPage<Team>
+            pageId="teams"
             title="Teams"
             items={data?.teams || []}
             loading={loading}

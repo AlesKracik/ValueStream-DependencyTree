@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
 import { CustomerListPage } from '../CustomerListPage';
-import { MemoryRouter } from 'react-router-dom';
+import { renderWithProviders } from '../../test/testUtils';
 import type { ValueStreamData } from '../../types/models';
 
 const mockData: ValueStreamData = {
-    valueStreams: [],
+    // ... same mockData
+
     settings: {
         general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
         persistence: { 
@@ -30,10 +31,8 @@ const mockData: ValueStreamData = {
 
 describe('CustomerListPage', () => {
     it('renders the list of customers and their attributes', () => {
-        render(
-            <MemoryRouter>
-                <CustomerListPage data={mockData} loading={false} />
-            </MemoryRouter>
+        renderWithProviders(
+            <CustomerListPage data={mockData} loading={false} />
         );
 
         expect(screen.getByText('Alpha Cust')).toBeDefined();
@@ -50,10 +49,8 @@ describe('CustomerListPage', () => {
     });
 
     it('sorts customers by name', () => {
-        const { container } = render(
-            <MemoryRouter>
-                <CustomerListPage data={mockData} loading={false} />
-            </MemoryRouter>
+        const { container } = renderWithProviders(
+            <CustomerListPage data={mockData} loading={false} />
         );
 
         // Alpha, Beta, Gamma
@@ -64,10 +61,8 @@ describe('CustomerListPage', () => {
     });
 
     it('sorts customers by existing TCV', () => {
-        const { container } = render(
-            <MemoryRouter>
-                <CustomerListPage data={mockData} loading={false} />
-            </MemoryRouter>
+        const { container } = renderWithProviders(
+            <CustomerListPage data={mockData} loading={false} />
         );
 
         const sortBtn = screen.getByRole('button', { name: /Existing/i });
@@ -81,10 +76,8 @@ describe('CustomerListPage', () => {
     });
 
     it('sorts customers by potential TCV', () => {
-        const { container } = render(
-            <MemoryRouter>
-                <CustomerListPage data={mockData} loading={false} />
-            </MemoryRouter>
+        const { container } = renderWithProviders(
+            <CustomerListPage data={mockData} loading={false} />
         );
 
         const sortBtn = screen.getByRole('button', { name: /Potential/i });

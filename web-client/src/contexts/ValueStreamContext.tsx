@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useMemo } from 'react';
-import type { ValueStreamData, Epic } from '../types/models';
+import type { ValueStreamData, Epic, ValueStreamViewState } from '../types/models';
 import { NotificationModal } from '../components/common/NotificationModal';
 
 interface NotificationConfig {
@@ -20,6 +20,10 @@ interface ValueStreamContextType extends NotificationContextType {
     updateEpic: (id: string, updates: Partial<Epic>, immediate?: boolean) => Promise<void>;
     addEpic: (epic: Epic) => void;
     deleteEpic: (id: string) => void;
+    uiState: Record<string, { filter?: string; sortBy?: string; sortOrder?: 'asc' | 'desc' }>;
+    updateUiState: (key: string, value: { filter?: string; sortBy?: string; sortOrder?: 'asc' | 'desc' }) => void;
+    viewState: ValueStreamViewState;
+    setViewState: React.Dispatch<React.SetStateAction<ValueStreamViewState>>;
 }
 
 const NotificationContext = createContext<NotificationContextType | null>(null);
@@ -104,12 +108,34 @@ export const ValueStreamProvider: React.FC<{
     };
 }> = ({ children, value }) => {
     const { showAlert, showConfirm } = useNotificationContext();
+    const [uiState, setUiState] = useState<Record<string, { filter?: string; sortBy?: string; sortOrder?: 'asc' | 'desc' }>>({});
+    const [viewState, setViewState] = useState<ValueStreamViewState>({
+        sprintOffset: 0,
+        customerFilter: '',
+        workItemFilter: '',
+        releasedFilter: 'all',
+        minTcvFilter: '',
+        minScoreFilter: '',
+        teamFilter: '',
+        epicFilter: '',
+        showDependencies: false,
+        disableHoverHighlight: true,
+        isInitialOffsetSet: false,
+    });
+
+    const updateUiState = React.useCallback((key: string, val: { filter?: string; sortBy?: string; sortOrder?: 'asc' | 'desc' }) => {
+        setUiState(prev => ({ ...prev, [key]: val }));
+    }, []);
 
     const contextValue = useMemo(() => ({
         ...value,
         showAlert,
-        showConfirm
-    }), [value, showAlert, showConfirm]);
+        showConfirm,
+        uiState,
+        updateUiState,
+        viewState,
+        setViewState
+    }), [value, showAlert, showConfirm, uiState, updateUiState, viewState]);
 
     return (
         <ValueStreamContext.Provider value={contextValue}>

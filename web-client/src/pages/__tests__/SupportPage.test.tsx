@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, act, waitFor, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { screen, act, waitFor, fireEvent } from '@testing-library/react';
 import { SupportPage } from '../SupportPage';
-import type { ValueStreamData } from '../types/models';
+import { renderWithProviders } from '../../test/testUtils';
+import type { ValueStreamData } from '../../types/models';
 
 const mockUpdateCustomer = vi.fn();
 
@@ -62,10 +62,8 @@ describe('SupportPage', () => {
     });
 
     it('renders support issues and linked Jiras correctly', () => {
-        render(
-            <MemoryRouter>
-                <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
-            </MemoryRouter>
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
         expect(screen.getByText('Active Issue')).toBeDefined();
@@ -83,10 +81,8 @@ describe('SupportPage', () => {
 
     it('opens linked Jira in a new tab when clicked', () => {
         const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
-        render(
-            <MemoryRouter>
-                <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
-            </MemoryRouter>
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
         const jiraTag = screen.getByText('SUP-101');
@@ -97,10 +93,8 @@ describe('SupportPage', () => {
     });
 
     it('cleans up expired issues on mount', async () => {
-        render(
-            <MemoryRouter>
-                <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
-            </MemoryRouter>
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
         await waitFor(() => {
@@ -114,10 +108,8 @@ describe('SupportPage', () => {
     });
 
     it('shows loading state', () => {
-        render(
-            <MemoryRouter>
-                <SupportPage data={null} loading={true} updateCustomer={mockUpdateCustomer} />
-            </MemoryRouter>
+        renderWithProviders(
+            <SupportPage data={null} loading={true} updateCustomer={mockUpdateCustomer} />
         );
 
         expect(screen.getByText(/Loading support issues/i)).toBeDefined();
@@ -138,10 +130,8 @@ describe('SupportPage', () => {
             ]
         };
 
-        render(
-            <MemoryRouter>
-                <SupportPage data={sortingData} loading={false} updateCustomer={mockUpdateCustomer} />
-            </MemoryRouter>
+        renderWithProviders(
+            <SupportPage data={sortingData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
         // Find the "Status" sort button by its text within the "Sort by:" container or just by role
@@ -180,10 +170,8 @@ describe('SupportPage', () => {
             ]
         };
 
-        render(
-            <MemoryRouter>
-                <SupportPage data={sortingData} loading={false} updateCustomer={mockUpdateCustomer} />
-            </MemoryRouter>
+        renderWithProviders(
+            <SupportPage data={sortingData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
         const statusSortBtn = screen.getByRole('button', { name: /Status/i });
@@ -213,10 +201,8 @@ describe('SupportPage', () => {
             ]
         };
 
-        render(
-            <MemoryRouter>
-                <SupportPage data={sortingData} loading={false} updateCustomer={mockUpdateCustomer} />
-            </MemoryRouter>
+        renderWithProviders(
+            <SupportPage data={sortingData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
         const statusSortBtn = screen.getByRole('button', { name: /Status/i });
@@ -261,10 +247,8 @@ describe('SupportPage', () => {
             ]
         };
 
-        render(
-            <MemoryRouter>
-                <SupportPage data={multiCustomerData} loading={false} updateCustomer={mockUpdateCustomer} />
-            </MemoryRouter>
+        renderWithProviders(
+            <SupportPage data={multiCustomerData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
         const statusSortBtn = screen.getByRole('button', { name: /Status/i });
@@ -308,10 +292,8 @@ describe('SupportPage', () => {
             ]
         };
 
-        render(
-            <MemoryRouter>
-                <SupportPage data={tcvData} loading={false} updateCustomer={mockUpdateCustomer} />
-            </MemoryRouter>
+        renderWithProviders(
+            <SupportPage data={tcvData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
         // Max TCV is 100. BandSize is 33.33.
@@ -344,10 +326,8 @@ describe('SupportPage', () => {
             ]
         };
 
-        render(
-            <MemoryRouter>
-                <SupportPage data={activityData} loading={false} updateCustomer={mockUpdateCustomer} />
-            </MemoryRouter>
+        renderWithProviders(
+            <SupportPage data={activityData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
         const activitySortBtn = screen.getByRole('button', { name: /Activity/i });
@@ -365,10 +345,8 @@ describe('SupportPage', () => {
     });
 
     it('does not display the "Updated" column or sort option', () => {
-        render(
-            <MemoryRouter>
-                <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
-            </MemoryRouter>
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
         // Should not have the Updated sort button
@@ -394,10 +372,8 @@ describe('SupportPage', () => {
             ]
         };
 
-        render(
-            <MemoryRouter>
-                <SupportPage data={multilineData} loading={false} updateCustomer={mockUpdateCustomer} />
-            </MemoryRouter>
+        renderWithProviders(
+            <SupportPage data={multilineData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
         // Using a regex to find the text which might be normalized in some environments

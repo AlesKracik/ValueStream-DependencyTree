@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
 import { WorkItemListPage } from '../WorkItemListPage';
-import { MemoryRouter } from 'react-router-dom';
+import { renderWithProviders } from '../../test/testUtils';
 import type { ValueStreamData } from '../../types/models';
 
 const mockData: ValueStreamData = {
-    valueStreams: [],
+    // ... same mockData
+
     settings: {
         general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
         persistence: { 
@@ -36,10 +37,8 @@ const mockData: ValueStreamData = {
 
 describe('WorkItemListPage', () => {
     it('renders the list of work items and their attributes', () => {
-        render(
-            <MemoryRouter>
-                <WorkItemListPage data={mockData} loading={false} />
-            </MemoryRouter>
+        renderWithProviders(
+            <WorkItemListPage data={mockData} loading={false} />
         );
 
         expect(screen.getByText('Alpha Item')).toBeDefined();
@@ -61,10 +60,8 @@ describe('WorkItemListPage', () => {
     });
 
     it('filters work items by name', () => {
-        render(
-            <MemoryRouter>
-                <WorkItemListPage data={mockData} loading={false} />
-            </MemoryRouter>
+        renderWithProviders(
+            <WorkItemListPage data={mockData} loading={false} />
         );
 
         const filterInput = screen.getByPlaceholderText(/Filter work items.../i);
@@ -76,10 +73,8 @@ describe('WorkItemListPage', () => {
     });
 
     it('sorts work items by name', () => {
-        const { container } = render(
-            <MemoryRouter>
-                <WorkItemListPage data={mockData} loading={false} />
-            </MemoryRouter>
+        const { container } = renderWithProviders(
+            <WorkItemListPage data={mockData} loading={false} />
         );
 
         const nameBtn = screen.getByRole('button', { name: /Name/i });
@@ -99,10 +94,8 @@ describe('WorkItemListPage', () => {
     });
 
     it('sorts work items by score', () => {
-        const { container } = render(
-            <MemoryRouter>
-                <WorkItemListPage data={mockData} loading={false} />
-            </MemoryRouter>
+        const { container } = renderWithProviders(
+            <WorkItemListPage data={mockData} loading={false} />
         );
 
         const scoreBtn = screen.getByRole('button', { name: /Score/i });
@@ -123,10 +116,8 @@ describe('WorkItemListPage', () => {
     });
 
     it('sorts work items by effort', () => {
-        const { container } = render(
-            <MemoryRouter>
-                <WorkItemListPage data={mockData} loading={false} />
-            </MemoryRouter>
+        const { container } = renderWithProviders(
+            <WorkItemListPage data={mockData} loading={false} />
         );
 
         const effortBtn = screen.getByRole('button', { name: /Effort/i });
@@ -140,10 +131,8 @@ describe('WorkItemListPage', () => {
     });
 
     it('sorts work items by TCV', () => {
-        const { container } = render(
-            <MemoryRouter>
-                <WorkItemListPage data={mockData} loading={false} />
-            </MemoryRouter>
+        const { container } = renderWithProviders(
+            <WorkItemListPage data={mockData} loading={false} />
         );
 
         const tcvBtn = screen.getByRole('button', { name: /TCV/i });
@@ -157,10 +146,8 @@ describe('WorkItemListPage', () => {
     });
 
     it('sorts work items by released sprint', () => {
-        const { container } = render(
-            <MemoryRouter>
-                <WorkItemListPage data={mockData} loading={false} />
-            </MemoryRouter>
+        const { container } = renderWithProviders(
+            <WorkItemListPage data={mockData} loading={false} />
         );
 
         const releasedBtn = screen.getByRole('button', { name: /Released/i });

@@ -23,6 +23,7 @@ export const ValueStreamListPage: React.FC<Props> = ({ data, loading }) => {
 
     return (
         <GenericListPage<ValueStreamEntity>
+            pageId="valueStreams"
             title="Value Streams"
             items={data?.valueStreams || []}
             loading={loading}

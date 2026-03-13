@@ -1,11 +1,12 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { screen, fireEvent } from '@testing-library/react';
 import { TeamListPage } from '../TeamListPage';
-import { MemoryRouter } from 'react-router-dom';
+import { renderWithProviders } from '../../test/testUtils';
 import type { ValueStreamData } from '../../types/models';
 
 const mockData: ValueStreamData = {
-    valueStreams: [],
+    // ... same mockData
+
     settings: {
         general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
         persistence: { 
@@ -30,10 +31,8 @@ const mockData: ValueStreamData = {
 
 describe('TeamListPage', () => {
     it('renders the list of teams and their attributes', () => {
-        render(
-            <MemoryRouter>
-                <TeamListPage data={mockData} loading={false} />
-            </MemoryRouter>
+        renderWithProviders(
+            <TeamListPage data={mockData} loading={false} />
         );
 
         expect(screen.getByText('Alpha Team')).toBeDefined();
@@ -51,10 +50,8 @@ describe('TeamListPage', () => {
     });
 
     it('sorts teams by name', () => {
-        const { container } = render(
-            <MemoryRouter>
-                <TeamListPage data={mockData} loading={false} />
-            </MemoryRouter>
+        const { container } = renderWithProviders(
+            <TeamListPage data={mockData} loading={false} />
         );
 
         // Alpha, Beta, Gamma
@@ -65,10 +62,8 @@ describe('TeamListPage', () => {
     });
 
     it('sorts teams by capacity', () => {
-        const { container } = render(
-            <MemoryRouter>
-                <TeamListPage data={mockData} loading={false} />
-            </MemoryRouter>
+        const { container } = renderWithProviders(
+            <TeamListPage data={mockData} loading={false} />
         );
 
         const sortBtn = screen.getByRole('button', { name: /Capacity/i });
@@ -82,10 +77,8 @@ describe('TeamListPage', () => {
     });
 
     it('sorts teams by country', () => {
-        const { container } = render(
-            <MemoryRouter>
-                <TeamListPage data={mockData} loading={false} />
-            </MemoryRouter>
+        const { container } = renderWithProviders(
+            <TeamListPage data={mockData} loading={false} />
         );
 
         const sortBtn = screen.getByRole('button', { name: /Country/i });
@@ -99,10 +92,8 @@ describe('TeamListPage', () => {
     });
 
     it('shows the New Team button', () => {
-        render(
-            <MemoryRouter>
-                <TeamListPage data={mockData} loading={false} />
-            </MemoryRouter>
+        renderWithProviders(
+            <TeamListPage data={mockData} loading={false} />
         );
 
         expect(screen.getByText('+ New Team')).toBeDefined();

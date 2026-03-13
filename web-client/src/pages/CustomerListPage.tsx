@@ -36,6 +36,7 @@ export const CustomerListPage: React.FC<Props> = ({ data, loading }) => {
 
     return (
         <GenericListPage<Customer>
+            pageId="customers"
             title="Customers"
             items={data?.customers || []}
             loading={loading}

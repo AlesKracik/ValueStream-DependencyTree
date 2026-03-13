@@ -63,6 +63,7 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
 
     return (
         <GenericListPage<WorkItem>
+            pageId="workItems"
             title="Work Items"
             items={data?.workItems || []}
             loading={loading}

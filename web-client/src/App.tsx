@@ -28,32 +28,27 @@ import { getAdminSecret } from './utils/api';
 import type { ValueStreamViewState, ValueStreamDataState } from './types/models';
 import './App.css';
 
-interface ValueStreamRouteWrapperProps {
-  ValueStreamViewState: ValueStreamViewState;
-  setValueStreamViewState: Dispatch<SetStateAction<ValueStreamViewState>>;
-}
-
-function ValueStreamRouteWrapper({ ValueStreamViewState, setValueStreamViewState }: ValueStreamRouteWrapperProps) {
+function ValueStreamRouteWrapper() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { showAlert } = useValueStreamContext();
+  const { showAlert, viewState, setViewState } = useValueStreamContext();
   // Fetch specific ValueStream data with server-side filtering
   const valueStreamState = useValueStreamData(id, {
-    customerFilter: ValueStreamViewState.customerFilter,
-    workItemFilter: ValueStreamViewState.workItemFilter,
-    releasedFilter: ValueStreamViewState.releasedFilter,
-    minTcvFilter: ValueStreamViewState.minTcvFilter,
-    minScoreFilter: ValueStreamViewState.minScoreFilter,
-    teamFilter: ValueStreamViewState.teamFilter,
-    epicFilter: ValueStreamViewState.epicFilter
+    customerFilter: viewState.customerFilter,
+    workItemFilter: viewState.workItemFilter,
+    releasedFilter: viewState.releasedFilter,
+    minTcvFilter: viewState.minTcvFilter,
+    minScoreFilter: viewState.minScoreFilter,
+    teamFilter: viewState.teamFilter,
+    epicFilter: viewState.epicFilter
   }, 1000, showAlert);
 
   return (
     <ValueStream
       {...valueStreamState}
       currentValueStreamId={id}
-      viewState={ValueStreamViewState}
-      setViewState={setValueStreamViewState}
+      viewState={viewState}
+      setViewState={setViewState}
       onNavigateToCustomer={(id) => navigate(`/customer/${id}`)}
       onNavigateToWorkItem={(id) => navigate(`/workitem/${id}`)}
       onNavigateToEpic={(id) => navigate(`/epic/${id}`)}
@@ -123,20 +118,6 @@ function SettingsPageRouteWrapper({ valueStreamState }: { valueStreamState: Valu
 }
 
 function MainAppContent() {
-  const [ValueStreamViewState, setValueStreamViewState] = useState<ValueStreamViewState>({
-    sprintOffset: 0,
-    customerFilter: '',
-    workItemFilter: '',
-    releasedFilter: 'all',
-    minTcvFilter: '',
-    minScoreFilter: '',
-    teamFilter: '',
-    epicFilter: '',
-    showDependencies: false,
-    disableHoverHighlight: true,
-    isInitialOffsetSet: false,
-  });
-
   const { showAlert } = useNotificationContext();
   const globalState = useValueStreamData(undefined, undefined, 1000, showAlert);
 
@@ -173,7 +154,7 @@ function MainAppContent() {
             {/* Entity Detail Pages */}
             <Route path="/valueStream/:id" element={
               <ReactFlowProvider>
-                <ValueStreamRouteWrapper ValueStreamViewState={ValueStreamViewState} setValueStreamViewState={setValueStreamViewState} />
+                <ValueStreamRouteWrapper />
               </ReactFlowProvider>
             } />
             <Route path="/valueStream/edit/:id" element={<ValueStreamEditPageRouteWrapper valueStreamState={globalState} />} />
