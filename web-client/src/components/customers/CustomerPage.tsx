@@ -779,14 +779,33 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                 placeholder="Describe the issue..."
                                                 style={{ minHeight: '80px', backgroundColor: 'var(--bg-primary)' }}
                                             />
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                                <select value={issue.status} onChange={e => updateIssue({ status: e.target.value as any })}>
-                                                    <option value="to do">To Do</option>
-                                                    <option value="work in progress">Work in Progress</option>
-                                                    <option value="waiting for customer">Waiting</option>
-                                                    <option value="done">Done</option>
-                                                </select>
-                                                <input type="date" value={issue.expiration_date || ''} onChange={e => updateIssue({ expiration_date: e.target.value || undefined })} />
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                    <label style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Status</label>
+                                                    <select 
+                                                        value={issue.status} 
+                                                        onChange={e => {
+                                                            const newStatus = e.target.value as any;
+                                                            const updates: Partial<SupportIssue> = { status: newStatus };
+                                                            if (newStatus === 'done' && !issue.expiration_date) {
+                                                                const expiry = new Date();
+                                                                expiry.setDate(expiry.getDate() + 5);
+                                                                updates.expiration_date = expiry.toISOString().split('T')[0];
+                                                            }
+                                                            updateIssue(updates);
+                                                        }}
+                                                    >
+                                                        <option value="to do">To Do</option>
+                                                        <option value="work in progress">Work in Progress</option>
+                                                        <option value="noop">Noop</option>
+                                                        <option value="waiting for customer">Waiting for Customer</option>
+                                                        <option value="waiting for other party">Waiting for Other Party</option>
+                                                        <option value="done">Done</option>
+                                                    </select>
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                    <label style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Expiration Date</label>
+                                                    <input type="date" value={issue.expiration_date || ''} onChange={e => updateIssue({ expiration_date: e.target.value || undefined })} />
+                                                </div>
                                             </div>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', borderTop: '1px solid var(--border-secondary)', paddingTop: '12px' }}>

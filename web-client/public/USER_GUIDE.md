@@ -75,8 +75,14 @@ The detail page uses a tabbed interface to organize complex data sets. Each tab 
 ![Customer Support Health](images/customer-detail-support.png)
 
 *   **Intention:** Real-time risk monitoring for the account.
+*   **Health Status Indicator:** A colored dot in the tab label provides an instant health check based on the most serious Jira category:
+    *   🔴 **Red:** New / Untriaged issues found.
+    *   🟡 **Yellow:** Active Work in progress.
+    *   🔵 **Blue:** Blocked / Pending issues.
 *   **Manual Tracking:** Add localized support issues with descriptions, statuses, and expiration dates.
-*   **Jira Integration:** Automatically sync tickets from Jira matching the customer's JQL, categorized into **New / Untriaged**, **Active Work**, and **Blocked / Pending**.
+    *   **Available Statuses:** *To Do, Work in Progress, Noop, Waiting for Customer, Waiting for Other Party, Done*.
+    *   **Auto-Expiration:** Moving an issue to the **"Done"** status automatically sets an expiration date 5 days in the future, after which the issue is automatically archived to keep the workspace clean.
+*   **Jira Integration:** Automatically sync tickets from Jira matching the customer's JQL, categorized into **New / Untriaged**, **In Progress**, and **Blocked / Pending**.
 *   **Link Status:** Discovered Jira tickets can be linked to manual Support Issues to provide a unified view of account health.
 
 ---

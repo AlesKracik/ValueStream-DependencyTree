@@ -603,6 +603,92 @@ describe('CustomerPage', () => {
         });
     });
 
+    it('shows the correct set and order of manual support statuses', async () => {
+        const dataWithIssue: ValueStreamData = {
+            ...mockData,
+            customers: [{
+                ...mockData.customers[0],
+                support_issues: [{ id: 'si-1', description: 'Test Issue', status: 'to do', created_at: '', updated_at: '' }]
+            }]
+        };
+
+        await act(async () => {
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} data={dataWithIssue} />
+                </MemoryRouter>
+            );
+        });
+
+        // Switch to Support tab
+        const supportTab = screen.getByText(/Support & Health/i);
+        await act(async () => {
+            fireEvent.click(supportTab);
+        });
+
+        const statusDropdown = screen.getByDisplayValue('To Do');
+        const options = within(statusDropdown).getAllByRole('option');
+        
+        const expectedStatuses = [
+            { value: 'to do', label: 'To Do' },
+            { value: 'work in progress', label: 'Work in Progress' },
+            { value: 'noop', label: 'Noop' },
+            { value: 'waiting for customer', label: 'Waiting for Customer' },
+            { value: 'waiting for other party', label: 'Waiting for Other Party' },
+            { value: 'done', label: 'Done' }
+        ];
+
+        expect(options).toHaveLength(expectedStatuses.length);
+        expectedStatuses.forEach((status, idx) => {
+            expect(options[idx].getAttribute('value')).toBe(status.value);
+            expect(options[idx].textContent).toBe(status.label);
+        });
+    });
+
+    it('automatically sets expiration date when manual status is changed to done', async () => {
+        const dataWithIssue: ValueStreamData = {
+            ...mockData,
+            customers: [{
+                ...mockData.customers[0],
+                support_issues: [{ id: 'si-1', description: 'Test Issue', status: 'to do', created_at: '', updated_at: '' }]
+            }]
+        };
+
+        await act(async () => {
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} data={dataWithIssue} />
+                </MemoryRouter>
+            );
+        });
+
+        // Switch to Support tab
+        const supportTab = screen.getByText(/Support & Health/i);
+        await act(async () => {
+            fireEvent.click(supportTab);
+        });
+
+        const statusDropdown = screen.getByDisplayValue('To Do');
+        
+        await act(async () => {
+            fireEvent.change(statusDropdown, { target: { value: 'done' } });
+        });
+
+        const expectedExpiry = new Date();
+        expectedExpiry.setDate(expectedExpiry.getDate() + 5);
+        const expectedExpiryStr = expectedExpiry.toISOString().split('T')[0];
+
+        expect(defaultProps.updateCustomer).toHaveBeenCalledWith('c1', expect.objectContaining({
+            support_issues: [
+                expect.objectContaining({
+                    id: 'si-1',
+                    status: 'done',
+                    expiration_date: expectedExpiryStr
+                })
+            ]
+        }));
+    });
+
     it('shows "Customer ID Not Defined" in Custom Fields tab if customer_id is missing', async () => {
         const dataWithoutId: ValueStreamData = {
             ...mockData,
