@@ -53,7 +53,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
 
     const handleSync = async () => {
         try {
-            const jiraData = await syncJiraIssue(epic.jira_key || '', data?.settings || {});
+            const jiraData = await syncJiraIssue(epic.jira_key || '', data?.settings?.jira || {});
             if (jiraData) {
                 const updates: Partial<Epic> = {
                     name: jiraData.fields.summary,

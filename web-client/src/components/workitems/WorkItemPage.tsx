@@ -135,7 +135,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     const syncEpic = async (id: string, jiraKey: string) => {
         setSyncingId(id);
         try {
-            const issueData = await syncJiraIssue(jiraKey, data?.settings || {});
+            const issueData = await syncJiraIssue(jiraKey, data?.settings?.jira || {});
             const updates = parseJiraIssue(issueData, data?.teams || []);
             
             if (isNew) {
