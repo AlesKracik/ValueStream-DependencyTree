@@ -57,7 +57,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
             if (jiraData) {
                 const updates: Partial<Epic> = {
                     name: jiraData.fields.summary,
-                    effort_mds: (jiraData.fields.customfield_10005 || 0) / 8 // Example mapping
+                    effort_md: (jiraData.fields.customfield_10005 || 0) / 8 // Example mapping
                 };
                 await updateEpic(epic.id, updates);
             }
@@ -113,6 +113,14 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
     const mainDetails = (
         <>
             <label>
+                Jira Key
+                <input 
+                    type="text" 
+                    value={epic.jira_key || ''} 
+                    onChange={e => updateEpic(epic.id, { jira_key: e.target.value })}
+                />
+            </label>
+            <label>
                 Target Start
                 <input 
                     type="date" 
@@ -132,8 +140,8 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
                 Total Effort (MDs)
                 <input 
                     type="number" 
-                    value={epic.effort_mds} 
-                    onChange={e => updateEpic(epic.id, { effort_mds: parseFloat(e.target.value) })}
+                    value={epic.effort_md} 
+                    onChange={e => updateEpic(epic.id, { effort_md: parseFloat(e.target.value) })}
                 />
             </label>
         </>

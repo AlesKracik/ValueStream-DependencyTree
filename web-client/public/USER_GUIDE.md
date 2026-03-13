@@ -141,8 +141,10 @@ The granular execution units that bridge Product strategy and Engineering delive
 ![Epic Detail](images/epic-detail.png)
 
 **Details:**
-*   **Jira Sync:** Link a Jira Key to pull real-time Status, Summary, and Effort estimates directly.
+*   **Jira Sync:** Link a **Jira Key** directly on the page to pull real-time Status, Summary, and Effort estimates.
+*   **Total Effort (MDs):** Manually set or sync the total man-day estimate for this specific unit of work.
 *   **Gantt Control:** Set Target Start/End dates. If these are missing, the epic will show a 🕒 warning icon in the Value Stream.
+*   **Sprint Effort Distribution:** View and override how effort is allocated across the timeline. Overridden values are highlighted in bold blue.
 
 ---
 
