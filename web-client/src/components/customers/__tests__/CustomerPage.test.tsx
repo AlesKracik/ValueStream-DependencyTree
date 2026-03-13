@@ -714,8 +714,49 @@ describe('CustomerPage', () => {
         expect(screen.getByText(/Please set the Customer ID above to fetch data/i)).toBeDefined();
     });
 
+    it('allows unsetting expiration date', async () => {
+        const dataWithIssue: ValueStreamData = {
+            ...mockData,
+            customers: [{
+                ...mockData.customers[0],
+                support_issues: [{ 
+                    id: 'si-1', 
+                    description: 'Test Issue', 
+                    status: 'done', 
+                    expiration_date: '2026-12-31',
+                    created_at: '', 
+                    updated_at: '' 
+                }]
+            }]
+        };
 
+        await act(async () => {
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} data={dataWithIssue} />
+                </MemoryRouter>
+            );
+        });
 
+        // Switch to Support tab
+        const supportTab = screen.getByText(/Support & Health/i);
+        await act(async () => {
+            fireEvent.click(supportTab);
+        });
+
+        const unsettingButton = screen.getByTitle('Remove Expiration Date');
+        expect(unsettingButton).toBeDefined();
+
+        await act(async () => {
+            fireEvent.click(unsettingButton);
+        });
+
+        expect(defaultProps.updateCustomer).toHaveBeenCalledWith('c1', expect.objectContaining({
+            support_issues: [expect.objectContaining({
+                expiration_date: undefined
+            })]
+        }));
+    });
 });
 
 

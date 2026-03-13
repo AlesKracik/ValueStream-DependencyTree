@@ -779,6 +779,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                 placeholder="Describe the issue..."
                                                 style={{ minHeight: '80px', backgroundColor: 'var(--bg-primary)' }}
                                             ></textarea>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                                     <label style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Status</label>
                                                     <select 
@@ -804,8 +805,30 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                 </div>
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                                     <label style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Expiration Date</label>
-                                                    <input type="date" value={issue.expiration_date || ''} onChange={e => updateIssue({ expiration_date: e.target.value || undefined })} />
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                        <input 
+                                                            type="date" 
+                                                            value={issue.expiration_date || ''} 
+                                                            onChange={e => updateIssue({ expiration_date: e.target.value || undefined })} 
+                                                            style={{ flex: 1 }}
+                                                        />
+                                                        {issue.expiration_date && (
+                                                            <button
+                                                                className="btn-danger"
+                                                                onClick={() => updateIssue({ expiration_date: undefined })}
+                                                                title="Remove Expiration Date"
+                                                                style={{
+                                                                    padding: '4px 8px',
+                                                                    fontSize: '14px',
+                                                                    minWidth: 'auto'
+                                                                }}
+                                                            >
+                                                                ✕
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
+                                            </div>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', borderTop: '1px solid var(--border-secondary)', paddingTop: '12px' }}>
                                             <JiraKeysInput value={issue.related_jiras || []} onChange={keys => updateIssue({ related_jiras: keys })} jiraBaseUrl={data?.settings.jira_base_url} />
