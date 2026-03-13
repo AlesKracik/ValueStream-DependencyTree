@@ -96,9 +96,9 @@ sequenceDiagram
 
     Note over UI, Jira: Scenario 2: Save Entity Change (Debounced)
     UI->>UI: User Types... (1000ms debounce)
-    UI->>Vite: POST /api/entity/customers (ID: c1, {name: "New Name"})
+    UI->>Vite: POST /api/entity/customers (ID: c1, {name: "New Name", ...})
     Vite->>FS: Read settings.json
-    Vite->>DB: updateOne({id: "c1"}, {$set: {name: "New Name"}})
+    Vite->>DB: replaceOne({id: "c1"}, {name: "New Name", ...})
     DB-->>Vite: Ack
     Vite-->>UI: { success: true }
 

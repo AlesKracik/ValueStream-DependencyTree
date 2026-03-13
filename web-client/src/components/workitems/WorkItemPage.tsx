@@ -252,7 +252,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                             id="global-checkbox"
                             checked={!!workItem?.all_customers_target}
                             onChange={e => {
-                                const val = e.target.checked ? { tcv_type: 'existing' as const, priority: 'Must-have' as const } : undefined;
+                                const val = e.target.checked ? { tcv_type: 'existing' as const, priority: 'Must-have' as const } : null;
                                 if (isNew) setNewWorkItemDraft(prev => ({ ...prev, all_customers_target: val }));
                                 else updateWorkItem(workItemId, { all_customers_target: val });
                             }}

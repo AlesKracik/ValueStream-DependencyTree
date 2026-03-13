@@ -201,7 +201,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                                     const checked = e.target.checked;
                                     setFormData({ 
                                         ...formData, 
-                                        all_customers_target: checked ? { tcv_type: 'existing', priority: 'Must-have' } : undefined 
+                                        all_customers_target: checked ? { tcv_type: 'existing', priority: 'Must-have' } : null 
                                     });
                                 }} 
                             />

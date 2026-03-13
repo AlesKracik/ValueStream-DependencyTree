@@ -366,7 +366,7 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
           const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
           if (req.method === 'POST') {
               await db.collection(collectionName).createIndex({ id: 1 }, { unique: true });
-              await db.collection(collectionName).updateOne({ id }, { $set: data }, { upsert: true });
+              await db.collection(collectionName).replaceOne({ id }, data, { upsert: true });
           } else {
               await db.collection(collectionName).deleteOne({ id });
           }

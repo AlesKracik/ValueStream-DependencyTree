@@ -169,6 +169,28 @@ describe('WorkItemPage', () => {
         }));
     });
 
+    it('unsets global target when already set', () => {
+        const dataWithGlobal: ValueStreamData = {
+            ...mockData,
+            workItems: [
+                {
+                    ...mockData.workItems[0],
+                    all_customers_target: { tcv_type: 'existing', priority: 'Must-have' }
+                }
+            ]
+        };
+        renderPage({ ...defaultProps, data: dataWithGlobal });
+
+        const globalCheckbox = screen.getByLabelText(/ALL CUSTOMERS \(Global\)/i);
+        expect((globalCheckbox as HTMLInputElement).checked).toBe(true);
+
+        fireEvent.click(globalCheckbox);
+
+        expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', {
+            all_customers_target: null
+        });
+    });
+
     it('shows an alert and prevents epic update if start date is not before end date', async () => {
         const dataWithEpic: ValueStreamData = {
             ...mockData,
