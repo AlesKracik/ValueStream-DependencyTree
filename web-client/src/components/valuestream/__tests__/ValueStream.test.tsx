@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ValueStream } from '../ValueStream';
-import { ReactFlowProvider } from '@xyflow/react';
+import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import { ValueStreamProvider, NotificationProvider } from '../../../contexts/ValueStreamContext';
 import type { ValueStreamData, ValueStreamViewState } from '../../../types/models';
 
@@ -11,6 +11,47 @@ vi.stubGlobal('ResizeObserver', class {
     unobserve() {}
     disconnect() {}
 });
+
+// Mock useReactFlow and ReactFlow
+vi.mock('@xyflow/react', async (importOriginal) => {
+    const original = await importOriginal() as any;
+    return {
+        ...original,
+        ReactFlow: vi.fn(({ nodes, children, onNodeContextMenu, onPaneContextMenu, onNodeClick, ...props }: any) => (
+            <div 
+                data-testid="react-flow-pane" 
+                onContextMenu={onPaneContextMenu}
+                {...props}
+            >
+                {children}
+                <div data-testid="nodes-layer">
+                    {nodes?.map((node: any) => (
+                        <div 
+                            key={node.id} 
+                            data-testid={`node-${node.id}`}
+                            onContextMenu={(e) => onNodeContextMenu?.(e, node)}
+                            onClick={(e) => onNodeClick?.(e, node)}
+                            >
+                            {node.data?.name || node.data?.label || node.data?.sprintLabel || node.id}
+                            </div>
+
+                    ))}
+                </div>
+            </div>
+        )),
+        useReactFlow: vi.fn(() => ({
+            zoomIn: vi.fn(),
+            zoomOut: vi.fn(),
+            setViewport: vi.fn(),
+            getNodes: vi.fn(() => []),
+            getEdges: vi.fn(() => []),
+        })),
+    };
+});
+
+// Since we mocked ReactFlow, we need to adjust how we find nodes.
+// But ValueStream renders custom nodes as children of ReactFlow? No, ReactFlow renders them.
+// If we mock ReactFlow, we might need to manually trigger the handlers.
 
 const mockData: ValueStreamData = {
     valueStreams: [],
@@ -57,6 +98,7 @@ describe('Value Stream', () => {
         updateCustomer: vi.fn(),
         updateWorkItem: vi.fn(),
         updateTeam: vi.fn(),
+        updateEpic: vi.fn(),
         viewState: mockViewState,
         setViewState: vi.fn(),
         onNavigateToCustomer,
@@ -109,9 +151,65 @@ describe('Value Stream', () => {
 
         expect(onNavigateToCustomer).toHaveBeenCalledWith('c1');
     });
+
+    it('triggers fit view on node right-click', async () => {
+        const mockSetViewport = vi.fn();
+        vi.mocked(useReactFlow).mockReturnValue({
+            zoomIn: vi.fn(),
+            zoomOut: vi.fn(),
+            setViewport: mockSetViewport,
+            getNodes: vi.fn(() => []),
+            getEdges: vi.fn(() => []),
+        });
+
+        render(
+            <NotificationProvider>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <ReactFlowProvider>
+                        <ValueStream 
+                            {...defaultProps}
+                        />
+                    </ReactFlowProvider>
+                </ValueStreamProvider>
+            </NotificationProvider>
+        );
+
+        const customerNode = screen.getByText('Customer 1');
+        fireEvent.contextMenu(customerNode);
+
+        // Should call handleFitView which eventually calls setViewport
+        await waitFor(() => {
+            expect(mockSetViewport).toHaveBeenCalled();
+        }, { timeout: 1500 });
+    });
+
+    it('triggers fit view on pane right-click', async () => {
+        const mockSetViewport = vi.fn();
+        vi.mocked(useReactFlow).mockReturnValue({
+            zoomIn: vi.fn(),
+            zoomOut: vi.fn(),
+            setViewport: mockSetViewport,
+            getNodes: vi.fn(() => []),
+            getEdges: vi.fn(() => []),
+        });
+
+        render(
+            <NotificationProvider>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <ReactFlowProvider>
+                        <ValueStream 
+                            {...defaultProps}
+                        />
+                    </ReactFlowProvider>
+                </ValueStreamProvider>
+            </NotificationProvider>
+        );
+
+        const flowPane = screen.getByTestId('react-flow-pane');
+        fireEvent.contextMenu(flowPane);
+        
+        await waitFor(() => {
+            expect(mockSetViewport).toHaveBeenCalled();
+        }, { timeout: 1500 });
+    });
 });
-
-
-
-
-

@@ -28,63 +28,11 @@ const nodeTypes = {
 };
 
 interface ValueStreamControlsProps {
-    data: ValueStreamData | null;
-    nodes: Node[];
-    setViewState: React.Dispatch<React.SetStateAction<ValueStreamViewState>>;
+    onFitView: () => void;
 }
 
-const ValueStreamControls: React.FC<ValueStreamControlsProps> = ({ data, nodes, setViewState }) => {
-    const { zoomIn, zoomOut, setViewport } = useReactFlow();
-
-    const handleFitView = useCallback(() => {
-        // Shift sprint view logic
-        if (data && data.sprints && data.sprints.length > 0) {
-            const today = new Date();
-            let currentSprintIdx = -1;
-
-            for (let i = 0; i < data.sprints.length; i++) {
-                const start = parseISO(data.sprints[i].start_date);
-                const end = parseISO(data.sprints[i].end_date);
-                if (today >= start && today <= end) {
-                    currentSprintIdx = i;
-                    break;
-                }
-            }
-
-            if (currentSprintIdx === -1 && today < parseISO(data.sprints[0].start_date)) {
-                currentSprintIdx = 0;
-            }
-
-            if (currentSprintIdx !== -1) {
-                const currentSprintStart = parseISO(data.sprints[currentSprintIdx].start_date);
-                const daysSinceStart = differenceInDays(today, currentSprintStart);
-                const targetOffset = daysSinceStart <= 2 ? Math.max(0, currentSprintIdx - 1) : currentSprintIdx;
-                
-                setViewState(s => ({ ...s, sprintOffset: targetOffset }));
-            }
-        }
-        
-        // Manual Viewport Calculation to "Show the Top"
-        const nodesToFit = nodes.filter(n => 
-            ['customerNode', 'workItemNode', 'teamNode', 'headerNode', 'sprintCapacityNode'].includes(n.type || '')
-        );
-
-        if (nodesToFit.length > 0) {
-            // Calculate horizontal bounds
-            const minX = nodesToFit.reduce((acc, n) => Math.min(acc, n.position.x), nodesToFit[0].position.x);
-            const maxX = nodesToFit.reduce((acc, n) => Math.max(acc, n.position.x + (n.measured?.width || 220)), nodesToFit[0].position.x);
-            const contentWidth = maxX - minX;
-
-            const containerWidth = document.querySelector(`.${styles.flowWrapper}`)?.clientWidth || window.innerWidth;
-            let targetZoom = (containerWidth * 0.9) / contentWidth;
-            targetZoom = Math.min(Math.max(targetZoom, 0.3), 0.8); // allow zooming out slightly more if needed
-
-            const contentCenterX = minX + (contentWidth / 2);
-            const targetX = (containerWidth / 2) - (contentCenterX * targetZoom);
-            const targetY = 20;
-            setViewport({ x: targetX, y: targetY, zoom: targetZoom }, { duration: 800 });
-        }
-    }, [data, nodes, setViewState, setViewport]);
+const ValueStreamControls: React.FC<ValueStreamControlsProps> = ({ onFitView }) => {
+    const { zoomIn, zoomOut } = useReactFlow();
 
     return (
         <Panel position="bottom-right" style={{ display: 'flex', gap: '8px', padding: '12px', zIndex: 5 }}>
@@ -105,7 +53,7 @@ const ValueStreamControls: React.FC<ValueStreamControlsProps> = ({ data, nodes, 
                 -
             </button>
             <button 
-                onClick={handleFitView}
+                onClick={onFitView}
                 className="btn-secondary"
                 style={{ height: '32px' }}
                 title="Reset View to Top & Active Sprint"
@@ -182,6 +130,56 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         viewState.selectedNodeId || null,
         baseParams
     );
+
+    const handleFitView = useCallback(() => {
+        // Shift sprint view logic
+        if (data && data.sprints && data.sprints.length > 0) {
+            const today = new Date();
+            let currentSprintIdx = -1;
+
+            for (let i = 0; i < data.sprints.length; i++) {
+                const start = parseISO(data.sprints[i].start_date);
+                const end = parseISO(data.sprints[i].end_date);
+                if (today >= start && today <= end) {
+                    currentSprintIdx = i;
+                    break;
+                }
+            }
+
+            if (currentSprintIdx === -1 && today < parseISO(data.sprints[0].start_date)) {
+                currentSprintIdx = 0;
+            }
+
+            if (currentSprintIdx !== -1) {
+                const currentSprintStart = parseISO(data.sprints[currentSprintIdx].start_date);
+                const daysSinceStart = differenceInDays(today, currentSprintStart);
+                const targetOffset = daysSinceStart <= 2 ? Math.max(0, currentSprintIdx - 1) : currentSprintIdx;
+                
+                setViewState(s => ({ ...s, sprintOffset: targetOffset }));
+            }
+        }
+        
+        // Manual Viewport Calculation to "Show the Top"
+        const nodesToFit = nodes.filter(n => 
+            ['customerNode', 'workItemNode', 'teamNode', 'headerNode', 'sprintCapacityNode'].includes(n.type || '')
+        );
+
+        if (nodesToFit.length > 0) {
+            // Calculate horizontal bounds
+            const minX = nodesToFit.reduce((acc, n) => Math.min(acc, n.position.x), nodesToFit[0].position.x);
+            const maxX = nodesToFit.reduce((acc, n) => Math.max(acc, n.position.x + (n.measured?.width || 220)), nodesToFit[0].position.x);
+            const contentWidth = maxX - minX;
+
+            const containerWidth = document.querySelector(`.${styles.flowWrapper}`)?.clientWidth || window.innerWidth;
+            let targetZoom = (containerWidth * 0.9) / contentWidth;
+            targetZoom = Math.min(Math.max(targetZoom, 0.3), 0.8); // allow zooming out slightly more if needed
+
+            const contentCenterX = minX + (contentWidth / 2);
+            const targetX = (containerWidth / 2) - (contentCenterX * targetZoom);
+            const targetY = 20;
+            setViewport({ x: targetX, y: targetY, zoom: targetZoom }, { duration: 800 });
+        }
+    }, [data, nodes, setViewState, setViewport]);
 
     // Initial sprint offset and viewport calculation
     useEffect(() => {
@@ -307,9 +305,19 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                 // Otherwise set the new selection
                 return { ...s, selectedNodeId: node.id };
             });
+
+            // Trigger reset view after a small delay to allow nodes to update
+            setTimeout(() => {
+                handleFitView();
+            }, 50);
         },
-        [setViewState]
+        [setViewState, handleFitView]
     );
+
+    const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
+        event.preventDefault();
+        handleFitView();
+    }, [handleFitView]);
 
     const [localFilters, setLocalFilters] = useState({
         customerFilter: viewState.customerFilter,
@@ -506,12 +514,14 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
 
             <div className={styles.flowWrapper}>
                 <ReactFlow
+                    data-testid="react-flow-pane"
                     nodes={nodes}
                     edges={edges}
                     nodeTypes={nodeTypes}
                     onNodeMouseEnter={onNodeMouseEnter}
                     onNodeMouseLeave={onNodeMouseLeave}
                     onNodeContextMenu={onNodeContextMenu}
+                    onPaneContextMenu={onPaneContextMenu}
                     onNodeClick={onNodeClick}
                     onMoveEnd={(_, viewport) => {
                         setViewState(s => ({ ...s, viewport }));
@@ -522,7 +532,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                     maxZoom={1.5}
                     proOptions={{ hideAttribution: true }}
                 >
-                    <ValueStreamControls data={data} nodes={nodes} setViewState={setViewState} />
+                    <ValueStreamControls onFitView={handleFitView} />
                 </ReactFlow>
             </div>
 
@@ -540,8 +550,3 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         </div>
     );
 };
-
-
-
-
-
