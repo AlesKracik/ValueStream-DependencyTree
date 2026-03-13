@@ -20,8 +20,8 @@ interface ValueStreamContextType extends NotificationContextType {
     updateEpic: (id: string, updates: Partial<Epic>, immediate?: boolean) => Promise<void>;
     addEpic: (epic: Epic) => void;
     deleteEpic: (id: string) => void;
-    uiState: Record<string, { filter?: string; sortBy?: string; sortOrder?: 'asc' | 'desc' }>;
-    updateUiState: (key: string, value: { filter?: string; sortBy?: string; sortOrder?: 'asc' | 'desc' }) => void;
+    uiState: Record<string, { filter?: string; sortBy?: string; sortOrder?: 'asc' | 'desc'; scrollPosition?: number }>;
+    updateUiState: (key: string, value: { filter?: string; sortBy?: string; sortOrder?: 'asc' | 'desc'; scrollPosition?: number }) => void;
     viewState: ValueStreamViewState;
     setViewState: React.Dispatch<React.SetStateAction<ValueStreamViewState>>;
 }
@@ -108,7 +108,7 @@ export const ValueStreamProvider: React.FC<{
     };
 }> = ({ children, value }) => {
     const { showAlert, showConfirm } = useNotificationContext();
-    const [uiState, setUiState] = useState<Record<string, { filter?: string; sortBy?: string; sortOrder?: 'asc' | 'desc' }>>({});
+    const [uiState, setUiState] = useState<Record<string, { filter?: string; sortBy?: string; sortOrder?: 'asc' | 'desc'; scrollPosition?: number }>>({});
     const [viewState, setViewState] = useState<ValueStreamViewState>({
         sprintOffset: 0,
         customerFilter: '',
@@ -123,7 +123,7 @@ export const ValueStreamProvider: React.FC<{
         isInitialOffsetSet: false,
     });
 
-    const updateUiState = React.useCallback((key: string, val: { filter?: string; sortBy?: string; sortOrder?: 'asc' | 'desc' }) => {
+    const updateUiState = React.useCallback((key: string, val: { filter?: string; sortBy?: string; sortOrder?: 'asc' | 'desc'; scrollPosition?: number }) => {
         setUiState(prev => ({ ...prev, [key]: val }));
     }, []);
 

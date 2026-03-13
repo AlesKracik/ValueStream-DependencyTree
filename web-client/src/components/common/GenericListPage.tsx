@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import styles from '../../pages/List.module.css';
 import { PageWrapper } from '../layout/PageWrapper';
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';
@@ -59,22 +59,49 @@ export function GenericListPage<T extends { id: string }>({
     emptyMessage = "No items found."
 }: GenericListPageProps<T>) {
     const { uiState, updateUiState } = useValueStreamContext();
+    const listRef = useRef<HTMLDivElement>(null);
+    const isRestored = useRef(false);
     
     // Initial state from context if available
     const savedState = pageId ? uiState[pageId] : null;
     
+    // If no saved scroll position, consider it restored
+    if (savedState?.scrollPosition === undefined) {
+        isRestored.current = true;
+    }
+
     const [filter, setFilter] = useState(savedState?.filter || '');
     const [sortBy, setSortBy] = useState<string | undefined>(
         savedState?.sortBy || defaultSortKey || (sortOptions.length > 0 ? sortOptions[0].key : undefined)
     );
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(savedState?.sortOrder || 'asc');
 
-    // Update context when state changes
+    // Restore scroll position
     useEffect(() => {
-        if (pageId) {
-            updateUiState(pageId, { filter, sortBy, sortOrder });
+        if (!loading && pageId && savedState?.scrollPosition !== undefined && listRef.current && !isRestored.current) {
+            const currentRef = listRef.current;
+            // Delay slightly to ensure list is rendered and items are populated
+            const timer = setTimeout(() => {
+                if (currentRef) {
+                    currentRef.scrollTop = savedState.scrollPosition!;
+                    isRestored.current = true;
+                }
+            }, 150);
+            return () => clearTimeout(timer);
         }
-    }, [pageId, filter, sortBy, sortOrder, updateUiState]);
+    }, [pageId, savedState?.scrollPosition, loading]);
+
+    // Update context when filter/sort state changes
+    useEffect(() => {
+        if (pageId && !loading && isRestored.current) {
+            updateUiState(pageId, { 
+                filter, 
+                sortBy, 
+                sortOrder, 
+                scrollPosition: listRef.current?.scrollTop || 0 
+            });
+        }
+    }, [pageId, filter, sortBy, sortOrder, updateUiState, loading]);
 
     const toggleSort = (key: string) => {
         if (sortBy === key) {
@@ -83,6 +110,18 @@ export function GenericListPage<T extends { id: string }>({
             setSortBy(key);
             setSortOrder('asc');
         }
+    };
+
+    const handleItemClick = (item: T) => {
+        if (pageId && listRef.current) {
+            updateUiState(pageId, {
+                filter,
+                sortBy,
+                sortOrder,
+                scrollPosition: listRef.current.scrollTop
+            });
+        }
+        onItemClick(item);
     };
 
     const filteredAndSortedItems = useMemo(() => {
@@ -142,7 +181,7 @@ export function GenericListPage<T extends { id: string }>({
                 />
             </div>
 
-            <div className={styles.list}>
+            <div className={styles.list} ref={listRef}>
                 {columns && (
                     <div className={styles.listHeader} style={{ display: 'grid', gridTemplateColumns, gap: '16px', padding: '0 16px 8px 16px' }}>
                         {columns.map((col, i) => {
@@ -192,7 +231,7 @@ export function GenericListPage<T extends { id: string }>({
                     <div 
                         key={item.id} 
                         className={styles.listItem} 
-                        onClick={() => onItemClick(item)}
+                        onClick={() => handleItemClick(item)}
                         style={columns ? { display: 'grid', gridTemplateColumns, gap: '16px', alignItems: 'center' } : {}}
                     >
                         {columns ? (
