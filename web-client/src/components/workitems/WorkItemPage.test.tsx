@@ -17,9 +17,15 @@ vi.mock('../../utils/api', async () => {
 
 const mockData: ValueStreamData = {
     valueStreams: [], settings: {
-        jira_base_url: 'https://jira.example.com',
-        jira_api_token: 'token',
-        jira_api_version: '3'
+        general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
+        persistence: { 
+          mongo: { 
+            app: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false },
+            customer: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false }
+          }
+        },
+        jira: { base_url: 'https://jira.example.com', api_version: '3', api_token: 'token' },
+        ai: { provider: 'openai' }
     },
     customers: [
         { 

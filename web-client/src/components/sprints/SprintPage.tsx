@@ -52,7 +52,7 @@ export const SprintPage: React.FC<SprintPageProps> = ({
         if (!data) return;
         const lastSprint = data.sprints[data.sprints.length - 1];
         const nextStart = lastSprint ? addDays(parseISO(lastSprint.end_date), 1) : new Date();
-        const duration = (data.settings.sprint_duration_days || 14) - 1;
+        const duration = (data.settings.general.sprint_duration_days || 14) - 1;
         const nextEnd = addDays(nextStart, duration);
         const nextNumber = lastSprint ? (parseInt(lastSprint.name.replace('Sprint ', '')) + 1 || data.sprints.length + 1) : 1;
         

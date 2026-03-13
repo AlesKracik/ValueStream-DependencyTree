@@ -3,8 +3,19 @@ import { describe, it, expect } from 'vitest';
 import { useGraphLayout } from '../useGraphLayout';
 import type { ValueStreamData, ValueStreamParameters } from '../../types/models';
 
-const mockData: ValueStreamData = {
-    valueStreams: [], settings: { jira_base_url: '', jira_api_version: '3' },
+const MOCK_DATA: ValueStreamData = {
+    valueStreams: [],
+    settings: {
+        general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
+        persistence: { 
+            mongo: { 
+                app: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false },
+                customer: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false }
+            }
+        },
+        jira: { base_url: '', api_version: '3' },
+        ai: { provider: 'openai' }
+    },
     customers: [
         { id: 'c1', name: 'Alpha Customer', existing_tcv: 100, potential_tcv: 0 },
         { id: 'c2', name: 'Beta Customer', existing_tcv: 100, potential_tcv: 0 }
@@ -37,20 +48,20 @@ describe('useGraphLayout - Filter Consolidation (Base vs Transient)', () => {
     it('consolidates Customer filters using Logical AND', () => {
         // Base matches both, Transient matches only Alpha
         const baseParams = { ...emptyParams, customerFilter: 'Customer' };
-        const { result } = renderHook(() => useGraphLayout(mockData, null, 0, 'Alpha', '', 'all', '', '', true, 0, 0, null, baseParams));
+        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, 'Alpha', '', 'all', '', '', true, 0, 0, null, baseParams));
         
         expect(result.current.nodes.some(n => n.id === 'customer-c1')).toBe(true);
         expect(result.current.nodes.some(n => n.id === 'customer-c2')).toBe(false);
 
         // Conflict: Base matches Beta, Transient matches Alpha -> Should show nothing
         const conflictingParams = { ...emptyParams, customerFilter: 'Beta' };
-        const { result: resConflict } = renderHook(() => useGraphLayout(mockData, null, 0, 'Alpha', '', 'all', '', '', true, 0, 0, null, conflictingParams));
+        const { result: resConflict } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, 'Alpha', '', 'all', '', '', true, 0, 0, null, conflictingParams));
         expect(resConflict.current.nodes.some(n => n.id.startsWith('customer-'))).toBe(false);
     });
 
     it('consolidates Team filters using Logical AND', () => {
         const baseParams = { ...emptyParams, teamFilter: 'Team' };
-        const { result } = renderHook(() => useGraphLayout(mockData, null, 0, '', '', 'all', 'Alpha', '', true, 0, 0, null, baseParams));
+        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', 'all', 'Alpha', '', true, 0, 0, null, baseParams));
         
         expect(result.current.nodes.some(n => n.id === 'team-t1')).toBe(true);
         expect(result.current.nodes.some(n => n.id === 'team-t2')).toBe(false);
@@ -60,7 +71,7 @@ describe('useGraphLayout - Filter Consolidation (Base vs Transient)', () => {
         const baseParams = { ...emptyParams, epicFilter: 'Epic' };
         // We use 'Beta' as EPIC filter transiently.
         // We must also NOT filter out its path. If customerFilter is '', all paths are valid.
-        const { result } = renderHook(() => useGraphLayout(mockData, null, 0, '', '', 'all', '', 'Beta', true, 0, 0, null, baseParams));
+        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', 'all', '', 'Beta', true, 0, 0, null, baseParams));
         
         expect(result.current.nodes.some(n => n.id === 'gantt-e2')).toBe(true);
         expect(result.current.nodes.some(n => n.id === 'gantt-e1')).toBe(false);
@@ -68,7 +79,7 @@ describe('useGraphLayout - Filter Consolidation (Base vs Transient)', () => {
 
     it('consolidates WorkItem filters using Logical AND', () => {
         const baseParams = { ...emptyParams, workItemFilter: 'WorkItem' };
-        const { result } = renderHook(() => useGraphLayout(mockData, null, 0, '', 'Alpha', 'all', '', '', true, 0, 0, null, baseParams));
+        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', 'Alpha', 'all', '', '', true, 0, 0, null, baseParams));
         
         expect(result.current.nodes.some(n => n.id === 'workitem-f1')).toBe(true);
         expect(result.current.nodes.some(n => n.id === 'workitem-f2')).toBe(false);
@@ -76,7 +87,7 @@ describe('useGraphLayout - Filter Consolidation (Base vs Transient)', () => {
 
     it('consolidates Released filters using Logical AND (most restrictive wins)', () => {
         const releasedData: ValueStreamData = {
-            ...mockData,
+            ...MOCK_DATA,
             workItems: [
                 { id: 'f1', name: 'Released', released_in_sprint_id: 's1', customer_targets: [], score: 10, total_effort_mds: 5 },
                 { id: 'f2', name: 'Unreleased', released_in_sprint_id: undefined, customer_targets: [], score: 10, total_effort_mds: 5 }

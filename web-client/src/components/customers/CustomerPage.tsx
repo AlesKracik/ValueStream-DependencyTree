@@ -831,7 +831,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                             </div>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', borderTop: '1px solid var(--border-secondary)', paddingTop: '12px' }}>
-                                            <JiraKeysInput value={issue.related_jiras || []} onChange={keys => updateIssue({ related_jiras: keys })} jiraBaseUrl={data?.settings.jira_base_url} />
+                                            <JiraKeysInput value={issue.related_jiras || []} onChange={keys => updateIssue({ related_jiras: keys })} jiraBaseUrl={data?.settings.jira.base_url} />
                                             <button className="btn-danger" onClick={() => {
                                                 if (customer) {
                                                     const newIssues = (customer.support_issues || []).filter((_, i) => i !== idx);

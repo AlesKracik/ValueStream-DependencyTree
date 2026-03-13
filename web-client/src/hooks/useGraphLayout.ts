@@ -740,7 +740,7 @@ export function useGraphLayout(
                             width: visibleDuration * PIXELS_PER_DAY,
                             color: 'var(--node-workitem-bg)',
                             jiraKey: epic.jira_key,
-                            jiraBaseUrl: data?.settings?.jira_base_url,
+                            jiraBaseUrl: data?.settings?.jira?.base_url,
                             epicId: epic.id,
                             targetStart: epic.target_start!,
                             targetEnd: epic.target_end!,

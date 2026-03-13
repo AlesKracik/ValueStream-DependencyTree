@@ -29,7 +29,17 @@ vi.mock('date-holidays', () => {
 
 const mockData: ValueStreamData = {
     valueStreams: [],
-    settings: { jira_base_url: '', jira_api_version: '3' },
+    settings: { 
+        general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
+        persistence: { 
+            mongo: { 
+                app: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false },
+                customer: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false }
+            }
+        },
+        jira: { base_url: '', api_version: '3' },
+        ai: { provider: 'openai' }
+    },
     customers: [],
     workItems: [],
     teams: [

@@ -19,11 +19,21 @@ vi.mock('../../../utils/api', () => ({
 const mockData: ValueStreamData = {
     valueStreams: [],
     settings: { 
-        jira_base_url: 'https://jira.com', 
-        jira_api_version: '3',
-        customer_jql_new: "status = New",
-        customer_jql_in_progress: "status = 'In Progress'",
-        customer_jql_noop: "status = Blocked"
+        general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
+        persistence: { 
+            mongo: { 
+                app: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false },
+                customer: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false }
+            }
+        },
+        jira: { 
+            base_url: 'https://jira.com', 
+            api_version: '3',
+            customer_jql_new: "status = New",
+            customer_jql_in_progress: "status = 'In Progress'",
+            customer_jql_noop: "status = Blocked"
+        },
+        ai: { provider: 'openai' }
     },
     customers: [
         { 

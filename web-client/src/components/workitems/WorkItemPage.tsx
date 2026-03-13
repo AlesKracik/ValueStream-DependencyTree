@@ -425,9 +425,9 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                         }}
                                         style={{ flex: 1, minWidth: '60px' }}
                                     />
-                                    {epic.jira_key && epic.jira_key !== 'TBD' && data?.settings.jira_base_url && (
+                                    {epic.jira_key && epic.jira_key !== 'TBD' && data?.settings.jira.base_url && (
                                         <a 
-                                            href={`${data.settings.jira_base_url.replace(/\/$/, '')}/browse/${epic.jira_key}`} 
+                                            href={`${data.settings.jira.base_url.replace(/\/$/, '')}/browse/${epic.jira_key}`} 
                                             target="_blank" 
                                             rel="noopener noreferrer" 
                                             title="Open in Jira"

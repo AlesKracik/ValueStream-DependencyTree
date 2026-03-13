@@ -4,10 +4,19 @@ import { useValueStreamData } from '../useValueStreamData';
 import type { ValueStreamData } from '../../types/models';
 
 const mockData: ValueStreamData = {
-    valueStreams: [], 
-    settings: { jira_base_url: 'https://jira.com', jira_api_version: '3' },
-    customers: [],
-    workItems: [],
+    valueStreams: [],
+    settings: {
+        general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
+        persistence: { 
+            mongo: { 
+                app: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false },
+                customer: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false }
+            }
+        },
+        jira: { base_url: 'https://jira.com', api_version: '3' },
+        ai: { provider: 'openai' }
+    },
+    customers: [],    workItems: [],
     teams: [],
     epics: [
         { id: 'e1', jira_key: 'E1', team_id: 't1', effort_md: 10, name: 'Epic 1' },

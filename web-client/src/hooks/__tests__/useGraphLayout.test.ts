@@ -4,7 +4,18 @@ import { useGraphLayout } from '../useGraphLayout';
 import type { ValueStreamData } from '../../types/models';
 
 const MOCK_DATA: ValueStreamData = {
-    valueStreams: [], settings: { jira_base_url: "https://jira", jira_api_version: "3" },
+    valueStreams: [],
+    settings: {
+        general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
+        persistence: { 
+            mongo: { 
+                app: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false },
+                customer: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false }
+            }
+        },
+        jira: { base_url: "https://jira", api_version: "3" },
+        ai: { provider: 'openai' }
+    },
     customers: [
         { id: 'c1', name: 'Cust 1', existing_tcv: 100, existing_tcv_valid_from: '2026-01-01', potential_tcv: 0 },
         { id: 'c2', name: 'Cust 2', existing_tcv: 1000, existing_tcv_valid_from: '2026-01-01', potential_tcv: 500 }

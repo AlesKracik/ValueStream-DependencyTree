@@ -15,8 +15,8 @@
         }
       },
       "customer": {
-        "uri": "",
-        "db": "",
+        "uri": "mongodb://localhost:27017",
+        "db": "customers",
         "use_proxy": false,
         "tunnel_name": "customer",
         "collection": "Customers",
@@ -28,9 +28,12 @@
     }
   },
   "jira": {
-    "base_url": "",
+    "base_url": "https://your-domain.atlassian.net",
     "api_version": "3",
-    "api_token": ""
+    "api_token": "",
+    "customer_jql_new": "labels = '{{CUSTOMER_ID}}' AND status = 'New'",
+    "customer_jql_in_progress": "labels = '{{CUSTOMER_ID}}' AND status = 'In Progress'",
+    "customer_jql_noop": "labels = '{{CUSTOMER_ID}}' AND status = 'Blocked'"
   },
   "ai": {
     "provider": "openai",

@@ -80,18 +80,6 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
           }
         });
 
-        // Inject legacy flat properties for UI backward compatibility
-        if (!Array.isArray(masked)) {
-          if (settings.jira?.base_url) masked.jira_base_url = settings.jira.base_url;
-          if (settings.jira?.api_version) masked.jira_api_version = settings.jira.api_version;
-          if (settings.jira?.api_token) masked.jira_api_token = MASK;
-          if (settings.jira?.customer_jql_new) masked.customer_jql_new = settings.jira.customer_jql_new;
-          if (settings.jira?.customer_jql_in_progress) masked.customer_jql_in_progress = settings.jira.customer_jql_in_progress;
-          if (settings.jira?.customer_jql_noop) masked.customer_jql_noop = settings.jira.customer_jql_noop;
-          if (settings.general?.sprint_duration_days) masked.sprint_duration_days = settings.general.sprint_duration_days;
-          if (settings.general?.fiscal_year_start_month) masked.fiscal_year_start_month = settings.general.fiscal_year_start_month;
-        }
-
         return masked;
       }
 
@@ -103,7 +91,7 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
           if (SENSITIVE_FIELDS.includes(key) && unmasked[key] === MASK) {
             unmasked[key] = existingSettings ? existingSettings[key] : MASK;
           } else if (typeof unmasked[key] === 'object') {
-            unmasked[key] = unmaskSettings(unmasked[key], existingSettings ? existingSettings[key] : null);
+            unmasked[key] = unmaskSettings(unmasked[key], (existingSettings && existingSettings[key]) ? existingSettings[key] : null);
           }
         });
         return unmasked;
@@ -491,9 +479,14 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
           const rawConfig = JSON.parse(body);
           const settingsPath = path.resolve(__dirname, 'settings.json');
           const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
-          const { jira_base_url, jira_api_version, jira_api_token } = unmaskSettings(rawConfig, existing);
-          const apiUrl = `${new URL(jira_base_url).origin}/rest/api/${jira_api_version || '3'}/myself`;
-          const jiraRes = await fetch(apiUrl, { headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${jira_api_token}` } });
+          const config = unmaskSettings(rawConfig, existing);
+          const jira = config.jira || {};
+          const base_url = jira.base_url;
+          const api_version = jira.api_version || '3';
+          const api_token = jira.api_token;
+
+          const apiUrl = `${new URL(base_url).origin}/rest/api/${api_version}/myself`;
+          const jiraRes = await fetch(apiUrl, { headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${api_token}` } });
           if (!jiraRes.ok) throw new Error(`Jira error ${jiraRes.status}`);
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
@@ -507,9 +500,15 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
           const rawConfig = JSON.parse(body);
           const settingsPath = path.resolve(__dirname, 'settings.json');
           const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
-          const { jira_key, jira_base_url, jira_api_version, jira_api_token } = unmaskSettings(rawConfig, existing);
-          const apiUrl = `${new URL(jira_base_url).origin}/rest/api/${jira_api_version || '3'}/issue/${jira_key}?expand=names`;
-          const jiraRes = await fetch(apiUrl, { headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${jira_api_token}` } });
+          const config = unmaskSettings(rawConfig, existing);
+          const jira = config.jira || {};
+          const base_url = jira.base_url;
+          const api_version = jira.api_version || '3';
+          const api_token = jira.api_token;
+          const jira_key = config.jira_key;
+
+          const apiUrl = `${new URL(base_url).origin}/rest/api/${api_version}/issue/${jira_key}?expand=names`;
+          const jiraRes = await fetch(apiUrl, { headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${api_token}` } });
           res.setHeader('Content-Type', 'application/json');
           res.statusCode = 200;
           res.end(JSON.stringify({ success: true, data: await jiraRes.json() }));
@@ -523,11 +522,17 @@ const PersistencePlugin = (env: Record<string, string>): Plugin => ({
           const rawConfig = JSON.parse(body);
           const settingsPath = path.resolve(__dirname, 'settings.json');
           const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
-          const { jql, jira_base_url, jira_api_version, jira_api_token } = unmaskSettings(rawConfig, existing);
-          const apiUrl = `${new URL(jira_base_url).origin}/rest/api/${jira_api_version || '3'}/search`;
+          const config = unmaskSettings(rawConfig, existing);
+          const jira = config.jira || {};
+          const base_url = jira.base_url;
+          const api_version = jira.api_version || '3';
+          const api_token = jira.api_token;
+          const jql = config.jql;
+
+          const apiUrl = `${new URL(base_url).origin}/rest/api/${api_version}/search`;
           const jiraRes = await fetch(apiUrl, { 
             method: 'POST', 
-            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': `Bearer ${jira_api_token}` },
+            headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'Authorization': `Bearer ${api_token}` },
             body: JSON.stringify({ jql, expand: ['names'], maxResults: 100 })
           });
           res.setHeader('Content-Type', 'application/json');

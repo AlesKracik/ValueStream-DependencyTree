@@ -319,9 +319,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          jira_base_url: jira.base_url,
-          jira_api_token: jira.api_token,
-          jira_api_version: jira.api_version,
+          jira: {
+            base_url: jira.base_url,
+            api_token: jira.api_token,
+            api_version: jira.api_version,
+          }
         }),
       });
       const resData = await response.json();
@@ -431,11 +433,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       const epic = epicsWithKeys[i];
       setSyncProgress(`Syncing ${i + 1}/${epicsWithKeys.length}: ${epic.jira_key}`);
       try {
-        const issueData = await syncJiraIssue(epic.jira_key, {
-            jira_base_url: jira.base_url,
-            jira_api_version: jira.api_version,
-            jira_api_token: jira.api_token,
-        });
+        const issueData = await syncJiraIssue(epic.jira_key, jira);
         
         const updates = parseJiraIssue(issueData, data.teams);
         await updateEpic(epic.id, updates, true);
@@ -478,9 +476,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           jql: finalJql,
-          jira_base_url: jira.base_url,
-          jira_api_version: jira.api_version,
-          jira_api_token: jira.api_token,
+          jira: {
+            base_url: jira.base_url,
+            api_version: jira.api_version,
+            api_token: jira.api_token,
+          }
         }),
       });
       const resData = await response.json();

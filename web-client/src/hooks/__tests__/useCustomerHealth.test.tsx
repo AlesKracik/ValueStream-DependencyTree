@@ -17,12 +17,22 @@ const mockCustomer: Customer = {
 };
 
 const mockSettings: Settings = {
-    jira_base_url: 'https://jira.test',
-    jira_api_version: '3',
-    jira_api_token: 'test-token',
-    customer_jql_new: 'project = TEST AND cf[123] = "{{CUSTOMER_ID}}" AND status = New',
-    customer_jql_in_progress: 'project = TEST AND cf[123] = "{{CUSTOMER_ID}}" AND status = "In Progress"',
-    customer_jql_noop: 'project = TEST AND cf[123] = "{{CUSTOMER_ID}}" AND status = Blocked'
+    general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
+    persistence: { 
+        mongo: { 
+            app: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false },
+            customer: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false }
+        }
+    },
+    jira: {
+        base_url: 'https://jira.test',
+        api_version: '3',
+        api_token: 'test-token',
+        customer_jql_new: 'project = TEST AND cf[123] = "{{CUSTOMER_ID}}" AND status = New',
+        customer_jql_in_progress: 'project = TEST AND cf[123] = "{{CUSTOMER_ID}}" AND status = "In Progress"',
+        customer_jql_noop: 'project = TEST AND cf[123] = "{{CUSTOMER_ID}}" AND status = Blocked'
+    },
+    ai: { provider: 'openai' }
 };
 
 describe('useCustomerHealth', () => {
@@ -68,11 +78,11 @@ describe('useCustomerHealth', () => {
         }));
 
         expect(api.authorizedFetch).toHaveBeenCalledWith('/api/jira/search', expect.objectContaining({
-            body: expect.stringContaining('"jira_base_url":"https://jira.test"')
+            body: expect.stringContaining('"jira":{"base_url":"https://jira.test"')
         }));
         
         expect(api.authorizedFetch).toHaveBeenCalledWith('/api/jira/search', expect.objectContaining({
-            body: expect.stringContaining('"jira_api_token":"test-token"')
+            body: expect.stringContaining('"api_token":"test-token"')
         }));
 
         expect(result.current.newIssues).toHaveLength(1);

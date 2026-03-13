@@ -33,7 +33,7 @@ export function debounce<T extends (...args: any[]) => any>(
 
 export const syncJiraIssue = async (
     jiraKey: string,
-    settings: { jira_base_url?: string; jira_api_version?: string; jira_api_token?: string }
+    settings: { base_url?: string; api_version?: string; api_token?: string }
 ): Promise<any> => {
     if (!jiraKey || jiraKey === 'TBD') {
         throw new Error('Please enter a valid Jira Key before syncing.');
@@ -44,9 +44,11 @@ export const syncJiraIssue = async (
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             jira_key: jiraKey,
-            jira_base_url: settings.jira_base_url,
-            jira_api_version: settings.jira_api_version || "3",
-            jira_api_token: settings.jira_api_token,
+            jira: {
+                base_url: settings.base_url,
+                api_version: settings.api_version || "3",
+                api_token: settings.api_token,
+            }
         }),
     });
 

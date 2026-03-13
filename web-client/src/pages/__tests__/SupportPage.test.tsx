@@ -8,7 +8,17 @@ const mockUpdateCustomer = vi.fn();
 
 const mockData: ValueStreamData = {
     valueStreams: [],
-    settings: { jira_base_url: 'https://jira.com', jira_api_version: '3' },
+    settings: {
+        general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
+        persistence: { 
+            mongo: { 
+                app: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false },
+                customer: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false }
+            }
+        },
+        jira: { base_url: 'https://jira.com', api_version: '3' },
+        ai: { provider: 'openai' }
+    },
     customers: [
         { 
             id: 'c1', 

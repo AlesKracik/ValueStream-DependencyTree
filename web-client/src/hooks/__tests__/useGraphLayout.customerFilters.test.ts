@@ -2,12 +2,18 @@ import { renderHook } from '@testing-library/react';
 import { useGraphLayout } from '../useGraphLayout';
 import type { ValueStreamData } from '../../types/models';
 import { describe, it, expect } from 'vitest';
-
-const mockData: ValueStreamData = {
-    valueStreams: [], settings: {
-        jira_base_url: '',
-        jira_api_token: '',
-        jira_api_version: '3'
+const MOCK_DATA: ValueStreamData = {
+    valueStreams: [],
+    settings: {
+        general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
+        persistence: { 
+            mongo: { 
+                app: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false },
+                customer: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false }
+            }
+        },
+        jira: { base_url: '', api_token: '', api_version: '3' },
+        ai: { provider: 'openai' }
     },
     customers: [
         { id: 'c1', name: 'Matched Customer', existing_tcv: 50, existing_tcv_valid_from: '2026-01-01', potential_tcv: 500 },
@@ -33,7 +39,7 @@ const mockData: ValueStreamData = {
 
 describe('useGraphLayout - Customer Filters', () => {
     it('should filter out customers not matching the name filter', () => {
-        const { result } = renderHook(() => useGraphLayout(mockData, null, 0, 'Matched'));
+        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, 'Matched'));
 
         const nodes = result.current.nodes;
         const hasC1 = nodes.some(n => n.id === 'customer-c1');
@@ -44,7 +50,7 @@ describe('useGraphLayout - Customer Filters', () => {
     });
 
     it('should filter out customers even if name matches but they target no visible work items', () => {
-        const { result } = renderHook(() => useGraphLayout(mockData, null, 0, 'Matched', 'NonExistent'));
+        const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, 'Matched', 'NonExistent'));
 
         const nodes = result.current.nodes;
         const hasC1 = nodes.some(n => n.id === 'customer-c1');
