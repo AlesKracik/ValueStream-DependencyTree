@@ -123,7 +123,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
 
     const sortOptions: SortOption<SupportIssueWithCustomer>[] = useMemo(() => [
         { label: 'Customer', key: 'customerName', getValue: (d) => d.customerName },
-        { label: 'TCV Rank', key: 'category', getValue: (d) => d.category.toString() },
+        { label: '💰', key: 'category', getValue: (d) => d.category.toString() },
         { label: 'Activity', key: 'activity', getValue: (d) => ACTIVITY_ORDER[d.activity].toString() },
         { label: 'Description', key: 'description', getValue: (d) => d.description },
         { 
@@ -143,13 +143,20 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             render: (d) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>{d.customerName}</span>
-                    <span title={`TCV Category: ${d.category}`} style={{ fontSize: '14px' }}>
-                        {'💰'.repeat(d.category)}
-                    </span>
                 </div>
             ), 
             flex: 1.5,
             sortKey: 'customerName'
+        },
+        {
+            header: '💰',
+            render: (d) => (
+                <span title={`TCV Category: ${d.category}`} style={{ fontSize: '14px' }}>
+                    {'💰'.repeat(d.category)}
+                </span>
+            ),
+            flex: 0.5,
+            sortKey: 'category'
         },
         {
             header: 'Activity',

@@ -310,6 +310,62 @@ describe('SupportPage', () => {
         expect(highCategory.textContent).toBe('💰💰💰');
     });
 
+    it('sorts by TCV category (money bag) correctly', async () => {
+        const tcvData: ValueStreamData = {
+            ...mockData,
+            customers: [
+                {
+                    id: 'c1',
+                    name: 'Low TCV',
+                    existing_tcv: 10,
+                    potential_tcv: 0,
+                    support_issues: [{ id: 'i1', description: 'Low Issue', status: 'to do' }]
+                },
+                {
+                    id: 'c2',
+                    name: 'Mid TCV',
+                    existing_tcv: 50,
+                    potential_tcv: 0,
+                    support_issues: [{ id: 'i2', description: 'Mid Issue', status: 'to do' }]
+                },
+                {
+                    id: 'c3',
+                    name: 'High TCV',
+                    existing_tcv: 100,
+                    potential_tcv: 0,
+                    support_issues: [{ id: 'i3', description: 'High Issue', status: 'to do' }]
+                }
+            ]
+        };
+
+        renderWithProviders(
+            <SupportPage data={tcvData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        // Click on the 💰 column header to sort
+        const tcvSortBtn = screen.getByRole('button', { name: /💰/i });
+        await act(async () => {
+            fireEvent.click(tcvSortBtn);
+        });
+
+        const lowIdx = screen.getByText('Low Issue').closest('div[class*="listItem"]');
+        const midIdx = screen.getByText('Mid Issue').closest('div[class*="listItem"]');
+        const highIdx = screen.getByText('High Issue').closest('div[class*="listItem"]');
+
+        // Ascending order: 1, 2, 3 bags
+        expect(lowIdx!.compareDocumentPosition(midIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(midIdx!.compareDocumentPosition(highIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+        // Click again for descending order
+        await act(async () => {
+            fireEvent.click(tcvSortBtn);
+        });
+
+        // Descending order: 3, 2, 1 bags
+        expect(highIdx!.compareDocumentPosition(midIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(midIdx!.compareDocumentPosition(lowIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
     it('sorts by activity correctly', async () => {
         const today = new Date().toISOString().split('T')[0];
         const activityData: ValueStreamData = {

@@ -122,8 +122,10 @@ function MainAppContent() {
   const globalState = useValueStreamData(undefined, undefined, 1000, showAlert);
 
   useEffect(() => {
-    const theme = globalState.data?.settings?.general?.theme || 'dark';
-    document.documentElement.setAttribute('data-theme', theme);
+    const theme = globalState.data?.settings?.general?.theme;
+    if (theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+    }
   }, [globalState.data?.settings?.general?.theme]);
 
   return (
@@ -203,7 +205,7 @@ function App() {
   }, []);
 
   if (authStatus.loading) {
-    return <div style={{ backgroundColor: '#111827', height: '100vh', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>;
+    return <div style={{ backgroundColor: 'var(--bg-page)', height: '100vh', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>;
   }
 
   if (authStatus.required && !authStatus.authenticated) {
