@@ -117,6 +117,12 @@ The application includes a built-in security layer:
 - **Secure Storage:** sensitive credentials are kept in a non-public `settings.json` on the server.
 - **Authorized Communication:** All API calls are protected by Bearer token validation.
 
+---
+
+## 📄 License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](../LICENSE) file for details.
+
 
 
 
