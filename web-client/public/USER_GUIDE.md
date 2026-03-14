@@ -4,6 +4,18 @@ This guide provides a comprehensive overview of the ValueStream platform, organi
 
 ---
 
+## 🔐 0. Getting Started
+
+### Authentication
+The platform is protected by a global `ADMIN_SECRET`. 
+
+![Login Page](images/settings.png) *Note: Image placeholder for login*
+
+*   **Access:** Enter the administrative password to unlock the workspace.
+*   **Session:** Your session is maintained via local storage. If you encounter "Unauthorized" errors, please log in again or check your `ADMIN_SECRET` in the `.env` file.
+
+---
+
 ## 1. Entities
 
 Entities are the foundational data models that drive the system. Each entity has a dedicated list view for broad management and a detail view for granular control.
@@ -42,14 +54,14 @@ The detail page is the command center for managing a specific account's lifecycl
     *   **Delete Customer:** Permanently remove the account and all its historical impact data from the workspace.
 
 #### Management Tabs
-The detail page uses a tabbed interface to organize complex data sets. Each tab is scrolled to reveal its specific management interface:
+The detail page uses a tabbed interface to organize complex data sets:
 
 **Tab: Custom Fields**
 
 ![Customer Custom Fields](images/customer-detail-fields.png)
 
 *   **Intention:** Viewing bespoke customer data without duplicating it into the ValueStream database.
-*   **Visibility:** Fetches real-time data from an external MongoDB collection using the Customer ID and the custom aggregation pipeline defined in Settings.
+*   **Visibility:** Fetches real-time data from an external MongoDB collection using the Customer ID and the custom aggregation pipeline defined in **Settings > Persistence > Customer**.
 *   **Interaction:** View nested structures, product clusters, or status fields directly within the portal.
 
 **Tab: Targeted Work Items**
@@ -81,9 +93,9 @@ The detail page uses a tabbed interface to organize complex data sets. Each tab 
     *   🔵 **Blue:** Blocked / Pending issues.
 *   **Manual Tracking:** Add localized support issues with descriptions, statuses, and expiration dates.
     *   **Available Statuses:** *To Do, Work in Progress, Noop, Waiting for Customer, Waiting for Other Party, Done*.
-    *   **Auto-Expiration:** Moving an issue to the **"Done"** status automatically sets an expiration date 5 days in the future, after which the issue is automatically archived to keep the workspace clean. When a date is set, an **"✕"** button allows manually clearing it.
-*   **Jira Integration:** Automatically sync tickets from Jira matching the customer's JQL, categorized into **New / Untriaged**, **In Progress**, and **Blocked / Pending**.
-*   **Link Status:** Discovered Jira tickets can be linked to manual Support Issues to provide a unified view of account health.
+    *   **Auto-Expiration:** Moving an issue to the **"Done"** status automatically sets an expiration date 5 days in the future, after which the issue is automatically archived.
+*   **Jira Integration:** Automatically sync tickets from Jira matching the customer's JQL (defined in Settings).
+    *   **Linking:** Discovered Jira tickets can be linked to manual Support Issues to provide a unified view.
 
 ---
 
@@ -99,10 +111,10 @@ A prioritization dashboard for the product organization.
 **Details:**
 *   **Intention:** ROI-driven prioritization using the RICE framework.
 *   **Visibility:** 
-    *   **RICE Score:** Calculated based on (TCV Impact / Effort).
-    *   **Effort (MDs):** Total man-days required, rolling up from connected Epics.
+    *   **RICE Score:** Calculated as `(Total Impact TCV / Combined Effort MDs)`.
+    *   **Effort (MDs):** Total man-days required, rolling up from connected Epics or the baseline manual estimate.
     *   **Release Target:** The specific sprint where this item is delivered.
-*   **Actions:** Sort the list to identify high-value opportunities.
+*   **Actions:** Sort the list to identify high-ROI opportunities.
 
 #### Work Item Scope & Execution
 Define the "What" and the "How" of a strategic goal.
@@ -111,15 +123,12 @@ Define the "What" and the "How" of a strategic goal.
 
 **Details:**
 *   **Actions:** 
-    *   **Define Impact:** Toggle the **"Global"** flag if the item benefits every customer in the system (e.g., tech debt).
-    *   **Set Score Components:** Adjust manual effort estimates if no epics are yet defined.
-    *   **Delete:** Remove the work item and detach all associated epics.
+    *   **Define Scope:** Toggle the **"Global"** flag if the item benefits every customer (e.g., core infrastructure).
+    *   **Set Score Components:** Adjust "Baseline Effort" estimates if no epics are yet defined.
+    *   **Release Planning:** Select the target **Release Sprint** to place the item on the ValueStream timeline.
 
 **Tab: Targeted Customers**
-
-![Work Item Targeted Customers](images/workitem-detail-customers.png)
-
-*   **Actions:** Define exactly which high-value accounts this initiative is for. Choose the TCV type for each account to drive the automatic RICE score calculation.
+Define exactly which accounts this initiative is for. Choose the TCV type (Existing/Potential) for each account to drive the RICE score.
 
 **Tab: Epics & Engineering**
 
@@ -127,8 +136,8 @@ Define the "What" and the "How" of a strategic goal.
 
 *   **Intention:** Breaking down strategy into deliverable technical units.
 *   **Actions:** 
-    *   **Epic Linkage:** Add Epics and assign them to specific Engineering Teams.
-    *   **Estimate Roll-up:** Set individual Man-Day estimates for each Epic. The Work Item's total effort is automatically updated as the sum of its Epics.
+    *   **Epic Linkage:** Add new Epics or link existing ones. 
+    *   **Estimate Roll-up:** Set individual Man-Day estimates for each Epic. The Work Item's total effort is automatically updated.
 
 ---
 
@@ -141,9 +150,8 @@ The granular execution units that bridge Product strategy and Engineering delive
 ![Epic Detail](images/epic-detail.png)
 
 **Details:**
-*   **Jira Sync:** Link a **Jira Key** directly on the page to pull real-time Status, Summary, and Effort estimates.
-*   **Total Effort (MDs):** Manually set or sync the total man-day estimate for this specific unit of work.
-*   **Gantt Control:** Set Target Start/End dates. If these are missing, the epic will show a 🕒 warning icon in the Value Stream.
+*   **Jira Sync:** Link a **Jira Key** and click **"Sync from Jira"** to pull real-time Status, Summary, and Effort estimates.
+*   **Timeline Control:** Set Target Start/End dates. If these are missing, the epic will show a ⚠️ warning icon.
 *   **Sprint Effort Distribution:** View and override how effort is allocated across the timeline. Overridden values are highlighted in bold blue.
 
 ---
@@ -152,17 +160,13 @@ The granular execution units that bridge Product strategy and Engineering delive
 
 Engineering teams are the delivery engines, each with a defined velocity.
 
-#### Team List Overview
-
-![Teams List](images/teams-list.png)
-
 #### Team Detail & Capacity Management
 
 ![Team Detail](images/team-detail.png)
 
 **Details:**
 *   **Baseline Capacity:** Set the default MDs per sprint.
-*   **Dynamic Overrides:** Click any sprint in the capacity list to set a manual override (e.g., for holidays). Overridden values are marked with a 🔒 icon on the timeline.
+*   **Dynamic Overrides:** Click any sprint in the capacity list to set a manual override (e.g., for holidays). Overridden values are marked with a 🔒 icon.
 
 ---
 
@@ -174,85 +178,79 @@ The temporal framework that aligns the organization.
 
 **Details:**
 *   **Intention:** Maintaining a continuous, gap-free delivery timeline.
-*   **Actions:** **"+ Create Next Sprint"** automatically sets the correct start date based on the duration of the previous sprint.
+*   **Quarterly Grouping:** Sprints are automatically grouped by fiscal quarters for better long-term planning.
+*   **Statuses:**
+    *   **Active:** The current ongoing sprint (highlighted in blue).
+    *   **Past/Future:** Historical or upcoming periods.
+*   **Locking Logic:** To maintain timeline integrity, only the **earliest past** sprint (for archiving) or the **latest future** sprint (for deletion) can be modified. Intermediate sprints are locked.
+*   **Creation:** **"+ Create Next Sprint"** automatically calculates the next period based on the duration setting.
 
 ---
 
-## 2. Reports
-
-Reports provide the visualization and analysis layer to make sense of the underlying data.
+## 2. Reports & Custom Views
 
 ### 🗺️ The Interactive Value Stream
 
 The platform's primary visualization, mapping value from source to delivery.
 
-#### Value Stream Scopes
+#### Value Stream Scopes (Custom Views)
 
 ![ValueStream List](images/valuestream-list.png)
+
+Instead of one global view, you can create multiple **Value Stream Scopes**.
+*   **Custom Filters:** Save specific filters (e.g., "Mobile Team Path", "Top 10 Customers", "Q3 Roadmap").
+*   **Time Ranges:** Limit the scope to a specific start and end sprint.
 
 #### The Live Graph Visualization
 
 ![ValueStream View](images/ValueStream.png)
 
 **Details:**
-*   **Visualization Logic:** 
-    *   **Dual-Layer Circles:** Customers show "Actual TCV" (Inner) and "Total Potential" (Outer Ring).
-    *   **Dependency Tracing:** Hover any node to dim the rest of the graph and highlight direct upstream/downstream paths.
-*   **Control Panel:** 
-    *   **Sprint Offset:** Use the **"< Sprints >"** buttons to slide the 6-sprint Gantt window across the timeline.
-    *   **Reset View:** Instantly center the timeline on the active sprint.
-*   **Filtering & Thresholds:**
-    *   **Multi-Column Search:** Filter nodes in any column (Customers, Work Items, Teams, Epics).
-    *   **Release Filter:** Filter by **Released**, **Unreleased**, or **All** items.
-    *   **Metrics Thresholds:** Set minimum **TCV ($)** or **RICE Score** to hide low-impact items.
-*   **Interaction:** 
-    *   **Right-Click (Filter & Reposition):** Isolate a node's specific dependency tree. The system hides all unrelated nodes and collapses empty space to focus on that item's delivery path.
+*   **Dual-Layer Circles:** Customers show "Actual TCV" (Inner) and "Total Potential" (Outer Ring).
+*   **Dependency Tracing:** Hover any node to highlight its direct upstream/downstream paths.
+*   **Right-Click (Drill-down):** Isolate a node's specific dependency tree to focus on a single delivery path.
 
 ---
 
 ### 🏥 Support Health
 
-A bird's-eye view of account stability and risks across all customers.
+A bird's-eye view of account stability across the customer base.
 
 ![Support Health](images/support-health.png)
 
 **Details:**
-*   **Intention:** Identifying "At-Risk" revenue through support trends.
-*   **Ranking Logic:** Issues are sorted by the **Customer's TCV Rank** (💰 markers), prioritizing high-revenue accounts.
-*   **Activity Monitoring:** Tags like "New" or "Updated" highlight items requiring immediate attention.
+*   **Ranking:** Issues are sorted by the **Customer's TCV Rank**, prioritizing high-revenue accounts.
+*   **Sync:** Fetches real-time status from Jira based on the JQL templates in Settings.
 
 ---
 
 ## 3. Settings & System
-
-Configuration and security parameters that govern the platform.
 
 ### ⚙️ System Configuration
 
 ![Settings Page](images/settings.png)
 
 **Details:**
-*   **Persistence:** 
-    *   **MongoDB:** Supports multiple authentication methods (SCRAM, AWS IAM, OIDC) and connection testing.
-    *   **AWS SSO Workflow:** If using AWS IAM, use the "Login via AWS SSO" button to initiate a session. A login URL and code will appear in the UI. Open the link, enter the code, and once authorized, click "Fetch SSO Credentials" to automatically populate your temporary Access Key, Secret Key, and Session Token.
-    *   **Portability:** Perform full workspace **Export** to JSON or **Import** to restore from a backup.
-*   **Jira Integration:** Configure JQL templates for automated ticket discovery.
-*   **AI Settings (Optional):** Configure LLM providers (OpenAI, Gemini, Anthropic) for potential future enhancements.
-*   **Security:** Masking for sensitive credentials and session-based `ADMIN_SECRET` protection.
+*   **Persistence (Multi-Role):** 
+    *   **Application DB:** Where ValueStream stores its internal entities.
+    *   **Customer DB:** Connect to your production/external MongoDB to fetch "Custom Fields" via JSON aggregation pipelines.
+*   **AWS SSO Workflow:** For IAM-protected MongoDB:
+    1.  Select **AWS IAM** auth method.
+    2.  Use **"Login via AWS SSO"** to get a device code.
+    3.  Authorize in your browser.
+    4.  Click **"Fetch SSO Credentials"** to populate temporary access tokens.
+*   **Jira Integration:** 
+    *   **Common:** Base URL and API Token (PAT).
+    *   **Epics:** Import entire projects or components via JQL.
+    *   **Customer:** Define JQL templates (using `{{CUSTOMER_ID}}`) to drive the Support Health dashboard.
+*   **General:**
+    *   **Theme:** Switch between **Dark mode** and **Filips mode** (high-contrast pastel).
+    *   **Fiscal Year:** Align quarter groupings to your organization's calendar.
+
+---
 
 ### 🎨 Theming & Accessibility
 
-The platform supports multiple visual modes to accommodate different environments and preferences.
-
-**Switching Themes:**
-1.  Navigate to the **Settings** page.
-2.  Open the **General Project** tab.
-3.  Locate the **Color Palette** dropdown.
-4.  Choose between **Dark mode** (Default) or **Filips mode**.
-
 **Available Modes:**
--   **Dark mode:** A high-contrast dark interface optimized for low-light environments.
--   **Filips mode:** A "muted dim" pastel theme using a soft slate-grey base and high-contrast text. This mode is designed for maximum readability in bright environments while maintaining a distinct, modern aesthetic.
-
-*Note: Your theme preference is automatically saved to your browser and will be applied instantly upon your next visit.*
-
+-   **Dark mode:** Standard high-contrast interface.
+-   **Filips mode:** A "muted dim" theme using soft slate-grey and pastel colors, designed for readability in bright environments.
