@@ -6,13 +6,25 @@ This guide provides a comprehensive overview of the ValueStream platform, organi
 
 ## 🔐 0. Getting Started
 
+### Starting the Application
+Depending on your deployment environment, you can run the application in a few different ways:
+
+- **Local Development (Node.js):**
+  From the project root directory, run `npm run dev`. This will start both the Fastify backend API (port 3000) and the Vite frontend (port 5173). Access the app at `http://localhost:5173`.
+- **Docker Compose (Development):**
+  Run `docker-compose up --build`. Access the app at `http://localhost:5173`.
+- **Docker Compose (Production):**
+  Run `docker-compose -f docker-compose.prod.yml up -d --build`. This serves a highly optimized, compiled build via an Nginx web server. Access the app at `http://localhost:80`.
+- **Kubernetes:**
+  Manifests are available in the `k8s/` directory for deploying the MongoDB database, Fastify backend, and Nginx web client into a cluster.
+
 ### Authentication
-The platform is protected by a global `ADMIN_SECRET`. 
+The platform is protected by a global `ADMIN_SECRET` environment variable. 
 
 ![Login Page](images/settings.png) *Note: Image placeholder for login*
 
 *   **Access:** Enter the administrative password to unlock the workspace.
-*   **Session:** Your session is maintained via local storage. If you encounter "Unauthorized" errors, please log in again or check your `ADMIN_SECRET` in the `.env` file.
+*   **Session:** Your session is maintained via local storage. If you encounter "Unauthorized" errors, please log in again or check your `ADMIN_SECRET` in the `.env` file or Kubernetes secret.
 
 ---
 

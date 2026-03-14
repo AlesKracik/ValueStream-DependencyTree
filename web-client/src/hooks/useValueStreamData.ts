@@ -57,7 +57,8 @@ export function useValueStreamData(
     valueStreamId?: string, 
     filters?: Partial<ValueStreamParameters>, 
     persistenceDebounceMs = 1000,
-    showAlert?: (title: string, message: string) => Promise<void>
+    showAlert?: (title: string, message: string) => Promise<void>,
+    requestedCollections: string[] = ['workspace'] // Default to full workspace for backward compatibility
 ) {
     const [data, setData] = useState<ValueStreamData | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
@@ -96,15 +97,50 @@ export function useValueStreamData(
                 });
             }
             const queryString = params.toString();
-            const response = await authorizedFetch(`/api/loadData${queryString ? `?${queryString}` : ''}`);
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.error || 'Failed to fetch data');
+            
+            let finalData: Partial<ValueStreamData> = {};
+
+            // If workspace is requested, fetch the composite endpoint (simulating the old loadData)
+            if (requestedCollections.includes('workspace')) {
+                const response = await authorizedFetch(`/api/workspace${queryString ? `?${queryString}` : ''}`);
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || 'Failed to fetch workspace data');
+                }
+                finalData = await response.json();
+            } else {
+                // Otherwise, fetch granular endpoints in parallel
+                const fetchPromises = requestedCollections.map(async (collection) => {
+                    const endpoint = collection === 'settings' ? '/api/settings' : `/api/data/${collection}`;
+                    const res = await authorizedFetch(endpoint);
+                    if (!res.ok) throw new Error(`Failed to fetch ${collection}`);
+                    const json = await res.json();
+                    
+                    if (collection === 'settings') return { settings: json.settings };
+                    if (collection === 'workItems') return { workItems: json.workItems, metrics: json.metrics };
+                    return { [collection]: json };
+                });
+
+                const results = await Promise.all(fetchPromises);
+                results.forEach(res => {
+                    finalData = { ...finalData, ...res };
+                });
+
+                // Preserve existing un-fetched data in the state context so we don't wipe it out
+                setData(prev => {
+                    const base = prev || { 
+                        customers: [], workItems: [], epics: [], sprints: [], teams: [], valueStreams: [], settings: {} 
+                    } as unknown as ValueStreamData;
+                    return { ...base, ...finalData };
+                });
             }
-            const json = await response.json();
-            setData(json);
+
+            if (requestedCollections.includes('workspace')) {
+                setData(finalData as ValueStreamData);
+            }
+
             // Cache theme immediately if available
-            const theme = json.settings?.general?.theme;
+            const theme = finalData.settings?.general?.theme;
             if (theme) {
                 localStorage.setItem('vst-theme', theme);
                 document.documentElement.setAttribute('data-theme', theme);
@@ -122,7 +158,7 @@ export function useValueStreamData(
 
     useEffect(() => {
         fetchData();
-    }, [valueStreamId, JSON.stringify(filters)]);
+    }, [valueStreamId, JSON.stringify(filters), JSON.stringify(requestedCollections)]);
 
     const refreshData = () => {
         fetchData();
@@ -132,7 +168,7 @@ export function useValueStreamData(
         persistEntity('customers', 'POST', customer, showAlert);
         setData(prev => {
             if (!prev) return prev;
-            return { ...prev, customers: [...prev.customers, customer] };
+            return { ...prev, customers: [...(prev.customers || []), customer] };
         });
     };
 
@@ -140,7 +176,7 @@ export function useValueStreamData(
         setData(prev => {
             if (!prev) return prev;
             
-            const updatedWorkItems = prev.workItems.map(f => ({
+            const updatedWorkItems = (prev.workItems || []).map(f => ({
                 ...f,
                 customer_targets: f.customer_targets.filter(ct => ct.customer_id !== id)
             }));
@@ -148,7 +184,7 @@ export function useValueStreamData(
             persistEntity('customers', 'DELETE', { id }, showAlert);
             
             // Persist cascaded updates
-            prev.workItems.forEach((oldW, i) => {
+            (prev.workItems || []).forEach((oldW, i) => {
                 if (oldW.customer_targets.length !== updatedWorkItems[i].customer_targets.length) {
                     persistEntity('workItems', 'POST', updatedWorkItems[i], showAlert);
                 }
@@ -156,14 +192,14 @@ export function useValueStreamData(
 
             return {
                 ...prev,
-                customers: prev.customers.filter(c => c.id !== id),
+                customers: (prev.customers || []).filter(c => c.id !== id),
                 workItems: updatedWorkItems
             };
         });
     };
 
     const updateCustomer = async (id: string, updates: Partial<Customer>, immediate = false) => {
-        const existing = data?.customers.find(c => c.id === id);
+        const existing = data?.customers?.find(c => c.id === id);
         if (!existing) return;
         const updated = { ...existing, ...updates };
 
@@ -171,7 +207,7 @@ export function useValueStreamData(
             if (!prev) return prev;
             return {
                 ...prev,
-                customers: prev.customers.map(c => c.id === id ? updated : c)
+                customers: (prev.customers || []).map(c => c.id === id ? updated : c)
             };
         });
 
@@ -186,7 +222,7 @@ export function useValueStreamData(
         persistEntity('workItems', 'POST', workItem, showAlert);
         setData(prev => {
             if (!prev) return prev;
-            return { ...prev, workItems: [...prev.workItems, workItem] };
+            return { ...prev, workItems: [...(prev.workItems || []), workItem] };
         });
     };
 
@@ -194,11 +230,11 @@ export function useValueStreamData(
         setData(prev => {
             if (!prev) return prev;
             
-            const updatedEpics = prev.epics.map(e => e.work_item_id === id ? { ...e, work_item_id: undefined } : e);
+            const updatedEpics = (prev.epics || []).map(e => e.work_item_id === id ? { ...e, work_item_id: undefined } : e);
             
             persistEntity('workItems', 'DELETE', { id }, showAlert);
             
-            prev.epics.forEach((oldE, i) => {
+            (prev.epics || []).forEach((oldE, i) => {
                 if (oldE.work_item_id === id) {
                     persistEntity('epics', 'POST', updatedEpics[i], showAlert);
                 }
@@ -206,14 +242,14 @@ export function useValueStreamData(
 
             return {
                 ...prev,
-                workItems: prev.workItems.filter(f => f.id !== id),
+                workItems: (prev.workItems || []).filter(f => f.id !== id),
                 epics: updatedEpics
             };
         });
     };
 
     const updateWorkItem = async (id: string, updates: Partial<WorkItem>, immediate = false) => {
-        const existing = data?.workItems.find(w => w.id === id);
+        const existing = data?.workItems?.find(w => w.id === id);
         if (!existing) return;
         const updated = { ...existing, ...updates };
 
@@ -221,7 +257,7 @@ export function useValueStreamData(
             if (!prev) return prev;
             return {
                 ...prev,
-                workItems: prev.workItems.map(f => f.id === id ? updated : f)
+                workItems: (prev.workItems || []).map(f => f.id === id ? updated : f)
             };
         });
 
@@ -233,7 +269,7 @@ export function useValueStreamData(
     };
 
     const updateTeam = async (id: string, updates: Partial<Team>, immediate = false) => {
-        const existing = data?.teams.find(t => t.id === id);
+        const existing = data?.teams?.find(t => t.id === id);
         if (!existing) return;
         const updated = { ...existing, ...updates };
 
@@ -241,7 +277,7 @@ export function useValueStreamData(
             if (!prev) return prev;
             return {
                 ...prev,
-                teams: prev.teams.map(t => t.id === id ? updated : t)
+                teams: (prev.teams || []).map(t => t.id === id ? updated : t)
             };
         });
 
@@ -256,7 +292,7 @@ export function useValueStreamData(
         persistEntity('teams', 'POST', team, showAlert);
         setData(prev => {
             if (!prev) return prev;
-            return { ...prev, teams: [...prev.teams, team] };
+            return { ...prev, teams: [...(prev.teams || []), team] };
         });
     };
 
@@ -264,14 +300,11 @@ export function useValueStreamData(
         setData(prev => {
             if (!prev) return prev;
             
-            // Cascaded update: Epics that belonged to this team should have team_id cleared or handled
-            // Since Epic.team_id is required in interface, we might need to be careful.
-            // But let's assume we can clear it or the user will reassign.
-            const updatedEpics = prev.epics.map(e => e.team_id === id ? { ...e, team_id: '' } : e);
+            const updatedEpics = (prev.epics || []).map(e => e.team_id === id ? { ...e, team_id: '' } : e);
             
             persistEntity('teams', 'DELETE', { id }, showAlert);
             
-            prev.epics.forEach((oldE, i) => {
+            (prev.epics || []).forEach((oldE, i) => {
                 if (oldE.team_id === id) {
                     persistEntity('epics', 'POST', updatedEpics[i], showAlert);
                 }
@@ -279,7 +312,7 @@ export function useValueStreamData(
 
             return {
                 ...prev,
-                teams: prev.teams.filter(t => t.id !== id),
+                teams: (prev.teams || []).filter(t => t.id !== id),
                 epics: updatedEpics
             };
         });
@@ -289,7 +322,7 @@ export function useValueStreamData(
         persistEntity('epics', 'POST', epic, showAlert);
         setData(prev => {
             if (!prev) return prev;
-            return { ...prev, epics: [...prev.epics, epic] };
+            return { ...prev, epics: [...(prev.epics || []), epic] };
         });
     };
 
@@ -297,12 +330,12 @@ export function useValueStreamData(
         persistEntity('epics', 'DELETE', { id }, showAlert);
         setData(prev => {
             if (!prev) return prev;
-            return { ...prev, epics: prev.epics.filter(e => e.id !== id) };
+            return { ...prev, epics: (prev.epics || []).filter(e => e.id !== id) };
         });
     };
 
     const updateEpic = async (id: string, updates: Partial<Epic>, immediate = false) => {
-        const existing = data?.epics.find(e => e.id === id);
+        const existing = data?.epics?.find(e => e.id === id);
         if (!existing) return;
         const updated = { ...existing, ...updates };
 
@@ -310,7 +343,7 @@ export function useValueStreamData(
             if (!prev) return prev;
             return {
                 ...prev,
-                epics: prev.epics.map(e => e.id === id ? updated : e)
+                epics: (prev.epics || []).map(e => e.id === id ? updated : e)
             };
         });
 
@@ -338,29 +371,25 @@ export function useValueStreamData(
                 return result;
             };
 
-            const newSettings = deepMerge(prev.settings, updates);
+            const newSettings = deepMerge(prev.settings || {}, updates);
             
-            // Sync theme to localStorage if it was updated
             if (updates.general?.theme) {
                 localStorage.setItem('vst-theme', updates.general.theme);
                 document.documentElement.setAttribute('data-theme', updates.general.theme);
             }
 
-            let newSprints = prev.sprints;
-            // If fiscal start month changed, recompute all sprint quarters
-            const oldFiscalMonth = prev.settings.general?.fiscal_year_start_month;
+            let newSprints = prev.sprints || [];
+            const oldFiscalMonth = prev.settings?.general?.fiscal_year_start_month;
             const newFiscalMonth = newSettings.general?.fiscal_year_start_month;
 
             if (newFiscalMonth !== undefined && newFiscalMonth !== oldFiscalMonth) {
-                newSprints = prev.sprints.map(s => ({
+                newSprints = newSprints.map(s => ({
                     ...s,
                     quarter: calculateQuarter(s.end_date, newFiscalMonth)
                 }));
-                // Persist all updated sprints immediately
                 newSprints.forEach(s => persistEntity('sprints', 'POST', s, showAlert));
             }
 
-            // Check if we need to refresh data (critical connection settings changed)
             const needsRefresh = (
                 updates.persistence?.mongo?.app?.uri !== undefined || 
                 updates.persistence?.mongo?.app?.db !== undefined ||
@@ -372,12 +401,10 @@ export function useValueStreamData(
             );
 
             if (needsRefresh) {
-                // For critical connection changes, persist immediately and then refresh
                 persistSettings(newSettings, showAlert).then(() => {
                     refreshData();
                 });
             } else {
-                // For UI-only settings (like duration or fiscal month), debounce the save
                 debouncedSettings(newSettings, false);
             }
 
@@ -390,31 +417,30 @@ export function useValueStreamData(
             if (!prev) return prev;
             const newSprint = {
                 ...sprint,
-                quarter: calculateQuarter(sprint.end_date, prev.settings.general?.fiscal_year_start_month || 1)
+                quarter: calculateQuarter(sprint.end_date, prev.settings?.general?.fiscal_year_start_month || 1)
             };
             persistEntity('sprints', 'POST', newSprint, showAlert);
             return {
                 ...prev,
-                sprints: [...prev.sprints, newSprint].sort((a, b) => a.start_date.localeCompare(b.start_date))
+                sprints: [...(prev.sprints || []), newSprint].sort((a, b) => a.start_date.localeCompare(b.start_date))
             };
         });
     };
 
     const updateSprint = async (id: string, updates: Partial<Sprint>, immediate = false) => {
-        const existing = data?.sprints.find(s => s.id === id);
+        const existing = data?.sprints?.find(s => s.id === id);
         if (!existing) return;
 
         const updatedSprint = { ...existing, ...updates };
-        // If end date is provided (or start date, though quarter is based on end), recompute quarter
         if (updates.end_date || updates.start_date) {
-            updatedSprint.quarter = calculateQuarter(updatedSprint.end_date, data?.settings.general?.fiscal_year_start_month || 1);
+            updatedSprint.quarter = calculateQuarter(updatedSprint.end_date, data?.settings?.general?.fiscal_year_start_month || 1);
         }
 
         setData(prev => {
             if (!prev) return prev;
             return {
                 ...prev,
-                sprints: prev.sprints
+                sprints: (prev.sprints || [])
                     .map(s => s.id === id ? updatedSprint : s)
                     .filter(s => !s.is_archived)
                     .sort((a, b) => a.start_date.localeCompare(b.start_date))
@@ -434,7 +460,7 @@ export function useValueStreamData(
             if (!prev) return prev;
             return {
                 ...prev,
-                sprints: prev.sprints.filter(s => s.id !== id)
+                sprints: (prev.sprints || []).filter(s => s.id !== id)
             };
         });
     };
@@ -443,12 +469,12 @@ export function useValueStreamData(
         persistEntity('valueStreams', 'POST', valueStream, showAlert);
         setData(prev => {
             if (!prev) return prev;
-            return { ...prev, valueStreams: [...prev.valueStreams, valueStream] };
+            return { ...prev, valueStreams: [...(prev.valueStreams || []), valueStream] };
         });
     };
 
     const updateValueStream = async (id: string, updates: Partial<ValueStreamEntity>, immediate = false) => {
-        const existing = data?.valueStreams.find(d => d.id === id);
+        const existing = data?.valueStreams?.find(d => d.id === id);
         if (!existing) return;
         const updated = { ...existing, ...updates };
 
@@ -456,7 +482,7 @@ export function useValueStreamData(
             if (!prev) return prev;
             return {
                 ...prev,
-                valueStreams: prev.valueStreams.map(d => d.id === id ? updated : d)
+                valueStreams: (prev.valueStreams || []).map(d => d.id === id ? updated : d)
             };
         });
 
@@ -471,7 +497,7 @@ export function useValueStreamData(
         persistEntity('valueStreams', 'DELETE', { id }, showAlert);
         setData(prev => {
             if (!prev) return prev;
-            return { ...prev, valueStreams: prev.valueStreams.filter(d => d.id !== id) };
+            return { ...prev, valueStreams: (prev.valueStreams || []).filter(d => d.id !== id) };
         });
     };
 

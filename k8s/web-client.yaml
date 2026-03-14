@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-client
+  labels:
+    app: valuestream
+    tier: frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-client
+  template:
+    metadata:
+      labels:
+        app: web-client
+    spec:
+      containers:
+      - name: web-client
+        image: valuestream-web-client:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-client
+spec:
+  type: LoadBalancer # Or ClusterIP if using an Ingress
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: web-client

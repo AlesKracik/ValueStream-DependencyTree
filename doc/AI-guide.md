@@ -28,16 +28,20 @@ Defined in: `web-client/src/types/models.ts`
 ## 3. Architecture & Code Map
 
 ### Backend & Persistence
-- **API Entry Point**: `web-client/vite.config.ts` (Embedded Vite Plugin).
+- **API Entry Point**: `backend/src/server.ts` (Fastify Node.js Application).
+- **API Routes**: Domain-specific logic is split into controllers in `backend/src/routes/` (e.g., `data.ts`, `jira.ts`, `auth.ts`).
 - **Database**: MongoDB (App data + External Customer data).
-- **Core Logic**: `web-client/src/utils/mongoServer.ts` (Queries) and `web-client/src/utils/businessLogic.ts` (RICE scoring, metrics).
+- **Core Logic**: `backend/src/utils/mongoServer.ts` (Connections) and `backend/src/utils/businessLogic.ts` (RICE scoring, metrics).
 
 ### Available APIs
-The backend is implemented as a Vite middleware in `web-client/vite.config.ts`. All endpoints require authorization via `ADMIN_SECRET`.
+The backend is a standalone Fastify server running on port 3000. All endpoints require authorization via `ADMIN_SECRET` handled by a Fastify hook (`backend/src/plugins/auth.ts`). The Vite dev server proxies `/api` calls to this backend.
 
-#### Core Data
-- `GET /api/loadData`: Fetches the entire workspace state. Calculates global scaling metrics (`maxScore`, `maxRoi`) and ensures settings migration.
-- `POST /api/settings`: Updates `settings.json`. Handles masking/unmasking of sensitive credentials (e.g., API tokens).
+#### Core Data & Services
+The backend encapsulates complex business logic (RICE scoring, fiscal quarter mapping) within a dedicated `backend/src/services/` layer, separating it from the data fetching routes.
+
+- `GET /api/workspace`: Fetches the entire workspace state (used for heavy Graph visualizations). Calculates global scaling metrics (`maxScore`, `maxRoi`).
+- `GET /api/data/{collection}`: Granular endpoints (e.g., `/api/data/customers`, `/api/data/workItems`) allowing the frontend to lazily load only the required entities for specific list or detail views. The `workItems` endpoint internally joins with epics/customers to pre-calculate RICE scores before returning.
+- `GET /api/settings` & `POST /api/settings`: Retrieves or updates `settings.json`. Handles masking/unmasking of sensitive credentials.
 - `POST /api/entity/{collection}/{id}`: Upserts or deletes documents in MongoDB.
 - `POST /api/mongo/query`: Executes JSON-based queries (find/aggregate) against the customer or app database.
 
@@ -45,10 +49,10 @@ The backend is implemented as a Vite middleware in `web-client/vite.config.ts`. 
 - `POST /api/jira/issue`: Fetches details for a specific Jira key.
 - `POST /api/jira/search`: Executes a JQL search.
 - `POST /api/llm/generate`: Generates text using OpenAI, Gemini, or Augment.
-- `POST /api/aws/sso/*`: Manages AWS SSO authentication for secure MongoDB tunneling.
+- `POST /api/aws/sso/*`: Manages AWS SSO authentication for secure MongoDB tunneling via device-code flow.
 
 ### Business Logic & Metrics
-Centralized in `web-client/src/utils/businessLogic.ts`:
+Centralized in `backend/src/utils/businessLogic.ts`:
 
 - **Effort Management**:
     - **Work Items**: Effort is the maximum of its manual `total_effort_mds` or the sum of its linked Epics.
@@ -92,6 +96,6 @@ Centralized in `web-client/src/utils/businessLogic.ts`:
 
 ## 5. Key Constants & Locations
 - **Layout X-Coordinates**: `COL_CUSTOMER_X`, `COL_WORKITEM_X`, etc., in `useGraphLayout.ts`.
-- **Types**: `web-client/src/types/models.ts`.
+- **Types**: `web-client/src/types/models.ts` and `backend/src/types/models.ts`.
 - **API Utilities**: `web-client/src/utils/api.ts`.
 - **Test Utils**: `web-client/src/test/testUtils.tsx`.

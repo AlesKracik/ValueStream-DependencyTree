@@ -29,7 +29,7 @@ const mockData: ValueStreamData = {
 describe('useValueStreamData Persistence', () => {
     beforeEach(() => {
         const fetchMock = vi.fn().mockImplementation((url) => {
-            if (url.startsWith('/api/loadData')) {
+            if (url.startsWith('/api/workspace')) {
                 return Promise.resolve({
                     ok: true,
                     json: () => Promise.resolve(mockData)
@@ -118,7 +118,7 @@ describe('useValueStreamData Persistence', () => {
         });
 
         vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => {
-            if (url.startsWith('/api/loadData')) return Promise.resolve({ ok: true, json: () => Promise.resolve(mockData) });
+            if (url.startsWith('/api/workspace')) return Promise.resolve({ ok: true, json: () => Promise.resolve(mockData) });
             return fetchPromise;
         }));
 
@@ -146,7 +146,7 @@ describe('useValueStreamData Persistence', () => {
             sprints: [{ id: 's1', name: 'S1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'Q1' }]
         };
         vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => {
-            if (url.startsWith('/api/loadData')) return Promise.resolve({ ok: true, json: () => Promise.resolve(dataWithSprint) });
+            if (url.startsWith('/api/workspace')) return Promise.resolve({ ok: true, json: () => Promise.resolve(dataWithSprint) });
             return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true }) });
         }));
 

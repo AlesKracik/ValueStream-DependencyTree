@@ -56,7 +56,7 @@ describe('useValueStreamData', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         const fetchMock = vi.fn().mockImplementation((url) => {
-            if (url.startsWith('/api/loadData')) {
+            if (url.startsWith('/api/workspace')) {
                 return Promise.resolve({
                     ok: true,
                     json: () => Promise.resolve(mockData)
@@ -82,7 +82,7 @@ describe('useValueStreamData', () => {
         
         await waitFor(() => {
             expect(fetch).toHaveBeenCalledWith(
-                expect.stringContaining('/api/loadData?valueStreamId=dash123&customerFilter=test&minTcvFilter=100'),
+                expect.stringContaining('/api/workspace?valueStreamId=dash123&customerFilter=test&minTcvFilter=100'),
                 expect.objectContaining({
                     headers: expect.objectContaining({
                         'Authorization': expect.stringContaining('Bearer')
@@ -105,7 +105,7 @@ describe('useValueStreamData', () => {
         renderHook(() => useValueStreamData('dash789', filters, 0));
         
         await waitFor(() => {
-            const expectedUrl = '/api/loadData?valueStreamId=dash789&customerFilter=cust&workItemFilter=work&teamFilter=team&epicFilter=epic&releasedFilter=released&minTcvFilter=500&minScoreFilter=10';
+            const expectedUrl = '/api/workspace?valueStreamId=dash789&customerFilter=cust&workItemFilter=work&teamFilter=team&epicFilter=epic&releasedFilter=released&minTcvFilter=500&minScoreFilter=10';
             expect(fetch).toHaveBeenCalledWith(
                 expect.stringContaining(expectedUrl),
                 expect.objectContaining({
@@ -212,7 +212,7 @@ describe('useValueStreamData', () => {
             epics: [{ id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', effort_md: 5, name: 'Epic 1' }]
         };
         vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => {
-            if (url.startsWith('/api/loadData')) return Promise.resolve({ ok: true, json: () => Promise.resolve(dataWithEpic) });
+            if (url.startsWith('/api/workspace')) return Promise.resolve({ ok: true, json: () => Promise.resolve(dataWithEpic) });
             return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
         }));
 
@@ -284,7 +284,7 @@ describe('useValueStreamData', () => {
             ]
         };
         vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => {
-            if (url.startsWith('/api/loadData')) return Promise.resolve({ ok: true, json: () => Promise.resolve(dataWithCrossQuarterSprint) });
+            if (url.startsWith('/api/workspace')) return Promise.resolve({ ok: true, json: () => Promise.resolve(dataWithCrossQuarterSprint) });
             return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
         }));
 
@@ -328,7 +328,7 @@ describe('useValueStreamData', () => {
         // Should call persist settings then refresh data (loadData)
         expect(fetch).toHaveBeenCalledWith('/api/settings', expect.objectContaining({ method: 'POST' }));
         await waitFor(() => {
-            expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/loadData'), expect.anything());
+            expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/workspace'), expect.anything());
         });
     });
 

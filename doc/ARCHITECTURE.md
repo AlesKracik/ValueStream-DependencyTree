@@ -1,14 +1,14 @@
 # High-Level Technical Architecture
 
 ## Overview
-The ValueStream Dependency Tree is a React-based Single Page Application (SPA) designed to visualize the flow of value from customer demand to engineering execution. It uses a custom mathematical layout engine to map entities across a 4-stage pipeline: Customers, Work Items, Teams, and a Gantt Timeline. The system features a robust, embedded backend within the Vite dev server, supporting complex MongoDB aggregations, Jira integrations, and multi-provider AI capabilities.
+The ValueStream Dependency Tree is a React-based Single Page Application (SPA) designed to visualize the flow of value from customer demand to engineering execution. It uses a custom mathematical layout engine to map entities across a 4-stage pipeline: Customers, Work Items, Teams, and a Gantt Timeline. The system features a robust, standalone Fastify Node.js backend server that supports complex MongoDB aggregations, Jira integrations, and multi-provider AI capabilities.
 
 ## System Components
 
 ```mermaid
 graph TD
     Client[Web Client - React/Vite]
-    Backend[Vite Server Backend - Plugin]
+    Backend[Fastify Backend API]
     Mongo[(MongoDB)]
     Jira[Atlassian Jira API]
     AI[AI Providers - OpenAI, Gemini, Anthropic, Augment]
@@ -32,11 +32,11 @@ graph TD
 - **Layout Engine:** `useGraphLayout.ts` - a deterministic engine that calculates X/Y coordinates based on logical relationships, featuring reachability analysis for hover-based highlighting.
 
 ### 2. Backend & Persistence
-- **Embedded Backend Plugin:** A Vite server-side plugin (`vite.config.ts`) that handles all `/api` calls. It includes a high-performance engine that performs complex data joins, RICE score calculations, and metrics aggregation.
+- **Standalone Node.js Backend:** A Fastify-based application (`backend/`) that handles all `/api` calls. It includes high-performance routes and utilities that perform complex data joins, RICE score calculations, and metrics aggregation.
 - **Database Support:** Dual-database architecture supporting both primary Application storage and secondary Customer data integration.
 - **Connectivity:** Systematic SOCKS5 proxy support for connecting to MongoDB clusters (like Atlas) behind secure SSH bastions.
 - **AI Integration:** Multi-provider support for LLMs including OpenAI, Gemini, Anthropic, and localized execution via the Augment (`auggie`) CLI.
-- **Schema Validation:** Draft-07 JSON schema at `public/schema.json`.
+- **Schema Validation:** Draft-07 JSON schema at `web-client/public/schema.json` and Fastify JSON schemas for API payload validation.
 
 ## Data Flow & State Management
 
@@ -44,28 +44,25 @@ The application utilizes a hybrid state management strategy that combines server
 
 ### 1. Authentication & Authorization
 The system supports an optional security layer via the `ADMIN_SECRET` environment variable.
-- **Middleware:** If `ADMIN_SECRET` is set, the Vite middleware requires a `Bearer` token in the `Authorization` header for all `/api/*` requests (except `/api/auth/status`).
+- **Middleware:** If `ADMIN_SECRET` is set, the Fastify backend hook (`backend/src/plugins/auth.ts`) requires a `Bearer` token in the `Authorization` header for all `/api/*` requests (except `/api/auth/login`).
 - **Frontend Flow:** The `App.tsx` component checks the auth status on load. If required and not authenticated, it presents a `LoginPage`.
 - **Authorized Fetch:** A custom `authorizedFetch` utility centrally manages the injection of the secret and handles session expiration (401 errors).
 
-### 2. Hydration & Hybrid Filtering
-1.  **Global Hydration:** The top-level `App.tsx` calls `useValueStreamData()` without filters to hydrate the entire system and injects the resulting `data` and mutation functions into the `ValueStreamProvider`.
-2.  **Scoped Re-fetching:** Visual components (like the ValueStream) call `useValueStreamData(id, filters)` to trigger a server-side filtered re-fetch scoped to specific ValueStream parameters.
-3.  **Hybrid Filter Logic:**
-    -   **Base Filters:** Heavy searches and persistent ValueStream parameters are applied at the database level to minimize network payload.
-    -   **Transient Filters:** Live-typing search in the UI is applied client-side for instantaneous feedback on the already-filtered dataset.
+### 2. Hydration & Lazy Loading
+The frontend employs a sparse-context architecture via `useValueStreamData`.
+1.  **Lazy Granular Fetching:** Top-level components and detail pages only request the specific collections they need (e.g., `useValueStreamData(id, filters, 1000, showAlert, ['customers'])`). The hook executes `Promise.all` across granular `/api/data/*` endpoints, reducing network payload and server load.
+2.  **State Merging:** As the user navigates, fetched data is merged into the global `ValueStreamContext`. Previously fetched entities are not wiped out, allowing instant back-navigation.
+3.  **Composite Graph Loading:** Visual components (like the Gantt tree) that require the entire dataset call a dedicated `/api/workspace` endpoint to hydrate the full dependency tree simultaneously.
 
-### 3. Server-Side Processing
-The backend fetches raw entities and performs the "heavy lifting":
--   **Joins:** It joins Work Items with Epics to calculate effort and with Customers to calculate RICE scores.
--   **Metrics:** It returns a `metrics` object with global maximums (e.g., `maxScore`, `maxRoi`) to ensure consistent visual scaling across all filtered views.
--   **Fiscal Logic:** Sprints are automatically tagged with a fiscal quarter (e.g., `FY2026 Q1`) based on the `general.fiscal_year_start_month` setting.
+### 3. Server-Side Processing (Service Layer)
+The Fastify backend isolates business logic into a dedicated `services/` directory:
+-   **Metrics Service:** When Work Items or the full workspace are requested, the server internally joins Work Items with Epics (for effort) and Customers (for TCV) to calculate dynamic RICE scores and return global scaling metadata (`maxScore`, `maxRoi`).
+-   **Sprint Service:** Sprints are automatically evaluated and tagged with a fiscal quarter (e.g., `FY2026 Q1`) based on the `general.fiscal_year_start_month` setting before being served.
 
 ### 4. AI & LLM Integration
 The system provides a unified interface for AI generation, supporting multiple providers:
 - **Cloud Providers:** OpenAI (GPT models), Gemini (1.5 Pro/Flash), and Anthropic (Claude).
 - **Local Execution:** Integration with the Augment CLI (`auggie`) for localized reasoning and code-aware tasks.
-- **Streaming Support:** The API supports Server-Sent Events (SSE) for real-time text generation from OpenAI and Gemini.
 
 ### 5. Mutations & Reactivity
 User actions (updates, deletes, adds) trigger local state changes via mutation functions (`addEpic`, `updateWorkItem`, etc.) which:
@@ -81,36 +78,36 @@ User actions (updates, deletes, adds) trigger local state changes via mutation f
 ```mermaid
 sequenceDiagram
     participant UI as Browser (React App)
-    participant Vite as Vite Server Middleware (Plugin)
+    participant Fastify as Fastify Server (backend/)
     participant FS as File System (settings.json)
     participant DB as MongoDB
     participant Jira as Atlassian Jira API
 
-    Note over UI, Jira: Scenario 1: Initial ValueStream Load
-    UI->>Vite: GET /api/loadData?ValueStreamId=main
-    Vite->>FS: Read settings.json (Mongo URI)
-    Vite->>DB: Fetch valueStreams, Customers, WorkItems, Epics
-    DB-->>Vite: Raw Data
-    Note right of Vite: Calculate RICE Scores & Global Metrics
-    Vite-->>UI: JSON Data (Aggregated & Scored)
+    Note over UI, Jira: Scenario 1: Graph View Full Load
+    UI->>Fastify: GET /api/workspace?ValueStreamId=dash123
+    Fastify->>FS: Read settings.json (Mongo URI)
+    Fastify->>DB: Fetch valueStreams, Customers, WorkItems, Epics
+    DB-->>Fastify: Raw Data
+    Note right of Fastify: Calculate RICE Scores & Global Metrics
+    Fastify-->>UI: JSON Data (Aggregated & Scored)
 
     Note over UI, Jira: Scenario 2: Save Entity Change (Debounced)
     UI->>UI: User Types... (1000ms debounce)
-    UI->>Vite: POST /api/entity/customers (ID: c1, {name: "New Name", ...})
-    Vite->>FS: Read settings.json
-    Vite->>DB: replaceOne({id: "c1"}, {name: "New Name", ...})
-    DB-->>Vite: Ack
-    Vite-->>UI: { success: true }
+    UI->>Fastify: POST /api/entity/customers/c1 {id: "c1", name: "New Name"}
+    Fastify->>FS: Read settings.json
+    Fastify->>DB: replaceOne({id: "c1"}, {name: "New Name"})
+    DB-->>Fastify: Ack
+    Fastify-->>UI: { success: true }
 
     Note over UI, Jira: Scenario 3: Jira Synchronization
-    UI->>Vite: POST /api/jira/issue { jira_key: "PROJ-123" }
-    Vite->>FS: Read settings.json (API Token)
-    Vite->>Jira: GET /rest/api/3/issue/PROJ-123
-    Jira-->>Vite: Jira Issue Data (Summary, Dates, Team)
-    Vite-->>UI: { success: true, data: JiraData }
+    UI->>Fastify: POST /api/jira/issue { jira_key: "PROJ-123" }
+    Fastify->>FS: Read settings.json (API Token)
+    Fastify->>Jira: GET /rest/api/3/issue/PROJ-123
+    Jira-->>Fastify: Jira Issue Data (Summary, Dates, Team)
+    Fastify-->>UI: { success: true, data: JiraData }
 ```
 
-### 6. Transient UI State Persistence
+### 7. Transient UI State Persistence
 In addition to server-side data, the application maintains a `uiState` object within the `ValueStreamContext`. This persists transient view settings across navigations within a session:
 - **Scope:** Primarily used by `GenericListPage` components to remember filters, sort orders, and scroll positions for each specific `pageId` (e.g., 'support', 'customers').
 - **Persistence Mechanism:** The state is kept in-memory within the React context. It ensures that navigating from a list to a detail page and back preserves the user's exact view context.
@@ -120,25 +117,26 @@ In addition to server-side data, the application maintains a `uiState` object wi
 
 ```mermaid
 graph TD
-    src[src/]
-    components[components/]
-    pages[pages/]
-    hooks[hooks/]
-    contexts[contexts/]
-    types[types/]
-    utils[utils/]
+    root[Project Root]
+    web[web-client/ - Frontend]
+    api[backend/ - Fastify API]
+    docs[doc/]
+    k8s[k8s/ - Kubernetes Manifests]
 
-    src --> components
-    src --> pages
-    src --> hooks
-    src --> contexts
-    src --> types
-    src --> utils
+    root --> web
+    root --> api
+    root --> docs
+    root --> k8s
 
-    components --> common["common/ - Shared UI"]
-    components --> nodes["nodes/ - React Flow Custom Nodes"]
-    components --> layout["layout/ - App Shell"]
-    components --> entity["Entity Folders (customers, epics, etc.)"]
+    api --> api_src[src/]
+    api_src --> routes[routes/ - API Endpoints]
+    api_src --> plugins[plugins/ - Fastify Plugins]
+    api_src --> util[utils/ - Shared Logic]
+
+    web --> web_src[src/]
+    web_src --> components[components/ - UI & React Flow]
+    web_src --> pages[pages/]
+    web_src --> hooks[hooks/]
 ```
 
 ## Architectural Code Patterns
@@ -154,142 +152,81 @@ The core visualization is not physics-based (like traditional force-directed gra
 5. **Holiday-Aware Capacity:** Team capacity for each sprint is automatically adjusted based on public holidays in the team's configured country (using `date-holidays`).
 
 ### 2. React Flow Custom Nodes
-The ValueStream relies on custom React Flow nodes (`src/components/nodes/`).
+The ValueStream relies on custom React Flow nodes (`web-client/src/components/nodes/`).
 - **Progress-Aware Coloring:** Gantt bars are colored based on their temporal relationship to the "Active Sprint" (Slate Blue for past/frozen, Purple for future).
 - **Heatmap Intensity:** Gantt segments use heat-mapping to visualize effort intensity relative to a baseline, highlighting over-allocated periods.
 - **Memoization:** Nodes are wrapped in `React.memo` to ensure performance during rapid panning.
 - **Dynamic Scaling:** Node sizes are scaled linearly between a `baseSize` and `maxSize` using the global metrics provided by the backend.
 
-```mermaid
-graph LR
-    Props[Node Props] --> Memo[React.memo]
-    Memo --> Calc[Ratio / Size Math]
-    Calc --> DOM[Wrapper Div]
-    DOM --> HandleL[Left Handle - Target]
-    DOM --> Visual[Circular/Bar SVG or CSS Shape]
-    DOM --> HandleR[Right Handle - Source]
-    DOM --> Label[Absolute Bottom Label]
-```
-
 ### 3. Page Component Pattern
-Most route-level components in the `src/pages/` and `src/components/{entity}/` directories follow a consistent pattern for handling asynchronous data fetching, loading states, and layout containment.
-
-**Pattern Template:**
-```tsx
-import React, { useState } from 'react';
-import styles from './MyPage.module.css';
-
-interface Props {
-    data: ValueStreamData | null;
-    loading: boolean;
-    error?: Error | null;
-}
-
-export const MyEntityPage: React.FC<Props> = ({ data, loading, error }) => {
-    const navigate = useNavigate();
-    const [draft, setDraft] = useState<Partial<Entity>>({});
-
-    // Early Returns for Async States
-    if (loading) return <div className={styles.pageContainer}>Loading...</div>;
-    if (error) return <div className={styles.pageContainer}>Error: {error.message}</div>;
-    if (!data) return <div className={styles.pageContainer}>No data available.</div>;
-
-    // Entity Resolution
-    const entity = isNew ? draft : data.entities.find(e => e.id === id);
-    if (!entity) return <div className={styles.pageContainer}>Not found.</div>;
-
-    return (
-        <div className={styles.pageContainer}>
-             {/* Header, Forms, Lists */}
-        </div>
-    );
-};
-```
-*Note: The duplication of this boilerplate across pages is a known technical debt item.*
+Most route-level components in the `web-client/src/pages/` and `web-client/src/components/{entity}/` directories follow a consistent pattern for handling asynchronous data fetching, loading states, and layout containment.
 
 ### 4. ID Generation
-When creating new entities (Work Items, Customers, Epics, Sprints), the frontend utilizes a secure `generateId` utility (`src/utils/security.ts`). This ensures IDs are globally unique and cryptographically strong, preventing collisions and predictable ID attacks.
-
-**Example Pattern:**
-```typescript
-const newId = generateId('f'); // f for Feature/WorkItem
-const newEpicId = generateId('e'); // e for Epic
-```
+When creating new entities, the frontend utilizes a secure `generateId` utility (`web-client/src/utils/security.ts`). This ensures IDs are globally unique and cryptographically strong.
 
 ## Deployment Modes
 
-The application can be deployed in various environments. Security is enforced via the `ADMIN_SECRET` environment variable; if set, the application will require authentication before granting access to data or settings.
+The application can be deployed in various environments. Security is enforced via the `ADMIN_SECRET` environment variable.
 
 ### 1. Standalone (Local Development)
 Ideal for individual developers or small teams running everything on a single machine.    
 - **Requirements:** Node.js 22+, MongoDB (local or remote).
 - **How-to:**
-  1. Navigate to the client: `cd web-client`
-  2. Install dependencies: `npm install`
-  3. Set authentication (Optional): `$env:ADMIN_SECRET="your-secure-password"`
-  4. Start the server: `npm run dev`
-- **Configuration:** 
-    - Application settings are stored in `web-client/settings.json` (git-ignored).
-    - Update App Settings to `mongodb://localhost:27017` via the UI after login.
+  1. Install dependencies at the root: `npm install`
+  2. Start both the Fastify backend and Vite frontend concurrently: `npm run dev`
+  3. The frontend will be available at `http://localhost:5173`, proxying `/api` to the backend at `http://localhost:3000`.
 
-### 2. Docker (Containerized Environment)
-Recommended for consistent environments and simplified setup using pre-configured containers.
-- **Requirements:** Docker and Docker Compose.
-- **How-to:**
-  1. Define your secrets in a `.env` file in the project root (e.g., `ADMIN_SECRET=prod-secret`).
-  2. From the project root, run: `docker-compose up --build`
-  3. Access the app at `http://localhost:5173`.
-- **Configuration:** Update App Settings to `mongodb://mongodb:27017` (this utilizes the internal Docker bridge network).
+### 2. Docker (Containerized Environments)
+Recommended for consistent environments.
+
+**Development (`docker-compose.yml`):**
+Uses Vite dev server with hot-reloading.
+- **How-to:** `docker-compose up --build`
+- **Access:** `http://localhost:5173`
+
+**Production (`docker-compose.prod.yml`):**
+Uses a multi-stage build to compile the React app and serve it statically via an **Nginx** web server, which also natively reverse-proxies `/api` requests to the Fastify container.
+- **How-to:** `docker-compose -f docker-compose.prod.yml up --build -d`
+- **Access:** `http://localhost:80`
 
 ### 3. Kubernetes (Cluster Deployment)
-Best for production-grade scaling, high availability, and multi-user environments.        
-- **Architecture:** Decoupled Pods for the Web App and MongoDB with automated orchestration.
-- **Secrets Management:** 
-    - Store the `ADMIN_SECRET` in a Kubernetes Secret object and inject it as an environment variable into the app container.
-    - Persist the `settings.json` file using a PersistentVolumeClaim (PVC) mounted at the app root to ensure configuration survives pod restarts.
+Best for production-grade scaling, high availability, and multi-user environments. Manifests are provided in the `k8s/` directory.
+- **Architecture:** Decoupled Pods for the Nginx Web Client, Fastify Backend, and MongoDB.
+- **Secrets Management:** The `ADMIN_SECRET` is managed via a Kubernetes Secret object and injected as an environment variable into the backend pod.
 - **Workflow:**
-  1. Build and push the image to a container registry.
-  2. Deploy storage and database manifests first.
-  3. Deploy the application manifest, ensuring it points to the stable MongoDB service name.
+  1. `kubectl apply -f k8s/secrets.example.yaml`
+  2. `kubectl apply -f k8s/mongodb.yaml`
+  3. `kubectl apply -f k8s/backend.yaml`
+  4. `kubectl apply -f k8s/web-client.yaml`
 
 ## Networking & SSH Tunneling
 
 To support MongoDB clusters (Atlas) behind secure SSH bastions, the application employs a **Systematic SOCKS5 Architecture**.
 
 ### 1. SOCKS5 vs. Port Forwarding
-Standard SSH Port Forwarding (`-L`) fails with MongoDB SRV records because the driver "leaks" connection attempts to the real hostnames of the cluster members. SOCKS5 (`-D`) solves this by acting as a dynamic proxy that captures all traffic from the driver, including DNS lookups.
+Standard SSH Port Forwarding (`-L`) fails with MongoDB SRV records because the driver "leaks" connection attempts to the real hostnames of the cluster members. SOCKS5 (`-D`) solves this by acting as a dynamic proxy that captures all traffic from the driver.
 
 ### 2. Architecture Patterns
 
 | Environment | Pattern | Implementation |
 | :--- | :--- | :--- |
-| **Local Dev** | **External Proxy** | Start a tunnel via `./scripts/start-tunnel.ps1` (or `.sh`). |
+| **Local Dev** | **External Proxy** | Start a tunnel via `./scripts/start-tunnel.ps1`. Backend picks up env vars. |
 | **Docker (A)** | **Direct** | Set `SOCKS_PROXY_HOST=` for local/unprotected DBs. |
-| **Docker (B)** | **Service Sidecar** | The app connects to the `ssh-proxy` container in the bridge network. |
-| **Docker (C)** | **Host Workaround** | The app connects to `host.docker.internal` (Mac/PC host tunnel). |
-| **Kubernetes** | **Pod Sidecar** | An SSH container runs alongside the app in the same Pod, sharing `localhost`. |
+| **Docker (B)** | **Service Sidecar** | The backend connects to the `ssh-proxy` container in the bridge network. |
+| **Docker (C)** | **Host Workaround** | The backend connects to `host.docker.internal` (Mac/PC host tunnel). |
+| **Kubernetes** | **Pod Sidecar** | An SSH container runs alongside the backend in the same Pod. |
 
 ### 3. Systematic Discovery
-The application backend (`web-client/vite.config.ts`) checks for the following environment variables to define the available **Proxy Infrastructure**:
+The backend checks for the following environment variables to define the available **Proxy Infrastructure**:
 - `SOCKS_PROXY_HOST`: The IP/Hostname of the SOCKS5 proxy.
 - `SOCKS_PROXY_PORT`: The port for the external proxy (defaults to `1080`).
 
 #### Granular Opt-In
-Setting these environment variables does **not** automatically force all traffic through the proxy. Instead, it enables the capability. Users must explicitly enable the **"Use SOCKS Proxy (from .env)"** checkbox in the Application or Customer MongoDB settings UI to route that specific connection through the tunnel.
-
-This allow for mixed environments (e.g., a local App Mongo container combined with a remote Customer Atlas cluster).
-
-#### The VPN Workaround (Scenario C)
-In highly restricted corporate environments, the Docker Desktop VM might be blocked from making outbound SSH connections. In this case, users can establish the SOCKS5 tunnel natively on their host (Mac/PC). The application inside Docker then connects to the host via the special DNS name `host.docker.internal`, effectively routing the database traffic through the host's authenticated SSH session.
-
-If these environment variables are not set, the application attempts a direct connection. This ensures the app logic remains decoupled from the specific tunneling infrastructure.
-
-### 4. MacOS & VPN Tuning (MTU)
-Docker Desktop on MacOS frequently experiences packet loss when connecting to SSH bastions over corporate VPNs. The application provides a systematic fix by setting the Docker Network MTU to `1400` in the `docker-compose.yml` to prevent fragmentation.
+Setting these environment variables does **not** automatically force all traffic through the proxy. Users must explicitly enable the **"Use SOCKS Proxy"** checkbox in the MongoDB settings UI to route that specific connection through the tunnel.
 
 ## Logical Blocks
 
-The system is composed of several core entities. The following Entity Relationship Diagram (ERD) illustrates the data model structure, including key attributes and the cardinality of relationships.
+The system is composed of several core entities. The following Entity Relationship Diagram (ERD) illustrates the data model structure.
 
 ```mermaid
 erDiagram
@@ -340,32 +277,3 @@ erDiagram
     ValueStream ||--o{ WORK-ITEM : "filters"
     ValueStream ||--o{ TEAM : "filters"
 ```
-
-Detailed documentation for each system block:
-- [Customers](CUSTOMERS.md)
-- [Work Items](WORKITEMS.md)
-- [Teams](TEAMS.md)
-- [Epics](EPICS.md)
-- [Sprints](SPRINTS.md)
-- [ValueStreams](VALUESTREAMS.md)
-- [Jira Integration](JIRA_INTEGRATION.md)
-- [Persistence & Migration](PERSISTENCE.md)
-
-## Theming System
-
-The application features a centralized, CSS-variable-based theming system supporting multiple visual modes.
-
-### 1. Central Palette (`index.css`)
-All colors, shadows, and interactive states are defined using CSS variables in `src/index.css`.
-- **Default (Dark Mode):** Variables are defined under `:root`.
-- **Filips Mode:** A "muted dim" pastel theme defined under the `[data-theme='filips']` selector. This theme uses soft slate-grey backgrounds and more defined, high-contrast text and node colors for readability.
-
-### 2. Application Logic
-- **State:** The user's theme choice is stored in the `general.theme` setting ('dark' or 'filips').
-- **Injection:** The `App.tsx` component monitors this setting and applies the corresponding `data-theme` attribute to the `document.documentElement`.
-- **Global Styles:** All components and CSS modules reference the central variables (e.g., `var(--bg-primary)`, `var(--text-highlight)`), ensuring the theme choice is obeyed system-wide without local color overrides.
-
-### 3. Caching & Performance
-To prevent a "flash of dark theme" during page reloads:
-- **LocalStorage Sync:** The `useValueStreamData` hook automatically caches the user's theme choice in `localStorage` (`vst-theme`).
-- **Pre-render Initialization:** An inline script in `index.html` checks `localStorage` and applies the theme attribute *before* the React application initializes, ensuring a seamless visual experience.

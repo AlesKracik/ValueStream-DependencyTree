@@ -1,6 +1,9 @@
 # Use Node.js as the base image
 FROM node:22-alpine
 
+# Install git and aws-cli (required for AWS SSO login/credential fetching)
+RUN apk add --no-cache git aws-cli
+
 # Set working directory
 WORKDIR /app
 
@@ -13,8 +16,11 @@ RUN npm install
 # Copy the rest of the application code
 COPY . .
 
-# Expose the port the app runs on (default Vite port is 5173)
-EXPOSE 5173
+# Build the TypeScript code
+RUN npm run build
 
-# Start the application in dev mode, bound to all interfaces
-CMD ["npm", "run", "dev", "--", "--host"]
+# Expose the Fastify port
+EXPOSE 3000
+
+# Start the Fastify server
+CMD ["npm", "start"]

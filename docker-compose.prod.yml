@@ -2,15 +2,11 @@ services:
   web-client:
     build:
       context: ./web-client
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.prod
     ports:
-      - "5173:5173"
+      - "80:80"
     depends_on:
       - backend
-    environment:
-      - NODE_ENV=development
-      # Tell Vite proxy to forward /api requests to the backend container
-      - VITE_PROXY_TARGET=http://backend:3000
     networks:
       - app-network
 
@@ -23,16 +19,14 @@ services:
     depends_on:
       - mongodb
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - HOST=0.0.0.0
       - ADMIN_SECRET=${ADMIN_SECRET}
-      # Proxy configurations for SSH tunnels
       - SOCKS_PROXY_HOST=${SOCKS_PROXY_HOST:-ssh-proxy}
       - SOCKS_PROXY_PORT=${SOCKS_PROXY_PORT:-1080}
     env_file:
       - .env
     volumes:
-      # Map AWS credentials if needed locally
       - ~/.aws:/root/.aws:ro
     networks:
       - app-network
@@ -49,7 +43,6 @@ services:
     env_file:
       - .env
     volumes:
-      # Mount the entire .ssh folder so any key can be used
       - ${SSH_DIR:-~/.ssh}:/root/.ssh:ro
     networks:
       - app-network
@@ -62,8 +55,6 @@ services:
       - mongo-data:/data/db
     networks:
       - app-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
 networks:
   app-network:
