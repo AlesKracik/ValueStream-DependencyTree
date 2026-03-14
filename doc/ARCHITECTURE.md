@@ -110,6 +110,12 @@ sequenceDiagram
     Vite-->>UI: { success: true, data: JiraData }
 ```
 
+### 6. Transient UI State Persistence
+In addition to server-side data, the application maintains a `uiState` object within the `ValueStreamContext`. This persists transient view settings across navigations within a session:
+- **Scope:** Primarily used by `GenericListPage` components to remember filters, sort orders, and scroll positions for each specific `pageId` (e.g., 'support', 'customers').
+- **Persistence Mechanism:** The state is kept in-memory within the React context. It ensures that navigating from a list to a detail page and back preserves the user's exact view context.
+- **Scroll Restoration:** `GenericListPage` implements a robust, multi-attempt scroll restoration logic to ensure the `scrollTop` is correctly applied even if content renders asynchronously.
+
 ## Directory Structure
 
 ```mermaid

@@ -135,9 +135,12 @@ The application follows a consistent structure for managing entities (Customers,
 
 - **List Template**: `web-client/src/components/common/GenericListPage.tsx`.
     - A reusable component for all list views.
-    - Features: Automatic filtering (search input), multi-column sorting, and configurable grid layout.
-    - Props: `items`, `columns`, `filterPredicate`, `sortOptions`, and `onItemClick`.
-    - Styles: `web-client/src/pages/List.module.css`.
+    - **State Persistence**: Remembers filters, sort orders, and scroll positions across navigations using a session-based `uiState` (keyed by `pageId`).
+    - **Scroll Restoration**: Features a robust, multi-attempt restoration engine that ensures the view position is maintained even as content renders asynchronously.
+    - **Performance**: Uses ref-based scroll tracking and debounced context updates to ensure zero UI lag during interaction.
+    - **Layout**: Renders a standard header, filter controls, and a configurable grid/list layout.
+    - **Props**: `pageId` (required for persistence), `items`, `columns`, `filterPredicate`, `sortOptions`, and `onItemClick`.
+    - **Styles**: `web-client/src/pages/List.module.css`.
 
 - **Detail Pages**: `web-client/src/components/{entity}/{Entity}Page.tsx`.
     - Leverages the **Detail Template**: `web-client/src/components/common/GenericDetailPage.tsx`.

@@ -23,19 +23,6 @@ const columns = [
 
 const filterPredicate = (i: any, q: string) => i.name.toLowerCase().includes(q.toLowerCase());
 
-const Wrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-    <ValueStreamProvider value={{ 
-        data: null, 
-        updateEpic: vi.fn(), 
-        addEpic: vi.fn(), 
-        deleteEpic: vi.fn() 
-    }}>
-        <MemoryRouter>
-            {children}
-        </MemoryRouter>
-    </ValueStreamProvider>
-);
-
 describe('GenericListPage State Persistence', () => {
     it('remembers sorting, filter, and scroll position across re-renders when pageId is provided', async () => {
         vi.useFakeTimers();
@@ -49,19 +36,21 @@ describe('GenericListPage State Persistence', () => {
                         addEpic: vi.fn(), 
                         deleteEpic: vi.fn() 
                     }}>
-                        <button onClick={() => setShow(prev => !prev)}>Toggle</button>
-                        {show && (
-                            <GenericListPage
-                                pageId="test-page-scroll"
-                                title="Test Scroll"
-                                items={mockItems}
-                                loading={false}
-                                filterPredicate={filterPredicate}
-                                sortOptions={sortOptions}
-                                columns={columns}
-                                onItemClick={vi.fn()}
-                            />
-                        )}
+                        <main> {/* Mock the main scroll container */}
+                            <button onClick={() => setShow(prev => !prev)}>Toggle</button>
+                            {show && (
+                                <GenericListPage
+                                    pageId="test-page-scroll"
+                                    title="Test Scroll"
+                                    items={mockItems}
+                                    loading={false}
+                                    filterPredicate={filterPredicate}
+                                    sortOptions={sortOptions}
+                                    columns={columns}
+                                    onItemClick={vi.fn()}
+                                />
+                            )}
+                        </main>
                     </ValueStreamProvider>
                 </NotificationProvider>
             );
@@ -73,11 +62,14 @@ describe('GenericListPage State Persistence', () => {
             </MemoryRouter>
         );
 
-        // 1. Find the list container and simulate scrolling
-        const listContainer = container.querySelector('[class*="list"]') as HTMLDivElement;
-        Object.defineProperty(listContainer, 'scrollTop', { value: 123, writable: true });
+        // 1. Find the scroll container (main)
+        const scrollContainer = container.querySelector('main') as HTMLElement;
+        Object.defineProperty(scrollContainer, 'scrollTop', { value: 123, writable: true });
         
-        // Trigger a state change to ensure the scroll position is saved (filter change is easiest)
+        // Trigger scroll event to ensure it's tracked
+        fireEvent.scroll(scrollContainer);
+
+        // Trigger a state change to ensure the context is updated
         const filterInput = screen.getByPlaceholderText('Filter items...');
         fireEvent.change(filterInput, { target: { value: 'Apple' } });
 
@@ -93,8 +85,8 @@ describe('GenericListPage State Persistence', () => {
         await vi.runAllTimersAsync();
 
         // 5. Verify scroll position is restored
-        const restoredListContainer = container.querySelector('[class*="list"]') as HTMLDivElement;
-        expect(restoredListContainer.scrollTop).toBe(123);
+        const restoredScrollContainer = container.querySelector('main') as HTMLElement;
+        expect(restoredScrollContainer.scrollTop).toBe(123);
         
         vi.useRealTimers();
     });

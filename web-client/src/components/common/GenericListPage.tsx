@@ -62,13 +62,16 @@ export function GenericListPage<T extends { id: string }>({
     const listRef = useRef<HTMLDivElement>(null);
     const isRestored = useRef(false);
     
+    // Use a ref to track the actual scroll container (the parent main element)
+    const scrollContainerRef = useRef<HTMLElement | null>(null);
+
     // Initial state from context if available
     const savedState = pageId ? uiState[pageId] : null;
     
-    // If no saved scroll position, consider it restored
-    if (savedState?.scrollPosition === undefined) {
-        isRestored.current = true;
-    }
+    // Reset restored flag when page changes
+    useEffect(() => {
+        isRestored.current = savedState?.scrollPosition === undefined;
+    }, [pageId]);
 
     const [filter, setFilter] = useState(savedState?.filter || '');
     const [sortBy, setSortBy] = useState<string | undefined>(
@@ -76,31 +79,92 @@ export function GenericListPage<T extends { id: string }>({
     );
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(savedState?.sortOrder || 'asc');
 
+    // Helper to find the scrollable parent
+    const getScrollContainer = () => {
+        if (scrollContainerRef.current) return scrollContainerRef.current;
+        if (listRef.current) {
+            const container = listRef.current.closest('main');
+            if (container) {
+                scrollContainerRef.current = container;
+                return container;
+            }
+        }
+        return null;
+    };
+
     // Restore scroll position
     useEffect(() => {
-        if (!loading && pageId && savedState?.scrollPosition !== undefined && listRef.current && !isRestored.current) {
-            const currentRef = listRef.current;
-            // Delay slightly to ensure list is rendered and items are populated
-            const timer = setTimeout(() => {
-                if (currentRef) {
-                    currentRef.scrollTop = savedState.scrollPosition!;
-                    isRestored.current = true;
-                }
-            }, 150);
-            return () => clearTimeout(timer);
+        if (loading || !pageId || savedState?.scrollPosition === undefined || isRestored.current) {
+            // If we have no saved position, mark as restored immediately
+            if (!loading && pageId && savedState?.scrollPosition === undefined) {
+                isRestored.current = true;
+                const container = getScrollContainer();
+                if (container) container.scrollTop = 0;
+            }
+            return;
         }
-    }, [pageId, savedState?.scrollPosition, loading]);
 
-    // Update context when filter/sort state changes
+        let attempts = 0;
+        const maxAttempts = 15;
+        const targetScroll = savedState.scrollPosition;
+
+        const attemptRestoration = () => {
+            const container = getScrollContainer();
+            if (!container) {
+                if (attempts < maxAttempts) {
+                    attempts++;
+                    setTimeout(attemptRestoration, 50);
+                }
+                return;
+            }
+            
+            // If target is 0, just do it and finish
+            if (targetScroll === 0) {
+                container.scrollTop = 0;
+                isRestored.current = true;
+                return;
+            }
+
+            container.scrollTop = targetScroll;
+            
+            // Verify if scroll took effect (items might still be rendering)
+            if (container.scrollTop < 1 && targetScroll > 0 && attempts < maxAttempts && items.length > 0) {
+                attempts++;
+                setTimeout(attemptRestoration, 100);
+            } else {
+                isRestored.current = true;
+            }
+        };
+
+        const timer = setTimeout(attemptRestoration, 100);
+        return () => clearTimeout(timer);
+    }, [pageId, savedState?.scrollPosition, loading, items.length]);
+
+    // Update context when filter/sort/scroll state changes
+    // We use a scroll listener on the container for real-time tracking
     useEffect(() => {
-        if (pageId && !loading && isRestored.current) {
-            updateUiState(pageId, { 
-                filter, 
-                sortBy, 
-                sortOrder, 
-                scrollPosition: listRef.current?.scrollTop || 0 
-            });
+        const container = getScrollContainer();
+        if (!container || !pageId || loading) return;
+
+        const handleScroll = () => {
+            if (isRestored.current) {
+                updateUiState(pageId, { 
+                    filter, 
+                    sortBy, 
+                    sortOrder, 
+                    scrollPosition: container.scrollTop 
+                });
+            }
+        };
+
+        container.addEventListener('scroll', handleScroll, { passive: true });
+        
+        // Also update once on mount/parameter change to sync current state
+        if (isRestored.current) {
+            updateUiState(pageId, { filter, sortBy, sortOrder, scrollPosition: container.scrollTop });
         }
+
+        return () => container.removeEventListener('scroll', handleScroll);
     }, [pageId, filter, sortBy, sortOrder, updateUiState, loading]);
 
     const toggleSort = (key: string) => {
@@ -113,12 +177,13 @@ export function GenericListPage<T extends { id: string }>({
     };
 
     const handleItemClick = (item: T) => {
-        if (pageId && listRef.current) {
+        const container = getScrollContainer();
+        if (pageId && container) {
             updateUiState(pageId, {
                 filter,
                 sortBy,
                 sortOrder,
-                scrollPosition: listRef.current.scrollTop
+                scrollPosition: container.scrollTop
             });
         }
         onItemClick(item);
