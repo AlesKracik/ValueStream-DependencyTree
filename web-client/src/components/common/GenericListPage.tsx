@@ -105,7 +105,7 @@ export function GenericListPage<T extends { id: string }>({
         }
 
         let attempts = 0;
-        const maxAttempts = 15;
+        const maxAttempts = 20;
         const targetScroll = savedState.scrollPosition;
 
         const attemptRestoration = () => {
@@ -114,6 +114,8 @@ export function GenericListPage<T extends { id: string }>({
                 if (attempts < maxAttempts) {
                     attempts++;
                     setTimeout(attemptRestoration, 50);
+                } else {
+                    isRestored.current = true;
                 }
                 return;
             }
@@ -128,10 +130,19 @@ export function GenericListPage<T extends { id: string }>({
             container.scrollTop = targetScroll;
             
             // Verify if scroll took effect (items might still be rendering)
-            if (container.scrollTop < 1 && targetScroll > 0 && attempts < maxAttempts && items.length > 0) {
+            // We use a small tolerance and check if we've reached the target or the maximum possible scroll
+            const currentScroll = container.scrollTop;
+            const maxScroll = container.scrollHeight - container.clientHeight;
+            const reachedTarget = Math.abs(currentScroll - targetScroll) < 2;
+            const reachedMax = Math.abs(currentScroll - maxScroll) < 2 && maxScroll > 0;
+
+            if (!reachedTarget && !reachedMax && attempts < maxAttempts) {
                 attempts++;
                 setTimeout(attemptRestoration, 100);
             } else {
+                // If we've reached it, or we've run out of attempts, consider it restored
+                // This prevents subsequent scroll events (like browser forcing to 0) from being ignored
+                // but only after we've given it a real chance.
                 isRestored.current = true;
             }
         };
@@ -179,6 +190,10 @@ export function GenericListPage<T extends { id: string }>({
     const handleItemClick = (item: T) => {
         const container = getScrollContainer();
         if (pageId && container) {
+            // Lock restoration flag to prevent any subsequent scroll events
+            // (like those caused by content swap) from overwriting the state
+            isRestored.current = false;
+            
             updateUiState(pageId, {
                 filter,
                 sortBy,

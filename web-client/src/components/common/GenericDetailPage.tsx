@@ -41,6 +41,14 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         }
     }, [initialTabId]);
 
+    // Scroll to top on mount
+    React.useEffect(() => {
+        const main = document.querySelector('main');
+        if (main) {
+            main.scrollTop = 0;
+        }
+    }, []);
+
     const handleTabClick = (id: string) => {
         setActiveTabId(id);
         if (onTabChange) onTabChange(id);

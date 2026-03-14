@@ -39,6 +39,7 @@
 
 .formGrid {
     display: flex;
+    flex-wrap: wrap;
     gap: 32px;
 }
 

@@ -118,59 +118,63 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
 
     const mainDetails = (
         <>
-            <label>
-                Name
-                <input 
-                    type="text" 
-                    value={epic.name || ''} 
-                    onChange={e => updateEpic(epic.id, { name: e.target.value })}
-                    placeholder="Epic Name"
-                />
-            </label>
-            <label>
-                Jira Key
-                <input 
-                    type="text" 
-                    value={epic.jira_key || ''} 
-                    onChange={e => updateEpic(epic.id, { jira_key: e.target.value })}
-                />
-            </label>
-            <label>
-                Work Item
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <SearchableDropdown
-                        options={workItemOptions}
-                        onSelect={(wiId) => updateEpic(epic.id, { work_item_id: wiId === 'UNASSIGNED' ? undefined : wiId })}
-                        placeholder="Search for a work item..."
-                        clearOnSelect={false}
-                        initialValue={workItem?.name || 'Unassigned'}
+            <div style={{ display: 'flex', gap: '32px', width: '100%' }}>
+                <label>
+                    Name
+                    <input 
+                        type="text" 
+                        value={epic.name || ''} 
+                        onChange={e => updateEpic(epic.id, { name: e.target.value })}
+                        placeholder="Epic Name"
                     />
-                </div>
-            </label>
-            <label>
-                Target Start
-                <input 
-                    type="date" 
-                    value={localDates.start} 
-                    onChange={e => handleDateChange('start', e.target.value)}
-                />
-            </label>
-            <label>
-                Target End
-                <input 
-                    type="date" 
-                    value={localDates.end} 
-                    onChange={e => handleDateChange('end', e.target.value)}
-                />
-            </label>
-            <label>
-                Total Effort (MDs)
-                <input 
-                    type="number" 
-                    value={epic.effort_md} 
-                    onChange={e => updateEpic(epic.id, { effort_md: parseFloat(e.target.value) })}
-                />
-            </label>
+                </label>
+                <label>
+                    Work Item
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <SearchableDropdown
+                            options={workItemOptions}
+                            onSelect={(wiId) => updateEpic(epic.id, { work_item_id: wiId === 'UNASSIGNED' ? undefined : wiId })}
+                            placeholder="Search for a work item..."
+                            clearOnSelect={false}
+                            initialValue={workItem?.name || 'Unassigned'}
+                        />
+                    </div>
+                </label>
+            </div>
+            <div style={{ display: 'flex', gap: '32px', width: '100%' }}>
+                <label>
+                    Jira Key
+                    <input 
+                        type="text" 
+                        value={epic.jira_key || ''} 
+                        onChange={e => updateEpic(epic.id, { jira_key: e.target.value })}
+                    />
+                </label>
+                <label>
+                    Target Start
+                    <input 
+                        type="date" 
+                        value={localDates.start} 
+                        onChange={e => handleDateChange('start', e.target.value)}
+                    />
+                </label>
+                <label>
+                    Target End
+                    <input 
+                        type="date" 
+                        value={localDates.end} 
+                        onChange={e => handleDateChange('end', e.target.value)}
+                    />
+                </label>
+                <label>
+                    Total Effort (MDs)
+                    <input 
+                        type="number" 
+                        value={epic.effort_md} 
+                        onChange={e => updateEpic(epic.id, { effort_md: parseFloat(e.target.value) })}
+                    />
+                </label>
+            </div>
         </>
     );
 
