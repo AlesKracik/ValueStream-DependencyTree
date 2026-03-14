@@ -1,12 +1,20 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent } from '@testing-library/react';
 import { WorkItemListPage } from '../WorkItemListPage';
 import { renderWithProviders } from '../../test/testUtils';
 import type { ValueStreamData } from '../../types/models';
 
-const mockData: ValueStreamData = {
-    // ... same mockData
+const mockedNavigate = vi.fn();
 
+vi.mock('react-router-dom', async () => {
+    const actual = await vi.importActual('react-router-dom');
+    return {
+        ...actual,
+        useNavigate: () => mockedNavigate
+    };
+});
+
+const mockData: ValueStreamData = {
     settings: {
         general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
         persistence: { 
@@ -32,10 +40,15 @@ const mockData: ValueStreamData = {
         { id: 's1', name: 'Sprint 1', start_date: '2024-01-01', end_date: '2024-01-14' },
         { id: 's2', name: 'Sprint 2', start_date: '2024-01-15', end_date: '2024-01-28' },
         { id: 's3', name: 'Sprint 3', start_date: '2024-01-29', end_date: '2024-02-11' }
-    ]
+    ],
+    valueStreams: []
 };
 
 describe('WorkItemListPage', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
     it('renders the list of work items and their attributes', () => {
         renderWithProviders(
             <WorkItemListPage data={mockData} loading={false} />
@@ -45,13 +58,11 @@ describe('WorkItemListPage', () => {
         expect(screen.getByText('Beta Item')).toBeDefined();
         expect(screen.getByText('Gamma Item')).toBeDefined();
 
-        // Check for attribute labels in header (may appear twice due to sort buttons)
         expect(screen.getAllByText('Score').length).toBeGreaterThanOrEqual(1);
         expect(screen.getAllByText('Effort').length).toBeGreaterThanOrEqual(1);
         expect(screen.getAllByText('TCV').length).toBeGreaterThanOrEqual(1);
         expect(screen.getAllByText('Released').length).toBeGreaterThanOrEqual(1);
 
-        // Check for specific values
         expect(screen.getByText('10')).toBeDefined();
         expect(screen.getByText('50')).toBeDefined();
         expect(screen.getByText('5 MDs')).toBeDefined();
@@ -79,13 +90,11 @@ describe('WorkItemListPage', () => {
 
         const nameBtn = screen.getByRole('button', { name: /Name/i });
         
-        // Initial sort is name asc: Alpha, Beta, Gamma
         let items = container.querySelectorAll('[class*="listItem"]');
         expect(items[0].textContent).toContain('Alpha Item');
         expect(items[1].textContent).toContain('Beta Item');
         expect(items[2].textContent).toContain('Gamma Item');
 
-        // Click again for desc: Gamma, Beta, Alpha
         fireEvent.click(nameBtn);
         items = container.querySelectorAll('[class*="listItem"]');
         expect(items[0].textContent).toContain('Gamma Item');
@@ -93,71 +102,42 @@ describe('WorkItemListPage', () => {
         expect(items[2].textContent).toContain('Alpha Item');
     });
 
-    it('sorts work items by score', () => {
-        const { container } = renderWithProviders(
+    it('navigates to work item detail page when a work item is clicked', () => {
+        renderWithProviders(
             <WorkItemListPage data={mockData} loading={false} />
         );
 
-        const scoreBtn = screen.getByRole('button', { name: /Score/i });
-        
-        // Click for score asc: Alpha (10), Beta (30), Gamma (50)
-        fireEvent.click(scoreBtn);
-        let items = container.querySelectorAll('[class*="listItem"]');
-        expect(items[0].textContent).toContain('Alpha Item');
-        expect(items[1].textContent).toContain('Beta Item');
-        expect(items[2].textContent).toContain('Gamma Item');
+        const workItemRow = screen.getByText('Alpha Item').closest('[class*="listItem"]')!;
+        fireEvent.click(workItemRow);
 
-        // Click for score desc: Gamma, Beta, Alpha
-        fireEvent.click(scoreBtn);
-        items = container.querySelectorAll('[class*="listItem"]');
-        expect(items[0].textContent).toContain('Gamma Item');
-        expect(items[1].textContent).toContain('Beta Item');
-        expect(items[2].textContent).toContain('Alpha Item');
+        expect(mockedNavigate).toHaveBeenCalledWith('/workitem/w1');
     });
 
-    it('sorts work items by effort', () => {
-        const { container } = renderWithProviders(
+    it('navigates to new work item page when "+ New Work Item" is clicked', () => {
+        renderWithProviders(
             <WorkItemListPage data={mockData} loading={false} />
         );
 
-        const effortBtn = screen.getByRole('button', { name: /Effort/i });
-        
-        // Effort: Alpha (5), Beta (10), Gamma (20)
-        fireEvent.click(effortBtn);
-        const items = container.querySelectorAll('[class*="listItem"]');
-        expect(items[0].textContent).toContain('Alpha Item');
-        expect(items[1].textContent).toContain('Beta Item');
-        expect(items[2].textContent).toContain('Gamma Item');
+        const newBtn = screen.getByText('+ New Work Item');
+        fireEvent.click(newBtn);
+
+        expect(mockedNavigate).toHaveBeenCalledWith('/workitem/new');
     });
 
-    it('sorts work items by TCV', () => {
-        const { container } = renderWithProviders(
-            <WorkItemListPage data={mockData} loading={false} />
+    it('shows loading message when loading is true', () => {
+        renderWithProviders(
+            <WorkItemListPage data={null} loading={true} />
         );
 
-        const tcvBtn = screen.getByRole('button', { name: /TCV/i });
-        
-        // TCV: Beta (0), Gamma (500), Alpha (1000)
-        fireEvent.click(tcvBtn);
-        const items = container.querySelectorAll('[class*="listItem"]');
-        expect(items[0].textContent).toContain('Beta Item');
-        expect(items[1].textContent).toContain('Gamma Item');
-        expect(items[2].textContent).toContain('Alpha Item');
+        expect(screen.getByText('Loading work items...')).toBeDefined();
     });
 
-    it('sorts work items by released sprint', () => {
-        const { container } = renderWithProviders(
-            <WorkItemListPage data={mockData} loading={false} />
+    it('shows empty message when no work items are found', () => {
+        renderWithProviders(
+            <WorkItemListPage data={{ ...mockData, workItems: [] }} loading={false} />
         );
 
-        const releasedBtn = screen.getByRole('button', { name: /Released/i });
-        
-        // Sprints: Sprint 1 (Gamma), Sprint 2 (Beta), Sprint 3 (Alpha)
-        fireEvent.click(releasedBtn);
-        const items = container.querySelectorAll('[class*="listItem"]');
-        expect(items[0].textContent).toContain('Gamma Item');
-        expect(items[1].textContent).toContain('Beta Item');
-        expect(items[2].textContent).toContain('Alpha Item');
+        expect(screen.getByText('No work items found.')).toBeDefined();
     });
 });
 

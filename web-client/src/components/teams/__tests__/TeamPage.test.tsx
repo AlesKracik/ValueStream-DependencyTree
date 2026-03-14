@@ -1,35 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 import { TeamPage } from '../TeamPage';
-import { ValueStreamProvider, NotificationProvider } from '../../../contexts/ValueStreamContext';
+import { ValueStreamProvider, NotificationProvider, useValueStreamContext } from '../../../contexts/ValueStreamContext';
 import type { ValueStreamData } from '../../../types/models';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
-// Mock date-holidays
-const mockIsHoliday = vi.fn().mockImplementation((date: Date) => {
-    // Jan 1st 2026: Public Holiday (Thu)
-    if (date.getFullYear() === 2026 && date.getMonth() === 0 && date.getDate() === 1) {
-        return [{ type: 'public', name: 'New Year' }];
-    }
-    return false;
-});
-
-vi.mock('date-holidays', () => {
+vi.mock('../../../contexts/ValueStreamContext', async (importOriginal) => {
+    const actual = await importOriginal() as any;
     return {
-        default: class {
-            isHoliday = mockIsHoliday;
-            getCountries = () => ({
-                'US': 'United States of America',
-                'GB': 'United Kingdom',
-                'CZ': 'Czech Republic'
-            });
-        }
+        ...actual,
+        useValueStreamContext: vi.fn()
     };
 });
 
 const mockData: ValueStreamData = {
-    valueStreams: [],
-    settings: { 
+    settings: {
         general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
         persistence: { 
             mongo: { 
@@ -43,28 +28,42 @@ const mockData: ValueStreamData = {
     customers: [],
     workItems: [],
     teams: [
-        { id: 't1', name: 'Team 1', total_capacity_mds: 2000, country: 'US' }
+        { id: 't1', name: 'Team 1', total_capacity_mds: 10, country: 'Default', sprint_capacity_overrides: {} }
     ],
     epics: [],
     sprints: [
-        { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY2026 Q1' }
-    ]
+        { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' },
+        { id: 's2', name: 'Sprint 2', start_date: '2026-01-15', end_date: '2026-01-28' }
+    ],
+    valueStreams: []
 };
 
 describe('TeamPage', () => {
-    const updateTeamSpy = vi.fn().mockResolvedValue(undefined);
-    const addTeamSpy = vi.fn().mockResolvedValue('new-t1');
-    
+    const updateTeamSpy = vi.fn();
+    const addTeamSpy = vi.fn();
+    const deleteTeamSpy = vi.fn();
+    const mockShowConfirm = vi.fn().mockResolvedValue(true);
+
     const defaultProps = {
         data: mockData,
         loading: false,
         updateTeam: updateTeamSpy,
-        addTeam: addTeamSpy
+        addTeam: addTeamSpy,
+        deleteTeam: deleteTeamSpy
     };
 
-    const renderTeamPage = (props = defaultProps, teamId = 't1') => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            data: mockData,
+            updateEpic: vi.fn()
+        });
+    });
+
+    const renderTeamPage = (props = defaultProps, id = 't1') => {
         return render(
-            <MemoryRouter initialEntries={[`/team/${teamId}`]}>
+            <MemoryRouter initialEntries={[`/team/${id}`]}>
                 <NotificationProvider>
                     <ValueStreamProvider value={{ data: props.data || mockData, updateEpic: vi.fn() }}>
                         <Routes>
@@ -76,82 +75,95 @@ describe('TeamPage', () => {
         );
     };
 
-    beforeEach(() => {
-        vi.clearAllMocks();
-    });
-
-    it('renders team details', () => {
+    it('renders team details correctly', () => {
         renderTeamPage();
+
+        expect(screen.getByText('Team: Team 1')).toBeDefined();
         expect(screen.getByDisplayValue('Team 1')).toBeDefined();
-        expect(screen.getByDisplayValue('2000')).toBeDefined();
-        // The implementation uses a select with text options
-        expect(screen.getByText('United States')).toBeDefined();
+        expect(screen.getByDisplayValue('10')).toBeDefined();
+        expect(screen.getByDisplayValue('Default (No Holidays)')).toBeDefined();
     });
 
-    it('calls updateTeam when name changes', async () => {
+    it('calls updateTeam when name changes', () => {
         renderTeamPage();
+
         const nameInput = screen.getByLabelText(/Team Name/i);
-        fireEvent.change(nameInput, { target: { value: 'Team Alpha' } });
-        
-        expect(updateTeamSpy).toHaveBeenCalledWith('t1', expect.objectContaining({ name: 'Team Alpha' }));
+        fireEvent.change(nameInput, { target: { value: 'Updated Team' } });
+
+        expect(updateTeamSpy).toHaveBeenCalledWith('t1', { name: 'Updated Team' });
     });
 
-    it('calculates holiday impact and shows suggested capacity', () => {
-        renderTeamPage();
-        
-        // Sprint 1: 2026-01-01 to 2026-01-14
-        // Jan 1 (Thu) - Holiday
-        // Jan 2 (Fri) - Work
-        // Jan 3, 4 (Sat, Sun) - Weekend
-        // Jan 5-9 (Mon-Fri) - Work
-        // Jan 10, 11 (Sat, Sun) - Weekend
-        // Jan 12-14 (Mon-Wed) - Work
-        // Total work days = 9 days
-        
-        expect(screen.getByText('9 days')).toBeDefined();
-        expect(screen.getByTitle('1 holiday(s)')).toBeDefined();
-    });
-
-    it('handles capacity override change', async () => {
-        renderTeamPage();
-        // Base capacity 2000, 1 holiday impact = (2000/10)*1 = 200. Calculated = 1800.
-        const input = screen.getByPlaceholderText('1,800');
-        fireEvent.change(input, { target: { value: '1700' } });
-        
-        expect(updateTeamSpy).toHaveBeenCalledWith('t1', expect.objectContaining({
-            sprint_capacity_overrides: {
-                's1': 1700
-            }
-        }));
-    });
-
-    it('clears override', () => {
-        const dataWithOverride: ValueStreamData = {
+    it('calculates holiday impact and shows effective capacity', () => {
+        const teamWithCZ = {
+            ...mockData.teams[0],
+            country: 'CZ'
+        };
+        const dataWithCZ = {
             ...mockData,
-            teams: [{
-                ...mockData.teams[0],
-                sprint_capacity_overrides: { 's1': 85 }
-            }]
+            teams: [teamWithCZ]
         };
 
-        renderTeamPage({ ...defaultProps, data: dataWithOverride });
-        
-        const input = screen.getByDisplayValue('85');
-        fireEvent.change(input, { target: { value: '' } });
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            data: dataWithCZ,
+            updateEpic: vi.fn()
+        });
 
-        expect(updateTeamSpy).toHaveBeenCalledWith('t1', expect.objectContaining({
+        renderTeamPage({ ...defaultProps, data: dataWithCZ });
+
+        expect(screen.getByText(/9 days/i)).toBeDefined();
+        expect(screen.getByText(/\(🏖️ -1\)/i)).toBeDefined();
+
+        expect(screen.getByPlaceholderText('9')).toBeDefined();
+    });
+
+    it('handles capacity override change', () => {
+        renderTeamPage();
+
+        const inputs = screen.getAllByRole('spinbutton');
+        const s1Input = inputs[1];
+
+        fireEvent.change(s1Input, { target: { value: '8.5' } });
+
+        expect(updateTeamSpy).toHaveBeenCalledWith('t1', {
+            sprint_capacity_overrides: { 's1': 8.5 }
+        });
+    });
+
+    it('clears override when the clear button is clicked', () => {
+        const teamWithOverride = {
+            ...mockData.teams[0],
+            sprint_capacity_overrides: { 's1': 5 }
+        };
+        const dataWithOverride = {
+            ...mockData,
+            teams: [teamWithOverride]
+        };
+
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            data: dataWithOverride,
+            updateEpic: vi.fn()
+        });
+
+        renderTeamPage({ ...defaultProps, data: dataWithOverride });
+
+        const clearBtn = screen.getByTitle('Remove Override');
+        fireEvent.click(clearBtn);
+
+        expect(updateTeamSpy).toHaveBeenCalledWith('t1', {
             sprint_capacity_overrides: {}
-        }));
+        });
     });
 
     it('renders and saves a new team', async () => {
         renderTeamPage(defaultProps, 'new');
 
         expect(screen.getByText('Create New Team')).toBeDefined();
+
         const nameInput = screen.getByLabelText(/Team Name/i);
         fireEvent.change(nameInput, { target: { value: 'Newly Created Team' } });
-        
-        // For new teams, we still need to click 'Create Team'
+
         const createBtn = screen.getByText('Create Team');
         fireEvent.click(createBtn);
 
@@ -161,8 +173,71 @@ describe('TeamPage', () => {
             }));
         });
     });
+
+    it('deletes the team after confirmation', async () => {
+        renderTeamPage();
+
+        const deleteBtn = screen.getByText('Delete Team');
+        fireEvent.click(deleteBtn);
+
+        expect(mockShowConfirm).toHaveBeenCalledWith('Delete Team', expect.stringContaining('Team 1'));
+        
+        await waitFor(() => {
+            expect(deleteTeamSpy).toHaveBeenCalledWith('t1');
+        });
+    });
+
+    it('recalculates holiday impact when country changes', async () => {
+        renderTeamPage();
+
+        const countrySelect = screen.getByLabelText(/Country/i);
+        
+        fireEvent.change(countrySelect, { target: { value: 'CZ' } });
+        
+        expect(updateTeamSpy).toHaveBeenCalledWith('t1', { country: 'CZ' });
+
+        const dataWithCZ: ValueStreamData = {
+            ...mockData,
+            teams: [{ ...mockData.teams[0], country: 'CZ' }]
+        };
+
+        cleanup();
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            data: dataWithCZ,
+            updateEpic: vi.fn()
+        });
+
+        renderTeamPage({ ...defaultProps, data: dataWithCZ });
+
+        expect(screen.getByText(/9 days/i)).toBeDefined();
+        expect(screen.getByText(/\(🏖️ -1\)/i)).toBeDefined();
+        
+        expect(screen.getByPlaceholderText('9')).toBeDefined();
+    });
+
+    it('updates effective capacity when total capacity changes', async () => {
+        const teamWith20 = { ...mockData.teams[0], total_capacity_mds: 20 };
+        const dataWith20 = {
+            ...mockData,
+            teams: [teamWith20]
+        };
+
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            data: dataWith20,
+            updateEpic: vi.fn()
+        });
+
+        renderTeamPage({ ...defaultProps, data: dataWith20 });
+
+        const capacityInput = screen.getByDisplayValue('20');
+        fireEvent.change(capacityInput, { target: { value: '30' } });
+        
+        expect(updateTeamSpy).toHaveBeenCalledWith('t1', { total_capacity_mds: 30 });
+
+        // Both s1 and s2 will have placeholder 20 initially (10 days * 20/10 capacity proportion? No, proportion is based on total MDs / 10 standard days)
+        // Wait, standard working days are 10. Total capacity is 20 MDs. Effective capacity is (20/10) * 10 = 20 MDs.
+        expect(screen.getAllByPlaceholderText('20').length).toBeGreaterThan(0);
+    });
 });
-
-
-
-

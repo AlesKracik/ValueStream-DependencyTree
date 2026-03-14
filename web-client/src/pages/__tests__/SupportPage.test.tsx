@@ -5,6 +5,15 @@ import { renderWithProviders } from '../../test/testUtils';
 import type { ValueStreamData } from '../../types/models';
 
 const mockUpdateCustomer = vi.fn();
+const mockedNavigate = vi.fn();
+
+vi.mock('react-router-dom', async () => {
+    const actual = await vi.importActual('react-router-dom');
+    return {
+        ...actual,
+        useNavigate: () => mockedNavigate
+    };
+});
 
 const mockData: ValueStreamData = {
     valueStreams: [],
@@ -437,5 +446,34 @@ describe('SupportPage', () => {
         expect(descriptionElement.textContent).toContain('Line 1');
         expect(descriptionElement.textContent).toContain('Line 2');
         expect(window.getComputedStyle(descriptionElement).whiteSpace).toBe('pre-wrap');
+    });
+
+    it('navigates to customer support tab when an issue is clicked', () => {
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        const issueRow = screen.getByText('Active Issue').closest('[class*="listItem"]')!;
+        fireEvent.click(issueRow);
+
+        expect(mockedNavigate).toHaveBeenCalledWith('/customer/c1?tab=support&issueId=i1');
+    });
+
+    it('filters issues by description or customer name', () => {
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        const filterInput = screen.getByPlaceholderText(/Filter issues/i);
+        
+        // Filter by description
+        fireEvent.change(filterInput, { target: { value: 'Active' } });
+        expect(screen.getByText('Active Issue')).toBeDefined();
+        expect(screen.queryByText('Expired Issue')).toBeNull();
+
+        // Filter by customer name
+        fireEvent.change(filterInput, { target: { value: 'Customer A' } });
+        expect(screen.getByText('Active Issue')).toBeDefined();
+        expect(screen.getByText('Expired Issue')).toBeDefined();
     });
 });

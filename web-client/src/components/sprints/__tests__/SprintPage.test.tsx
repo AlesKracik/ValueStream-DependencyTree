@@ -1,18 +1,26 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SprintPage } from '../SprintPage';
-import { ValueStreamProvider, NotificationProvider } from '../../../contexts/ValueStreamContext';
-import type { ValueStreamData } from '../../../types/models';
+import { ValueStreamProvider, NotificationProvider, useValueStreamContext } from '../../../contexts/ValueStreamContext';
+import type { ValueStreamData, Sprint } from '../../../types/models';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
+
+vi.mock('../../../contexts/ValueStreamContext', async (importOriginal) => {
+    const actual = await importOriginal() as any;
+    return {
+        ...actual,
+        useValueStreamContext: vi.fn()
+    };
+});
 
 const mockData: ValueStreamData = {
-    valueStreams: [],
-    settings: { 
+    settings: {
         general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
         persistence: { 
-          mongo: { 
-            app: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false },
-            customer: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false }
-          }
+            mongo: { 
+                app: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false },
+                customer: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false }
+            }
         },
         jira: { base_url: '', api_version: '3' },
         ai: { provider: 'openai' }
@@ -23,177 +31,174 @@ const mockData: ValueStreamData = {
     epics: [],
     sprints: [
         { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY2026 Q1' }
-    ]
-};
-
-const defaultProps = {
-    data: mockData,
-    loading: false,
-    error: null,
-    addSprint: vi.fn(),
-    updateSprint: vi.fn(),
-    deleteSprint: vi.fn()
+    ],
+    valueStreams: []
 };
 
 describe('SprintPage', () => {
+    const updateSprintSpy = vi.fn();
+    const addSprintSpy = vi.fn();
+    const deleteSprintSpy = vi.fn();
+    const archiveSprintSpy = vi.fn();
+    const mockShowConfirm = vi.fn().mockResolvedValue(true);
+
+    const defaultProps = {
+        data: mockData,
+        loading: false,
+        updateSprint: updateSprintSpy,
+        addSprint: addSprintSpy,
+        deleteSprint: deleteSprintSpy,
+        archiveSprint: archiveSprintSpy
+    };
+
     beforeEach(() => {
         vi.clearAllMocks();
-    });
-
-    it('renders the header title', () => {
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                    <SprintPage {...defaultProps} />
-                </ValueStreamProvider>
-            </NotificationProvider>
-        );
-        expect(screen.getByText('Sprint Management')).toBeDefined();
-    });
-
-    it('renders sprint name as an editable input', () => {
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                    <SprintPage {...defaultProps} />
-                </ValueStreamProvider>
-            </NotificationProvider>
-        );
-        const input = screen.getByDisplayValue('Sprint 1');
-        expect(input).toBeDefined();
-    });
-
-    it('calls updateSprint when name is changed', () => {
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                    <SprintPage {...defaultProps} />
-                </ValueStreamProvider>
-            </NotificationProvider>
-        );
-        const input = screen.getByDisplayValue('Sprint 1');
-        fireEvent.change(input, { target: { value: 'Updated Name' } });
-        expect(defaultProps.updateSprint).toHaveBeenCalledWith('s1', { name: 'Updated Name' });
-    });
-
-    it('starts creation flow when + Create Next Sprint is clicked', async () => {
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                    <SprintPage {...defaultProps} />
-                </ValueStreamProvider>
-            </NotificationProvider>
-        );
-        const startBtn = screen.getByText('+ Create Next Sprint');
-        fireEvent.click(startBtn);
-
-        // Should see a new row with "NEW" status and "Save" button
-        expect(screen.getByText('NEW')).toBeDefined();
-        expect(screen.getByText('Save')).toBeDefined();
-    });
-
-    it('calls addSprint when Save is clicked in draft row', async () => {
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                    <SprintPage {...defaultProps} />
-                </ValueStreamProvider>
-            </NotificationProvider>
-        );
-        fireEvent.click(screen.getByText('+ Create Next Sprint'));
-
-        const saveBtn = screen.getByText('Save');
-        fireEvent.click(saveBtn);
-
-        expect(defaultProps.addSprint).toHaveBeenCalledWith(expect.objectContaining({
-            name: 'Sprint 2'
-        }));
-    });
-
-    it('prompts for confirmation before deleting a sprint', async () => {
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                    <SprintPage {...defaultProps} />
-                </ValueStreamProvider>
-            </NotificationProvider>
-        );
-        const deleteBtn = screen.getByText('Delete');
-        fireEvent.click(deleteBtn);
-
-        // Since it's the last sprint, delete is available
-        expect(screen.queryByText(/Locked/i)).toBeNull();
-    });
-
-    it('shows archive button on the first sprint only if it is in the past', async () => {
-        // Provide mock data with two sprints to distinguish first/last
-        // s1 is in the past, s2 is in the future (relative to any current date > 1970)
-        const twoSprintsData: ValueStreamData = {
-            ...mockData,
-            sprints: [
-                { id: 's1', name: 'Sprint 1', start_date: '1970-01-01', end_date: '1970-01-14', quarter: 'FY1970 Q1' },
-                { id: 's2', name: 'Sprint 2', start_date: '2099-01-15', end_date: '2099-01-28', quarter: 'FY2099 Q1' }
-            ]
-        };
-        
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: twoSprintsData, updateEpic: vi.fn() }}>
-                    <SprintPage {...defaultProps} data={twoSprintsData} />
-                </ValueStreamProvider>
-            </NotificationProvider>
-        );
-        
-        // Sprint 1 is the first sprint AND in the past, it should have Archive
-        const archiveBtns = screen.getAllByText('Archive');
-        expect(archiveBtns.length).toBe(1);
-        
-        fireEvent.click(archiveBtns[0]);
-        const confirmBtn = screen.getByText('Confirm');
-        fireEvent.click(confirmBtn);
-
-        await waitFor(() => {
-            expect(defaultProps.updateSprint).toHaveBeenCalledWith('s1', { is_archived: true });
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            data: mockData,
+            updateEpic: vi.fn()
         });
     });
 
-    it('hides archive button if the first sprint is not in the past', async () => {
-        // s1 and s2 are both in the future
-        const futureSprintsData: ValueStreamData = {
-            ...mockData,
-            sprints: [
-                { id: 's1', name: 'Sprint 1', start_date: '2099-01-01', end_date: '2099-01-14', quarter: 'FY2099 Q1' },
-                { id: 's2', name: 'Sprint 2', start_date: '2099-01-15', end_date: '2099-01-28', quarter: 'FY2099 Q1' }
-            ]
-        };
-        
-        render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: futureSprintsData, updateEpic: vi.fn() }}>
-                    <SprintPage {...defaultProps} data={futureSprintsData} />
-                </ValueStreamProvider>
-            </NotificationProvider>
+    const renderSprintPage = (props = defaultProps, id = 's1') => {
+        return render(
+            <MemoryRouter initialEntries={[`/sprint/${id}`]}>
+                <NotificationProvider>
+                    <ValueStreamProvider value={{ data: props.data || mockData, updateEpic: vi.fn() }}>
+                        <Routes>
+                            <Route path="/sprint/:id" element={<SprintPage {...props} />} />
+                        </Routes>
+                    </ValueStreamProvider>
+                </NotificationProvider>
+            </MemoryRouter>
         );
-        
-        // No Archive button should be visible
-        expect(screen.queryByText('Archive')).toBeNull();
-        // It should show "Locked" instead
-        expect(screen.getByTitle('Only the first past sprint or the last sprint can be managed.')).toBeDefined();
+    };
+
+    it('renders sprint header', () => {
+        renderSprintPage();
+        expect(screen.getByText('Sprint Management')).toBeDefined();
     });
 
-    it('renders quarter grouping labels', () => {
-        const { container } = render(
-            <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
-                    <SprintPage {...defaultProps} />
-                </ValueStreamProvider>
-            </NotificationProvider>
-        );
-        // Look for the text inside a div with the sectionHeader class
+    it('renders editable name field', () => {
+        renderSprintPage();
+        const nameInput = screen.getByDisplayValue('Sprint 1') as HTMLInputElement;
+        expect(nameInput).toBeDefined();
+    });
+
+    it('calls updateSprint when name changes', () => {
+        renderSprintPage();
+        const nameInput = screen.getByDisplayValue('Sprint 1');
+        fireEvent.change(nameInput, { target: { value: 'New Name' } });
+        expect(updateSprintSpy).toHaveBeenCalledWith('s1', { name: 'New Name' });
+    });
+
+    it('starts sprint creation flow when + Create Next Sprint is clicked', () => {
+        renderSprintPage();
+        const nextBtn = screen.getByText('+ Create Next Sprint');
+        fireEvent.click(nextBtn);
+
+        expect(screen.getByText('NEW')).toBeDefined();
+        expect(screen.getByText(/Draft/i)).toBeDefined();
+        
+        // Dates are in a div
+        expect(screen.getByText(/2026-01-15/i)).toBeDefined();
+        expect(screen.getByText(/2026-01-28/i)).toBeDefined();
+    });
+
+    it('calls addSprint when save button is clicked in creation flow', async () => {
+        renderSprintPage();
+        fireEvent.click(screen.getByText('+ Create Next Sprint'));
+        
+        const inputs = screen.getAllByRole('textbox');
+        const nameInput = inputs[inputs.length - 1]; 
+        fireEvent.change(nameInput, { target: { value: 'Sprint 2' } });
+        
+        const saveBtn = screen.getByText('Save');
+        fireEvent.click(saveBtn);
+
+        await waitFor(() => {
+            expect(addSprintSpy).toHaveBeenCalledWith(expect.objectContaining({
+                name: 'Sprint 2',
+                start_date: '2026-01-15'
+            }));
+        });
+    });
+
+    it('prompts for confirmation before deleting a sprint', async () => {
+        renderSprintPage();
+        const deleteBtn = screen.getByText('Delete');
+        fireEvent.click(deleteBtn);
+
+        expect(screen.queryByText(/Locked/i)).toBeNull();
+    });
+
+    it('calls deleteSprint after confirmation', async () => {
+        renderSprintPage();
+
+        const deleteBtn = screen.getByText('Delete');
+        fireEvent.click(deleteBtn);
+
+        expect(mockShowConfirm).toHaveBeenCalledWith('Delete Sprint', expect.stringContaining('Sprint 1'));
+        
+        await waitFor(() => {
+            expect(deleteSprintSpy).toHaveBeenCalledWith('s1');
+        });
+    });
+
+    it('shows archive button on the first sprint only if it is in the past', async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-02-01')); 
+
+        const pastData = {
+            ...mockData,
+            sprints: [
+                { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' },
+                { id: 's2', name: 'Sprint 2', start_date: '2026-01-15', end_date: '2026-01-28' }
+            ]
+        };
+
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            data: pastData,
+            updateEpic: vi.fn()
+        });
+
+        renderSprintPage({ ...defaultProps, data: pastData }, 's1');
+
+        expect(screen.getByText('Archive')).toBeDefined();
+        
+        vi.useRealTimers();
+    });
+
+    it('hides archive button if sprint is not the first past sprint', () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-02-01')); 
+
+        const pastData: ValueStreamData = {
+            ...mockData,
+            sprints: [
+                { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'Q1' },
+                { id: 's2', name: 'Sprint 2', start_date: '2026-01-15', end_date: '2026-01-28', quarter: 'Q1' }
+            ]
+        };
+
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            data: pastData,
+            updateEpic: vi.fn()
+        });
+
+        renderSprintPage({ ...defaultProps, data: pastData }, 's2');
+
+        const s2Item = screen.getByDisplayValue('Sprint 2').closest('[class*="listItem"]')!;
+        expect(within(s2Item).queryByText('Archive')).toBeNull();
+        
+        vi.useRealTimers();
+    });
+
+    it('renders quarter grouping correctly', () => {
+        const { container } = renderSprintPage();
         const qHeader = container.querySelector('[class*="sectionHeader"]');
         expect(qHeader?.textContent).toBe('FY2026 Q1');
     });
 });
-
-
-

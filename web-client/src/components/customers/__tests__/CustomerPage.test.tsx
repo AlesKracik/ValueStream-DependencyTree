@@ -767,6 +767,179 @@ describe('CustomerPage', () => {
             })]
         }));
     });
+
+    it('updates Related Jiras via JiraKeysInput', async () => {
+        const dataWithIssue: ValueStreamData = {
+            ...mockData,
+            customers: [{
+                ...mockData.customers[0],
+                support_issues: [{ id: 'si-1', description: 'Test', status: 'to do', related_jiras: ['J-1'] }]
+            }]
+        };
+
+        await act(async () => {
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} data={dataWithIssue} />
+                </MemoryRouter>
+            );
+        });
+
+        const supportTab = screen.getByText(/Support & Health/i);
+        await act(async () => {
+            fireEvent.click(supportTab);
+        });
+
+        const jiraInput = screen.getByPlaceholderText(/e.g. PROJ-123/i);
+        fireEvent.change(jiraInput, { target: { value: 'J-1, J-2' } });
+
+        expect(defaultProps.updateCustomer).toHaveBeenCalledWith('c1', expect.objectContaining({
+            support_issues: [expect.objectContaining({
+                related_jiras: ['J-1', 'J-2']
+            })]
+        }));
+    });
+
+    it('automatically syncs fetched Jira issues to the database', async () => {
+        // healthData is mocked to return 1 issue in 'New' status by default in some tests, 
+        // but let's make it explicit here.
+        const mockNewIssue = { key: 'BUG-1', status: 'New', summary: 'Bug 1', priority: 'High', category: 'new', url: '' };
+        (useValueStreamContext as any).mockReturnValue({
+            data: mockData,
+            showConfirm: mockShowConfirm,
+            showAlert: mockShowAlert
+        });
+        
+        // Mock the hook return value
+        vi.mocked(api.authorizedFetch).mockResolvedValue({
+            ok: true,
+            json: async () => ({ 
+                success: true, 
+                data: { issues: [{ key: 'BUG-1', fields: { summary: 'Bug 1', status: { name: 'New' }, priority: { name: 'High' } } }] } 
+            })
+        });
+
+        await act(async () => {
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} />
+                </MemoryRouter>
+            );
+        });
+
+        // The useEffect should trigger updateCustomer
+        await waitFor(() => {
+            expect(defaultProps.updateCustomer).toHaveBeenCalledWith('c1', expect.objectContaining({
+                jira_support_issues: expect.arrayContaining([
+                    expect.objectContaining({ key: 'BUG-1' })
+                ])
+            }), true);
+        });
+    });
+
+    it('deletes a TCV history entry', async () => {
+        const dataWithHistory: ValueStreamData = {
+            ...mockData,
+            customers: [{
+                ...mockData.customers[0],
+                tcv_history: [{ id: 'h1', value: 500, valid_from: '2025-01-01' }]
+            }]
+        };
+
+        await act(async () => {
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} data={dataWithHistory} />
+                </MemoryRouter>
+            );
+        });
+
+        const historyTab = screen.getByText(/TCV History/i);
+        await act(async () => {
+            fireEvent.click(historyTab);
+        });
+
+        const historyTable = screen.getByRole('table');
+        const deleteBtn = within(historyTable).getByText('Delete');
+        fireEvent.click(deleteBtn);
+
+        expect(defaultProps.updateCustomer).toHaveBeenCalledWith('c1', expect.objectContaining({
+            tcv_history: []
+        }));
+    });
+
+    it('adds and removes manual support issues', async () => {
+        await act(async () => {
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} />
+                </MemoryRouter>
+            );
+        });
+
+        const supportTab = screen.getByText(/Support & Health/i);
+        await act(async () => {
+            fireEvent.click(supportTab);
+        });
+
+        const addBtn = screen.getByText('+ Add Issue');
+        fireEvent.click(addBtn);
+
+        expect(defaultProps.updateCustomer).toHaveBeenCalledWith('c1', expect.objectContaining({
+            support_issues: expect.arrayContaining([
+                expect.objectContaining({ status: 'to do', description: '' })
+            ])
+        }));
+
+        // Now test removal
+        const dataWithIssue: ValueStreamData = {
+            ...mockData,
+            customers: [{
+                ...mockData.customers[0],
+                support_issues: [{ id: 'si-1', description: 'To Remove', status: 'to do' }]
+            }]
+        };
+
+        cleanup();
+        await act(async () => {
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} data={dataWithIssue} />
+                </MemoryRouter>
+            );
+        });
+
+        await act(async () => {
+            fireEvent.click(screen.getByText(/Support & Health/i));
+        });
+
+        const removeBtn = screen.getByText('Remove');
+        fireEvent.click(removeBtn);
+
+        expect(defaultProps.updateCustomer).toHaveBeenCalledWith('c1', expect.objectContaining({
+            support_issues: []
+        }));
+    });
+
+    it('deletes the customer after confirmation', async () => {
+        await act(async () => {
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} />
+                </MemoryRouter>
+            );
+        });
+
+        const deleteBtn = screen.getByText('Delete');
+        fireEvent.click(deleteBtn);
+
+        expect(mockShowConfirm).toHaveBeenCalledWith('Delete Customer', expect.stringContaining('Customer A'));
+        
+        await waitFor(() => {
+            expect(defaultProps.deleteCustomer).toHaveBeenCalledWith('c1');
+            expect(defaultProps.onBack).toHaveBeenCalled();
+        });
+    });
 });
 
 

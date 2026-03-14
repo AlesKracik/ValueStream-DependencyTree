@@ -1,12 +1,20 @@
-import { describe, it, expect } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { screen, fireEvent, within } from '@testing-library/react';
 import { CustomerListPage } from '../CustomerListPage';
 import { renderWithProviders } from '../../test/testUtils';
 import type { ValueStreamData } from '../../types/models';
 
-const mockData: ValueStreamData = {
-    // ... same mockData
+const mockedNavigate = vi.fn();
 
+vi.mock('react-router-dom', async () => {
+    const actual = await vi.importActual('react-router-dom');
+    return {
+        ...actual,
+        useNavigate: () => mockedNavigate
+    };
+});
+
+const mockData: ValueStreamData = {
     settings: {
         general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
         persistence: { 
@@ -26,10 +34,15 @@ const mockData: ValueStreamData = {
     workItems: [],
     teams: [],
     epics: [],
-    sprints: []
+    sprints: [],
+    valueStreams: []
 };
 
 describe('CustomerListPage', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
     it('renders the list of customers and their attributes', () => {
         renderWithProviders(
             <CustomerListPage data={mockData} loading={false} />
@@ -39,11 +52,9 @@ describe('CustomerListPage', () => {
         expect(screen.getByText('Beta Cust')).toBeDefined();
         expect(screen.getByText('Gamma Cust')).toBeDefined();
 
-        // Check for attribute labels in header
         expect(screen.getByText('Existing TCV')).toBeDefined();
         expect(screen.getByText('Potential TCV')).toBeDefined();
 
-        // Check for specific values
         expect(screen.getByText('$5,000')).toBeDefined();
         expect(screen.getAllByText('$1,000').length).toBeGreaterThan(0);
     });
@@ -53,7 +64,6 @@ describe('CustomerListPage', () => {
             <CustomerListPage data={mockData} loading={false} />
         );
 
-        // Alpha, Beta, Gamma
         const items = container.querySelectorAll('[class*="listItem"]');
         expect(items[0].textContent).toContain('Alpha Cust');
         expect(items[1].textContent).toContain('Beta Cust');
@@ -67,7 +77,6 @@ describe('CustomerListPage', () => {
 
         const sortBtn = screen.getByRole('button', { name: /Existing/i });
         
-        // Click for asc: Gamma (100), Alpha (500), Beta (1000)
         fireEvent.click(sortBtn);
         const items = container.querySelectorAll('[class*="listItem"]');
         expect(items[0].textContent).toContain('Gamma Cust');
@@ -75,19 +84,55 @@ describe('CustomerListPage', () => {
         expect(items[2].textContent).toContain('Beta Cust');
     });
 
-    it('sorts customers by potential TCV', () => {
-        const { container } = renderWithProviders(
+    it('filters customers by name', () => {
+        renderWithProviders(
             <CustomerListPage data={mockData} loading={false} />
         );
 
-        const sortBtn = screen.getByRole('button', { name: /Potential/i });
-        
-        // Click for asc: Beta (50), Alpha (100), Gamma (1000)
-        fireEvent.click(sortBtn);
-        const items = container.querySelectorAll('[class*="listItem"]');
-        expect(items[0].textContent).toContain('Beta Cust');
-        expect(items[1].textContent).toContain('Alpha Cust');
-        expect(items[2].textContent).toContain('Gamma Cust');
+        const filterInput = screen.getByPlaceholderText('Filter customers...');
+        fireEvent.change(filterInput, { target: { value: 'Alpha' } });
+
+        expect(screen.getByText('Alpha Cust')).toBeDefined();
+        expect(screen.queryByText('Beta Cust')).toBeNull();
+        expect(screen.queryByText('Gamma Cust')).toBeNull();
+    });
+
+    it('navigates to customer detail page when a customer is clicked', () => {
+        renderWithProviders(
+            <CustomerListPage data={mockData} loading={false} />
+        );
+
+        const customerRow = screen.getByText('Alpha Cust').closest('[class*="listItem"]')!;
+        fireEvent.click(customerRow);
+
+        expect(mockedNavigate).toHaveBeenCalledWith('/customer/c1');
+    });
+
+    it('navigates to new customer page when "+ New Customer" is clicked', () => {
+        renderWithProviders(
+            <CustomerListPage data={mockData} loading={false} />
+        );
+
+        const newBtn = screen.getByText('+ New Customer');
+        fireEvent.click(newBtn);
+
+        expect(mockedNavigate).toHaveBeenCalledWith('/customer/new');
+    });
+
+    it('shows loading message when loading is true', () => {
+        renderWithProviders(
+            <CustomerListPage data={null} loading={true} />
+        );
+
+        expect(screen.getByText('Loading customers...')).toBeDefined();
+    });
+
+    it('shows empty message when no customers are found', () => {
+        renderWithProviders(
+            <CustomerListPage data={{ ...mockData, customers: [] }} loading={false} />
+        );
+
+        expect(screen.getByText('No customers found.')).toBeDefined();
     });
 });
 

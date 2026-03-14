@@ -345,4 +345,154 @@ describe('SettingsPage', () => {
         const select = screen.getByLabelText(/Fiscal Year Start Month:/i) as HTMLSelectElement;
         expect(select.value).toBe('1');
     });
+
+    it('switches between tabs', async () => {
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=general']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        const jiraBtn = screen.getByText('Jira Integration');
+        fireEvent.click(jiraBtn);
+        expect(screen.getByText('Jira Base URL:')).toBeDefined();
+
+        const persistenceBtn = screen.getByText('Persistence');
+        fireEvent.click(persistenceBtn);
+        expect(screen.getByText('MongoDB URI:')).toBeDefined();
+
+        const aiBtn = screen.getByText('AI & LLM');
+        fireEvent.click(aiBtn);
+        expect(screen.getByText('LLM Provider:')).toBeDefined();
+    });
+
+    it('tests MongoDB connection successfully', async () => {
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=persistence&subtab=mongo&subsubtab=application']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        const testBtn = screen.getByText('Test Mongo Connection');
+        fireEvent.click(testBtn);
+
+        await waitFor(() => {
+            expect(screen.getByText('Connection successful!')).toBeDefined();
+        });
+    });
+
+    it('shows error when MongoDB connection fails', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => {
+            if (url === '/api/mongo/test') {
+                return Promise.resolve({
+                    ok: false,
+                    json: () => Promise.resolve({ success: false, error: 'Auth failed' })
+                });
+            }
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, databases: [] }) });
+        }));
+
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=persistence&subtab=mongo&subsubtab=application']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        const testBtn = screen.getByText('Test Mongo Connection');
+        fireEvent.click(testBtn);
+
+        await waitFor(() => {
+            expect(screen.getByText('Auth failed')).toBeDefined();
+        });
+    });
+
+    it('tests Jira connection successfully', async () => {
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=jira&subtab=common']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        const testBtn = screen.getByText('Test Connection');
+        fireEvent.click(testBtn);
+
+        await waitFor(() => {
+            expect(fetch).toHaveBeenCalledWith('/api/jira/test', expect.any(Object));
+            expect(screen.getByText('Success')).toBeDefined();
+        });
+    });
+
+    it('initiates AWS SSO login', async () => {
+        const awsSettings = {
+            ...mockSettings,
+            persistence: {
+                ...mockSettings.persistence,
+                mongo: {
+                    ...mockSettings.persistence.mongo,
+                    app: {
+                        ...mockSettings.persistence.mongo.app,
+                        auth: { method: 'aws' as const, aws_auth_type: 'static' as const, aws_profile: '' }
+                    }
+                }
+            }
+        };
+
+        vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => {
+            if (url === '/api/aws/sso/login') {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ 
+                        success: true, 
+                        message: 'Go to https://device.sso.aws and enter code ABCD-1234' 
+                    })
+                });
+            }
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true }) });
+        }));
+
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=persistence&subtab=mongo&subsubtab=application']}>
+                <SettingsPage 
+                    settings={awsSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        const loginBtn = screen.getByText('Login via AWS SSO');
+        fireEvent.click(loginBtn);
+
+        await waitFor(() => {
+            expect(screen.getByText(/Go to/i)).toBeDefined();
+            expect(screen.getByText('ABCD-1234')).toBeDefined();
+            expect(screen.getByRole('link', { name: /https:\/\/device\.sso\.aws/i })).toBeDefined();
+        });
+    });
 });

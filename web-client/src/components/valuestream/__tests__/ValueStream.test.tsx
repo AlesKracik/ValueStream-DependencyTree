@@ -33,6 +33,7 @@ vi.mock('@xyflow/react', async (importOriginal) => {
                             onClick={(e) => onNodeClick?.(e, node)}
                             >
                             {node.data?.name || node.data?.label || node.data?.sprintLabel || node.id}
+                            {node.type === 'ganttBarNode' && ` (${node.data?.effort_md} MDs)`}
                             </div>
 
                     ))}
@@ -48,10 +49,6 @@ vi.mock('@xyflow/react', async (importOriginal) => {
         })),
     };
 });
-
-// Since we mocked ReactFlow, we need to adjust how we find nodes.
-// But ValueStream renders custom nodes as children of ReactFlow? No, ReactFlow renders them.
-// If we mock ReactFlow, we might need to manually trigger the handlers.
 
 const mockData: ValueStreamData = {
     valueStreams: [],
@@ -150,6 +147,83 @@ describe('Value Stream', () => {
         fireEvent.click(customerNode);
 
         expect(onNavigateToCustomer).toHaveBeenCalledWith('c1');
+    });
+
+    it('navigates to work item page when work item node is clicked', () => {
+        const onNavigateToWorkItem = vi.fn();
+        render(
+            <NotificationProvider>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                    <ReactFlowProvider>
+                        <ValueStream 
+                            {...defaultProps}
+                            onNavigateToWorkItem={onNavigateToWorkItem}
+                        />
+                    </ReactFlowProvider>
+                </ValueStreamProvider>
+            </NotificationProvider>
+        );
+        const workItemNode = screen.getByText('Work Item 1');
+        fireEvent.click(workItemNode);
+
+        expect(onNavigateToWorkItem).toHaveBeenCalledWith('w1');
+    });
+
+    it('navigates to epic page when gantt bar node is clicked', () => {
+        const onNavigateToEpic = vi.fn();
+        // Gantt node id is gantt-e1 in useGraphLayout
+        const ganttNodeData = {
+            ...mockData,
+            epics: [{ ...mockData.epics[0], name: 'Epic 1' }]
+        };
+        render(
+            <NotificationProvider>
+                <ValueStreamProvider value={{ data: ganttNodeData, updateEpic: vi.fn() }}>
+                    <ReactFlowProvider>
+                        <ValueStream 
+                            {...defaultProps}
+                            data={ganttNodeData}
+                            onNavigateToEpic={onNavigateToEpic}
+                        />
+                    </ReactFlowProvider>
+                </ValueStreamProvider>
+            </NotificationProvider>
+        );
+        
+        // GanttBarNode renders the name + effort
+        const epicNode = screen.getByText(/Epic 1/i);
+        fireEvent.click(epicNode);
+
+        expect(onNavigateToEpic).toHaveBeenCalledWith('e1');
+    });
+
+    it('navigates to value stream edit page when "Edit Parameters" is clicked', () => {
+        const onNavigateToValueStreamEdit = vi.fn();
+        const dataWithVS: ValueStreamData = {
+            ...mockData,
+            valueStreams: [{ id: 'vs1', name: 'My VS', description: '', parameters: {} as any }]
+        };
+
+        render(
+            <NotificationProvider>
+                <ValueStreamProvider value={{ data: dataWithVS, updateEpic: vi.fn() }}>
+                    <ReactFlowProvider>
+                        <ValueStream 
+                            {...defaultProps}
+                            data={dataWithVS}
+                            currentValueStreamId="vs1"
+                            onNavigateToValueStreamEdit={onNavigateToValueStreamEdit}
+                        />
+                    </ReactFlowProvider>
+                </ValueStreamProvider>
+            </NotificationProvider>
+        );
+
+
+        const editBtn = screen.getByText('Edit Parameters');
+        fireEvent.click(editBtn);
+
+        expect(onNavigateToValueStreamEdit).toHaveBeenCalledWith('vs1');
     });
 
     it('triggers fit view on node right-click', async () => {

@@ -1,10 +1,28 @@
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EpicPage } from '../EpicPage';
-import { ValueStreamProvider, NotificationProvider } from '../../../contexts/ValueStreamContext';
-import type { ValueStreamData } from '../../../types/models';
+import { ValueStreamProvider, NotificationProvider, useValueStreamContext } from '../../../contexts/ValueStreamContext';
+import type { ValueStreamData, Epic } from '../../../types/models';
 import * as api from '../../../utils/api';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
+
+const mockNavigate = vi.fn();
+
+vi.mock('react-router-dom', async () => {
+    const actual = await vi.importActual('react-router-dom');
+    return {
+        ...actual,
+        useNavigate: () => mockNavigate
+    };
+});
+
+vi.mock('../../../contexts/ValueStreamContext', async (importOriginal) => {
+    const actual = await importOriginal() as any;
+    return {
+        ...actual,
+        useValueStreamContext: vi.fn()
+    };
+});
 
 vi.mock('../../../utils/api', async () => {
     const actual = await vi.importActual('../../../utils/api');
@@ -38,6 +56,7 @@ const mockData: ValueStreamData = {
     epics: [
         {
             id: 'e1',
+            name: 'Epic 1',
             jira_key: 'J-1',
             team_id: 't1',
             effort_md: 10,
@@ -50,11 +69,14 @@ const mockData: ValueStreamData = {
 
 describe('EpicPage', () => {
     const updateEpicSpy = vi.fn();
+    const mockShowConfirm = vi.fn().mockResolvedValue(true);
+    const mockShowAlert = vi.fn().mockResolvedValue(undefined);
     
     const defaultProps = {
         data: mockData,
         loading: false,
-        updateEpic: updateEpicSpy
+        updateEpic: updateEpicSpy,
+        deleteEpic: vi.fn()
     };
 
     const renderEpicPage = (props = defaultProps, epicId = 'e1') => {
@@ -73,25 +95,31 @@ describe('EpicPage', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
-        vi.useFakeTimers();
-        vi.setSystemTime(new Date('2026-02-20')); // Middle of s_curr
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            showAlert: mockShowAlert,
+            data: mockData,
+            updateEpic: updateEpicSpy
+        });
     });
 
     describe('Date Shift Logic', () => {
+        beforeEach(() => {
+            vi.useFakeTimers();
+            vi.setSystemTime(new Date('2026-02-20'));
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
         it('prompts user and clears past work when shifting dates if they confirm', async () => {
             renderEpicPage();
-            
             const startInput = screen.getByLabelText(/Target Start/i);
-            // Shift start from 2026-01-05 to 2026-01-10 (still before end 2026-02-25)
             fireEvent.change(startInput, { target: { value: '2026-01-10' } });
             
-            // Custom modal should be visible
-            expect(screen.getByText('Historical Work Warning')).toBeDefined();
+            expect(mockShowConfirm).toHaveBeenCalledWith('Historical Work Warning', expect.any(String));
             
-            // Confirm
-            fireEvent.click(screen.getByText('Confirm'));
-            
-            // Wait for the async function to continue after the promise resolves
             await act(async () => {
                 await Promise.resolve();
             });
@@ -103,30 +131,26 @@ describe('EpicPage', () => {
         });
 
         it('aborts date shift if user cancels the confirmation', async () => {
+            mockShowConfirm.mockResolvedValueOnce(false);
             renderEpicPage();
-            
             const startInput = screen.getByLabelText(/Target Start/i);
-            // Shift start from 2026-01-05 to 2026-01-10 (still before end 2026-02-25)
             fireEvent.change(startInput, { target: { value: '2026-01-10' } });
             
-            expect(screen.getByText('Historical Work Warning')).toBeDefined();
+            expect(mockShowConfirm).toHaveBeenCalledWith('Historical Work Warning', expect.any(String));
             
-            // Cancel
-            fireEvent.click(screen.getByText('Cancel'));
-            
+            await act(async () => {
+                await Promise.resolve();
+            });
+
             expect(updateEpicSpy).not.toHaveBeenCalled();
         });
 
         it('does NOT prompt when shifting end date into the future', async () => {
             renderEpicPage();
-            
             const endInput = screen.getByLabelText(/Target End/i);
-            // Current end is 2026-02-25. Shift to 2026-03-15 (future).
             fireEvent.change(endInput, { target: { value: '2026-03-15' } });
             
-            // Custom modal should NOT be visible
-            expect(screen.queryByText('Historical Work Warning')).toBeNull();
-            
+            expect(mockShowConfirm).not.toHaveBeenCalled();
             expect(updateEpicSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
                 target_end: '2026-03-15'
             }));
@@ -134,92 +158,59 @@ describe('EpicPage', () => {
 
         it('shows an alert and prevents update if start date is not before end date', async () => {
             renderEpicPage();
-            
             const startInput = screen.getByLabelText(/Target Start/i);
-            // Current end is 2026-02-25. Setting start to 2026-02-26 (after end).
             fireEvent.change(startInput, { target: { value: '2026-02-26' } });
-            
-            expect(screen.getByText('Invalid Dates')).toBeDefined();
-            expect(screen.getByText('The Start Date must be before the End Date.')).toBeDefined();
-            
+            expect(mockShowAlert).toHaveBeenCalledWith('Invalid Dates', 'The Start Date must be before the End Date.');
             expect(updateEpicSpy).not.toHaveBeenCalled();
         });
 
         it('shows an alert and prevents update if start date is equal to end date', async () => {
             renderEpicPage();
-            
             const startInput = screen.getByLabelText(/Target Start/i);
-            // Current end is 2026-02-25. Setting start to 2026-02-25.
             fireEvent.change(startInput, { target: { value: '2026-02-25' } });
-            
-            expect(screen.getByText('Invalid Dates')).toBeDefined();
-            
+            expect(mockShowAlert).toHaveBeenCalledWith('Invalid Dates', expect.any(String));
             expect(updateEpicSpy).not.toHaveBeenCalled();
         });
     });
 
     describe('Jira Sync', () => {
-        beforeEach(() => {
-            vi.useRealTimers();
-        });
-
         it('shows error alert when handleSync fails', async () => {
-            // Mock syncJiraIssue to return an error
             (api.syncJiraIssue as any).mockRejectedValueOnce(new Error('Jira API Error'));
-
             renderEpicPage();
-
-            // Click Sync button
             const syncButton = screen.getByText('Sync from Jira');
             await act(async () => {
                 fireEvent.click(syncButton);
             });
-
-            // Should show alert
             await waitFor(() => {
-                expect(screen.queryByText('Sync Failed')).not.toBeNull();
-                expect(screen.queryByText('Jira API Error')).not.toBeNull();
+                expect(mockShowAlert).toHaveBeenCalledWith('Sync Failed', 'Jira API Error');
             }, { timeout: 2000 });
         });
 
         it('shows error alert when handleSync throws exception', async () => {
-            // Mock syncJiraIssue to throw
             (api.syncJiraIssue as any).mockRejectedValueOnce(new Error('Network Failure'));
-
             renderEpicPage();
-
-            // Click Sync button
             const syncButton = screen.getByText('Sync from Jira');
             await act(async () => {
                 fireEvent.click(syncButton);
             });
-
-            // Should show alert
             await waitFor(() => {
-                expect(screen.queryByText('Sync Failed')).not.toBeNull();
-                expect(screen.queryByText('Network Failure')).not.toBeNull();
+                expect(mockShowAlert).toHaveBeenCalledWith('Sync Failed', 'Network Failure');
             }, { timeout: 2000 });
         });
 
         it('passes correct jira settings to syncJiraIssue', async () => {
-            // Mock successful sync
             (api.syncJiraIssue as any).mockResolvedValueOnce({ 
                 fields: { 
                     summary: 'Synced Epic',
-                    customfield_10005: 80 // 10 MDs
+                    customfield_10005: 80 
                 } 
             });
-
             renderEpicPage();
-
-            // Click Sync button
             const syncButton = screen.getByText('Sync from Jira');
             await act(async () => {
                 fireEvent.click(syncButton);
             });
-
             await waitFor(() => {
-                // Verify syncJiraIssue was called with the nested jira settings, not the root settings object
                 expect(api.syncJiraIssue).toHaveBeenCalledWith('J-1', mockData.settings.jira);
             });
         });
@@ -240,15 +231,13 @@ describe('EpicPage', () => {
                     { id: 's_future', name: 'Future', start_date: '2026-05-01', end_date: '2026-05-14' }
                 ]
             };
-
+            (useValueStreamContext as any).mockReturnValue({
+                showConfirm: mockShowConfirm,
+                showAlert: mockShowAlert,
+                data: extendedData,
+                updateEpic: updateEpicSpy
+            });
             renderEpicPage({ ...defaultProps, data: extendedData });
-
-            // Epic dates: 2026-01-05 to 2026-02-25
-            // Sprints: 
-            // s_past (2026-01-01 to 2026-01-14) - Overlaps
-            // s_curr (2026-02-15 to 2026-02-28) - Overlaps
-            // s_future (2026-05-01 to 2026-05-14) - Does NOT overlap
-
             expect(screen.getByText('Past')).toBeDefined();
             expect(screen.getByText('Active')).toBeDefined();
             expect(screen.queryByText('Future')).toBeNull();
@@ -256,10 +245,6 @@ describe('EpicPage', () => {
     });
 
     describe('Work Item Selection', () => {
-        beforeEach(() => {
-            vi.useRealTimers();
-        });
-
         const dataWithWorkItems: ValueStreamData = {
             ...mockData,
             workItems: [
@@ -275,49 +260,87 @@ describe('EpicPage', () => {
         };
 
         it('renders the current Work Item name', () => {
+            (useValueStreamContext as any).mockReturnValue({
+                showConfirm: mockShowConfirm,
+                showAlert: mockShowAlert,
+                data: dataWithWorkItems,
+                updateEpic: updateEpicSpy
+            });
             renderEpicPage({ ...defaultProps, data: dataWithWorkItems });
             const workItemInput = screen.getByPlaceholderText('Search for a work item...') as HTMLInputElement;
             expect(workItemInput.value).toBe('Work Item 1');
         });
 
         it('updates the Work Item when selecting from dropdown', async () => {
+            (useValueStreamContext as any).mockReturnValue({
+                showConfirm: mockShowConfirm,
+                showAlert: mockShowAlert,
+                data: dataWithWorkItems,
+                updateEpic: updateEpicSpy
+            });
             renderEpicPage({ ...defaultProps, data: dataWithWorkItems });
-            
             const workItemInput = screen.getByPlaceholderText('Search for a work item...');
-            
-            // Clear and Type to filter
             fireEvent.change(workItemInput, { target: { value: '' } });
             fireEvent.change(workItemInput, { target: { value: 'Work Item 2' } });
-            
-            // Wait for dropdown to filter and show option
             const option = await screen.findByText('Work Item 2');
             fireEvent.click(option);
-            
             expect(updateEpicSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
                 work_item_id: 'wi2'
             }));
         });
 
         it('updates to undefined when selecting Unassigned', async () => {
+            (useValueStreamContext as any).mockReturnValue({
+                showConfirm: mockShowConfirm,
+                showAlert: mockShowAlert,
+                data: dataWithWorkItems,
+                updateEpic: updateEpicSpy
+            });
             renderEpicPage({ ...defaultProps, data: dataWithWorkItems });
-            
             const workItemInput = screen.getByPlaceholderText('Search for a work item...');
-            
-            // Clear and Type to filter
             fireEvent.change(workItemInput, { target: { value: '' } });
             fireEvent.change(workItemInput, { target: { value: 'Unassigned' } });
-            
-            // Wait for dropdown to filter and show option
             const option = await screen.findByText('--- Unassigned ---');
             fireEvent.click(option);
-            
             expect(updateEpicSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
                 work_item_id: undefined
             }));
         });
     });
 
-    afterEach(() => {
-        vi.useRealTimers();
+    describe('Epic Management', () => {
+        it('deletes the epic after confirmation', async () => {
+            const deleteEpicSpy = vi.fn();
+            (useValueStreamContext as any).mockReturnValue({
+                showConfirm: mockShowConfirm,
+                showAlert: mockShowAlert,
+                data: mockData,
+                updateEpic: vi.fn()
+            });
+            renderEpicPage({ ...defaultProps, deleteEpic: deleteEpicSpy });
+            const deleteBtn = screen.getByText('Delete Epic');
+            fireEvent.click(deleteBtn);
+            expect(mockShowConfirm).toHaveBeenCalledWith('Delete Epic', expect.stringContaining('Epic 1'));
+            await waitFor(() => {
+                expect(deleteEpicSpy).toHaveBeenCalledWith('e1');
+                expect(mockNavigate).toHaveBeenCalledWith(-1);
+            });
+        });
+
+        it('adds and removes manual effort overrides', () => {
+            renderEpicPage();
+            const table = screen.getByRole('table');
+            const tableInputs = within(table).getAllByRole('spinbutton');
+            const pastInput = tableInputs[0]; 
+            fireEvent.change(pastInput, { target: { value: '8' } });
+            expect(updateEpicSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
+                sprint_effort_overrides: expect.objectContaining({ 's_past': 8 })
+            }));
+            const removeBtns = screen.getAllByTitle('Remove Override');
+            fireEvent.click(removeBtns[0]);
+            expect(updateEpicSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
+                sprint_effort_overrides: {} 
+            }));
+        });
     });
 });

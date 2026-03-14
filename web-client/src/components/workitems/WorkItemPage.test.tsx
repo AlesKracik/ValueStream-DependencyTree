@@ -1,10 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { WorkItemPage } from './WorkItemPage';
-import { ValueStreamProvider, NotificationProvider } from '../../contexts/ValueStreamContext';
+import { useValueStreamContext, NotificationProvider, ValueStreamProvider } from '../../contexts/ValueStreamContext';
 import type { ValueStreamData } from '../../types/models';
 import * as api from '../../utils/api';
 import { MemoryRouter } from 'react-router-dom';
+
+vi.mock('../../contexts/ValueStreamContext', async (importOriginal) => {
+    const actual = await importOriginal() as any;
+    return {
+        ...actual,
+        useValueStreamContext: vi.fn()
+    };
+});
 
 vi.mock('../../utils/api', async () => {
     const actual = await vi.importActual('../../utils/api');
@@ -71,6 +79,9 @@ describe('WorkItemPage', () => {
         updateEpic: vi.fn()
     };
 
+    const mockShowConfirm = vi.fn().mockResolvedValue(true);
+    const mockShowAlert = vi.fn().mockResolvedValue(undefined);
+
     const renderPage = (props = defaultProps, workItemId = 'f1') => {
         return render(
             <MemoryRouter>
@@ -85,6 +96,12 @@ describe('WorkItemPage', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            showAlert: mockShowAlert,
+            data: mockData,
+            updateEpic: vi.fn()
+        });
     });
 
     it('should show TCV history selection when targeting Existing TCV', () => {
@@ -137,6 +154,13 @@ describe('WorkItemPage', () => {
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
         };
 
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            showAlert: mockShowAlert,
+            data: dataWithUnassigned,
+            updateEpic: vi.fn()
+        });
+
         renderPage({ ...defaultProps, data: dataWithUnassigned });
 
         // Switch to Epics tab
@@ -179,6 +203,14 @@ describe('WorkItemPage', () => {
                 }
             ]
         };
+
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            showAlert: mockShowAlert,
+            data: dataWithGlobal,
+            updateEpic: vi.fn()
+        });
+
         renderPage({ ...defaultProps, data: dataWithGlobal });
 
         const globalCheckbox = screen.getByLabelText(/ALL CUSTOMERS \(Global\)/i);
@@ -202,6 +234,13 @@ describe('WorkItemPage', () => {
 
         const updateEpicSpy = vi.fn();
 
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            showAlert: mockShowAlert,
+            data: dataWithEpic,
+            updateEpic: updateEpicSpy
+        });
+
         renderPage({ ...defaultProps, data: dataWithEpic, updateEpic: updateEpicSpy });
 
         // Switch to Epics tab
@@ -214,8 +253,7 @@ describe('WorkItemPage', () => {
         // Change start to 2026-01-15 (after end 2026-01-14)
         fireEvent.change(startInput, { target: { value: '2026-01-15' } });
 
-        expect(screen.getByText('Invalid Dates')).toBeDefined();
-        expect(screen.getByText('The Start Date must be before the End Date.')).toBeDefined();
+        expect(mockShowAlert).toHaveBeenCalledWith('Invalid Dates', 'The Start Date must be before the End Date.');
         
         expect(updateEpicSpy).not.toHaveBeenCalled();
     });
@@ -228,6 +266,13 @@ describe('WorkItemPage', () => {
             ],
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
         };
+
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            showAlert: mockShowAlert,
+            data: dataWithDatelessEpic,
+            updateEpic: vi.fn()
+        });
 
         renderPage({ ...defaultProps, data: dataWithDatelessEpic });
 
@@ -248,6 +293,13 @@ describe('WorkItemPage', () => {
             ]
         };
 
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            showAlert: mockShowAlert,
+            data: dataWithDesc,
+            updateEpic: vi.fn()
+        });
+
         renderPage({ ...defaultProps, data: dataWithDesc });
 
         const textarea = screen.getByPlaceholderText(/Add a detailed description for this work item.../i) as HTMLTextAreaElement;
@@ -263,6 +315,13 @@ describe('WorkItemPage', () => {
             ...mockData,
             sprints: [{ id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY26 Q1' }]
         };
+
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            showAlert: mockShowAlert,
+            data: dataWithSprint,
+            updateEpic: vi.fn()
+        });
 
         renderPage({ ...defaultProps, data: dataWithSprint });
 
@@ -318,6 +377,13 @@ describe('WorkItemPage', () => {
         // Mock syncJiraIssue to return an error
         (api.syncJiraIssue as any).mockRejectedValueOnce(new Error('Jira API Error'));
 
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            showAlert: mockShowAlert,
+            data: dataWithEpic,
+            updateEpic: vi.fn()
+        });
+
         renderPage({ ...defaultProps, data: dataWithEpic });
 
         // Switch to Epics tab
@@ -326,12 +392,13 @@ describe('WorkItemPage', () => {
 
         // Click Sync button
         const syncButton = screen.getByText('Sync from Jira');
-        fireEvent.click(syncButton);
+        await act(async () => {
+            fireEvent.click(syncButton);
+        });
 
         // Should show alert
         await waitFor(() => {
-            expect(screen.getByText('Sync Failed')).toBeDefined();
-            expect(screen.getByText('Jira API Error')).toBeDefined();
+            expect(mockShowAlert).toHaveBeenCalledWith('Sync Failed', 'Jira API Error');
         });
     });
 
@@ -347,6 +414,13 @@ describe('WorkItemPage', () => {
         // Mock syncJiraIssue to throw
         (api.syncJiraIssue as any).mockRejectedValueOnce(new Error('Network Failure'));
 
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            showAlert: mockShowAlert,
+            data: dataWithEpic,
+            updateEpic: vi.fn()
+        });
+
         renderPage({ ...defaultProps, data: dataWithEpic });
 
         // Switch to Epics tab
@@ -355,12 +429,13 @@ describe('WorkItemPage', () => {
 
         // Click Sync button
         const syncButton = screen.getByText('Sync from Jira');
-        fireEvent.click(syncButton);
+        await act(async () => {
+            fireEvent.click(syncButton);
+        });
 
         // Should show alert
         await waitFor(() => {
-            expect(screen.getByText('Sync Failed')).toBeDefined();
-            expect(screen.getByText('Network Failure')).toBeDefined();
+            expect(mockShowAlert).toHaveBeenCalledWith('Sync Failed', 'Network Failure');
         });
     });
 
@@ -375,6 +450,13 @@ describe('WorkItemPage', () => {
 
         // Mock successful sync
         (api.syncJiraIssue as any).mockResolvedValueOnce({ fields: { summary: 'Synced Epic' } });
+
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            showAlert: mockShowAlert,
+            data: dataWithEpic,
+            updateEpic: vi.fn()
+        });
 
         renderPage({ ...defaultProps, data: dataWithEpic });
 
@@ -391,7 +473,130 @@ describe('WorkItemPage', () => {
             expect(api.syncJiraIssue).toHaveBeenCalledWith('E-1', mockData.settings.jira);
         });
     });
+
+    it('deletes the work item after confirmation', async () => {
+        renderPage();
+
+        const deleteBtn = screen.getByText('Delete Work Item');
+        fireEvent.click(deleteBtn);
+
+        expect(mockShowConfirm).toHaveBeenCalledWith('Delete Work Item', expect.any(String));
+        
+        await waitFor(() => {
+            expect(defaultProps.deleteWorkItem).toHaveBeenCalledWith('f1');
+            expect(defaultProps.onBack).toHaveBeenCalled();
+        });
+    });
+
+    it('adds a new epic to the work item', () => {
+        renderPage();
+
+        const epicsTab = screen.getByText(/Engineering Epics \(/i);
+        fireEvent.click(epicsTab);
+
+        const addBtn = screen.getByText('+ New Epic');
+        fireEvent.click(addBtn);
+
+        expect(defaultProps.addEpic).toHaveBeenCalledWith(expect.objectContaining({
+            work_item_id: 'f1',
+            jira_key: 'TBD'
+        }));
+    });
+
+    it('deletes an epic after confirmation', async () => {
+        const dataWithEpic: ValueStreamData = {
+            ...mockData,
+            epics: [
+                { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5, name: 'Epic to delete' }
+            ],
+            teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
+        };
+
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            showAlert: mockShowAlert,
+            data: dataWithEpic,
+            updateEpic: vi.fn()
+        });
+
+        renderPage({ ...defaultProps, data: dataWithEpic });
+
+        const epicsTab = screen.getByText(/Engineering Epics \(/i);
+        fireEvent.click(epicsTab);
+
+        const deleteBtn = screen.getByText('Delete');
+        fireEvent.click(deleteBtn);
+
+        expect(mockShowConfirm).toHaveBeenCalledWith('Delete Epic', expect.stringContaining('Epic to delete'));
+        
+        await waitFor(() => {
+            expect(defaultProps.deleteEpic).toHaveBeenCalledWith('e1');
+        });
+    });
+
+    it('updates epic fields: Team, Effort, and Dates', async () => {
+        const dataWithEpic: ValueStreamData = {
+            ...mockData,
+            epics: [
+                { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5, name: 'Test Epic' }
+            ],
+            teams: [
+                { id: 't1', name: 'Team 1', total_capacity_mds: 10 },
+                { id: 't2', name: 'Team 2', total_capacity_mds: 20 }
+            ]
+        };
+
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            showAlert: mockShowAlert,
+            data: dataWithEpic,
+            updateEpic: defaultProps.updateEpic
+        });
+
+        renderPage({ ...defaultProps, data: dataWithEpic });
+
+        const epicsTab = screen.getByText(/Engineering Epics \(/i);
+        fireEvent.click(epicsTab);
+
+        // Update Team
+        const teamSelect = screen.getByDisplayValue('Team 1');
+        fireEvent.change(teamSelect, { target: { value: 't2' } });
+        expect(defaultProps.updateEpic).toHaveBeenCalledWith('e1', { team_id: 't2' });
+
+        // Update Effort
+        const effortInput = screen.getByDisplayValue('5');
+        fireEvent.change(effortInput, { target: { value: '15' } });
+        expect(defaultProps.updateEpic).toHaveBeenCalledWith('e1', { effort_md: 15 });
+
+        // Update Start Date
+        // Find empty start date input
+        const emptyDateInputs = screen.getAllByDisplayValue('').filter(i => (i as HTMLInputElement).type === 'date');
+        fireEvent.change(emptyDateInputs[0], { target: { value: '2026-03-01' } });
+        
+        expect(defaultProps.updateEpic).toHaveBeenCalledWith('e1', { target_start: '2026-03-01' });
+    });
+
+    it('saves new work item with draft epics', () => {
+        renderPage(defaultProps, 'new');
+
+        fireEvent.change(screen.getByLabelText(/Name:/i), { target: { value: 'New Feature' } });
+
+        const epicsTab = screen.getByText(/Engineering Epics \(/i);
+        fireEvent.click(epicsTab);
+
+        fireEvent.click(screen.getByText('+ New Epic'));
+        
+        // Find the newly added epic row and fill it
+        fireEvent.change(screen.getByPlaceholderText('Key'), { target: { value: 'PROJ-999' } });
+        fireEvent.change(screen.getByPlaceholderText('Epic Name'), { target: { value: 'Draft Epic' } });
+
+        fireEvent.click(screen.getByText('Save Work Item'));
+
+        expect(defaultProps.addWorkItem).toHaveBeenCalledWith(expect.objectContaining({ name: 'New Feature' }));
+        expect(defaultProps.addEpic).toHaveBeenCalledWith(expect.objectContaining({
+            jira_key: 'PROJ-999',
+            name: 'Draft Epic',
+            work_item_id: expect.any(String) // the new work item ID
+        }));
+    });
 });
-
-
-

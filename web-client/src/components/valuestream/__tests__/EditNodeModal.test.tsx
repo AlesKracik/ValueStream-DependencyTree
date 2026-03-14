@@ -72,4 +72,88 @@ describe('EditNodeModal', () => {
             }
         });
     });
+
+    it('edits customerNode name and TCV', () => {
+        const dataWithCustomer: ValueStreamData = {
+            ...mockData,
+            customers: [{ id: 'c1', name: 'Cust 1', existing_tcv: 100, potential_tcv: 50 }]
+        };
+        const node: Node = { id: 'customer-c1', type: 'customerNode', position: { x: 0, y: 0 }, data: {} };
+
+        render(<EditNodeModal {...defaultProps} data={dataWithCustomer} node={node} />);
+
+        const nameInput = screen.getByLabelText(/Name:/i);
+        fireEvent.change(nameInput, { target: { value: 'Updated Cust' } });
+
+        const existingInput = screen.getByLabelText(/Actual Existing TCV/i);
+        fireEvent.change(existingInput, { target: { value: '200' } });
+
+        fireEvent.click(screen.getByText('Save'));
+
+        expect(onUpdateCustomer).toHaveBeenCalledWith('c1', expect.objectContaining({
+            name: 'Updated Cust',
+            existing_tcv: 200
+        }));
+    });
+
+    it('edits workItemNode and handles global target toggle', () => {
+        const dataWithWorkItem: ValueStreamData = {
+            ...mockData,
+            workItems: [{ id: 'w1', name: 'Work 1', total_effort_mds: 10, customer_targets: [] }]
+        };
+        const node: Node = { id: 'workitem-w1', type: 'workItemNode', position: { x: 0, y: 0 }, data: {} };
+
+        render(<EditNodeModal {...defaultProps} data={dataWithWorkItem} node={node} />);
+
+        // Toggle Global Target
+        const globalCheckbox = screen.getByLabelText(/Relates to ALL Customers/i);
+        fireEvent.click(globalCheckbox);
+
+        // Should show TCV Basis and Priority dropdowns
+        expect(screen.getByText(/Existing TCV/i)).toBeDefined();
+        expect(screen.getByDisplayValue(/Must-have/i)).toBeDefined();
+
+        fireEvent.click(screen.getByText('Save'));
+
+        expect(onUpdateWorkItem).toHaveBeenCalledWith('w1', expect.objectContaining({
+            all_customers_target: { tcv_type: 'existing', priority: 'Must-have' }
+        }));
+    });
+
+    it('handles customer target priority and history selection in workItemNode', () => {
+        const dataWithWorkItem: ValueStreamData = {
+            ...mockData,
+            customers: [
+                { 
+                    id: 'c1', name: 'Cust 1', existing_tcv: 100, potential_tcv: 0, 
+                    tcv_history: [{ id: 'h1', value: 80, valid_from: '2025-01-01' }] 
+                }
+            ],
+            workItems: [
+                { 
+                    id: 'w1', name: 'Work 1', total_effort_mds: 10, 
+                    customer_targets: [{ customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }] 
+                }
+            ]
+        };
+        const node: Node = { id: 'workitem-w1', type: 'workItemNode', position: { x: 0, y: 0 }, data: {} };
+
+        render(<EditNodeModal {...defaultProps} data={dataWithWorkItem} node={node} />);
+
+        // Priority change
+        const prioritySelect = screen.getByDisplayValue('Must-have');
+        fireEvent.change(prioritySelect, { target: { value: 'Nice-to-have' } });
+
+        // History change
+        const historySelect = screen.getByDisplayValue(/Latest Actual/i);
+        fireEvent.change(historySelect, { target: { value: 'h1' } });
+
+        fireEvent.click(screen.getByText('Save'));
+
+        expect(onUpdateWorkItem).toHaveBeenCalledWith('w1', expect.objectContaining({
+            customer_targets: [
+                expect.objectContaining({ customer_id: 'c1', priority: 'Nice-to-have', tcv_history_id: 'h1' })
+            ]
+        }));
+    });
 });
