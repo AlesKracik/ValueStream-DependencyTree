@@ -197,18 +197,73 @@ The platform's primary visualization, mapping value from source to delivery.
 
 ![ValueStream List](images/valuestream-list.png)
 
-Instead of one global view, you can create multiple **Value Stream Scopes**.
-*   **Custom Filters:** Save specific filters (e.g., "Mobile Team Path", "Top 10 Customers", "Q3 Roadmap").
-*   **Time Ranges:** Limit the scope to a specific start and end sprint.
+Instead of one global view, you can create multiple **Value Stream Scopes**. These are saved configurations that allow you to focus on specific segments of the organization or roadmap.
+
+*   **Custom Persistence:** Save specific filters to create focused dashboards (e.g., "Mobile Team Path", "Top 10 Customers", "Q3 Roadmap").
+*   **Time Ranges:** Limit the scope to a specific **Start** and **End Sprint** to visualize specific fiscal quarters or release cycles.
+*   **Structural Filters:** Pre-define filters for:
+    *   **Names:** Customer, Work Item, Team, or Epic search strings.
+    *   **Release Status:** Filter by "Released Only" or "Unreleased Only".
+    *   **Impact Thresholds:** Set minimum **TCV Impact** ($) or **RICE Score** to filter out noise and focus on high-value initiatives.
 
 #### The Live Graph Visualization
 
 ![ValueStream View](images/ValueStream.png)
 
-**Details:**
-*   **Dual-Layer Circles:** Customers show "Actual TCV" (Inner) and "Total Potential" (Outer Ring).
-*   **Dependency Tracing:** Hover any node to highlight its direct upstream/downstream paths.
-*   **Right-Click (Drill-down):** Isolate a node's specific dependency tree to focus on a single delivery path.
+The Live Graph is a multi-layered dependency tree that maps demand (Customers) to execution (Epics) over a temporal Gantt timeline.
+
+##### 1. Node Anatomy & Visual Cues
+
+*   **👤 Customers (Root Nodes):**
+    *   **Dual-Layer Circles:** The inner solid circle represents **Actual TCV** (Existing contracts), while the outer dashed ring represents **Potential TCV** (Growth/Pipeline).
+    *   **Size Scaling:** Node diameter is proportional to the customer's total revenue impact relative to the workspace maximum.
+    *   **Dynamic Highlighting:** Hovering a customer dims unrelated paths and can highlight specifically the "Actual" or "Potential" path depending on the connection type.
+
+*   **🚀 Work Items (Strategy Nodes):**
+    *   **RICE Score:** Centered in the node, representing the calculated ROI.
+    *   **Warning Indicators:**
+        *   🌐 **Global:** This item impacts all existing customers.
+        *   📦 **Released:** The item is already delivered in a past/active sprint.
+        *   🕒 **Missing Dates:** One or more linked Epics lack target start/end dates.
+        *   📏 **No Effort:** Effort is not yet estimated (0 MDs).
+
+*   **👥 Teams (Capacity Nodes):**
+    *   **Baseline Capacity:** Shows total team velocity.
+    *   **Size Scaling:** Nodes represent the team's total capacity relative to other teams.
+
+*   **📊 Gantt Bars (Execution Nodes/Epics):**
+    *   **Heat/Intensity Mapping:** Bars are segmented by sprint. A segment's brightness (White glow) or darkness (Black shade) indicates if the effort allocated to that sprint is higher or lower than the mathematical uniform baseline.
+    *   **Frozen History:** Segments in the past (before the active sprint) are marked with a diagonal stripe pattern and are automatically snapshotted to preserve historical accuracy.
+    *   **Status Colors:** Epics are Slate Blue (Past) or Purple (Future/Active).
+
+*   **📅 Sprint Capacity (Timeline Header):**
+    *   **Visual Health:** Sprint headers change color based on team utilization:
+        *   🔴 **Red:** Overallocated (>100% capacity).
+        *   🟢 **Green:** Allocated (0-100% capacity).
+        *   ⚪ **Grey:** Empty (0 MDs).
+    *   **Context Icons:** 🔒 (Manual override), 🏝️ (Public holidays impact included).
+
+##### 2. Interactive Controls & Navigation
+
+*   **Navigation & Viewport:**
+    *   **Timeline Shifting:** Use the `<` and `>` buttons in the header to slide the Gantt view across sprints.
+    *   **Reset View:** Instantly scrolls to the top of the graph and aligns the viewport with the **Active Sprint**.
+    *   **Left-Click:** Navigate to the detail page of any Customer, Work Item, Team, or Epic.
+
+*   **Drill-Down & Tracing:**
+    *   **Hover Tracing:** Hover any node to trace its upstream (demand) and downstream (execution) dependencies. All unrelated nodes are dimmed.
+    *   **Right-Click (Drill-Down):** Isolate a specific node. The graph filters to show *only* the dependency tree connected to that node. Right-click the background to reset the filter.
+
+*   **Direct Manipulation:**
+    *   **Drag-to-Resize:** Modify Epic timelines directly by dragging the left or right edges of a Gantt bar. 
+    *   **Timeline Constraints:** Shifting work into the past or changing historical dates will trigger a warning if existing effort data exists for those periods.
+
+##### 3. Strategic Indicators
+
+*   **Edge Thickness:** 
+    *   **Demand (Customer -> WorkItem):** Thickness represents the ROI of the connection (TCV / Work Item Effort).
+    *   **Execution (WorkItem -> Team):** Thickness represents the relative effort (Man-Days) required by that specific Epic.
+*   **Dependency Tracing:** Explicit Epic-to-Epic dependencies (Finish-to-Start or Finish-to-Finish) are shown as animated orange lines, highlighting critical paths and potential bottlenecks.
 
 ---
 
