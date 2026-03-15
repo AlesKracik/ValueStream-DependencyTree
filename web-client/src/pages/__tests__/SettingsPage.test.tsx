@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
-import { SettingsPage } from '../SettingsPage';
+import { SettingsPage, DEFAULT_SETTINGS } from '../SettingsPage';
 import type { ValueStreamData, Settings } from '../../types/models';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -331,7 +331,7 @@ describe('SettingsPage', () => {
         render(
             <MemoryRouter initialEntries={['/settings?tab=general']}>
                 <SettingsPage 
-                    settings={null as any} 
+                    settings={DEFAULT_SETTINGS} 
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
                     updateEpic={updateEpic}
@@ -344,6 +344,45 @@ describe('SettingsPage', () => {
         // Default value should be 1 (January)
         const select = screen.getByLabelText(/Fiscal Year Start Month:/i) as HTMLSelectElement;
         expect(select.value).toBe('1');
+    });
+
+    it('renders Jira tab without crashing when settings prop is an empty object', () => {
+        // This test specifically verifies the fix for "TypeError: Cannot read properties of undefined (reading 'base_url')"
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=jira&subtab=common']}>
+                <SettingsPage 
+                    settings={{} as any} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        expect(screen.getByLabelText(/Jira Base URL:/i)).toBeDefined();
+        const input = screen.getByLabelText(/Jira Base URL:/i) as HTMLInputElement;
+        // Should use value from localFormData (which is initialized from DEFAULT_SETTINGS)
+        expect(input.value).toBe('');
+    });
+
+    it('renders Persistence tab without crashing when settings are from DEFAULT_SETTINGS', () => {
+        // This test verifies the fix for "TypeError: Cannot read properties of undefined (reading 'mongo')"
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=persistence&subtab=mongo&subsubtab=application']}>
+                <SettingsPage 
+                    settings={DEFAULT_SETTINGS} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateEpic={updateEpic}
+                    addEpic={addEpic}
+                />
+            </MemoryRouter>
+        );
+
+        expect(screen.getByLabelText(/MongoDB URI:/i)).toBeDefined();
+        const input = screen.getByLabelText(/MongoDB URI:/i) as HTMLInputElement;
+        expect(input.value).toBe('');
     });
 
     it('switches between tabs', async () => {

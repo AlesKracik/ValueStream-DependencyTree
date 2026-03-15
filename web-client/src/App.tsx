@@ -17,7 +17,7 @@ import { ValueStreamEditPage } from './pages/ValueStreamEditPage';
 import { CustomerListPage } from './pages/CustomerListPage';
 import { WorkItemListPage } from './pages/WorkItemListPage';
 import { TeamListPage } from './pages/TeamListPage';
-import { SettingsPage } from './pages/SettingsPage';
+import { SettingsPage, DEFAULT_SETTINGS } from './pages/SettingsPage';
 import { DocumentationPage } from './pages/DocumentationPage';
 import { SupportPage } from './pages/SupportPage';
 import { LoginPage } from './pages/LoginPage';
@@ -96,18 +96,8 @@ function SprintPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueS
 function SettingsPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
   return (
     <SettingsPage 
-      settings={valueStreamState.data?.settings || { 
-        general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
-        persistence: { 
-          mongo: { 
-            app: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false },
-            customer: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false }
-          }
-        },
-        jira: { base_url: '', api_version: '3' },
-        ai: { provider: 'openai' }
-      }} 
-      onUpdateSettings={valueStreamState.updateSettings} 
+      settings={valueStreamState.data?.settings || DEFAULT_SETTINGS} 
+      onUpdateSettings={valueStreamState.data ? valueStreamState.updateSettings : () => {}} 
       data={valueStreamState.data} 
       loading={valueStreamState.loading}
       error={valueStreamState.error}
@@ -220,8 +210,3 @@ function App() {
 }
 
 export default App;
-
-
-
-
-

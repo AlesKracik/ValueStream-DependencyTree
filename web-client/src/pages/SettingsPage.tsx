@@ -19,7 +19,7 @@ interface SettingsPageProps {
   addEpic: (epic: Epic) => void;
 }
 
-const DEFAULT_SETTINGS: Settings = {
+export const DEFAULT_SETTINGS: Settings = {
   general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
   persistence: {
     mongo: {
@@ -58,7 +58,26 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
   const { showConfirm } = useValueStreamContext();
 
-  const [localFormData, setFormData] = useState<Settings>(settings || DEFAULT_SETTINGS);
+  // Define deepMerge outside of effects if we want to use it in initial state
+  const deepMerge = (target: Settings, source: Partial<Settings>): Settings => {
+    if (!source) return target;
+    const result = { ...target } as Record<string, any>;
+    const src = source as Record<string, any>;
+    
+    Object.keys(src).forEach(key => {
+      if (src[key] && typeof src[key] === 'object' && !Array.isArray(src[key])) {
+        result[key] = deepMerge(result[key] || {}, src[key]);
+      } else if (src[key] !== undefined) {
+        result[key] = src[key];
+      }
+    });
+    return result as Settings;
+  };
+
+  const [localFormData, setFormData] = useState<Settings>(() => {
+    // Merge provided settings with DEFAULT_SETTINGS to ensure all keys exist
+    return deepMerge(DEFAULT_SETTINGS, settings || {});
+  });
   const [isTesting, setIsTesting] = useState(false);
   const [availableDbs, setAvailableDbs] = useState<string[]>([]);
   const [mongoTestResult, setMongoTestResult] = useState<MongoTestResult | null>(null);
@@ -76,22 +95,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [ssoMessage, setSSOMessage] = useState<SSOMessage | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Deep merge helper to ensure we don't lose structure
-  const deepMerge = (target: Settings, source: Partial<Settings>): Settings => {
-    if (!source) return target;
-    const result = { ...target } as Record<string, any>;
-    const src = source as Record<string, any>;
-    
-    Object.keys(src).forEach(key => {
-      if (src[key] && typeof src[key] === 'object' && !Array.isArray(src[key])) {
-        result[key] = deepMerge(result[key] || {}, src[key]);
-      } else if (src[key] !== undefined) {
-        result[key] = src[key];
-      }
-    });
-    return result as Settings;
-  };
 
   const updateFormData = (path: string, value: unknown) => {
     setFormData(prev => {
@@ -989,7 +992,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         className="btn-primary"
                         onClick={() => handleTestConnection('app')}
                         style={{ alignSelf: "flex-start", marginTop: "4px" }}
-                        disabled={isTesting || (!localFormData.persistence.mongo.app.uri && !settings.persistence.mongo.app.uri)}
+                        disabled={isTesting || (!localFormData.persistence.mongo.app.uri && !settings?.persistence?.mongo?.app?.uri)}
                       >
                         {isTesting ? "Testing Mongo..." : "Test Mongo Connection"}
                       </button>
@@ -1023,7 +1026,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                           type="button"
                           className="btn-primary"
                           onClick={handleExportMongo}
-                          disabled={isTesting || (!localFormData.persistence.mongo.app.uri && !settings.persistence.mongo.app.uri)}
+                          disabled={isTesting || (!localFormData.persistence.mongo.app.uri && !settings?.persistence?.mongo?.app?.uri)}
                         >
                           {isTesting ? "Exporting..." : "Export to JSON"}
                         </button>
@@ -1031,7 +1034,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                           type="button"
                           className="btn-primary"
                           onClick={() => fileInputRef.current?.click()}
-                          disabled={isTesting || (!localFormData.persistence.mongo.app.uri && !settings.persistence.mongo.app.uri)}
+                          disabled={isTesting || (!localFormData.persistence.mongo.app.uri && !settings?.persistence?.mongo?.app?.uri)}
                         >
                           {isTesting ? "Importing..." : "Import from JSON"}
                         </button>
@@ -1428,7 +1431,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         className="btn-primary"
                         onClick={() => handleTestConnection('customer')}
                         style={{ alignSelf: "flex-start", marginTop: "4px" }}
-                        disabled={isTestingCustomer || (!localFormData.persistence.mongo.customer.uri && !settings.persistence.mongo.customer.uri)}
+                        disabled={isTestingCustomer || (!localFormData.persistence.mongo.customer.uri && !settings?.persistence?.mongo?.customer?.uri)}
                       >
                         {isTestingCustomer ? "Testing Customer Mongo..." : "Test Customer Mongo Connection"}
                       </button>
@@ -1553,7 +1556,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         type="button"
                         className="btn-primary"
                         onClick={handleJiraTestConnection}
-                        disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira.base_url && !settings.jira.base_url) && (!localFormData.jira.api_token && !settings.jira.api_token))}
+                        disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira.base_url && !settings?.jira?.base_url) && (!localFormData.jira.api_token && !settings?.jira?.api_token))}
                       >
                         {isTesting ? "Testing..." : "Test Connection"}
                       </button>
@@ -1594,7 +1597,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         className="btn-primary"
                         onClick={handleImportFromJira}
                         style={{ alignSelf: "flex-start" }}
-                        disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira.base_url && !settings.jira.base_url) && (!localFormData.jira.api_token && !settings.jira.api_token)) || !importJql.trim()}
+                        disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira.base_url && !settings?.jira?.base_url) && (!localFormData.jira.api_token && !settings?.jira?.api_token)) || !importJql.trim()}
                       >
                         {isImporting ? importProgress : "Import from Jira"}
                       </button>
@@ -1603,7 +1606,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         className="btn-primary"
                         onClick={handleSyncAllFromJira}
                         style={{ alignSelf: "flex-start" }}
-                        disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira.base_url && !settings.jira.base_url) && (!localFormData.jira.api_token && !settings.jira.api_token))}
+                        disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira.base_url && !settings?.jira?.base_url) && (!localFormData.jira.api_token && !settings?.jira?.api_token))}
                       >
                         {isSyncing ? syncProgress : "Sync Epics from Jira"}
                       </button>
