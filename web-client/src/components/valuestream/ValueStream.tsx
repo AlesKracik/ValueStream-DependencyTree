@@ -328,16 +328,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         minScoreFilter: viewState.minScoreFilter
     });
 
-    const prevViewStateRef = useRef(viewState);
-    if (
-        prevViewStateRef.current.customerFilter !== viewState.customerFilter ||
-        prevViewStateRef.current.workItemFilter !== viewState.workItemFilter ||
-        prevViewStateRef.current.teamFilter !== viewState.teamFilter ||
-        prevViewStateRef.current.epicFilter !== viewState.epicFilter ||
-        prevViewStateRef.current.minTcvFilter !== viewState.minTcvFilter ||
-        prevViewStateRef.current.minScoreFilter !== viewState.minScoreFilter
-    ) {
-        prevViewStateRef.current = viewState;
+    useEffect(() => {
         setLocalFilters({
             customerFilter: viewState.customerFilter,
             workItemFilter: viewState.workItemFilter,
@@ -346,7 +337,14 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
             minTcvFilter: viewState.minTcvFilter,
             minScoreFilter: viewState.minScoreFilter
         });
-    }
+    }, [
+        viewState.customerFilter,
+        viewState.workItemFilter,
+        viewState.teamFilter,
+        viewState.epicFilter,
+        viewState.minTcvFilter,
+        viewState.minScoreFilter
+    ]);
 
     // Debounce effect to update global viewState
     useEffect(() => {

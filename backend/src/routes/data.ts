@@ -85,12 +85,12 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
           const settings = getSettings();
           const startMonth = settings.general?.fiscal_year_start_month || 1;
           
-          let docs = await logQuery('Sprints', 'sprints', 'find', db.collection('sprints').find({ is_archived: { $ne: true } }).sort({ start_date: 1 }).toArray());
-          docs = docs.map(({ _id, ...rest }) => rest);
+          const rawSprints = await logQuery('Sprints', 'sprints', 'find', db.collection('sprints').find({ is_archived: { $ne: true } }).sort({ start_date: 1 }).toArray());
+          const sprintsWithoutId = rawSprints.map(({ _id, ...rest }) => rest);
           
-          docs = await assignMissingQuarters(docs, db, startMonth);
+          const docsWithQuarters = await assignMissingQuarters(sprintsWithoutId, db, startMonth);
           
-          return reply.send(docs);
+          return reply.send(docsWithQuarters);
       } catch (e: any) {
           return reply.code(500).send({ success: false, error: e.message });
       }
@@ -137,9 +137,9 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
           const ValueStreams = await logQuery('ValueStreams', 'valueStreams', 'find', db.collection('valueStreams').find({}).toArray());
           dbData.valueStreams = ValueStreams.map(({ _id, ...rest }) => rest);
           
-          let sprints = await logQuery('Sprints', 'sprints', 'find', db.collection('sprints').find({ is_archived: { $ne: true } }).sort({ start_date: 1 }).toArray());
-          sprints = sprints.map(({ _id, ...rest }) => rest);
-          dbData.sprints = await assignMissingQuarters(sprints, db, settings.general?.fiscal_year_start_month || 1);
+          const rawSprintsForWorkspace = await logQuery('Sprints', 'sprints', 'find', db.collection('sprints').find({ is_archived: { $ne: true } }).sort({ start_date: 1 }).toArray());
+          const sprintsWithoutIdForWorkspace = rawSprintsForWorkspace.map(({ _id, ...rest }) => rest);
+          dbData.sprints = await assignMissingQuarters(sprintsWithoutIdForWorkspace, db, settings.general?.fiscal_year_start_month || 1);
 
           const [customers, workItems, teams, epics] = await Promise.all([
             logQuery('Customers', 'customers', 'find', db.collection('customers').find({}).toArray()),
