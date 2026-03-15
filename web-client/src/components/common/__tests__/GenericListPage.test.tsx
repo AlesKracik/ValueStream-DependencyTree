@@ -12,15 +12,20 @@ const mockItems = [
 ];
 
 const sortOptions = [
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     { label: 'Name', key: 'name', getValue: (i: any) => i.name },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     { label: 'Value', key: 'value', getValue: (i: any) => i.value },
 ];
 
 const columns = [
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     { header: 'Name', render: (i: any) => i.name, sortKey: 'name' },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     { header: 'Value', render: (i: any) => i.value, sortKey: 'value' },
 ];
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const filterPredicate = (i: any, q: string) => i.name.toLowerCase().includes(q.toLowerCase());
 
 describe('GenericListPage State Persistence', () => {

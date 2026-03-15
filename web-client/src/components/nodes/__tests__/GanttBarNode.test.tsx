@@ -39,7 +39,8 @@ const mockData: ValueStreamData = {
             target_start: '2026-01-05',
             target_end: '2026-02-25'
         }
-    ]
+    ],
+    metrics: { maxScore: 100, maxRoi: 10 }
 };
 
 describe('GanttBarNode Auto-Freeze', () => {
@@ -67,7 +68,7 @@ describe('GanttBarNode Auto-Freeze', () => {
 
         render(
             <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy, addEpic: vi.fn(), deleteEpic: vi.fn() }}>
                     <GanttBarNode data={nodeData} />
                 </ValueStreamProvider>
             </NotificationProvider>
@@ -102,7 +103,7 @@ describe('GanttBarNode Auto-Freeze', () => {
 
         render(
             <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy, addEpic: vi.fn(), deleteEpic: vi.fn() }}>
                     <GanttBarNode data={nodeData} />
                 </ValueStreamProvider>
             </NotificationProvider>
@@ -113,6 +114,8 @@ describe('GanttBarNode Auto-Freeze', () => {
         });
 
         // Verify the calculation result isn't NaN or null
+         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const call = (updateEpicSpy as any).mock.calls.find((c: any) => c[0] === 'e1');
         expect(call).toBeDefined();
         const overrides = call![1].sprint_effort_overrides;

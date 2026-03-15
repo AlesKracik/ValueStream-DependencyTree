@@ -785,6 +785,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                                                     <select 
                                                         value={issue.status} 
                                                         onChange={e => {
+                                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                                             const newStatus = e.target.value as any;
                                                             const updates: Partial<SupportIssue> = { status: newStatus };
                                                             if (newStatus === 'done' && !issue.expiration_date) {

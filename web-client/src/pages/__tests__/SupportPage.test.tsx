@@ -62,7 +62,8 @@ const mockData: ValueStreamData = {
     workItems: [],
     teams: [],
     epics: [],
-    sprints: []
+    sprints: [],
+    metrics: { maxScore: 100, maxRoi: 10 }
 };
 
 describe('SupportPage', () => {
@@ -171,8 +172,11 @@ describe('SupportPage', () => {
                 {
                     ...mockData.customers[0],
                     support_issues: [
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         { id: 's1', description: 'Done Upper', status: 'DONE' as any },
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         { id: 's2', description: 'Todo Spaced', status: '  to do  ' as any },
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         { id: 's3', description: 'WIP Mixed', status: 'Work in Progress' as any }
                     ]
                 }

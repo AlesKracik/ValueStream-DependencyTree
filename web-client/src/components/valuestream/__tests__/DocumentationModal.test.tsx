@@ -19,6 +19,7 @@ describe('DocumentationModal', () => {
 
     it('renders markdown content on success', async () => {
         const mockMarkdown = '# User Guide\n\nThis is the guide.';
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (fetch as any).mockResolvedValue({
             ok: true,
             text: () => Promise.resolve(mockMarkdown)
@@ -33,6 +34,7 @@ describe('DocumentationModal', () => {
     });
 
     it('shows error message on failure', async () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (fetch as any).mockRejectedValue(new Error('Fetch failed'));
 
         render(<DocumentationModal onClose={onClose} />);

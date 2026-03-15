@@ -2,10 +2,11 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SprintPage } from '../SprintPage';
 import { ValueStreamProvider, NotificationProvider, useValueStreamContext } from '../../../contexts/ValueStreamContext';
-import type { ValueStreamData, Sprint } from '../../../types/models';
+import type { ValueStreamData } from '../../../types/models';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
 vi.mock('../../../contexts/ValueStreamContext', async (importOriginal) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const actual = await importOriginal() as any;
     return {
         ...actual,
@@ -32,7 +33,8 @@ const mockData: ValueStreamData = {
     sprints: [
         { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY2026 Q1' }
     ],
-    valueStreams: []
+    valueStreams: [],
+    metrics: { maxScore: 100, maxRoi: 10 }
 };
 
 describe('SprintPage', () => {
@@ -53,6 +55,7 @@ describe('SprintPage', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: mockData,
@@ -64,9 +67,9 @@ describe('SprintPage', () => {
         return render(
             <MemoryRouter initialEntries={[`/sprint/${id}`]}>
                 <NotificationProvider>
-                    <ValueStreamProvider value={{ data: props.data || mockData, updateEpic: vi.fn() }}>
+                    <ValueStreamProvider value={{ data: props.data || mockData, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
                         <Routes>
-                            <Route path="/sprint/:id" element={<SprintPage {...props} />} />
+                            <Route path="/sprint/:id" element={<SprintPage {...props} error={null} />} />
                         </Routes>
                     </ValueStreamProvider>
                 </NotificationProvider>
@@ -157,6 +160,7 @@ describe('SprintPage', () => {
             ]
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: pastData,
@@ -182,6 +186,7 @@ describe('SprintPage', () => {
             ]
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: pastData,
@@ -191,7 +196,7 @@ describe('SprintPage', () => {
         renderSprintPage({ ...defaultProps, data: pastData }, 's2');
 
         const s2Item = screen.getByDisplayValue('Sprint 2').closest('[class*="listItem"]')!;
-        expect(within(s2Item).queryByText('Archive')).toBeNull();
+        expect(within(s2Item as HTMLElement).queryByText('Archive')).toBeNull();
         
         vi.useRealTimers();
     });

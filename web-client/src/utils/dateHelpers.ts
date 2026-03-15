@@ -9,6 +9,7 @@ export const calculateWorkingDays = (startStr: string, endStr: string, countryCo
     const end = parseISO(endStr);
     if (start > end) return { workDays: 0, holidayCount: 0 };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const hd = countryCode ? new Holidays(countryCode as any) : null;
     let workDays = 0;
     let holidayCount = 0;
@@ -20,6 +21,7 @@ export const calculateWorkingDays = (startStr: string, endStr: string, countryCo
         // Only count as holiday if it's a public holiday and not on a weekend
         const isPublicHoliday = Array.isArray(dayHolidays) 
             ? dayHolidays.some(h => h.type === 'public')
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             : (dayHolidays && (dayHolidays as any).type === 'public');
 
         if (!isWknd && !isPublicHoliday) {

@@ -47,6 +47,7 @@ describe('useCustomerHealth', () => {
     });
 
     it('should fetch Jira issues with correct parameters and settings in body', async () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (api.authorizedFetch as any).mockResolvedValue({
             ok: true,
             json: async () => ({
@@ -90,6 +91,7 @@ describe('useCustomerHealth', () => {
     });
 
     it('should handle API errors gracefully', async () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (api.authorizedFetch as any).mockResolvedValue({
             ok: false,
             json: async () => ({ success: false, error: 'Jira API Error' })
@@ -108,11 +110,13 @@ describe('useCustomerHealth', () => {
         const customerWithSupport: Customer = {
             ...mockCustomer,
             support_issues: [
-                { id: 'i1', description: 'Problem', status: 'Active', related_jiras: ['MISSING-101', 'ALREADY-FOUND'] }
+                { id: 'i1', description: 'Problem', status: 'work in progress', related_jiras: ['MISSING-101', 'ALREADY-FOUND'] }
             ]
         };
 
-        (api.authorizedFetch as any).mockImplementation(async (url: string, options: any) => {
+         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (api.authorizedFetch as any).mockImplementation(async (_url: string, options: any) => {
             const body = JSON.parse(options.body);
             const jql = body.jql;
 
@@ -168,7 +172,9 @@ describe('useCustomerHealth', () => {
     });
 
     it('should prioritize health status correctly (New > In Progress > Blocked)', async () => {
-        (api.authorizedFetch as any).mockImplementation(async (url: string, options: any) => {
+         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (api.authorizedFetch as any).mockImplementation(async (_url: string, options: any) => {
             const body = JSON.parse(options.body);
             const jql = body.jql;
 

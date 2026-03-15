@@ -99,7 +99,7 @@ describe('EditNodeModal', () => {
     it('edits workItemNode and handles global target toggle', () => {
         const dataWithWorkItem: ValueStreamData = {
             ...mockData,
-            workItems: [{ id: 'w1', name: 'Work 1', total_effort_mds: 10, customer_targets: [] }]
+            workItems: [{ id: 'w1', name: 'Work 1', total_effort_mds: 10, score: 0, customer_targets: [] }]
         };
         const node: Node = { id: 'workitem-w1', type: 'workItemNode', position: { x: 0, y: 0 }, data: {} };
 
@@ -130,11 +130,10 @@ describe('EditNodeModal', () => {
                 }
             ],
             workItems: [
-                { 
-                    id: 'w1', name: 'Work 1', total_effort_mds: 10, 
-                    customer_targets: [{ customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }] 
-                }
-            ]
+                {
+                    id: 'w1', name: 'Work 1', total_effort_mds: 10, score: 0,
+                    customer_targets: [{ customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }]
+                }            ]
         };
         const node: Node = { id: 'workitem-w1', type: 'workItemNode', position: { x: 0, y: 0 }, data: {} };
 

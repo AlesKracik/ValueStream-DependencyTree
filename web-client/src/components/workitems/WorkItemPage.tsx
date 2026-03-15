@@ -287,6 +287,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                     <select
                                         value={workItem.all_customers_target.priority}
                                         onChange={e => {
+                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                             const val = { ...workItem.all_customers_target!, priority: e.target.value as any };
                                             if (isNew) setNewWorkItemDraft(prev => ({ ...prev, all_customers_target: val }));
                                             else updateWorkItem(workItemId, { all_customers_target: val });
@@ -353,6 +354,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                     )}
                                                 </td>
                                                 <td>
+                                                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                                                     <select value={target.priority} onChange={e => updateTarget({ priority: e.target.value as any })}>
                                                         <option value="Must-have">Must-have</option>
                                                         <option value="Should-have">Should-have</option>

@@ -94,7 +94,9 @@ describe('useGraphLayout Math Engine', () => {
         expect(f1Node).toBeDefined();
         expect(f2Node).toBeDefined();
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect((f1Node?.data as any).score).toBe(5);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect((f2Node?.data as any).score).toBe(50);
     });
 
@@ -103,6 +105,7 @@ describe('useGraphLayout Math Engine', () => {
         const { result: resultUnfiltered } = renderHook(() => useGraphLayout(MOCK_DATA));
         const unfilteredCapNode = resultUnfiltered.current.nodes.find(n => n.id === 'sprint-cap-t1-s1');
         // e1 (8 MD) + e2 (5 MD) = 13 MD used in s1 for Team t1
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect((unfilteredCapNode?.data as any).usedMds).toBe(13);
 
         // With filter that hides workitem f2 (and thus epic e2)
@@ -113,6 +116,7 @@ describe('useGraphLayout Math Engine', () => {
         
         const filteredCapNode = resultFiltered.current.nodes.find(n => n.id === 'sprint-cap-t1-s1');
         // Capacity usage should STILL be 13, not 8
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect((filteredCapNode?.data as any).usedMds).toBe(13);
     });
 
@@ -168,8 +172,11 @@ describe('useGraphLayout Math Engine', () => {
         const f2Node = result.current.nodes.find(n => n.id === 'workitem-f2');
         const f3Node = result.current.nodes.find(n => n.id === 'workitem-f3');
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect((f1Node?.data as any).hasUnestimatedEffort).toBe(false);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect((f2Node?.data as any).hasUnestimatedEffort).toBe(true);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect((f3Node?.data as any).hasUnestimatedEffort).toBe(true);
     });
 
@@ -189,7 +196,9 @@ describe('useGraphLayout Math Engine', () => {
         const { result } = renderHook(() => useGraphLayout(OVERRIDE_DATA));
         const capNode = result.current.nodes.find(n => n.id === 'sprint-cap-t1-s1');
         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect((capNode?.data as any).totalCapacityMds).toBe(7);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect((capNode?.data as any).isOverridden).toBe(true);
     });
 
@@ -214,7 +223,9 @@ describe('useGraphLayout Math Engine', () => {
         
         // Jan 1st 2026 is a Thursday (Public Holiday)
         // 1 holiday = 10% reduction of 10 MDs = 9 MDs remaining
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect((capNode?.data as any).holidayCount).toBe(1);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect((capNode?.data as any).totalCapacityMds).toBe(9);
     });
 

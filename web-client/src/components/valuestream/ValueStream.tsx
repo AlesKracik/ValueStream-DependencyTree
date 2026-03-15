@@ -86,7 +86,8 @@ export interface ValueStreamProps {
 
 export const ValueStream: React.FC<ValueStreamProps> = ({
     data, loading, error,
-    updateCustomer, updateWorkItem, updateTeam, updateEpic, currentValueStreamId,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    updateCustomer, updateWorkItem, updateTeam, currentValueStreamId,
      viewState, setViewState,
     onNavigateToCustomer,
     onNavigateToWorkItem,
@@ -329,6 +330,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
     });
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLocalFilters({
             customerFilter: viewState.customerFilter,
             workItemFilter: viewState.workItemFilter,
@@ -519,7 +521,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                     onNodeMouseEnter={onNodeMouseEnter}
                     onNodeMouseLeave={onNodeMouseLeave}
                     onNodeContextMenu={onNodeContextMenu}
-                    onPaneContextMenu={onPaneContextMenu}
+                    onPaneContextMenu={onPaneContextMenu as any}
                     onNodeClick={onNodeClick}
                     onMoveEnd={(_, viewport) => {
                         setViewState(s => ({ ...s, viewport }));

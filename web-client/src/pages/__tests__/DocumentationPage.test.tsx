@@ -10,6 +10,7 @@ describe('DocumentationPage', () => {
     });
 
     it('shows loading message initially', () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (fetch as any).mockResolvedValue({
             text: () => new Promise(() => {}) // never resolves
         });
@@ -20,6 +21,7 @@ describe('DocumentationPage', () => {
 
     it('renders markdown content on success', async () => {
         const mockMarkdown = '# User Guide\n\nThis is the documentation.';
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (fetch as any).mockResolvedValue({
             ok: true,
             text: () => Promise.resolve(mockMarkdown)
@@ -34,6 +36,7 @@ describe('DocumentationPage', () => {
     });
 
     it('shows error message on failure', async () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (fetch as any).mockRejectedValue(new Error('Fetch failed'));
 
         renderWithProviders(<DocumentationPage />);

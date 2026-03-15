@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, within } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/react';
 import { CustomerListPage } from '../CustomerListPage';
 import { renderWithProviders } from '../../test/testUtils';
 import type { ValueStreamData } from '../../types/models';
@@ -35,6 +35,7 @@ const mockData: ValueStreamData = {
     teams: [],
     epics: [],
     sprints: [],
+    metrics: { maxScore: 100, maxRoi: 10 },
     valueStreams: []
 };
 

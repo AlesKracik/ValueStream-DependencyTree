@@ -14,9 +14,11 @@ vi.stubGlobal('ResizeObserver', class {
 
 // Mock useReactFlow and ReactFlow
 vi.mock('@xyflow/react', async (importOriginal) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const original = await importOriginal() as any;
     return {
         ...original,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ReactFlow: vi.fn(({ nodes, children, onNodeContextMenu, onPaneContextMenu, onNodeClick, ...props }: any) => (
             <div 
                 data-testid="react-flow-pane" 
@@ -25,6 +27,7 @@ vi.mock('@xyflow/react', async (importOriginal) => {
             >
                 {children}
                 <div data-testid="nodes-layer">
+                    {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {nodes?.map((node: any) => (
                         <div 
                             key={node.id} 
@@ -46,7 +49,7 @@ vi.mock('@xyflow/react', async (importOriginal) => {
             setViewport: vi.fn(),
             getNodes: vi.fn(() => []),
             getEdges: vi.fn(() => []),
-        })),
+        } as any)),
     };
 });
 
@@ -67,7 +70,8 @@ const mockData: ValueStreamData = {
     workItems: [{ id: 'w1', name: 'Work Item 1', total_effort_mds: 10, score: 0, customer_targets: [] }],
     teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 100 }],
     epics: [{ id: 'e1', jira_key: 'E1', work_item_id: 'w1', team_id: 't1', effort_md: 5, target_start: '2026-01-01', target_end: '2026-01-14' }],
-    sprints: [{ id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY2026 Q1' }]
+    sprints: [{ id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY2026 Q1' }],
+    metrics: { maxScore: 100, maxRoi: 10 }
 };
 
 const mockViewState: ValueStreamViewState = {
@@ -114,7 +118,7 @@ describe('Value Stream', () => {
         const onNavigateToTeam = vi.fn();
         render(
             <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
                     <ReactFlowProvider>
                         <ValueStream 
                             {...defaultProps}
@@ -134,7 +138,7 @@ describe('Value Stream', () => {
     it('navigates to customer page when customer node is clicked', () => {
         render(
             <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
                     <ReactFlowProvider>
                         <ValueStream 
                             {...defaultProps}
@@ -153,7 +157,7 @@ describe('Value Stream', () => {
         const onNavigateToWorkItem = vi.fn();
         render(
             <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
                     <ReactFlowProvider>
                         <ValueStream 
                             {...defaultProps}
@@ -178,7 +182,7 @@ describe('Value Stream', () => {
         };
         render(
             <NotificationProvider>
-                <ValueStreamProvider value={{ data: ganttNodeData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: ganttNodeData as any, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
                     <ReactFlowProvider>
                         <ValueStream 
                             {...defaultProps}
@@ -201,12 +205,13 @@ describe('Value Stream', () => {
         const onNavigateToValueStreamEdit = vi.fn();
         const dataWithVS: ValueStreamData = {
             ...mockData,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             valueStreams: [{ id: 'vs1', name: 'My VS', description: '', parameters: {} as any }]
         };
 
         render(
             <NotificationProvider>
-                <ValueStreamProvider value={{ data: dataWithVS, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: dataWithVS, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
                     <ReactFlowProvider>
                         <ValueStream 
                             {...defaultProps}
@@ -234,11 +239,11 @@ describe('Value Stream', () => {
             setViewport: mockSetViewport,
             getNodes: vi.fn(() => []),
             getEdges: vi.fn(() => []),
-        });
+        } as unknown as any);
 
         render(
             <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
                     <ReactFlowProvider>
                         <ValueStream 
                             {...defaultProps}
@@ -265,11 +270,11 @@ describe('Value Stream', () => {
             setViewport: mockSetViewport,
             getNodes: vi.fn(() => []),
             getEdges: vi.fn(() => []),
-        });
+        } as unknown as any);
 
         render(
             <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
                     <ReactFlowProvider>
                         <ValueStream 
                             {...defaultProps}

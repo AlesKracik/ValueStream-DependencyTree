@@ -31,8 +31,11 @@ const mockData: ValueStreamData = {
     teams: [],
     epics: [],
     sprints: [],
+    metrics: { maxScore: 100, maxRoi: 10 },
     valueStreams: [
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         { id: 'v1', name: 'Alpha VS', description: 'Desc A', parameters: {} as any },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         { id: 'v2', name: 'Beta VS', description: 'Desc B', parameters: {} as any }
     ]
 };

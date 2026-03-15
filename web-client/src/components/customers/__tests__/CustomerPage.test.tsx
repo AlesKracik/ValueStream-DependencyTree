@@ -54,7 +54,8 @@ const mockData: ValueStreamData = {
     ],
     teams: [],
     epics: [],
-    sprints: []
+    sprints: [],
+    metrics: { maxScore: 100, maxRoi: 10 }
 };
 
 describe('CustomerPage', () => {
@@ -75,12 +76,14 @@ describe('CustomerPage', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             data: mockData,
             updateEpic: vi.fn(),
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert
         });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (api.authorizedFetch as any).mockResolvedValue({
             ok: true,
             json: async () => ({ success: true, data: { issues: [] } })
@@ -140,6 +143,8 @@ describe('CustomerPage', () => {
     });
 
     it('displays Jira issues in Support tab', async () => {
+         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (api.authorizedFetch as any).mockImplementation((_url: string, options: any) => {
             const body = JSON.parse(options.body || '{}');
             if (body.jql && body.jql.includes('status = New')) {
@@ -386,6 +391,8 @@ describe('CustomerPage', () => {
     });
 
     it('allows linking Jira issues to support issues', async () => {
+         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (api.authorizedFetch as any).mockImplementation((_url: string, options: any) => {
             const body = JSON.parse(options.body || '{}');
             if (body.jql && body.jql.includes('status = New')) {
@@ -519,6 +526,8 @@ describe('CustomerPage', () => {
     });
 
     it('displays all three health summary boxes in Support tab', async () => {
+         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (api.authorizedFetch as any).mockImplementation((_url: string, options: any) => {
             const body = JSON.parse(options.body || '{}');
             if (body.jql && body.jql.includes('status = New')) {
@@ -577,6 +586,8 @@ describe('CustomerPage', () => {
     });
 
     it('displays a status dot in the Support tab label when health status is not Healthy', async () => {
+         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (api.authorizedFetch as any).mockImplementation((_url: string, options: any) => {
             const body = JSON.parse(options.body || '{}');
             // Mock one 'New' issue to trigger 'New / Untriaged' status
@@ -801,9 +812,9 @@ describe('CustomerPage', () => {
     });
 
     it('automatically syncs fetched Jira issues to the database', async () => {
-        // healthData is mocked to return 1 issue in 'New' status by default in some tests, 
+        // healthData is mocked to return 1 issue in 'New' status by default in some tests,
         // but let's make it explicit here.
-        const mockNewIssue = { key: 'BUG-1', status: 'New', summary: 'Bug 1', priority: 'High', category: 'new', url: '' };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             data: mockData,
             showConfirm: mockShowConfirm,
@@ -817,7 +828,7 @@ describe('CustomerPage', () => {
                 success: true, 
                 data: { issues: [{ key: 'BUG-1', fields: { summary: 'Bug 1', status: { name: 'New' }, priority: { name: 'High' } } }] } 
             })
-        });
+        } as any);
 
         await act(async () => {
             render(

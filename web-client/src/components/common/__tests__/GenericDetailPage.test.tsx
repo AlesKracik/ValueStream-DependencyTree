@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { GenericDetailPage, type DetailTab } from '../GenericDetailPage';
 import { BrowserRouter } from 'react-router-dom';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 const mockTabs: DetailTab[] = [
     { id: 'tab1', label: 'Tab 1', content: <div data-testid="content-tab1">Content 1</div> },

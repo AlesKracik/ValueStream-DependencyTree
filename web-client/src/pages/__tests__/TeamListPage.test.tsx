@@ -35,7 +35,8 @@ const mockData: ValueStreamData = {
     ],
     epics: [],
     sprints: [],
-    valueStreams: []
+    valueStreams: [],
+    metrics: { maxScore: 100, maxRoi: 10 }
 };
 
 describe('TeamListPage', () => {

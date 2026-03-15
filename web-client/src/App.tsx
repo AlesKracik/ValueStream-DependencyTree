@@ -62,7 +62,7 @@ function ValueStreamRouteWrapper() {
 function CustomerPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  return <CustomerPage customerId={id!} onBack={() => navigate(-1)} addCustomer={valueStreamState.addCustomer} {...valueStreamState} />;
+  return <CustomerPage customerId={id!} onBack={() => navigate(-1)} {...valueStreamState} addCustomer={valueStreamState.addCustomer} />;
 }
 
 function WorkItemPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
@@ -72,15 +72,11 @@ function WorkItemPageRouteWrapper({ valueStreamState }: { valueStreamState: Valu
 }
 
 function EpicPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  return <EpicPage epicId={id!} onBack={() => navigate(-1)} deleteEpic={valueStreamState.deleteEpic} {...valueStreamState} />;
+  return <EpicPage data={valueStreamState.data} loading={valueStreamState.loading} updateEpic={valueStreamState.updateEpic} deleteEpic={valueStreamState.deleteEpic} />;
 }
 
 function TeamPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  return <TeamPage teamId={id!} onBack={() => navigate(-1)} deleteTeam={valueStreamState.deleteTeam} {...valueStreamState} />;
+  return <TeamPage data={valueStreamState.data} loading={valueStreamState.loading} updateTeam={valueStreamState.updateTeam} addTeam={valueStreamState.addTeam as any} deleteTeam={valueStreamState.deleteTeam} />;
 }
 
 function ValueStreamEditPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {

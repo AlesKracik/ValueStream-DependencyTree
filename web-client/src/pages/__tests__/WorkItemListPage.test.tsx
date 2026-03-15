@@ -41,7 +41,8 @@ const mockData: ValueStreamData = {
         { id: 's2', name: 'Sprint 2', start_date: '2024-01-15', end_date: '2024-01-28' },
         { id: 's3', name: 'Sprint 3', start_date: '2024-01-29', end_date: '2024-02-11' }
     ],
-    valueStreams: []
+    valueStreams: [],
+    metrics: { maxScore: 100, maxRoi: 10 }
 };
 
 describe('WorkItemListPage', () => {

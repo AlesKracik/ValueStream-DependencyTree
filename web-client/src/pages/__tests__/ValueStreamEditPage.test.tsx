@@ -6,6 +6,7 @@ import type { ValueStreamData } from '../../types/models';
 import { MemoryRouter } from 'react-router-dom';
 
 vi.mock('../../contexts/ValueStreamContext', async (importOriginal) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const actual = await importOriginal() as any;
     return {
         ...actual,
@@ -33,7 +34,9 @@ const mockData: ValueStreamData = {
         { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' },
         { id: 's2', name: 'Sprint 2', start_date: '2026-01-15', end_date: '2026-01-28' }
     ],
+    metrics: { maxScore: 100, maxRoi: 10 },
     valueStreams: [
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         { id: 'd1', name: 'Existing Value Stream', description: 'Desc', parameters: { customerFilter: 'c1' } as any }
     ]
 };
@@ -58,6 +61,7 @@ describe('ValueStreamEditPage', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: mockData,

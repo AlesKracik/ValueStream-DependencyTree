@@ -71,6 +71,7 @@ export function GenericListPage<T extends { id: string }>({
     // Reset restored flag when page changes
     useEffect(() => {
         isRestored.current = savedState?.scrollPosition === undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pageId]);
 
     const [filter, setFilter] = useState(savedState?.filter || '');

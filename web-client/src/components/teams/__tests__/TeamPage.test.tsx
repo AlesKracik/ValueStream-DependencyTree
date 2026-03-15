@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { TeamPage } from '../TeamPage';
 import { ValueStreamProvider, NotificationProvider, useValueStreamContext } from '../../../contexts/ValueStreamContext';
 import type { ValueStreamData } from '../../../types/models';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
 vi.mock('../../../contexts/ValueStreamContext', async (importOriginal) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const actual = await importOriginal() as any;
     return {
         ...actual,
@@ -35,7 +36,8 @@ const mockData: ValueStreamData = {
         { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' },
         { id: 's2', name: 'Sprint 2', start_date: '2026-01-15', end_date: '2026-01-28' }
     ],
-    valueStreams: []
+    valueStreams: [],
+    metrics: { maxScore: 100, maxRoi: 10 }
 };
 
 describe('TeamPage', () => {
@@ -54,6 +56,7 @@ describe('TeamPage', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: mockData,
@@ -65,7 +68,7 @@ describe('TeamPage', () => {
         return render(
             <MemoryRouter initialEntries={[`/team/${id}`]}>
                 <NotificationProvider>
-                    <ValueStreamProvider value={{ data: props.data || mockData, updateEpic: vi.fn() }}>
+                    <ValueStreamProvider value={{ data: props.data || mockData, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
                         <Routes>
                             <Route path="/team/:id" element={<TeamPage {...props} />} />
                         </Routes>
@@ -103,6 +106,7 @@ describe('TeamPage', () => {
             teams: [teamWithCZ]
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWithCZ,
@@ -140,6 +144,7 @@ describe('TeamPage', () => {
             teams: [teamWithOverride]
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWithOverride,
@@ -202,6 +207,7 @@ describe('TeamPage', () => {
         };
 
         cleanup();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWithCZ,
@@ -223,6 +229,7 @@ describe('TeamPage', () => {
             teams: [teamWith20]
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWith20,

@@ -112,6 +112,7 @@ describe('useValueStreamData Persistence', () => {
     });
 
     it('returns a promise that resolves after persistence when using immediate flag', async () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let resolveFetch: (value: any) => void;
         const fetchPromise = new Promise((resolve) => {
             resolveFetch = resolve;

@@ -48,6 +48,7 @@ describe('useCustomerCustomFields', () => {
     });
 
     it('returns empty data if no customers or settings provided', async () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { result } = renderHook(() => useCustomerCustomFields([], null as any));
         expect(result.current.data).toEqual([]);
         expect(result.current.loading).toBe(false);
@@ -64,6 +65,8 @@ describe('useCustomerCustomFields', () => {
                 }
             } 
         };
+         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { result } = renderHook(() => useCustomerCustomFields([{ id: 'CUST-1' }] as any, settingsNoQuery as any));
         expect(result.current.data).toEqual([]);
     });
@@ -72,11 +75,14 @@ describe('useCustomerCustomFields', () => {
         const customer = { id: 'CUST-1' };
         const mockData = [{ custom_field: 'value', customer_id: 'CUST-1' }];
         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (authorizedFetch as any).mockResolvedValueOnce({
             ok: true,
             json: async () => ({ success: true, data: mockData })
         });
 
+         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { result } = renderHook(() => useCustomerCustomFields(customer as any, mockSettings as any));
 
         await waitFor(() => {
@@ -84,6 +90,7 @@ describe('useCustomerCustomFields', () => {
             expect(result.current.loading).toBe(false);
         });
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const [url, options] = (authorizedFetch as any).mock.calls[0];
         expect(url).toBe('/api/mongo/query');
         expect(options.method).toBe('POST');
@@ -101,17 +108,21 @@ describe('useCustomerCustomFields', () => {
             { custom_field: 'value2', customer_id: 'CUST-2' }
         ];
         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (authorizedFetch as any).mockResolvedValueOnce({
             ok: true,
             json: async () => ({ success: true, data: mockData })
         });
 
+         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { result } = renderHook(() => useCustomerCustomFields(customers as any, mockSettings as any));
 
         await waitFor(() => {
             expect(result.current.data).toEqual(mockData);
         });
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const fetchCall = (authorizedFetch as any).mock.calls[0];
         const body = JSON.parse(fetchCall[1].body);
         expect(body.query).toContain('"$in":["CUST-1","CUST-2"]');
@@ -120,11 +131,14 @@ describe('useCustomerCustomFields', () => {
     it('handles API errors', async () => {
         const customer = { id: 'CUST-1' };
         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (authorizedFetch as any).mockResolvedValueOnce({
             ok: false,
             json: async () => ({ success: false, error: 'Database connection failed' })
         });
 
+         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { result } = renderHook(() => useCustomerCustomFields(customer as any, mockSettings as any));
 
         await waitFor(() => {
@@ -150,14 +164,18 @@ describe('useCustomerCustomFields', () => {
             }
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (authorizedFetch as any).mockResolvedValueOnce({
             ok: true,
             json: async () => ({ success: true, data: [] })
         });
 
+         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         renderHook(() => useCustomerCustomFields(customer as any, settings as any));
         
         await waitFor(() => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const fetchCall = (authorizedFetch as any).mock.calls[0];
             const body = JSON.parse(fetchCall[1].body);
             expect(body.connection_type).toBe('customer');

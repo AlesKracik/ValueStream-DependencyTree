@@ -7,6 +7,7 @@ import * as api from '../../utils/api';
 import { MemoryRouter } from 'react-router-dom';
 
 vi.mock('../../contexts/ValueStreamContext', async (importOriginal) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const actual = await importOriginal() as any;
     return {
         ...actual,
@@ -63,6 +64,7 @@ const mockData: ValueStreamData = {
     epics: [],
     teams: [],
     sprints: [],
+    metrics: { maxScore: 100, maxRoi: 10 }
 };
 
 describe('WorkItemPage', () => {
@@ -86,7 +88,7 @@ describe('WorkItemPage', () => {
         return render(
             <MemoryRouter>
                 <NotificationProvider>
-                    <ValueStreamProvider value={{ data: props.data || mockData, updateEpic: vi.fn() }}>
+                    <ValueStreamProvider value={{ data: props.data || mockData, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
                         <WorkItemPage {...props} workItemId={workItemId} />
                     </ValueStreamProvider>
                 </NotificationProvider>
@@ -96,6 +98,7 @@ describe('WorkItemPage', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
@@ -154,6 +157,7 @@ describe('WorkItemPage', () => {
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
@@ -204,6 +208,7 @@ describe('WorkItemPage', () => {
             ]
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
@@ -234,6 +239,7 @@ describe('WorkItemPage', () => {
 
         const updateEpicSpy = vi.fn();
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
@@ -267,6 +273,7 @@ describe('WorkItemPage', () => {
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
@@ -293,6 +300,7 @@ describe('WorkItemPage', () => {
             ]
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
@@ -316,6 +324,7 @@ describe('WorkItemPage', () => {
             sprints: [{ id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY26 Q1' }]
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
@@ -375,8 +384,10 @@ describe('WorkItemPage', () => {
         };
 
         // Mock syncJiraIssue to return an error
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (api.syncJiraIssue as any).mockRejectedValueOnce(new Error('Jira API Error'));
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
@@ -412,8 +423,10 @@ describe('WorkItemPage', () => {
         };
 
         // Mock syncJiraIssue to throw
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (api.syncJiraIssue as any).mockRejectedValueOnce(new Error('Network Failure'));
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
@@ -449,8 +462,10 @@ describe('WorkItemPage', () => {
         };
 
         // Mock successful sync
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (api.syncJiraIssue as any).mockResolvedValueOnce({ fields: { summary: 'Synced Epic' } });
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
@@ -512,6 +527,7 @@ describe('WorkItemPage', () => {
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
@@ -546,6 +562,7 @@ describe('WorkItemPage', () => {
             ]
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,

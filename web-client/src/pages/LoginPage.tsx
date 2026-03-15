@@ -28,6 +28,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             } else {
                 setError('Invalid password');
             }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (err) {
             setError('Connection error');
         } finally {

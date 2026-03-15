@@ -54,7 +54,8 @@ const mockData: ValueStreamData = {
     workItems: [],
     teams: [],
     epics: [],
-    sprints: []
+    sprints: [],
+    metrics: { maxScore: 100, maxRoi: 10 }
 };
 
 describe('SettingsPage', () => {
@@ -351,6 +352,7 @@ describe('SettingsPage', () => {
         render(
             <MemoryRouter initialEntries={['/settings?tab=jira&subtab=common']}>
                 <SettingsPage 
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     settings={{} as any} 
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}

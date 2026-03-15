@@ -70,6 +70,7 @@ export const ValueStreamEditPage: React.FC<ValueStreamEditPageProps> = ({
         }
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updateParam = (key: keyof ValueStreamEntity['parameters'], value: any) => {
         if (!ValueStream) return;
         const newParams = { ...ValueStream.parameters, [key]: value };

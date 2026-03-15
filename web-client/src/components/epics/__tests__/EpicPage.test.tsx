@@ -2,7 +2,7 @@ import { render, screen, fireEvent, act, waitFor, within } from '@testing-librar
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EpicPage } from '../EpicPage';
 import { ValueStreamProvider, NotificationProvider, useValueStreamContext } from '../../../contexts/ValueStreamContext';
-import type { ValueStreamData, Epic } from '../../../types/models';
+import type { ValueStreamData } from '../../../types/models';
 import * as api from '../../../utils/api';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
@@ -17,6 +17,7 @@ vi.mock('react-router-dom', async () => {
 });
 
 vi.mock('../../../contexts/ValueStreamContext', async (importOriginal) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const actual = await importOriginal() as any;
     return {
         ...actual,
@@ -64,7 +65,8 @@ const mockData: ValueStreamData = {
             target_end: '2026-02-25',
             sprint_effort_overrides: { 's_past': 5 }
         }
-    ]
+    ],
+    metrics: { maxScore: 100, maxRoi: 10 }
 };
 
 describe('EpicPage', () => {
@@ -83,7 +85,7 @@ describe('EpicPage', () => {
         return render(
             <MemoryRouter initialEntries={[`/epic/${epicId}`]}>
                 <NotificationProvider>
-                    <ValueStreamProvider value={{ data: props.data || mockData, updateEpic: updateEpicSpy }}>
+                    <ValueStreamProvider value={{ data: props.data || mockData, updateEpic: updateEpicSpy, addEpic: vi.fn(), deleteEpic: vi.fn() }}>
                         <Routes>
                             <Route path="/epic/:id" element={<EpicPage {...props} />} />
                         </Routes>
@@ -95,6 +97,7 @@ describe('EpicPage', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
@@ -175,6 +178,7 @@ describe('EpicPage', () => {
 
     describe('Jira Sync', () => {
         it('shows error alert when handleSync fails', async () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (api.syncJiraIssue as any).mockRejectedValueOnce(new Error('Jira API Error'));
             renderEpicPage();
             const syncButton = screen.getByText('Sync from Jira');
@@ -187,6 +191,7 @@ describe('EpicPage', () => {
         });
 
         it('shows error alert when handleSync throws exception', async () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (api.syncJiraIssue as any).mockRejectedValueOnce(new Error('Network Failure'));
             renderEpicPage();
             const syncButton = screen.getByText('Sync from Jira');
@@ -199,6 +204,7 @@ describe('EpicPage', () => {
         });
 
         it('passes correct jira settings to syncJiraIssue', async () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (api.syncJiraIssue as any).mockResolvedValueOnce({ 
                 fields: { 
                     summary: 'Synced Epic',
@@ -231,6 +237,7 @@ describe('EpicPage', () => {
                     { id: 's_future', name: 'Future', start_date: '2026-05-01', end_date: '2026-05-14' }
                 ]
             };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (useValueStreamContext as any).mockReturnValue({
                 showConfirm: mockShowConfirm,
                 showAlert: mockShowAlert,
@@ -260,6 +267,7 @@ describe('EpicPage', () => {
         };
 
         it('renders the current Work Item name', () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (useValueStreamContext as any).mockReturnValue({
                 showConfirm: mockShowConfirm,
                 showAlert: mockShowAlert,
@@ -272,6 +280,7 @@ describe('EpicPage', () => {
         });
 
         it('updates the Work Item when selecting from dropdown', async () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (useValueStreamContext as any).mockReturnValue({
                 showConfirm: mockShowConfirm,
                 showAlert: mockShowAlert,
@@ -290,6 +299,7 @@ describe('EpicPage', () => {
         });
 
         it('updates to undefined when selecting Unassigned', async () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (useValueStreamContext as any).mockReturnValue({
                 showConfirm: mockShowConfirm,
                 showAlert: mockShowAlert,
@@ -311,6 +321,7 @@ describe('EpicPage', () => {
     describe('Epic Management', () => {
         it('deletes the epic after confirmation', async () => {
             const deleteEpicSpy = vi.fn();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (useValueStreamContext as any).mockReturnValue({
                 showConfirm: mockShowConfirm,
                 showAlert: mockShowAlert,

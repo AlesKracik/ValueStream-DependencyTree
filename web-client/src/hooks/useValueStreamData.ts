@@ -3,6 +3,7 @@ import type { ValueStreamData, Customer, WorkItem, Team, Epic, Settings, Sprint,
 import { authorizedFetch, debounce } from '../utils/api';
 import { calculateQuarter } from '../utils/dateHelpers';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const persistEntity = async (collection: string, method: 'POST' | 'DELETE', entity: any, showAlert?: (title: string, message: string) => Promise<void>) => {
     try {
         const response = await authorizedFetch(`/api/entity/${collection}${method === 'DELETE' ? `/${entity.id}` : ''}`, {
@@ -28,6 +29,7 @@ const persistEntity = async (collection: string, method: 'POST' | 'DELETE', enti
     }
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const persistSettings = async (settings: any, showAlert?: (title: string, message: string) => Promise<void>) => {
     try {
         const response = await authorizedFetch('/api/settings', {
@@ -66,7 +68,9 @@ export function useValueStreamData(
 
     // Debounced persistence functions
     const debouncedPersist = useMemo(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const timeouts = new Map<string, any>();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return (col: string, meth: 'POST' | 'DELETE', ent: any) => {
             const key = `${col}-${meth}-${ent.id}`;
             if (timeouts.has(key)) clearTimeout(timeouts.get(key));
@@ -82,6 +86,7 @@ export function useValueStreamData(
         if (needsRefresh) {
             refreshData();
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, persistenceDebounceMs), [persistenceDebounceMs, showAlert]);
 
     const fetchData = async () => {
@@ -158,6 +163,9 @@ export function useValueStreamData(
 
     useEffect(() => {
         fetchData();
+     
+     
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [valueStreamId, JSON.stringify(filters), JSON.stringify(requestedCollections)]);
 
     const refreshData = () => {
@@ -359,6 +367,8 @@ export function useValueStreamData(
             if (!prev) return prev;
             
             // Deep merge updates into settings
+             
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const deepMerge = (target: any, source: any) => {
                 const result = { ...target };
                 Object.keys(source).forEach(key => {

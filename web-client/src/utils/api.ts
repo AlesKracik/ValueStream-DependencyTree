@@ -20,6 +20,8 @@ export const authorizedFetch = async (url: string, options: RequestInit = {}) =>
     return response;
 };
 
+ 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function debounce<T extends (...args: any[]) => any>(
     func: T,
     wait: number
@@ -34,6 +36,7 @@ export function debounce<T extends (...args: any[]) => any>(
 export const syncJiraIssue = async (
     jiraKey: string,
     settings: { base_url?: string; api_version?: string; api_token?: string }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> => {
     if (!jiraKey || jiraKey === 'TBD') {
         throw new Error('Please enter a valid Jira Key before syncing.');

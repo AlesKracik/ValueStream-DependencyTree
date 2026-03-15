@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { Node } from '@xyflow/react';
 import type { ValueStreamData, Customer, WorkItem, Team } from '../../types/models';
 import { SearchableDropdown } from '../common/SearchableDropdown';
@@ -11,7 +11,6 @@ interface EditNodeModalProps {
     onUpdateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
     onUpdateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
     onUpdateTeam: (id: string, updates: Partial<Team>, immediate?: boolean) => Promise<void>;
-    onUpdateEpic: (id: string, updates: Partial<any>, immediate?: boolean) => Promise<void>;
 }
 
 export const EditNodeModal: React.FC<EditNodeModalProps> = ({
@@ -20,8 +19,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
     data,
     onUpdateCustomer,
     onUpdateWorkItem,
-    onUpdateTeam,
-    onUpdateEpic
+    onUpdateTeam
 }) => {
     // Extract domain ID from node ID (e.g., 'customer-c1' -> 'c1', 'gantt-a1' -> 'a1')
     const extractId = (nodeId: string) => {
@@ -84,6 +82,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
         return {};
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [formData, setFormData] = useState<Record<string, any>>(() => getInitialFormData());
     const [prevNodeId, setPrevNodeId] = useState(node.id);
 

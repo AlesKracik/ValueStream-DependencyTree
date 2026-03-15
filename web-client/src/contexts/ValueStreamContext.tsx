@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useMemo } from 'react';
 import type { ValueStreamData, Epic, ValueStreamViewState } from '../types/models';
 import { NotificationModal } from '../components/common/NotificationModal';

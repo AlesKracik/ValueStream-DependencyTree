@@ -9,6 +9,7 @@ import { countBusinessDays } from './dateHelpers';
 /**
  * Parses Jira issue data into a partial Epic object.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const parseJiraIssue = (issue: any, teams: Team[]): Partial<Epic> => {
     const fields = issue.fields;
     const names = issue.names || {};

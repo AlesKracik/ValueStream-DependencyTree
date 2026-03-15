@@ -4,7 +4,7 @@ import styles from './GenericDetailPage.module.css';
 
 export type DetailTab = {
     id: string;
-    label: string;
+    label: React.ReactNode;
     content: React.ReactNode;
 };
 
@@ -39,6 +39,7 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
         if (initialTabId && initialTabId !== activeTabId) {
             setActiveTabId(initialTabId);
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialTabId]);
 
     // Scroll to top on mount

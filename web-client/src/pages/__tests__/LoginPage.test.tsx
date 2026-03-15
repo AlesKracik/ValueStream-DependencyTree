@@ -17,6 +17,7 @@ describe('LoginPage', () => {
     });
 
     it('submits form with password and calls onLogin on success', async () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (fetch as any).mockResolvedValue({
             ok: true,
             json: () => Promise.resolve({ success: true })
@@ -44,6 +45,7 @@ describe('LoginPage', () => {
     });
 
     it('shows error message on invalid password', async () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (fetch as any).mockResolvedValue({
             ok: false,
             status: 401
@@ -64,6 +66,7 @@ describe('LoginPage', () => {
     });
 
     it('shows connection error on fetch failure', async () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (fetch as any).mockRejectedValue(new Error('Network error'));
 
         renderWithProviders(<LoginPage onLogin={mockOnLogin} />);
