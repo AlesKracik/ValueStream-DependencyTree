@@ -7,6 +7,8 @@ services:
       - "80:80"
     depends_on:
       - backend
+    environment:
+      - PORT=${PORT:-3000}
     networks:
       - app-network
 
@@ -15,7 +17,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "${PORT:-3000}:${PORT:-3000}"
     depends_on:
       - mongodb
     environment:
