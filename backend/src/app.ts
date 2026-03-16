@@ -16,6 +16,7 @@ import { dataRoutes } from './routes/data';
 import { entityRoutes } from './routes/entity';
 import { mongoRoutes } from './routes/mongo';
 import { jiraRoutes } from './routes/jira';
+import { ahaRoutes } from './routes/aha';
 import { llmRoutes } from './routes/llm';
 import { awsRoutes } from './routes/aws';
 
@@ -48,6 +49,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(entityRoutes);
   await app.register(mongoRoutes);
   await app.register(jiraRoutes);
+  await app.register(ahaRoutes);
   await app.register(llmRoutes);
   await app.register(awsRoutes);
 

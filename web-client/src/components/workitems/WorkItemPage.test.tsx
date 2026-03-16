@@ -20,7 +20,8 @@ vi.mock('../../utils/api', async () => {
     return {
         ...actual,
         authorizedFetch: vi.fn(),
-        syncJiraIssue: vi.fn()
+        syncJiraIssue: vi.fn(),
+        syncAhaFeature: vi.fn()
     };
 });
 
@@ -34,6 +35,7 @@ const mockData: ValueStreamData = {
           }
         },
         jira: { base_url: 'https://jira.example.com', api_version: '3', api_token: 'token' },
+        aha: { subdomain: 'test-subdomain', api_key: 'test-key' },
         ai: { provider: 'openai' }
     },
     customers: [
@@ -591,6 +593,56 @@ describe('WorkItemPage', () => {
         fireEvent.change(emptyDateInputs[0], { target: { value: '2026-03-01' } });
         
         expect(defaultProps.updateEpic).toHaveBeenCalledWith('e1', { target_start: '2026-03-01' });
+    });
+
+    it('syncs data from Aha! and updates work item fields', async () => {
+        const mockFeature = {
+            id: 'aha-123',
+            reference_num: 'PROD-1',
+            name: 'Aha Feature Name',
+            description: { body: '<p>Aha Description</p>' },
+            url: 'https://test.aha.io/features/PROD-1',
+            original_estimate: 480, // 1 MD
+            requirements: [
+                { reference_num: 'PROD-1-R1', name: 'Requirement 1' }
+            ],
+            custom_fields: [
+                { name: 'Product Value', value: 'High Value' }
+            ]
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (api.syncAhaFeature as any).mockResolvedValueOnce(mockFeature);
+
+        renderPage(defaultProps, 'new');
+
+        // Switch to Aha tab
+        const ahaTab = screen.getByText(/Aha! Integration/i);
+        fireEvent.click(ahaTab);
+
+        // Enter reference number
+        const refInput = screen.getByPlaceholderText('PROD-123');
+        fireEvent.change(refInput, { target: { value: 'PROD-1' } });
+
+        // Click Sync button - it should be enabled now because it's a new item and internal state updated
+        const syncButton = screen.getByText('Sync from Aha!');
+        expect((syncButton as HTMLButtonElement).disabled).toBe(false);
+        
+        await act(async () => {
+            fireEvent.click(syncButton);
+        });
+
+        await waitFor(() => {
+            expect(api.syncAhaFeature).toHaveBeenCalledWith('PROD-1', expect.any(Object));
+            // For 'new' item, it updates local draft state, so we check if the inputs now have the synced values
+            expect((screen.getByLabelText(/Name:/i) as HTMLInputElement).value).toBe('Aha Feature Name');
+            expect((screen.getByPlaceholderText(/Add a detailed description/i) as HTMLTextAreaElement).value).toBe('Aha Description');
+            expect((screen.getByLabelText(/Baseline Effort/i) as HTMLInputElement).value).toBe('1');
+            
+            // Check for new Aha fields in the tab
+            expect(screen.getByText('High Value')).toBeDefined();
+            expect(screen.getByText('PROD-1-R1: Requirement 1')).toBeDefined();
+        });
     });
 
     it('saves new work item with draft epics', () => {

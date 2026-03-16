@@ -90,9 +90,17 @@ function SprintPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueS
 }
 
 function SettingsPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
+  const mergedSettings = {
+    ...DEFAULT_SETTINGS,
+    ...(valueStreamState.data?.settings || {}),
+    aha: {
+      ...DEFAULT_SETTINGS.aha,
+      ...(valueStreamState.data?.settings?.aha || {})
+    }
+  };
   return (
     <SettingsPage 
-      settings={valueStreamState.data?.settings || DEFAULT_SETTINGS} 
+      settings={mergedSettings} 
       onUpdateSettings={valueStreamState.data ? valueStreamState.updateSettings : () => {}} 
       data={valueStreamState.data} 
       loading={valueStreamState.loading}

@@ -62,3 +62,32 @@ export const syncJiraIssue = async (
 
     return resData.data;
 };
+
+export const syncAhaFeature = async (
+    referenceNum: string,
+    ahaSettings: { subdomain?: string; api_key?: string }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any> => {
+    if (!referenceNum) {
+        throw new Error('Please enter a valid Aha! Reference Number before syncing.');
+    }
+
+    const response = await authorizedFetch("/api/aha/feature", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            reference_num: referenceNum,
+            aha: {
+                subdomain: ahaSettings.subdomain,
+                api_key: ahaSettings.api_key,
+            }
+        }),
+    });
+
+    const resData = await response.json().catch(() => ({}));
+    if (!response.ok || !resData.success) {
+        throw new Error(resData?.error || "Failed to fetch Aha! data");
+    }
+
+    return resData.feature;
+};

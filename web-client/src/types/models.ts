@@ -57,6 +57,13 @@ export interface WorkItem {
     priority?: 'Must-have' | 'Should-have' | 'Nice-to-have';
     tcv_history_id?: string; // Reference to a historical Existing TCV value
   }[];
+  aha_reference?: {
+    id: string;
+    reference_num: string;
+    url: string;
+  } | null;
+  aha_requirements?: string;
+  aha_product_value?: string;
 }
 
 export interface Team {
@@ -111,6 +118,11 @@ export interface JiraSettings {
   customer_jql_noop?: string;
 }
 
+export interface AhaSettings {
+  subdomain: string;
+  api_key?: string;
+}
+
 export interface MongoAuthSettings {
   method: 'scram' | 'aws' | 'oidc';
   aws_auth_type?: 'static' | 'role';
@@ -155,6 +167,7 @@ export interface Settings {
   general: GeneralSettings;
   persistence: PersistenceSettings;
   jira: JiraSettings;
+  aha: AhaSettings;
   ai: AISettings;
 }
 

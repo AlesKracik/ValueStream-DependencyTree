@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { ValueStreamData, WorkItem, Epic } from '../../types/models';
-import { syncJiraIssue } from "../../utils/api";
+import { syncJiraIssue, syncAhaFeature } from "../../utils/api";
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import { generateId } from '../../utils/security';
@@ -45,8 +45,59 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     const [newWorkItemCustomers, setNewWorkItemCustomers] = useState<{ customerId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have', tcv_history_id?: string }[]>([]);
     const [newWorkItemEpics, setNewWorkItemEpics] = useState<Epic[]>([]);
     const [syncingId, setSyncingId] = useState<string | null>(null);
+    const [isSyncingAha, setIsSyncingAha] = useState(false);
 
     const workItem = isNew ? newWorkItemDraft as WorkItem : data?.workItems.find(f => f.id === workItemId);
+
+    const stripHtml = (html: string) => {
+        const tmp = document.createElement("DIV");
+        tmp.innerHTML = html;
+        return tmp.textContent || tmp.innerText || "";
+    };
+
+    const handleSyncAha = async () => {
+        if (!workItem?.aha_reference?.reference_num) {
+            await showAlert('Aha! Sync', 'Please provide an Aha! Reference Number first.');
+            return;
+        }
+
+        setIsSyncingAha(true);
+        try {
+            const feature = await syncAhaFeature(workItem.aha_reference.reference_num, data?.settings?.aha || {});
+            
+            const updates: Partial<WorkItem> = {
+                name: feature.name,
+                description: feature.description?.body ? stripHtml(feature.description.body) : workItem.description,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                aha_requirements: feature.requirements?.map((r: any) => `${r.reference_num}: ${r.name}`).join('\n') || '',
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                aha_product_value: feature.custom_fields?.find((f: any) => f.name === 'Product Value')?.value || '',
+                aha_reference: {
+                    ...workItem.aha_reference,
+                    id: feature.id,
+                    url: feature.url
+                }
+            };
+
+            // Convert original_estimate (minutes) to MDs (1 MD = 480 minutes)
+            if (feature.original_estimate) {
+                updates.total_effort_mds = Math.round(feature.original_estimate / 480);
+            }
+
+            if (isNew) {
+                setNewWorkItemDraft(prev => ({ ...prev, ...updates }));
+            } else {
+                updateWorkItem(workItemId, updates);
+            }
+            await showAlert('Aha! Sync', `Successfully synced data from ${feature.reference_num}.`);
+        } catch (err: unknown) {
+            console.error('Aha! Sync failed', err);
+            const msg = err instanceof Error ? err.message : 'An unexpected error occurred during Aha! sync.';
+            await showAlert('Aha! Sync Failed', msg);
+        } finally {
+            setIsSyncingAha(false);
+        }
+    };
 
     const targetedCustomers = (isNew && data)
         ? newWorkItemCustomers.map(nfc => data.customers.find(c => c.id === nfc.customerId)!).filter(Boolean)
@@ -586,6 +637,79 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
             )
         }
     ];
+
+    if (data?.settings?.aha?.subdomain) {
+        tabs.push({
+            id: 'aha',
+            label: 'Aha! Integration',
+            content: (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '32rem' }}>
+                    <div style={{ padding: '16px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-secondary)' }}>
+                        <h3 style={{ margin: '0 0 12px 0', fontSize: '15px' }}>Link to Aha! Feature</h3>
+                        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                            Enter the Aha! Reference Number (e.g., <code>PROD-123</code>) to link this work item and sync its details.
+                        </p>
+                        
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                            <input
+                                type="text"
+                                placeholder="PROD-123"
+                                value={workItem?.aha_reference?.reference_num || ''}
+                                onChange={e => {
+                                    const val = { 
+                                        id: workItem?.aha_reference?.id || '',
+                                        url: workItem?.aha_reference?.url || '',
+                                        reference_num: e.target.value 
+                                    };
+                                    if (isNew) setNewWorkItemDraft(prev => ({ ...prev, aha_reference: val }));
+                                    else updateWorkItem(workItemId, { aha_reference: val });
+                                }}
+                                style={{ flex: 1 }}
+                            />
+                            {workItem?.aha_reference?.url && (
+                                <a 
+                                    href={workItem.aha_reference.url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer" 
+                                    className="btn-secondary"
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 12px', textDecoration: 'none' }}
+                                >
+                                    Open ↗
+                                </a>
+                            )}
+                        </div>
+
+                        <button 
+                            className="btn-primary" 
+                            onClick={handleSyncAha} 
+                            disabled={isSyncingAha || !workItem?.aha_reference?.reference_num}
+                            style={{ width: '100%' }}
+                        >
+                            {isSyncingAha ? 'Syncing...' : 'Sync from Aha!'}
+                        </button>
+                    </div>
+
+                    {workItem?.aha_product_value && (
+                        <div style={{ padding: '16px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-secondary)' }}>
+                            <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', color: 'var(--text-secondary)' }}>Product Value</h3>
+                            <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--accent-text)' }}>
+                                {workItem.aha_product_value}
+                            </div>
+                        </div>
+                    )}
+
+                    {workItem?.aha_requirements && (
+                        <div style={{ padding: '16px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-secondary)' }}>
+                            <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', color: 'var(--text-secondary)' }}>Aha! Requirements</h3>
+                            <div style={{ fontSize: '13px', whiteSpace: 'pre-wrap', color: 'var(--text-primary)', maxHeight: '200px', overflowY: 'auto' }}>
+                                {workItem.aha_requirements}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )
+        });
+    }
 
     return (
         <GenericDetailPage
