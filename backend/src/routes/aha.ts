@@ -63,7 +63,7 @@ export const ahaRoutes: FastifyPluginAsync = async (fastify) => {
         throw new Error(`Aha! error ${ahaRes.status}: ${ahaRes.statusText}`);
       }
       
-      const data = await ahaRes.json();
+      const data = await ahaRes.json() as any;
       return reply.send({ success: true, feature: data.feature });
     } catch (e: any) {
       return reply.code(500).send({ success: false, error: e.message });
