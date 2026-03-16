@@ -21,12 +21,17 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
     const isNew = id === 'new';
 
     const existingTeam = data?.teams.find(t => t.id === id);
+
     const [newTeamDraft, setNewTeamDraft] = useState<Partial<Team>>({
         name: '',
         total_capacity_mds: 10,
         country: 'Default',
         sprint_capacity_overrides: {}
     });
+
+    if (!isNew && !existingTeam && !loading) {
+        return <GenericDetailPage entityTitle="Team Not Found" onBack={() => navigate('/teams')} mainDetails={<div>Team not found.</div>} loading={loading} data={data} />;
+    }
 
     const team = isNew ? newTeamDraft : (existingTeam || {});
 

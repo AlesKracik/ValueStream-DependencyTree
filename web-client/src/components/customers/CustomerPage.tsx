@@ -172,6 +172,10 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         }
     }, [focusedIssueId]);
 
+    if (!customer && !loading) {
+        return <GenericDetailPage entityTitle="Customer Not Found" onBack={onBack} mainDetails={<div>Customer not found.</div>} loading={loading} data={data} />;
+    }
+
     const targetedWorkItems = (isNew && data)
         ? newCustomerWorkItems.map(ncf => data.workItems.find(f => f.id === ncf.workItemId)!).filter(Boolean)
         : data?.workItems.filter(f => f.customer_targets.some(ct => ct.customer_id === customerId)) || [];

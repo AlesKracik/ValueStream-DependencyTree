@@ -30,7 +30,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
         end: epic?.target_end || ''
     });
 
-    if (!epic) {
+    if (!epic && !loading) {
         return (
             <GenericDetailPage
                 entityTitle="Epic Not Found"
