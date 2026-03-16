@@ -63,12 +63,10 @@ export interface WorkItem {
     url: string;
   } | null;
   aha_requirements?: string;
-  aha_product_value?: string;
   aha_synced_data?: {
     name?: string;
     description?: string;
     total_effort_mds?: number;
-    product_value?: string;
     score?: number;
     requirements?: {
       id: string;

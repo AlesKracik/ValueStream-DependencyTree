@@ -68,8 +68,6 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
             const syncedData: NonNullable<WorkItem['aha_synced_data']> = {
                 name: feature.name,
                 description: feature.description?.body ? stripHtml(feature.description.body) : '',
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                product_value: feature.custom_fields?.find((f: any) => f.name === 'Product Value')?.value || '',
                 score: feature.score,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 requirements: feature.requirements?.map((r: any) => ({
@@ -114,19 +112,21 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     const applyAhaData = async () => {
         if (!workItem?.aha_synced_data) return;
         
-        const confirmed = await showConfirm('Apply Aha! Data', 'This will overwrite the current name, description, and baseline effort with the values from Aha!. Are you sure?');
+        const confirmed = await showConfirm('Apply Aha! Data', 'This will overwrite the current name, description, baseline effort, and score with the values from Aha!. Are you sure?');
         if (!confirmed) return;
 
         const updates: Partial<WorkItem> = {};
         if (workItem.aha_synced_data.name) updates.name = workItem.aha_synced_data.name;
         if (workItem.aha_synced_data.description) updates.description = workItem.aha_synced_data.description;
         if (workItem.aha_synced_data.total_effort_mds !== undefined) updates.total_effort_mds = workItem.aha_synced_data.total_effort_mds;
+        if (workItem.aha_synced_data.score !== undefined) updates.score = workItem.aha_synced_data.score;
 
         if (isNew) {
             setNewWorkItemDraft(prev => ({ ...prev, ...updates }));
         } else {
             updateWorkItem(workItemId, updates);
         }
+        await showAlert('Aha! Data Applied', 'The work item has been updated with data from Aha!.');
     };
 
     const targetedCustomers = (isNew && data)
@@ -175,7 +175,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     name: newWorkItemDraft.name || 'New Work Item',
                     description: newWorkItemDraft.description || '',
                     total_effort_mds: newWorkItemDraft.total_effort_mds || 0,
-                    score: 0,
+                    score: newWorkItemDraft.score || 0,
                     customer_targets: newWorkItemCustomers.map(c => ({
                         customer_id: c.customerId,
                         tcv_type: c.tcv_type,
@@ -726,7 +726,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                 <div style={{ padding: '16px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-secondary)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                                         <h3 style={{ margin: 0, fontSize: '15px' }}>Synced Information</h3>
-                                        <button className="btn-secondary" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={applyAhaData}>
+                                        <button className="btn-primary" style={{ fontSize: '12px', padding: '6px 12px' }} onClick={applyAhaData}>
                                             Apply to Work Item
                                         </button>
                                     </div>
@@ -750,26 +750,9 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Score</div>
                                                 <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--accent-text)' }}>{workItem.aha_synced_data.score ?? '-'}</div>
                                             </div>
-                                            <div>
-                                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Product Value</div>
-                                                <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--accent-text)' }}>{workItem.aha_synced_data.product_value || '-'}</div>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
-
-                                {(workItem.aha_product_value || workItem.aha_requirements) && !workItem.aha_synced_data && (
-                                    <div style={{ padding: '16px', backgroundColor: 'rgba(245, 158, 11, 0.05)', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-                                        <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', color: 'rgb(245, 158, 11)' }}>Legacy Synced Data</h3>
-                                        <p style={{ fontSize: '12px', marginBottom: '12px' }}>This work item has data from an older sync version. Re-sync to see detailed information.</p>
-                                        {workItem.aha_product_value && (
-                                            <div style={{ marginBottom: '8px' }}>
-                                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Product Value:</div>
-                                                <div>{workItem.aha_product_value}</div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

@@ -640,7 +640,6 @@ describe('WorkItemPage', () => {
             // Synced data should be visible in the Aha tab
             // Use getAllByText if needed, but here they should be unique enough or we can use specific roles
             expect(screen.getByText('Aha Feature Name')).toBeDefined();
-            expect(screen.getByText('High Value')).toBeDefined();
             expect(screen.getByText('75')).toBeDefined();
             expect(screen.getByText('PROD-1-R1')).toBeDefined();
             expect(screen.getByText('Requirement 1')).toBeDefined();
@@ -662,6 +661,15 @@ describe('WorkItemPage', () => {
             expect((screen.getByPlaceholderText(/Add a detailed description/i) as HTMLTextAreaElement).value).toBe('Aha Description');
             expect((screen.getByLabelText(/Baseline Effort/i) as HTMLInputElement).value).toBe('1');
         });
+
+        // Save and verify score is persisted
+        const saveBtn = screen.getByText('Save Work Item');
+        fireEvent.click(saveBtn);
+
+        expect(defaultProps.addWorkItem).toHaveBeenCalledWith(expect.objectContaining({
+            name: 'Aha Feature Name',
+            score: 75
+        }));
     });
 
     it('saves new work item with draft epics', () => {
