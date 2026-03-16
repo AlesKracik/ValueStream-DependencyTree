@@ -20,7 +20,7 @@ spec:
         image: valuestream-backend:latest
         imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 3000
+        - containerPort: 4000
         env:
         - name: NODE_ENV
           value: "production"
@@ -39,7 +39,7 @@ metadata:
   name: backend
 spec:
   ports:
-  - port: 3000
-    targetPort: 3000
+  - port: 4000
+    targetPort: 4000
   selector:
     app: backend

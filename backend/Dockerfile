@@ -20,7 +20,7 @@ COPY . .
 RUN npm run build
 
 # Expose the Fastify port
-EXPOSE 3000
+EXPOSE 4000
 
 # Start the Fastify server
 CMD ["npm", "start"]

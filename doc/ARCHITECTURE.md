@@ -174,7 +174,7 @@ Ideal for individual developers or small teams running everything on a single ma
 - **How-to:**
   1. Install dependencies at the root: `npm install`
   2. Start both the Fastify backend and Vite frontend concurrently: `npm run dev`
-  3. The frontend will be available at `http://localhost:5173`, proxying `/api` to the backend at `http://localhost:3000`.
+  3. The frontend will be available at `http://localhost:5173`, proxying `/api` to the backend at `http://localhost:4000`.
 
 ### 2. Docker (Containerized Environments)
 Recommended for consistent environments.

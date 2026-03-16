@@ -34,7 +34,7 @@ Defined in: `web-client/src/types/models.ts`
 - **Core Logic**: `backend/src/utils/mongoServer.ts` (Connections) and `backend/src/utils/businessLogic.ts` (RICE scoring, metrics).
 
 ### Available APIs
-The backend is a standalone Fastify server running on port 3000. All endpoints require authorization via `ADMIN_SECRET` handled by a Fastify hook (`backend/src/plugins/auth.ts`). The Vite dev server proxies `/api` calls to this backend.
+The backend is a standalone Fastify server running on port 4000. All endpoints require authorization via `ADMIN_SECRET` handled by a Fastify hook (`backend/src/plugins/auth.ts`). The Vite dev server proxies `/api` calls to this backend.
 
 #### Core Data & Services
 The backend encapsulates complex business logic (RICE scoring, fiscal quarter mapping) within a dedicated `backend/src/services/` layer, separating it from the data fetching routes.

@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/api': {
           // Allow override for Docker/K8s environments
-          target: process.env.VITE_PROXY_TARGET || 'http://localhost:3000',
+          target: process.env.VITE_PROXY_TARGET || 'http://localhost:4000',
           changeOrigin: true,
           secure: false,
         }

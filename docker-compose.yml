@@ -10,7 +10,7 @@ services:
     environment:
       - NODE_ENV=development
       # Tell Vite proxy to forward /api requests to the backend container
-      - VITE_PROXY_TARGET=http://backend:${PORT:-3000}
+      - VITE_PROXY_TARGET=http://backend:${PORT:-4000}
     networks:
       - app-network
 
@@ -19,7 +19,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "${PORT:-3000}:${PORT:-3000}"
+      - "${PORT:-4000}:${PORT:-4000}"
     depends_on:
       - mongodb
     environment:

@@ -10,7 +10,7 @@ This guide provides a comprehensive overview of the ValueStream platform, organi
 Depending on your deployment environment, you can run the application in a few different ways:
 
 - **Local Development (Node.js):**
-  From the project root directory, run `npm run dev`. This will start both the Fastify backend API (port 3000) and the Vite frontend (port 5173). Access the app at `http://localhost:5173`.
+  From the project root directory, run `npm run dev`. This will start both the Fastify backend API (port 4000) and the Vite frontend (port 5173). Access the app at `http://localhost:5173`.
 - **Docker Compose (Development):**
   Run `docker-compose up --build`. Access the app at `http://localhost:5173`.
 - **Docker Compose (Production):**
