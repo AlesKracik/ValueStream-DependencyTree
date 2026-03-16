@@ -68,6 +68,38 @@ describe('Entity Routes', () => {
     );
   });
 
+  it('should upsert an allowed entity without ID in URL (ID in body)', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/entity/workItems',
+      payload: { id: 'wi-2', name: 'Test Work Item' }
+    });
+
+    expect(response.statusCode).toBe(200);
+    const json = JSON.parse(response.payload);
+    expect(json.success).toBe(true);
+    
+    expect(mockDb.collection).toHaveBeenCalledWith('workItems');
+    expect(mockCollection.replaceOne).toHaveBeenCalledWith(
+      { id: 'wi-2' },
+      { id: 'wi-2', name: 'Test Work Item' },
+      { upsert: true }
+    );
+  });
+
+  it('should reject upsert if ID is missing from body when not in URL', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/entity/workItems',
+      payload: { name: 'Test Work Item without ID' }
+    });
+
+    expect(response.statusCode).toBe(400);
+    const json = JSON.parse(response.payload);
+    expect(json.success).toBe(false);
+    expect(json.error).toBe('Entity ID is required in body');
+  });
+
   it('should reject an forbidden collection', async () => {
     const response = await app.inject({
       method: 'POST',
