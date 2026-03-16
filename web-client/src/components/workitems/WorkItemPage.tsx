@@ -669,9 +669,10 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     ];
 
     if (data?.settings?.aha?.subdomain) {
+        const ahaCount = workItem?.aha_synced_data?.requirements?.length || 0;
         tabs.push({
             id: 'aha',
-            label: 'Aha! Integration',
+            label: `Aha! Integration (${ahaCount})`,
             content: (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     <div style={{ padding: '16px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-secondary)' }}>

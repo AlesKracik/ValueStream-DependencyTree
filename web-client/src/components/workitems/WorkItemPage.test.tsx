@@ -618,7 +618,8 @@ describe('WorkItemPage', () => {
         renderPage(defaultProps, 'new');
 
         // Switch to Aha tab
-        const ahaTab = screen.getByText(/Aha! Integration/i);
+        let ahaTab = screen.getByText(/Aha! Integration/i);
+        expect(ahaTab.textContent).toBe('Aha! Integration (0)');
         fireEvent.click(ahaTab);
 
         // Enter reference number
@@ -634,6 +635,10 @@ describe('WorkItemPage', () => {
         await waitFor(() => {
             expect(api.syncAhaFeature).toHaveBeenCalledWith('PROD-1', expect.any(Object));
             
+            // Tab label should now show count (1 requirement in mockFeature)
+            ahaTab = screen.getByText(/Aha! Integration/i);
+            expect(ahaTab.textContent).toBe('Aha! Integration (1)');
+
             // Core fields should NOT be updated yet (name is initially empty for 'new')
             expect((screen.getByLabelText(/Name:/i) as HTMLInputElement).value).toBe('');
             
