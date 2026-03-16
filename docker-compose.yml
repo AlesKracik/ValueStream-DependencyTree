@@ -33,7 +33,7 @@ services:
       - .env
     volumes:
       # Map AWS credentials if needed locally
-      - ~/.aws:/root/.aws:ro
+      - ~/.aws:/root/.aws
     networks:
       - app-network
     extra_hosts:
