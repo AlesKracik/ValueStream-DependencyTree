@@ -60,7 +60,7 @@ A unified gateway for multiple AI providers (OpenAI, Gemini, Anthropic, Augment)
 The application supports three primary authentication methods for MongoDB, configurable via the **Settings** (⚙️) menu. The configuration is now organized into two distinct roles: **Application** (primary storage) and **Customer** (external data).
 
 ### Hierarchical Settings Structure
-Configuration is stored in `web-client/settings.json` with the following top-level structure:
+Configuration is stored in `backend/settings.json` with the following top-level structure:
 - `general`: Time and project-wide defaults.
 - `persistence`: Database connections (Application vs. Customer).
 - `jira`: Integration parameters.

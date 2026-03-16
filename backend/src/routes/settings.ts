@@ -3,8 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import { unmaskSettings } from '../utils/configHelpers';
 
-// Helper to reliably find the settings.json file in the original web-client directory
-export const getSettingsPath = () => path.resolve(__dirname, '../../../web-client/settings.json');
+// Helper to reliably find the settings.json file in the backend directory
+export const getSettingsPath = () => path.resolve(__dirname, '../../settings.json');
 
 export const settingsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/api/settings', async (request, reply) => {

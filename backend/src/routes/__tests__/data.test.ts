@@ -47,7 +47,7 @@ describe('Data Routes', () => {
     
     const originalExistsSync = fs.existsSync;
     vi.spyOn(fs, 'existsSync').mockImplementation((p: any) => {
-      if (typeof p === 'string' && (p.endsWith('settings.json') || p.endsWith('web-client'))) return true;
+      if (typeof p === 'string' && (p.endsWith('settings.json') || p.endsWith('backend'))) return true;
       return originalExistsSync(p);
     });
 

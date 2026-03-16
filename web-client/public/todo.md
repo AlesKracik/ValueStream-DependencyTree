@@ -6,4 +6,5 @@
   * update doc structure. it sometimes has paragraphs in wrong places. Also does not have a good logical hierarchy going from high level tree structure to individiual areas and eventually details
   * refactor API to be more granular, well structured and use case isolated
   * lot of updates and computations are done "on fetch/display" - move the reasonable ones to BE. what will trigger them?
+  * split settings on FE and BE related to manage the updates properly
 * security
