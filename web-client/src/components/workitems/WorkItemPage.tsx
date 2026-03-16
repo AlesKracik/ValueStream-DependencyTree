@@ -65,24 +65,36 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
         try {
             const feature = await syncAhaFeature(workItem.aha_reference.reference_num, data?.settings?.aha || {});
             
-            const updates: Partial<WorkItem> = {
+            const syncedData: NonNullable<WorkItem['aha_synced_data']> = {
                 name: feature.name,
-                description: feature.description?.body ? stripHtml(feature.description.body) : workItem.description,
+                description: feature.description?.body ? stripHtml(feature.description.body) : '',
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                aha_requirements: feature.requirements?.map((r: any) => `${r.reference_num}: ${r.name}`).join('\n') || '',
+                product_value: feature.custom_fields?.find((f: any) => f.name === 'Product Value')?.value || '',
+                score: feature.score,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                aha_product_value: feature.custom_fields?.find((f: any) => f.name === 'Product Value')?.value || '',
-                aha_reference: {
-                    ...workItem.aha_reference,
-                    id: feature.id,
-                    url: feature.url
-                }
+                requirements: feature.requirements?.map((r: any) => ({
+                    id: r.id,
+                    reference_num: r.reference_num,
+                    name: r.name,
+                    description: r.description?.body ? stripHtml(r.description.body) : '',
+                    url: r.url
+                })) || []
             };
 
             // Convert original_estimate (minutes) to MDs (1 MD = 480 minutes)
             if (feature.original_estimate) {
-                updates.total_effort_mds = Math.round(feature.original_estimate / 480);
+                syncedData.total_effort_mds = Math.round(feature.original_estimate / 480);
             }
+
+            const updates: Partial<WorkItem> = {
+                aha_synced_data: syncedData,
+                aha_reference: {
+                    ...workItem.aha_reference,
+                    id: feature.id,
+                    url: feature.url,
+                    reference_num: workItem.aha_reference.reference_num
+                }
+            };
 
             if (isNew) {
                 setNewWorkItemDraft(prev => ({ ...prev, ...updates }));
@@ -96,6 +108,24 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
             await showAlert('Aha! Sync Failed', msg);
         } finally {
             setIsSyncingAha(false);
+        }
+    };
+
+    const applyAhaData = async () => {
+        if (!workItem?.aha_synced_data) return;
+        
+        const confirmed = await showConfirm('Apply Aha! Data', 'This will overwrite the current name, description, and baseline effort with the values from Aha!. Are you sure?');
+        if (!confirmed) return;
+
+        const updates: Partial<WorkItem> = {};
+        if (workItem.aha_synced_data.name) updates.name = workItem.aha_synced_data.name;
+        if (workItem.aha_synced_data.description) updates.description = workItem.aha_synced_data.description;
+        if (workItem.aha_synced_data.total_effort_mds !== undefined) updates.total_effort_mds = workItem.aha_synced_data.total_effort_mds;
+
+        if (isNew) {
+            setNewWorkItemDraft(prev => ({ ...prev, ...updates }));
+        } else {
+            updateWorkItem(workItemId, updates);
         }
     };
 
@@ -643,66 +673,130 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
             id: 'aha',
             label: 'Aha! Integration',
             content: (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '32rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     <div style={{ padding: '16px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-secondary)' }}>
                         <h3 style={{ margin: '0 0 12px 0', fontSize: '15px' }}>Link to Aha! Feature</h3>
                         <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
                             Enter the Aha! Reference Number (e.g., <code>PROD-123</code>) to link this work item and sync its details.
                         </p>
                         
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                            <input
-                                type="text"
-                                placeholder="PROD-123"
-                                value={workItem?.aha_reference?.reference_num || ''}
-                                onChange={e => {
-                                    const val = { 
-                                        id: workItem?.aha_reference?.id || '',
-                                        url: workItem?.aha_reference?.url || '',
-                                        reference_num: e.target.value 
-                                    };
-                                    if (isNew) setNewWorkItemDraft(prev => ({ ...prev, aha_reference: val }));
-                                    else updateWorkItem(workItemId, { aha_reference: val });
-                                }}
-                                style={{ flex: 1 }}
-                            />
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '16px' }}>
+                            <div style={{ width: '120px' }}>
+                                <input
+                                    type="text"
+                                    placeholder="PROD-123"
+                                    value={workItem?.aha_reference?.reference_num || ''}
+                                    onChange={e => {
+                                        const val = { 
+                                            id: workItem?.aha_reference?.id || '',
+                                            url: workItem?.aha_reference?.url || '',
+                                            reference_num: e.target.value 
+                                        };
+                                        if (isNew) setNewWorkItemDraft(prev => ({ ...prev, aha_reference: val }));
+                                        else updateWorkItem(workItemId, { aha_reference: val });
+                                    }}
+                                    style={{ width: '100%' }}
+                                />
+                            </div>
                             {workItem?.aha_reference?.url && (
                                 <a 
                                     href={workItem.aha_reference.url} 
                                     target="_blank" 
                                     rel="noopener noreferrer" 
-                                    className="btn-secondary"
-                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 12px', textDecoration: 'none' }}
+                                    title="Open in Aha!"
+                                    style={{ color: 'var(--accent-text)', textDecoration: 'none', fontSize: '18px', fontWeight: 'bold' }}
                                 >
-                                    Open ↗
+                                    ↗
                                 </a>
                             )}
+                            <button 
+                                className="btn-primary" 
+                                onClick={handleSyncAha} 
+                                disabled={isSyncingAha || !workItem?.aha_reference?.reference_num}
+                                style={{ marginLeft: 'auto' }}
+                            >
+                                {isSyncingAha ? 'Syncing...' : 'Sync from Aha!'}
+                            </button>
                         </div>
-
-                        <button 
-                            className="btn-primary" 
-                            onClick={handleSyncAha} 
-                            disabled={isSyncingAha || !workItem?.aha_reference?.reference_num}
-                            style={{ width: '100%' }}
-                        >
-                            {isSyncingAha ? 'Syncing...' : 'Sync from Aha!'}
-                        </button>
                     </div>
 
-                    {workItem?.aha_product_value && (
-                        <div style={{ padding: '16px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-secondary)' }}>
-                            <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', color: 'var(--text-secondary)' }}>Product Value</h3>
-                            <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--accent-text)' }}>
-                                {workItem.aha_product_value}
-                            </div>
-                        </div>
-                    )}
+                    {workItem?.aha_synced_data && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <div style={{ padding: '16px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-secondary)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                                        <h3 style={{ margin: 0, fontSize: '15px' }}>Synced Information</h3>
+                                        <button className="btn-secondary" style={{ fontSize: '12px', padding: '4px 8px' }} onClick={applyAhaData}>
+                                            Apply to Work Item
+                                        </button>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                        <div>
+                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Name</div>
+                                            <div style={{ fontSize: '14px', fontWeight: '500' }}>{workItem.aha_synced_data.name}</div>
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Description</div>
+                                            <div style={{ fontSize: '13px', maxHeight: '150px', overflowY: 'auto', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-primary)', padding: '8px', borderRadius: '4px' }}>
+                                                {workItem.aha_synced_data.description || <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>No description</span>}
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '32px' }}>
+                                            <div>
+                                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Effort (MDs)</div>
+                                                <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--accent-text)' }}>{workItem.aha_synced_data.total_effort_mds ?? '-'}</div>
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Score</div>
+                                                <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--accent-text)' }}>{workItem.aha_synced_data.score ?? '-'}</div>
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Product Value</div>
+                                                <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--accent-text)' }}>{workItem.aha_synced_data.product_value || '-'}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
 
-                    {workItem?.aha_requirements && (
-                        <div style={{ padding: '16px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-secondary)' }}>
-                            <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', color: 'var(--text-secondary)' }}>Aha! Requirements</h3>
-                            <div style={{ fontSize: '13px', whiteSpace: 'pre-wrap', color: 'var(--text-primary)', maxHeight: '200px', overflowY: 'auto' }}>
-                                {workItem.aha_requirements}
+                                {(workItem.aha_product_value || workItem.aha_requirements) && !workItem.aha_synced_data && (
+                                    <div style={{ padding: '16px', backgroundColor: 'rgba(245, 158, 11, 0.05)', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                                        <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', color: 'rgb(245, 158, 11)' }}>Legacy Synced Data</h3>
+                                        <p style={{ fontSize: '12px', marginBottom: '12px' }}>This work item has data from an older sync version. Re-sync to see detailed information.</p>
+                                        {workItem.aha_product_value && (
+                                            <div style={{ marginBottom: '8px' }}>
+                                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Product Value:</div>
+                                                <div>{workItem.aha_product_value}</div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <div style={{ padding: '16px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-secondary)' }}>
+                                    <h3 style={{ margin: '0 0 12px 0', fontSize: '15px' }}>Requirements ({workItem.aha_synced_data.requirements?.length || 0})</h3>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '500px', overflowY: 'auto', paddingRight: '4px' }}>
+                                        {workItem.aha_synced_data.requirements?.map(req => (
+                                            <div key={req.id} style={{ padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '6px', border: '1px solid var(--border-secondary)' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                                    <span style={{ fontWeight: 'bold', fontSize: '13px', color: 'var(--accent-text)' }}>{req.reference_num}</span>
+                                                    {req.url && (
+                                                        <a href={req.url} target="_blank" rel="noopener noreferrer" title="Open Requirement in Aha!" style={{ fontSize: '14px', color: 'var(--text-muted)', textDecoration: 'none' }}>↗</a>
+                                                    )}
+                                                </div>
+                                                <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '6px' }}>{req.name}</div>
+                                                {req.description && (
+                                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-tertiary)', padding: '8px', borderRadius: '4px', borderLeft: '3px solid var(--border-secondary)' }}>
+                                                        {req.description}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                        {(!workItem.aha_synced_data.requirements || workItem.aha_synced_data.requirements.length === 0) && (
+                                            <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px', padding: '24px' }}>No requirements found.</div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}

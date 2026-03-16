@@ -64,6 +64,20 @@ export interface WorkItem {
   } | null;
   aha_requirements?: string;
   aha_product_value?: string;
+  aha_synced_data?: {
+    name?: string;
+    description?: string;
+    total_effort_mds?: number;
+    product_value?: string;
+    score?: number;
+    requirements?: {
+      id: string;
+      reference_num: string;
+      name: string;
+      description?: string;
+      url?: string;
+    }[];
+  };
 }
 
 export interface Team {

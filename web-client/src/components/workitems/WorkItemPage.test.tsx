@@ -595,7 +595,7 @@ describe('WorkItemPage', () => {
         expect(defaultProps.updateEpic).toHaveBeenCalledWith('e1', { target_start: '2026-03-01' });
     });
 
-    it('syncs data from Aha! and updates work item fields', async () => {
+    it('syncs data from Aha! into synced data and allows applying it', async () => {
         const mockFeature = {
             id: 'aha-123',
             reference_num: 'PROD-1',
@@ -603,8 +603,9 @@ describe('WorkItemPage', () => {
             description: { body: '<p>Aha Description</p>' },
             url: 'https://test.aha.io/features/PROD-1',
             original_estimate: 480, // 1 MD
+            score: 75,
             requirements: [
-                { reference_num: 'PROD-1-R1', name: 'Requirement 1' }
+                { id: 'r1', reference_num: 'PROD-1-R1', name: 'Requirement 1', description: { body: 'Req Desc' }, url: 'req-url' }
             ],
             custom_fields: [
                 { name: 'Product Value', value: 'High Value' }
@@ -624,24 +625,42 @@ describe('WorkItemPage', () => {
         const refInput = screen.getByPlaceholderText('PROD-123');
         fireEvent.change(refInput, { target: { value: 'PROD-1' } });
 
-        // Click Sync button - it should be enabled now because it's a new item and internal state updated
+        // Click Sync button
         const syncButton = screen.getByText('Sync from Aha!');
-        expect((syncButton as HTMLButtonElement).disabled).toBe(false);
-        
         await act(async () => {
             fireEvent.click(syncButton);
         });
 
         await waitFor(() => {
             expect(api.syncAhaFeature).toHaveBeenCalledWith('PROD-1', expect.any(Object));
-            // For 'new' item, it updates local draft state, so we check if the inputs now have the synced values
+            
+            // Core fields should NOT be updated yet (name is initially empty for 'new')
+            expect((screen.getByLabelText(/Name:/i) as HTMLInputElement).value).toBe('');
+            
+            // Synced data should be visible in the Aha tab
+            // Use getAllByText if needed, but here they should be unique enough or we can use specific roles
+            expect(screen.getByText('Aha Feature Name')).toBeDefined();
+            expect(screen.getByText('High Value')).toBeDefined();
+            expect(screen.getByText('75')).toBeDefined();
+            expect(screen.getByText('PROD-1-R1')).toBeDefined();
+            expect(screen.getByText('Requirement 1')).toBeDefined();
+            expect(screen.getByText('Req Desc')).toBeDefined();
+        });
+
+        // Click Apply button
+        const applyButton = screen.getByText('Apply to Work Item');
+        await act(async () => {
+            fireEvent.click(applyButton);
+        });
+
+        // Confirmation should be shown
+        expect(mockShowConfirm).toHaveBeenCalledWith('Apply Aha! Data', expect.any(String));
+
+        await waitFor(() => {
+            // Core fields should now be updated
             expect((screen.getByLabelText(/Name:/i) as HTMLInputElement).value).toBe('Aha Feature Name');
             expect((screen.getByPlaceholderText(/Add a detailed description/i) as HTMLTextAreaElement).value).toBe('Aha Description');
             expect((screen.getByLabelText(/Baseline Effort/i) as HTMLInputElement).value).toBe('1');
-            
-            // Check for new Aha fields in the tab
-            expect(screen.getByText('High Value')).toBeDefined();
-            expect(screen.getByText('PROD-1-R1: Requirement 1')).toBeDefined();
         });
     });
 
