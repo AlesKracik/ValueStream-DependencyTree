@@ -21,7 +21,7 @@ interface SettingsPageProps {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
+  general: { fiscal_year_start_month: 1, sprint_duration_days: 14, theme: 'dark' },
   persistence: {
     mongo: {
       app: { 

@@ -661,4 +661,29 @@ describe('SettingsPage', () => {
         // Model input should be hidden for glean
         expect(screen.queryByLabelText(/LLM Model \(Optional\):/i)).toBeNull();
     });
+
+    it('handles theme selection and persistence', async () => {
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=general']}>
+                <SettingsPage 
+                    settings={DEFAULT_SETTINGS} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
+                />
+            </MemoryRouter>
+        );
+
+        const themeSelect = screen.getByLabelText(/Color Palette:/i) as HTMLSelectElement;
+        expect(themeSelect.value).toBe('dark');
+
+        await act(async () => {
+            fireEvent.change(themeSelect, { target: { value: 'filips' } });
+        });
+
+        expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
+            general: expect.objectContaining({ theme: 'filips' })
+        }));
+    });
 });
