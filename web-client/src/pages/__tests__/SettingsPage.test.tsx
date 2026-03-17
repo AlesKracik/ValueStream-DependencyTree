@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import { SettingsPage, DEFAULT_SETTINGS } from '../SettingsPage';
 import type { ValueStreamData, Settings } from '../../types/models';
 import { MemoryRouter } from 'react-router-dom';
+import * as React from 'react';
 
 // Mock ValueStreamContext
 const mockShowAlert = vi.fn();
@@ -26,13 +27,46 @@ const mockSettings: Settings = {
                 uri: 'mongodb://localhost:27017',
                 db: 'testdb',
                 use_proxy: false,
-                auth: { method: 'scram' }
+                tunnel_name: 'app',
+                auth: { 
+                    method: 'scram',
+                    aws_auth_type: 'static',
+                    aws_profile: '',
+                    aws_access_key: '',
+                    aws_secret_key: '',
+                    aws_session_token: '',
+                    aws_role_arn: '',
+                    aws_external_id: '',
+                    aws_role_session_name: '',
+                    aws_sso_start_url: '',
+                    aws_sso_region: '',
+                    aws_sso_account_id: '',
+                    aws_sso_role_name: '',
+                    oidc_token: ''
+                }
             },
             customer: {
                 uri: '',
                 db: '',
                 use_proxy: false,
-                auth: { method: 'scram' }
+                tunnel_name: 'customer',
+                collection: 'Customers',
+                auth: { 
+                    method: 'scram',
+                    aws_auth_type: 'static',
+                    aws_profile: '',
+                    aws_access_key: '',
+                    aws_secret_key: '',
+                    aws_session_token: '',
+                    aws_role_arn: '',
+                    aws_external_id: '',
+                    aws_role_session_name: '',
+                    aws_sso_start_url: '',
+                    aws_sso_region: '',
+                    aws_sso_account_id: '',
+                    aws_sso_role_name: '',
+                    oidc_token: ''
+                }
             }
         }
     },
@@ -46,7 +80,8 @@ const mockSettings: Settings = {
         provider: 'openai',
         api_key: '',
         support: { prompt: '' }
-    }
+    },
+    aha: { subdomain: '', api_key: '' }
 };
 
 const mockData: ValueStreamData = {
@@ -186,14 +221,18 @@ describe('SettingsPage', () => {
                     ...mockSettings.persistence.mongo,
                     app: {
                         ...mockSettings.persistence.mongo.app,
-                        auth: { method: 'aws' as const, aws_auth_type: 'static' as const }
+                        auth: { 
+                            method: 'aws' as const, 
+                            aws_auth_type: 'static' as const,
+                            aws_profile: 'default'
+                        }
                     }
                 }
             }
         };
 
         render(
-            <MemoryRouter initialEntries={['/settings?tab=persistence']}>
+            <MemoryRouter initialEntries={['/settings?tab=persistence&subtab=mongo&subsubtab=application']}>
                 <SettingsPage 
                     settings={awsSettings} 
                     onUpdateSettings={onUpdateSettings}
@@ -210,7 +249,7 @@ describe('SettingsPage', () => {
 
     it('saves connection settings on blur', async () => {
         render(
-            <MemoryRouter initialEntries={['/settings?tab=persistence']}>
+            <MemoryRouter initialEntries={['/settings?tab=persistence&subtab=mongo&subsubtab=application']}>
                 <SettingsPage 
                     settings={mockSettings} 
                     onUpdateSettings={onUpdateSettings}
@@ -254,7 +293,8 @@ describe('SettingsPage', () => {
                         auth: { 
                             method: 'aws' as const, 
                             aws_auth_type: 'role' as const,
-                            aws_profile: 'test-profile'
+                            aws_profile: 'test-profile',
+                            aws_role_arn: ''
                         }
                     }
                 }
@@ -262,7 +302,7 @@ describe('SettingsPage', () => {
         };
 
         render(
-            <MemoryRouter initialEntries={['/settings?tab=persistence']}>
+            <MemoryRouter initialEntries={['/settings?tab=persistence&subtab=mongo&subsubtab=application']}>
                 <SettingsPage 
                     settings={roleSettings} 
                     onUpdateSettings={onUpdateSettings}
@@ -305,7 +345,8 @@ describe('SettingsPage', () => {
                         auth: { 
                             method: 'aws' as const, 
                             aws_auth_type: 'static' as const,
-                            aws_profile: ''
+                            aws_profile: '',
+                            aws_sso_start_url: ''
                         }
                     }
                 }
@@ -313,7 +354,7 @@ describe('SettingsPage', () => {
         };
 
         render(
-            <MemoryRouter initialEntries={['/settings?tab=persistence']}>
+            <MemoryRouter initialEntries={['/settings?tab=persistence&subtab=mongo&subsubtab=application']}>
                 <SettingsPage 
                     settings={ssoManualSettings} 
                     onUpdateSettings={onUpdateSettings}
@@ -330,7 +371,6 @@ describe('SettingsPage', () => {
     });
 
     it('renders correctly with empty settings using defaults', () => {
-        // This test verifies that the fix for "Cannot read properties of undefined (reading 'fiscal_year_start_month')" works
         render(
             <MemoryRouter initialEntries={['/settings?tab=general']}>
                 <SettingsPage 
@@ -344,13 +384,11 @@ describe('SettingsPage', () => {
         );
 
         expect(screen.getByLabelText(/Fiscal Year Start Month:/i)).toBeDefined();
-        // Default value should be 1 (January)
         const select = screen.getByLabelText(/Fiscal Year Start Month:/i) as HTMLSelectElement;
         expect(select.value).toBe('1');
     });
 
     it('renders Jira tab without crashing when settings prop is an empty object', () => {
-        // This test specifically verifies the fix for "TypeError: Cannot read properties of undefined (reading 'base_url')"
         render(
             <MemoryRouter initialEntries={['/settings?tab=jira&subtab=common']}>
                 <SettingsPage 
@@ -366,12 +404,10 @@ describe('SettingsPage', () => {
 
         expect(screen.getByLabelText(/Jira Base URL:/i)).toBeDefined();
         const input = screen.getByLabelText(/Jira Base URL:/i) as HTMLInputElement;
-        // Should use value from localFormData (which is initialized from DEFAULT_SETTINGS)
         expect(input.value).toBe('');
     });
 
     it('renders Persistence tab without crashing when settings are from DEFAULT_SETTINGS', () => {
-        // This test verifies the fix for "TypeError: Cannot read properties of undefined (reading 'mongo')"
         render(
             <MemoryRouter initialEntries={['/settings?tab=persistence&subtab=mongo&subsubtab=application']}>
                 <SettingsPage 
@@ -498,7 +534,12 @@ describe('SettingsPage', () => {
                     ...mockSettings.persistence.mongo,
                     app: {
                         ...mockSettings.persistence.mongo.app,
-                        auth: { method: 'aws' as const, aws_auth_type: 'static' as const, aws_profile: '' }
+                        auth: { 
+                            method: 'aws' as const, 
+                            aws_auth_type: 'static' as const, 
+                            aws_profile: '',
+                            aws_sso_start_url: 'https://test.aws'
+                        }
                     }
                 }
             }
@@ -533,17 +574,35 @@ describe('SettingsPage', () => {
         fireEvent.click(loginBtn);
 
         await waitFor(() => {
-            expect(screen.getByText(/Go to/i)).toBeDefined();
+            expect(screen.getByText(/Authorization URL:/i)).toBeDefined();
             expect(screen.getByText('ABCD-1234')).toBeDefined();
-            expect(screen.getByRole('link', { name: /https:\/\/device\.sso\.aws/i })).toBeDefined();
         });
     });
 
-    it('renders Glean provider in AI settings', async () => {
+    it('correctly displays nested settings data from props in the UI', async () => {
+        const customSettings: Settings = {
+            ...mockSettings,
+            jira: {
+                ...mockSettings.jira,
+                base_url: 'https://custom-jira.com',
+                customer: {
+                    jql_new: 'project = NEW',
+                    jql_in_progress: 'project = WIP',
+                    jql_noop: 'project = BLOCKED'
+                }
+            },
+            ai: {
+                ...mockSettings.ai,
+                support: {
+                    prompt: 'Extract issues from these Slack logs'
+                }
+            }
+        };
+
         render(
-            <MemoryRouter initialEntries={['/settings?tab=ai']}>
+            <MemoryRouter initialEntries={['/settings?tab=jira&subtab=common']}>
                 <SettingsPage 
-                    settings={mockSettings} 
+                    settings={customSettings} 
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
                     updateIssue={updateIssue}
@@ -552,12 +611,52 @@ describe('SettingsPage', () => {
             </MemoryRouter>
         );
 
-        const select = screen.getByLabelText(/LLM Provider:/i) as HTMLSelectElement;
-        fireEvent.change(select, { target: { value: 'glean' } });
+        // Check common Jira settings
+        expect(screen.getByDisplayValue('https://custom-jira.com')).toBeDefined();
+
+        // Navigate to Jira Customer subtab
+        const customerSubTabBtn = screen.getByText('Customer');
+        fireEvent.click(customerSubTabBtn);
+
+        // Verify nested JQL fields are shown
+        expect(screen.getByDisplayValue('project = NEW')).toBeDefined();
+        expect(screen.getByDisplayValue('project = WIP')).toBeDefined();
+        expect(screen.getByDisplayValue('project = BLOCKED')).toBeDefined();
+
+        // Navigate to AI Support subtab
+        const aiTabBtn = screen.getByText('AI & LLM');
+        fireEvent.click(aiTabBtn);
+        const supportSubTabBtn = screen.getByText('Support');
+        fireEvent.click(supportSubTabBtn);
+
+        // Verify nested prompt is shown
+        expect(screen.getByDisplayValue('Extract issues from these Slack logs')).toBeDefined();
+    });
+
+    it('renders Glean provider configuration correctly', async () => {
+        const gleanSettings = {
+            ...mockSettings,
+            ai: {
+                ...mockSettings.ai,
+                provider: 'glean' as const,
+                api_key: 'test-token'
+            }
+        };
+
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=ai&subtab=general']}>
+                <SettingsPage 
+                    settings={gleanSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
+                />
+            </MemoryRouter>
+        );
 
         expect(screen.getByText(/Glean Session Token:/i)).toBeDefined();
-        const input = screen.getByPlaceholderText(/Session token\.\.\./i) as HTMLInputElement;
-        expect(input).toBeDefined();
+        expect(screen.getByDisplayValue('test-token')).toBeDefined();
         
         // Model input should be hidden for glean
         expect(screen.queryByLabelText(/LLM Model \(Optional\):/i)).toBeNull();

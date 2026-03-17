@@ -25,6 +25,7 @@ import { LoginPage } from './pages/LoginPage';
 import { useValueStreamData } from './hooks/useValueStreamData';
 import { ValueStreamProvider, NotificationProvider, useNotificationContext, useValueStreamContext } from './contexts/ValueStreamContext';
 import { getAdminSecret } from './utils/api';
+import { deepMerge } from './utils/businessLogic';
 import type { ValueStreamDataState } from './types/models';
 import './App.css';
 
@@ -87,27 +88,6 @@ function ValueStreamEditPageRouteWrapper({ valueStreamState }: { valueStreamStat
 
 function SprintPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
   return <SprintPage {...valueStreamState} />;
-}
-
-function deepMerge<T extends object>(target: T, source: any): T {
-  if (!source || typeof source !== 'object') return target;
-  const result = { ...target } as any;
-  
-  Object.keys(target).forEach(key => {
-    const targetValue = (target as any)[key];
-    const sourceValue = source[key];
-    
-    if (sourceValue !== undefined) {
-      if (targetValue && typeof targetValue === 'object' && !Array.isArray(targetValue) && 
-          sourceValue && typeof sourceValue === 'object' && !Array.isArray(sourceValue)) {
-        result[key] = deepMerge(targetValue, sourceValue);
-      } else {
-        result[key] = sourceValue;
-      }
-    }
-  });
-  
-  return result as T;
 }
 
 function SettingsPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {

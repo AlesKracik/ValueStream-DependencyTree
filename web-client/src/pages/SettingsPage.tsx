@@ -8,7 +8,7 @@ import { authorizedFetch, syncJiraIssue } from "../utils/api";
 import { generateId } from '../utils/security';
 import { useValueStreamContext } from "../contexts/ValueStreamContext";
 import { PageWrapper } from "../components/layout/PageWrapper";
-import { parseJiraIssue } from "../utils/businessLogic";
+import { parseJiraIssue, deepMerge } from "../utils/businessLogic";
 
 interface SettingsPageProps {
   settings: Settings;
@@ -24,13 +24,49 @@ export const DEFAULT_SETTINGS: Settings = {
   general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
   persistence: {
     mongo: {
-      app: { uri: '', db: '', use_proxy: false, tunnel_name: 'app', auth: { method: 'scram' } },
-      customer: { uri: '', db: '', use_proxy: false, tunnel_name: 'customer', collection: 'Customers', custom_query: '', auth: { method: 'scram' } }
+      app: { 
+        uri: '', db: '', use_proxy: false, tunnel_name: 'app', 
+        auth: { 
+          method: 'scram',
+          aws_auth_type: 'static',
+          aws_profile: '',
+          aws_access_key: '',
+          aws_secret_key: '',
+          aws_session_token: '',
+          aws_role_arn: '',
+          aws_external_id: '',
+          aws_role_session_name: '',
+          aws_sso_start_url: '',
+          aws_sso_region: '',
+          aws_sso_account_id: '',
+          aws_sso_role_name: '',
+          oidc_token: ''
+        } 
+      },
+      customer: { 
+        uri: '', db: '', use_proxy: false, tunnel_name: 'customer', collection: 'Customers', custom_query: '', 
+        auth: { 
+          method: 'scram',
+          aws_auth_type: 'static',
+          aws_profile: '',
+          aws_access_key: '',
+          aws_secret_key: '',
+          aws_session_token: '',
+          aws_role_arn: '',
+          aws_external_id: '',
+          aws_role_session_name: '',
+          aws_sso_start_url: '',
+          aws_sso_region: '',
+          aws_sso_account_id: '',
+          aws_sso_role_name: '',
+          oidc_token: ''
+        } 
+      }
     }
   },
-  jira: { base_url: '', api_version: '3', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
-  aha: { subdomain: '' },
-  ai: { provider: 'openai', support: { prompt: '' } }
+  jira: { base_url: '', api_version: '3', api_token: '', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
+  aha: { subdomain: '', api_key: '' },
+  ai: { provider: 'openai', api_key: '', model: '', support: { prompt: '' } }
 };
 
 interface MongoTestResult {
@@ -60,28 +96,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
   const { showConfirm } = useValueStreamContext();
 
-  // Define deepMerge outside of effects if we want to use it in initial state
-  const deepMerge = (target: Settings, source: Partial<Settings>): Settings => {
-    if (!source) return target;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = { ...target } as Record<string, any>;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const src = source as Record<string, any>;
-    
-    Object.keys(src).forEach(key => {
-      if (src[key] && typeof src[key] === 'object' && !Array.isArray(src[key])) {
-        result[key] = deepMerge(result[key] || {}, src[key]);
-      } else if (src[key] !== undefined) {
-        result[key] = src[key];
-      }
-    });
-    return result as Settings;
-  };
-
   const [localFormData, setFormData] = useState<Settings>(() => {
-    // Merge provided settings with DEFAULT_SETTINGS to ensure all keys exist
     return deepMerge(DEFAULT_SETTINGS, settings || {});
   });
+
+  useEffect(() => {
+    if (settings) {
+      setFormData(prev => {
+          const merged = deepMerge(DEFAULT_SETTINGS, settings);
+          if (JSON.stringify(merged) !== JSON.stringify(prev)) {
+              return merged;
+          }
+          return prev;
+      });
+    }
+  }, [settings]);
+
   const [isTesting, setIsTesting] = useState(false);
   const [availableDbs, setAvailableDbs] = useState<string[]>([]);
   const [mongoTestResult, setMongoTestResult] = useState<MongoTestResult | null>(null);
@@ -219,13 +249,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         setIsSSOLoginLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (settings) {
-      setFormData(prev => deepMerge(prev, settings));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings]);
 
   const setTab = (tab: string) => {
     setSearchParams({ tab });
@@ -1780,7 +1803,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             </div>
           )}
 
-          {activeTab === "general" && (            <>
+          {activeTab === "general" && (
+            <>
               <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "var(--text-primary)", borderBottom: "1px solid var(--border-secondary)", paddingBottom: "4px" }}>
                 Theme
               </h3>
@@ -1791,7 +1815,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   onChange={(e) => {
                       const val = e.target.value as 'dark' | 'filips';
                       updateFormData('general.theme', val);
-                      onUpdateSettings({ general: { ...localFormData.general, ...localFormData.general, theme: val } });
+                      onUpdateSettings({ general: { ...localFormData.general, theme: val } });
                   }}
                 >
                   <option value="dark">Dark mode</option>

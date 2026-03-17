@@ -214,9 +214,40 @@ export const calculateIssueEffortPerSprint = (issue: Issue, allSprints: Sprint[]
 
     return result;
 };
+/**
+ * Deeply merges two objects, preferring source values but preserving target keys and structure.
+ * Only merges keys that exist in the target (template-based merge).
+ */
+export function deepMerge<T extends object>(target: T, source: any): T {
+  if (!source || typeof source !== 'object') return target;
+
+  // Create a new object to avoid mutating the target
+  const result = { ...target } as any;
+
+  Object.keys(source).forEach(key => {
+    const sourceValue = source[key];
+    const targetValue = result[key];
+
+    if (sourceValue !== undefined && sourceValue !== null) {
+      if (typeof sourceValue === 'object' && !Array.isArray(sourceValue) &&
+          targetValue && typeof targetValue === 'object' && !Array.isArray(targetValue)) {
+        // Recursively merge if both are objects
+        result[key] = deepMerge(targetValue, sourceValue);
+      } else {
+        // Only keep keys that are defined in the target (e.g. DEFAULT_SETTINGS)
+        if (key in target) {
+          result[key] = sourceValue;
+        }
+      }
+    }
+  });
+
+  return result as T;
+}
 
 /**
  * Calculates the intensity ratio for visual heat mapping.
+...
  * 1.0 is neutral (uniform distribution).
  */
 export const calculateIssueIntensityRatio = (actualEffort: number, baselineEffort: number): number => {
