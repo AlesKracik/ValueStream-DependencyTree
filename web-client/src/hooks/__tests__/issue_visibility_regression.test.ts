@@ -14,7 +14,7 @@ const MOCK_DATA: ValueStreamData = {
             }
         },
         jira: { base_url: "https://jira", api_version: "3" },
-        ai: { provider: 'openai' }
+        ai: { provider: 'openai', support: { prompt: '' } }
     },
     customers: [
         { id: 'c1', name: 'Cust 1', existing_tcv: 100, potential_tcv: 0 }
@@ -104,6 +104,8 @@ describe('reproduce_issue_bug', () => {
         expect(f2Node, 'Global work item should be visible even if no customers match the TCV filter').toBeDefined();
     });
 });
+
+
 
 
 

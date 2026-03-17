@@ -29,11 +29,13 @@ const mockData: ValueStreamData = {
         jira: { 
             base_url: 'https://jira.com', 
             api_version: '3',
-            customer_jql_new: "status = New",
-            customer_jql_in_progress: "status = 'In Progress'",
-            customer_jql_noop: "status = Blocked"
+            customer: {
+                jql_new: "status = New",
+                jql_in_progress: "status = 'In Progress'",
+                jql_noop: "status = Blocked"
+            }
         },
-        ai: { provider: 'openai' }
+        ai: { provider: 'openai', support: { prompt: '' } }
     },
     customers: [
         { 

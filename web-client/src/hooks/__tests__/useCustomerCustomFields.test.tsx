@@ -34,11 +34,13 @@ const mockSettings: Settings = {
     jira: {
         base_url: 'https://jira.com',
         api_version: '3',
-        api_token: 'token'
+        api_token: 'token',
+        customer: { jql_new: '', jql_in_progress: '', jql_noop: '' }
     },
     ai: {
         provider: 'openai',
-        api_key: ''
+        api_key: '',
+        support: { prompt: '' }
     }
 };
 

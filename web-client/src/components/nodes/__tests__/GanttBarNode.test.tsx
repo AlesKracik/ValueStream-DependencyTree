@@ -20,8 +20,8 @@ const mockData: ValueStreamData = {
                 customer: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false }
             }
         },
-        jira: { base_url: 'https://jira', api_version: '3' },
-        ai: { provider: 'openai' }
+        jira: { base_url: '', api_version: '3', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
+        ai: { provider: 'openai', support: { prompt: '' } }
     },
     customers: [],
     workItems: [],
@@ -133,6 +133,9 @@ describe('GanttBarNode Auto-Freeze', () => {
         vi.useRealTimers();
     });
 });
+
+
+
 
 
 

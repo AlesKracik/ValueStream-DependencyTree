@@ -28,9 +28,9 @@ export const DEFAULT_SETTINGS: Settings = {
       customer: { uri: '', db: '', use_proxy: false, tunnel_name: 'customer', collection: 'Customers', custom_query: '', auth: { method: 'scram' } }
     }
   },
-  jira: { base_url: '', api_version: '3' },
+  jira: { base_url: '', api_version: '3', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
   aha: { subdomain: '' },
-  ai: { provider: 'openai' }
+  ai: { provider: 'openai', support: { prompt: '' } }
 };
 
 interface MongoTestResult {
@@ -55,7 +55,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get("tab") as "general" | "persistence" | "jira" | "aha" | "ai") || "general";
-  const activeSubTab = searchParams.get("subtab") || (activeTab === "persistence" ? "mongo" : activeTab === "jira" ? "common" : "");
+  const activeSubTab = searchParams.get("subtab") || (activeTab === "persistence" ? "mongo" : activeTab === "jira" ? "common" : activeTab === "ai" ? "general" : "");
   const activeSubSubTab = searchParams.get("subsubtab") || (activeTab === "persistence" && activeSubTab === "mongo" ? "application" : "");
 
   const { showConfirm } = useValueStreamContext();
@@ -1693,9 +1693,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       <input
                         type="text"
                         placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'New'"
-                        value={localFormData.jira.customer_jql_new || ""}
-                        onChange={(e) => updateFormData('jira.customer_jql_new', e.target.value)}
-                        onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, customer_jql_new: localFormData.jira.customer_jql_new } })}
+                        value={localFormData.jira.customer?.jql_new || ""}
+                        onChange={(e) => updateFormData('jira.customer.jql_new', e.target.value)}
+                        onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, customer: { ...localFormData.jira.customer, jql_new: localFormData.jira.customer?.jql_new } } })}
                       />
                     </label>
                     <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
@@ -1703,9 +1703,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       <input
                         type="text"
                         placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'In Progress'"
-                        value={localFormData.jira.customer_jql_in_progress || ""}
-                        onChange={(e) => updateFormData('jira.customer_jql_in_progress', e.target.value)}
-                        onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, customer_jql_in_progress: localFormData.jira.customer_jql_in_progress } })}
+                        value={localFormData.jira.customer?.jql_in_progress || ""}
+                        onChange={(e) => updateFormData('jira.customer.jql_in_progress', e.target.value)}
+                        onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, customer: { ...localFormData.jira.customer, jql_in_progress: localFormData.jira.customer?.jql_in_progress } } })}
                       />
                     </label>
                     <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
@@ -1713,9 +1713,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       <input
                         type="text"
                         placeholder="labels = '{{CUSTOMER_ID}}' AND status = 'Blocked'"
-                        value={localFormData.jira.customer_jql_noop || ""}
-                        onChange={(e) => updateFormData('jira.customer_jql_noop', e.target.value)}
-                        onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, customer_jql_noop: localFormData.jira.customer_jql_noop } })}
+                        value={localFormData.jira.customer?.jql_noop || ""}
+                        onChange={(e) => updateFormData('jira.customer.jql_noop', e.target.value)}
+                        onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, customer: { ...localFormData.jira.customer, jql_noop: localFormData.jira.customer?.jql_noop } } })}
                       />
                     </label>
                   </div>
@@ -1848,51 +1848,139 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           )}
 
           {activeTab === "ai" && (
-            <>
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-                LLM Provider:
-                <select
-                  value={localFormData.ai?.provider || 'openai'}
-                  onChange={(e) => {
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      const val = e.target.value as any;
-                      updateFormData('ai.provider', val);
-                      onUpdateSettings({ ai: { ...localFormData.ai, provider: val } });
-                  }}
+            <div className={styles.tabContainer}>
+              <nav className={styles.tabHeader}>
+                <button
+                  onClick={() => setSubTab("general")}
+                  className={`${styles.tabButton} ${activeSubTab === "general" ? styles.activeTab : ''}`}
                 >
-                  <option value="openai">OpenAI</option>
-                  <option value="gemini">Google Gemini</option>
-                  <option value="anthropic">Anthropic</option>
-                  <option value="augment">Augment CLI</option>
-                  <option value="glean">Glean</option>
-                </select>
-              </label>
+                  General
+                </button>
+                <button
+                  onClick={() => setSubTab("support")}
+                  className={`${styles.tabButton} ${activeSubTab === "support" ? styles.activeTab : ''}`}
+                >
+                  Support
+                </button>
+              </nav>
 
-              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-                {localFormData.ai?.provider === 'augment' ? 'Augment Session Auth:' : 
-                 localFormData.ai?.provider === 'glean' ? 'Glean Session Token:' : 'LLM API Key:'}
-                <input
-                  type="password"
-                  placeholder={localFormData.ai?.provider === 'augment' || localFormData.ai?.provider === 'glean' ? "Session token..." : "sk-..."}
-                  value={localFormData.ai?.api_key || ""}
-                  onChange={(e) => updateFormData('ai.api_key', e.target.value)}
-                  onBlur={() => onUpdateSettings({ ai: { ...localFormData.ai, api_key: localFormData.ai.api_key } })}
-                />
-              </label>
+              <div className={styles.tabContent}>
+                {activeSubTab === "general" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                      LLM Provider:
+                      <select
+                        value={localFormData.ai?.provider || 'openai'}
+                        onChange={(e) => {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            const val = e.target.value as any;
+                            updateFormData('ai.provider', val);
+                            onUpdateSettings({ ai: { ...localFormData.ai, provider: val } });
+                        }}
+                      >
+                        <option value="openai">OpenAI</option>
+                        <option value="gemini">Google Gemini</option>
+                        <option value="anthropic">Anthropic</option>
+                        <option value="augment">Augment CLI</option>
+                        <option value="glean">Glean</option>
+                      </select>
+                    </label>
 
-              {localFormData.ai?.provider !== 'augment' && localFormData.ai?.provider !== 'glean' && (
-                <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-                  LLM Model (Optional):
-                  <input
-                    type="text"
-                    placeholder="gpt-4-turbo"
-                    value={localFormData.ai?.model || ""}
-                    onChange={(e) => updateFormData('ai.model', e.target.value)}
-                    onBlur={() => onUpdateSettings({ ai: { ...localFormData.ai, model: localFormData.ai.model } })}
-                  />
-                </label>
-              )}
-            </>
+                    <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                      {localFormData.ai?.provider === 'augment' ? 'Augment Session Auth:' : 
+                       localFormData.ai?.provider === 'glean' ? 'Glean Session Token:' : 'LLM API Key:'}
+                      <input
+                        type="password"
+                        placeholder={localFormData.ai?.provider === 'augment' || localFormData.ai?.provider === 'glean' ? "Session token..." : "sk-..."}
+                        value={localFormData.ai?.api_key || ""}
+                        onChange={(e) => updateFormData('ai.api_key', e.target.value)}
+                        onBlur={() => onUpdateSettings({ ai: { ...localFormData.ai, api_key: localFormData.ai.api_key } })}
+                      />
+                    </label>
+
+                    {localFormData.ai?.provider !== 'augment' && localFormData.ai?.provider !== 'glean' && (
+                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                        LLM Model (Optional):
+                        <input
+                          type="text"
+                          placeholder="gpt-4-turbo"
+                          value={localFormData.ai?.model || ""}
+                          onChange={(e) => updateFormData('ai.model', e.target.value)}
+                          onBlur={() => onUpdateSettings({ ai: { ...localFormData.ai, model: localFormData.ai.model } })}
+                        />
+                      </label>
+                    )}
+                  </div>
+                )}
+
+                {activeSubTab === "support" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "100%" }}>
+                      AI Support Discovery Prompt:
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                        This prompt will be used to analyze Glean/Slack search results. It must return a JSON object matching the following schema:
+                      </span>
+                      <pre style={{ 
+                        fontSize: '11px', 
+                        backgroundColor: 'rgba(0,0,0,0.2)', 
+                        padding: '12px', 
+                        borderRadius: '4px', 
+                        overflow: 'auto',
+                        maxHeight: '240px',
+                        border: '1px solid var(--border-primary)',
+                        color: 'var(--text-muted)',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-all'
+                      }}>
+                        {JSON.stringify({ 
+                          "$schema": "https://json-schema.org/draft/2020-12/schema", 
+                          "title": "CustomerIssues", 
+                          "type": "object", 
+                          "additionalProperties": false, 
+                          "properties": { 
+                            "customers": { 
+                              "type": "array", 
+                              "items": { 
+                                "type": "object", 
+                                "additionalProperties": false, 
+                                "required": ["name", "orgId", "issues"], 
+                                "properties": { 
+                                  "name": { "type": "string", "description": "Customer display name" }, 
+                                  "orgId": { "type": "string", "description": "Unique organization identifier" }, 
+                                  "issues": { 
+                                    "type": "array", 
+                                    "items": { 
+                                      "type": "object", 
+                                      "additionalProperties": false, 
+                                      "required": ["summary", "impact", "rootCause", "jiraTickets"], 
+                                      "properties": { 
+                                        "summary": { "type": "string", "description": "Short description of the issue" }, 
+                                        "impact": { "type": "string", "description": "Business/technical impact of the issue" }, 
+                                        "rootCause": { "type": "string", "description": "Root cause analysis" }, 
+                                        "jiraTickets": { "type": "array", "description": "Associated Jira ticket keys", "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+-[0-9]+$" } } 
+                                      } 
+                                    } 
+                                  } 
+                                } 
+                              } 
+                            } 
+                          }, 
+                          "required": ["customers"] 
+                        }, null, 2)}
+                      </pre>
+                      <textarea
+                        placeholder="Analyze the following Slack conversations and extract customer issues..."
+                        value={localFormData.ai?.support?.prompt || ""}
+                        onChange={(e) => updateFormData('ai.support.prompt', e.target.value)}
+                        onBlur={() => onUpdateSettings({ ai: { ...localFormData.ai, support: { ...localFormData.ai?.support, prompt: localFormData.ai?.support?.prompt || '' } } })}
+                        rows={15}
+                        style={{ fontFamily: 'monospace', fontSize: '13px', resize: 'vertical' }}
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </div>

@@ -89,15 +89,30 @@ function SprintPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueS
   return <SprintPage {...valueStreamState} />;
 }
 
-function SettingsPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
-  const mergedSettings = {
-    ...DEFAULT_SETTINGS,
-    ...(valueStreamState.data?.settings || {}),
-    aha: {
-      ...DEFAULT_SETTINGS.aha,
-      ...(valueStreamState.data?.settings?.aha || {})
+function deepMerge<T extends object>(target: T, source: any): T {
+  if (!source || typeof source !== 'object') return target;
+  const result = { ...target } as any;
+  
+  Object.keys(target).forEach(key => {
+    const targetValue = (target as any)[key];
+    const sourceValue = source[key];
+    
+    if (sourceValue !== undefined) {
+      if (targetValue && typeof targetValue === 'object' && !Array.isArray(targetValue) && 
+          sourceValue && typeof sourceValue === 'object' && !Array.isArray(sourceValue)) {
+        result[key] = deepMerge(targetValue, sourceValue);
+      } else {
+        result[key] = sourceValue;
+      }
     }
-  };
+  });
+  
+  return result as T;
+}
+
+function SettingsPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
+  const mergedSettings = deepMerge(DEFAULT_SETTINGS, valueStreamState.data?.settings || {});
+  
   return (
     <SettingsPage 
       settings={mergedSettings} 

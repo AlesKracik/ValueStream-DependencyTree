@@ -14,7 +14,7 @@ const MOCK_DATA: ValueStreamData = {
             }
         },
         jira: { base_url: "https://jira", api_version: "3" },
-        ai: { provider: 'openai' }
+        ai: { provider: 'openai', support: { prompt: '' } }
     },
     customers: [
         { id: 'c1', name: 'Cust 1', existing_tcv: 100, existing_tcv_valid_from: '2026-01-01', potential_tcv: 0 },
@@ -253,6 +253,8 @@ describe('useGraphLayout Math Engine', () => {
         expect(ganttNode?.style?.opacity).toBe(1);
     });
 });
+
+
 
 
 

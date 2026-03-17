@@ -41,13 +41,15 @@ export const useCustomerHealth = (customer: Customer | undefined, settings: Sett
 
             const { jira } = settings;
             const { 
-                customer_jql_new, 
-                customer_jql_in_progress, 
-                customer_jql_noop, 
+                customer: jiraCustomer,
                 base_url: jira_base_url, 
                 api_version: jira_api_version, 
                 api_token: jira_api_token 
             } = jira;
+
+            const customer_jql_new = jiraCustomer?.jql_new;
+            const customer_jql_in_progress = jiraCustomer?.jql_in_progress;
+            const customer_jql_noop = jiraCustomer?.jql_noop;
 
             if (!jira_base_url || (!customer_jql_new && !customer_jql_in_progress && !customer_jql_noop)) {
                 setHealthData(prev => ({ ...prev, loading: false, error: 'Jira or JQL settings not configured.' }));

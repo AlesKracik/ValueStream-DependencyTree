@@ -34,9 +34,9 @@ const mockData: ValueStreamData = {
             customer: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false }
           }
         },
-        jira: { base_url: 'https://jira.example.com', api_version: '3', api_token: 'token' },
+        jira: { base_url: '', api_version: '', api_token: '', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
         aha: { subdomain: 'test-subdomain', api_key: 'test-key' },
-        ai: { provider: 'openai' }
+        ai: { provider: 'openai', support: { prompt: '' } }
     },
     customers: [
         { 
@@ -748,3 +748,6 @@ describe('WorkItemPage', () => {
         }));
     });
 });
+
+
+

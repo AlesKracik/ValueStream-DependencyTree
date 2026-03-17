@@ -63,18 +63,29 @@
                         "base_url": { "type": "string", "format": "uri" },
                         "api_version": { "type": "string", "enum": ["2", "3"] },
                         "api_token": { "type": "string" },
-                        "customer_jql_new": { "type": "string" },
-                        "customer_jql_in_progress": { "type": "string" },
-                        "customer_jql_noop": { "type": "string" }
+                        "customer": {
+                            "type": "object",
+                            "properties": {
+                                "jql_new": { "type": "string" },
+                                "jql_in_progress": { "type": "string" },
+                                "jql_noop": { "type": "string" }
+                            }
+                        }
                     }
                 },
                 "ai": {
                     "type": "object",
                     "required": ["provider"],
                     "properties": {
-                        "provider": { "type": "string", "enum": ["openai", "gemini", "anthropic", "augment"] },
+                        "provider": { "type": "string", "enum": ["openai", "gemini", "anthropic", "augment", "glean"] },
                         "api_key": { "type": "string" },
-                        "model": { "type": "string" }
+                        "model": { "type": "string" },
+                        "support": {
+                            "type": "object",
+                            "properties": {
+                                "prompt": { "type": "string" }
+                            }
+                        }
                     }
                 }
             }

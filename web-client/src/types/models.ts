@@ -125,9 +125,11 @@ export interface JiraSettings {
   base_url: string;
   api_version: '2' | '3';
   api_token?: string;
-  customer_jql_new?: string;
-  customer_jql_in_progress?: string;
-  customer_jql_noop?: string;
+  customer?: {
+    jql_new?: string;
+    jql_in_progress?: string;
+    jql_noop?: string;
+  };
 }
 
 export interface AhaSettings {
@@ -173,6 +175,9 @@ export interface AISettings {
   provider: 'openai' | 'gemini' | 'anthropic' | 'augment' | 'glean';
   api_key?: string;
   model?: string;
+  support?: {
+    prompt: string;
+  };
 }
 
 export interface Settings {

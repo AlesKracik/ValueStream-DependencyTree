@@ -23,9 +23,9 @@ export function maskSettings(settings: any): any {
   const masked = Array.isArray(settings) ? [...settings] : { ...settings };
   
   Object.keys(masked).forEach(key => {
-    if (SENSITIVE_FIELDS.includes(key) && masked[key]) {
+    if (SENSITIVE_FIELDS.includes(key) && masked[key] && typeof masked[key] === 'string') {
       masked[key] = MASK;
-    } else if (typeof masked[key] === 'object') {
+    } else if (typeof masked[key] === 'object' && masked[key] !== null) {
       masked[key] = maskSettings(masked[key]);
     }
   });
@@ -35,15 +35,28 @@ export function maskSettings(settings: any): any {
 
 export function unmaskSettings(newData: any, existingSettings: any): any {
   if (!newData || typeof newData !== 'object') return newData;
+  if (!existingSettings || typeof existingSettings !== 'object') return newData;
+
   const unmasked = Array.isArray(newData) ? [...newData] : { ...newData };
   
-  Object.keys(unmasked).forEach(key => {
-    if (SENSITIVE_FIELDS.includes(key) && unmasked[key] === MASK) {
-      unmasked[key] = existingSettings ? existingSettings[key] : MASK;
-    } else if (typeof unmasked[key] === 'object') {
-      unmasked[key] = unmaskSettings(unmasked[key], (existingSettings && existingSettings[key]) ? existingSettings[key] : null);
+  // First, bring in any keys from existingSettings that aren't in newData
+  Object.keys(existingSettings).forEach(key => {
+    if (!(key in unmasked)) {
+      unmasked[key] = existingSettings[key];
     }
   });
+
+  Object.keys(unmasked).forEach(key => {
+    const newVal = unmasked[key];
+    const oldVal = existingSettings[key];
+
+    if (SENSITIVE_FIELDS.includes(key) && newVal === MASK) {
+      unmasked[key] = oldVal !== undefined ? oldVal : MASK;
+    } else if (typeof newVal === 'object' && newVal !== null) {
+      unmasked[key] = unmaskSettings(newVal, oldVal);
+    }
+  });
+
   return unmasked;
 }
 

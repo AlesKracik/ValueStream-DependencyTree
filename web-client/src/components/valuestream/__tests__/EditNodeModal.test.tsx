@@ -15,7 +15,7 @@ const mockData: ValueStreamData = {
             }
         },
         jira: { base_url: "https://jira", api_version: "3" },
-        ai: { provider: 'openai' }
+        ai: { provider: 'openai', support: { prompt: '' } }
     },
     customers: [],
     workItems: [],
@@ -156,3 +156,5 @@ describe('EditNodeModal', () => {
         }));
     });
 });
+
+

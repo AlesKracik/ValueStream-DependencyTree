@@ -13,8 +13,8 @@ const MOCK_DATA: ValueStreamData = {
                 customer: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false }
             }
         },
-        jira: { base_url: '', api_version: '3' },
-        ai: { provider: 'openai' }
+        jira: { base_url: '', api_version: '3', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
+        ai: { provider: 'openai', support: { prompt: '' } }
     },
     customers: [
         { id: 'c1', name: 'Alpha Customer', existing_tcv: 100, potential_tcv: 0 },
@@ -105,6 +105,9 @@ describe('useGraphLayout - Filter Consolidation (Base vs Transient)', () => {
         expect(res2.current.nodes.some(n => n.id.startsWith('workitem-'))).toBe(false);
     });
 });
+
+
+
 
 
 

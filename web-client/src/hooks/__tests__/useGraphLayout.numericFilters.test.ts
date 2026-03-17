@@ -13,7 +13,7 @@ const MOCK_DATA: ValueStreamData = {
             }
         },
         jira: { base_url: '', api_token: '', api_version: '3' },
-        ai: { provider: 'openai' }
+        ai: { provider: 'openai', support: { prompt: '' } }
     },
     customers: [
         { id: 'c1', name: 'High TCV Customer', existing_tcv: 50, existing_tcv_valid_from: '2026-01-01', potential_tcv: 500 },
@@ -80,6 +80,8 @@ describe('useGraphLayout - Numeric Filters', () => {
         expect(hasF1).toBe(true);
     });
 });
+
+
 
 
 

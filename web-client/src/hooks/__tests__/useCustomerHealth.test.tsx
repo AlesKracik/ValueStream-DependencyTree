@@ -28,11 +28,13 @@ const mockSettings: Settings = {
         base_url: 'https://jira.test',
         api_version: '3',
         api_token: 'test-token',
-        customer_jql_new: 'project = TEST AND cf[123] = "{{CUSTOMER_ID}}" AND status = New',
-        customer_jql_in_progress: 'project = TEST AND cf[123] = "{{CUSTOMER_ID}}" AND status = "In Progress"',
-        customer_jql_noop: 'project = TEST AND cf[123] = "{{CUSTOMER_ID}}" AND status = Blocked'
+        customer: {
+            jql_new: 'project = TEST AND cf[123] = "{{CUSTOMER_ID}}" AND status = New',
+            jql_in_progress: 'project = TEST AND cf[123] = "{{CUSTOMER_ID}}" AND status = "In Progress"',
+            jql_noop: 'project = TEST AND cf[123] = "{{CUSTOMER_ID}}" AND status = Blocked'
+        }
     },
-    ai: { provider: 'openai' }
+    ai: { provider: 'openai', support: { prompt: '' } }
 };
 
 describe('useCustomerHealth', () => {
