@@ -3,11 +3,11 @@ import {
     calculateWorkItemEffort, 
     calculateWorkItemTcv, 
     calculateWorkItemScore,
-    calculateEpicEffortPerSprint, 
-    calculateEpicIntensityRatio, 
+    calculateIssueEffortPerSprint, 
+    calculateIssueIntensityRatio, 
     parseJiraIssue 
 } from '../businessLogic';
-import type { WorkItem, Epic, Customer, Sprint, Team } from '../../types/models';
+import type { WorkItem, Issue, Customer, Sprint, Team } from '../../types/models';
 
 describe('businessLogic', () => {
     // ... parseJiraIssue tests remain the same ...
@@ -20,19 +20,19 @@ describe('businessLogic', () => {
         it('parses basic fields correctly', () => {
             const jiraIssue = {
                 fields: {
-                    summary: 'Test Epic',
+                    summary: 'Test Issue',
                     timeestimate: 28800 * 5 // 5 man-days
                 }
             };
             const result = parseJiraIssue(jiraIssue, mockTeams);
-            expect(result.name).toBe('Test Epic');
+            expect(result.name).toBe('Test Issue');
             expect(result.effort_md).toBe(5);
         });
 
         it('parses custom date fields correctly', () => {
             const jiraIssue = {
                 fields: {
-                    summary: 'Test Epic',
+                    summary: 'Test Issue',
                     'customfield_101': '2026-01-01',
                     'customfield_102': '2026-01-14'
                 },
@@ -135,39 +135,39 @@ describe('businessLogic', () => {
             customer_targets: []
         };
 
-        it('uses workItem effort when no epics are present', () => {
+        it('uses workItem effort when no issues are present', () => {
             expect(calculateWorkItemEffort(mockWorkItem, [])).toBe(10);
         });
 
-        it('uses workItem effort when epic effort sum is 0', () => {
-            const epics: Epic[] = [
+        it('uses workItem effort when issue effort sum is 0', () => {
+            const issues: Issue[] = [
                 { id: 'e1', jira_key: 'J1', work_item_id: 'f1', team_id: 't1', effort_md: 0 }
             ];
-            expect(calculateWorkItemEffort(mockWorkItem, epics)).toBe(10);
+            expect(calculateWorkItemEffort(mockWorkItem, issues)).toBe(10);
         });
 
-        it('prioritizes epic effort sum when it is greater than 0', () => {
-            const epics: Epic[] = [
+        it('prioritizes issue effort sum when it is greater than 0', () => {
+            const issues: Issue[] = [
                 { id: 'e1', jira_key: 'J1', work_item_id: 'f1', team_id: 't1', effort_md: 5 },
                 { id: 'e2', jira_key: 'J2', work_item_id: 'f1', team_id: 't2', effort_md: 7 }
             ];
-            // Epic sum (12) > WorkItem effort (10)
-            expect(calculateWorkItemEffort(mockWorkItem, epics)).toBe(12);
+            // Issue sum (12) > WorkItem effort (10)
+            expect(calculateWorkItemEffort(mockWorkItem, issues)).toBe(12);
         });
 
-        it('uses epic effort sum even if it is smaller than workItem effort (as long as it is > 0)', () => {
-            const epics: Epic[] = [
+        it('uses issue effort sum even if it is smaller than workItem effort (as long as it is > 0)', () => {
+            const issues: Issue[] = [
                 { id: 'e1', jira_key: 'J1', work_item_id: 'f1', team_id: 't1', effort_md: 5 }
             ];
-            // Epic sum (5) is taken because it's > 0, even though WorkItem effort is 10
-            expect(calculateWorkItemEffort(mockWorkItem, epics)).toBe(5);
+            // Issue sum (5) is taken because it's > 0, even though WorkItem effort is 10
+            expect(calculateWorkItemEffort(mockWorkItem, issues)).toBe(5);
         });
 
-        it('ignores epics for other work items', () => {
-            const epics: Epic[] = [
+        it('ignores issues for other work items', () => {
+            const issues: Issue[] = [
                 { id: 'e1', jira_key: 'J1', work_item_id: 'f2', team_id: 't1', effort_md: 50 }
             ];
-            expect(calculateWorkItemEffort(mockWorkItem, epics)).toBe(10);
+            expect(calculateWorkItemEffort(mockWorkItem, issues)).toBe(10);
         });
     });
 
@@ -332,7 +332,7 @@ describe('businessLogic', () => {
         });
     });
 
-    describe('calculateEpicEffortPerSprint', () => {
+    describe('calculateIssueEffortPerSprint', () => {
         const mockSprints: Sprint[] = [
             { id: 's1', name: 'S1', start_date: '2025-01-01', end_date: '2025-01-14', quarter: 'Q1' },
             { id: 's2', name: 'S2', start_date: '2025-01-15', end_date: '2025-01-28', quarter: 'Q1' },
@@ -340,7 +340,7 @@ describe('businessLogic', () => {
         ];
 
         it('distributes effort proportionally across overlapping sprints', () => {
-            const epic: Epic = {
+            const issue: Issue = {
                 id: 'e1',
                 jira_key: 'J1',
                 team_id: 't1',
@@ -349,7 +349,7 @@ describe('businessLogic', () => {
                 target_end: '2025-01-30' // 30 days
             };
 
-            const result = calculateEpicEffortPerSprint(epic, mockSprints);
+            const result = calculateIssueEffortPerSprint(issue, mockSprints);
             // S1 (14 days), S2 (14 days), S3 (2 days)
             expect(result['s1']).toBeCloseTo(14, 0);
             expect(result['s2']).toBeCloseTo(14, 0);
@@ -357,7 +357,7 @@ describe('businessLogic', () => {
         });
 
         it('respects manual overrides and distributes remaining effort', () => {
-            const epic: Epic = {
+            const issue: Issue = {
                 id: 'e1',
                 jira_key: 'J1',
                 team_id: 't1',
@@ -369,7 +369,7 @@ describe('businessLogic', () => {
                 }
             };
 
-            const result = calculateEpicEffortPerSprint(epic, mockSprints);
+            const result = calculateIssueEffortPerSprint(issue, mockSprints);
             // Total effort 30. S1 overridden to 5. 25 left.
             // S1 had 14 days, S2 had 14 days, S3 had 2 days.
             // Remaining days for S2 and S3: 14 + 2 = 16.
@@ -379,23 +379,23 @@ describe('businessLogic', () => {
         });
 
         it('returns empty object if dates are missing', () => {
-            const epic: Epic = { id: 'e1', jira_key: 'J1', team_id: 't1', effort_md: 30 };
-            expect(calculateEpicEffortPerSprint(epic, mockSprints)).toEqual({});
+            const issue: Issue = { id: 'e1', jira_key: 'J1', team_id: 't1', effort_md: 30 };
+            expect(calculateIssueEffortPerSprint(issue, mockSprints)).toEqual({});
         });
     });
 
-    describe('calculateEpicIntensityRatio', () => {
+    describe('calculateIssueIntensityRatio', () => {
         it('calculates ratio correctly when baseline is > 0', () => {
-            expect(calculateEpicIntensityRatio(20, 10)).toBe(2);
-            expect(calculateEpicIntensityRatio(5, 10)).toBe(0.5);
+            expect(calculateIssueIntensityRatio(20, 10)).toBe(2);
+            expect(calculateIssueIntensityRatio(5, 10)).toBe(0.5);
         });
 
         it('returns 2 if actual > 0 and baseline is 0', () => {
-            expect(calculateEpicIntensityRatio(5, 0)).toBe(2);
+            expect(calculateIssueIntensityRatio(5, 0)).toBe(2);
         });
 
         it('returns 1 if both actual and baseline are 0', () => {
-            expect(calculateEpicIntensityRatio(0, 0)).toBe(1);
+            expect(calculateIssueIntensityRatio(0, 0)).toBe(1);
         });
     });
 });

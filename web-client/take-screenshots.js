@@ -111,16 +111,16 @@ if (!fs.existsSync(imageDir)) {
   }
   await page.screenshot({ path: `${imageDir}/workitem-detail-customers.png` });
 
-  console.log('Taking screenshot of Work Item Detail (Epics tab scrolled)...');
+  console.log('Taking screenshot of Work Item Detail (Issues tab scrolled)...');
   try {
-    const tab = page.getByRole('button', { name: /^Epics/i });
+    const tab = page.getByRole('button', { name: /^Issues/i });
     await tab.click({ timeout: 5000 });
     await tab.evaluate(el => el.scrollIntoView({ block: 'start' }));
     await page.waitForTimeout(500);
   } catch (e) {
-    console.log('Epics tab not found, skipping scroll/click');
+    console.log('Issues tab not found, skipping scroll/click');
   }
-  await page.screenshot({ path: `${imageDir}/workitem-detail-epics.png` });
+  await page.screenshot({ path: `${imageDir}/workitem-detail-issues.png` });
 
   console.log('Taking screenshot of Team List...');
   await page.goto(`${baseUrl}/teams`, { waitUntil: 'networkidle' });
@@ -132,10 +132,10 @@ if (!fs.existsSync(imageDir)) {
   await page.waitForTimeout(1000);
   await page.screenshot({ path: `${imageDir}/team-detail.png` });
 
-  console.log('Taking screenshot of Epic Detail...');
-  await page.goto(`${baseUrl}/epic/e1`, { waitUntil: 'networkidle' });
+  console.log('Taking screenshot of Issue Detail...');
+  await page.goto(`${baseUrl}/issue/e1`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(1000);
-  await page.screenshot({ path: `${imageDir}/epic-detail.png` });
+  await page.screenshot({ path: `${imageDir}/issue-detail.png` });
 
   console.log('Taking screenshot of Sprints Management...');
   await page.goto(`${baseUrl}/sprints`, { waitUntil: 'networkidle' });

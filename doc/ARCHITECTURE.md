@@ -56,7 +56,7 @@ The frontend employs a sparse-context architecture via `useValueStreamData`.
 
 ### 3. Server-Side Processing (Service Layer)
 The Fastify backend isolates business logic into a dedicated `services/` directory:
--   **Metrics Service:** When Work Items or the full workspace are requested, the server internally joins Work Items with Epics (for effort) and Customers (for TCV) to calculate dynamic RICE scores and return global scaling metadata (`maxScore`, `maxRoi`).
+-   **Metrics Service:** When Work Items or the full workspace are requested, the server internally joins Work Items with Issues (for effort) and Customers (for TCV) to calculate dynamic RICE scores and return global scaling metadata (`maxScore`, `maxRoi`).
 -   **Sprint Service:** Sprints are automatically evaluated and tagged with a fiscal quarter (e.g., `FY2026 Q1`) based on the `general.fiscal_year_start_month` setting before being served.
 
 ### 4. AI & LLM Integration
@@ -65,9 +65,9 @@ The system provides a unified interface for AI generation, supporting multiple p
 - **Local Execution:** Integration with the Augment CLI (`auggie`) for localized reasoning and code-aware tasks.
 
 ### 5. Mutations & Reactivity
-User actions (updates, deletes, adds) trigger local state changes via mutation functions (`addEpic`, `updateWorkItem`, etc.) which:
+User actions (updates, deletes, adds) trigger local state changes via mutation functions (`addIssue`, `updateWorkItem`, etc.) which:
 -   **Optimistic Updates:** Immediately execute a local update on the React state array for zero-latency UI feedback.
--   **Cascading Logic:** Deleting a Customer automatically removes it from all Work Item targets; deleting a Team clears associations from its Epics.
+-   **Cascading Logic:** Deleting a Customer automatically removes it from all Work Item targets; deleting a Team clears associations from its Issues.
 -   **Debounced Persistence:** Update operations are debounced by 1000ms. This bundles rapid changes (like typing a description) into a single API call.
 -   **Asynchronous Persistence:** Fire off background `fetch` requests (via `authorizedFetch`) to the `/api/entity` endpoints.
 
@@ -86,7 +86,7 @@ sequenceDiagram
     Note over UI, Jira: Scenario 1: Graph View Full Load
     UI->>Fastify: GET /api/workspace?ValueStreamId=dash123
     Fastify->>FS: Read settings.json (Mongo URI)
-    Fastify->>DB: Fetch valueStreams, Customers, WorkItems, Epics
+    Fastify->>DB: Fetch valueStreams, Customers, WorkItems, Issues
     DB-->>Fastify: Raw Data
     Note right of Fastify: Calculate RICE Scores & Global Metrics
     Fastify-->>UI: JSON Data (Aggregated & Scored)
@@ -148,7 +148,7 @@ The core visualization is not physics-based (like traditional force-directed gra
 1. **Column Mapping:** The layout establishes fixed X-coordinates (`COL_CUSTOMER_X`, `COL_WORKITEM_X`, `COL_TEAM_X`) forming a left-to-right flow pipeline.
 2. **Hybrid Filtering (Logical AND):** The hook merges Base Parameters (persisted ValueStream rules) and Transient Filters (live-typing from the UI) before determining node inclusion.
 3. **Reachability Analysis:** When a node is selected, the engine performs a recursive trace upstream (to root causes/customers) and downstream (to execution/teams) to filter the visible graph to only show relevant paths.
-4. **Coordinate Placement:** It dynamically loops through the sets, generating React Flow nodes and calculating specific Y offsets so nodes do not overlap, particularly protecting Epic Gantt bars within expanding Team vertical bounds.
+4. **Coordinate Placement:** It dynamically loops through the sets, generating React Flow nodes and calculating specific Y offsets so nodes do not overlap, particularly protecting Issue Gantt bars within expanding Team vertical bounds.
 5. **Holiday-Aware Capacity:** Team capacity for each sprint is automatically adjusted based on public holidays in the team's configured country (using `date-holidays`).
 
 ### 2. React Flow Custom Nodes
@@ -243,7 +243,7 @@ erDiagram
         number total_effort_mds
         number score
     }
-    EPIC {
+    ISSUE {
         string id
         string jira_key
         number effort_md
@@ -268,11 +268,11 @@ erDiagram
     }
 
     CUSTOMER ||--o{ WORK-ITEM : "targeted by"
-    WORK-ITEM ||--o{ EPIC : "fulfilled by"
-    TEAM ||--o{ EPIC : "assigned to"
+    WORK-ITEM ||--o{ ISSUE : "fulfilled by"
+    TEAM ||--o{ ISSUE : "assigned to"
     SPRINT ||--o{ WORK-ITEM : "release target"
-    SPRINT ||--o{ EPIC : "contains"
-    EPIC ||--o{ EPIC : "depends on"
+    SPRINT ||--o{ ISSUE : "contains"
+    ISSUE ||--o{ ISSUE : "depends on"
     ValueStream ||--o{ CUSTOMER : "filters"
     ValueStream ||--o{ WORK-ITEM : "filters"
     ValueStream ||--o{ TEAM : "filters"

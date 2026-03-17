@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { EpicPage } from '../EpicPage';
+import { IssuePage } from '../IssuePage';
 import { ValueStreamProvider, NotificationProvider, useValueStreamContext } from '../../../contexts/ValueStreamContext';
 import type { ValueStreamData } from '../../../types/models';
 import * as api from '../../../utils/api';
@@ -54,10 +54,10 @@ const mockData: ValueStreamData = {
         { id: 's_past', name: 'Past', start_date: '2026-01-01', end_date: '2026-01-14' },
         { id: 's_curr', name: 'Active', start_date: '2026-02-15', end_date: '2026-02-28' }
     ],
-    epics: [
+    issues: [
         {
             id: 'e1',
-            name: 'Epic 1',
+            name: 'Issue 1',
             jira_key: 'J-1',
             team_id: 't1',
             effort_md: 10,
@@ -69,25 +69,25 @@ const mockData: ValueStreamData = {
     metrics: { maxScore: 100, maxRoi: 10 }
 };
 
-describe('EpicPage', () => {
-    const updateEpicSpy = vi.fn();
+describe('IssuePage', () => {
+    const updateIssueSpy = vi.fn();
     const mockShowConfirm = vi.fn().mockResolvedValue(true);
     const mockShowAlert = vi.fn().mockResolvedValue(undefined);
     
     const defaultProps = {
         data: mockData,
         loading: false,
-        updateEpic: updateEpicSpy,
-        deleteEpic: vi.fn()
+        updateIssue: updateIssueSpy,
+        deleteIssue: vi.fn()
     };
 
-    const renderEpicPage = (props = defaultProps, epicId = 'e1') => {
+    const renderIssuePage = (props = defaultProps, issueId = 'e1') => {
         return render(
-            <MemoryRouter initialEntries={[`/epic/${epicId}`]}>
+            <MemoryRouter initialEntries={[`/issue/${issueId}`]}>
                 <NotificationProvider>
-                    <ValueStreamProvider value={{ data: props.data || mockData, updateEpic: updateEpicSpy, addEpic: vi.fn(), deleteEpic: vi.fn() }}>
+                    <ValueStreamProvider value={{ data: props.data || mockData, updateIssue: updateIssueSpy, addIssue: vi.fn(), deleteIssue: vi.fn() }}>
                         <Routes>
-                            <Route path="/epic/:id" element={<EpicPage {...props} />} />
+                            <Route path="/issue/:id" element={<IssuePage {...props} />} />
                         </Routes>
                     </ValueStreamProvider>
                 </NotificationProvider>
@@ -102,7 +102,7 @@ describe('EpicPage', () => {
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
             data: mockData,
-            updateEpic: updateEpicSpy
+            updateIssue: updateIssueSpy
         });
     });
 
@@ -117,7 +117,7 @@ describe('EpicPage', () => {
         });
 
         it('prompts user and clears past work when shifting dates if they confirm', async () => {
-            renderEpicPage();
+            renderIssuePage();
             const startInput = screen.getByLabelText(/Target Start/i);
             fireEvent.change(startInput, { target: { value: '2026-01-10' } });
             
@@ -127,7 +127,7 @@ describe('EpicPage', () => {
                 await Promise.resolve();
             });
 
-            expect(updateEpicSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
+            expect(updateIssueSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
                 target_start: '2026-01-10',
                 sprint_effort_overrides: undefined
             }));
@@ -135,7 +135,7 @@ describe('EpicPage', () => {
 
         it('aborts date shift if user cancels the confirmation', async () => {
             mockShowConfirm.mockResolvedValueOnce(false);
-            renderEpicPage();
+            renderIssuePage();
             const startInput = screen.getByLabelText(/Target Start/i);
             fireEvent.change(startInput, { target: { value: '2026-01-10' } });
             
@@ -145,34 +145,34 @@ describe('EpicPage', () => {
                 await Promise.resolve();
             });
 
-            expect(updateEpicSpy).not.toHaveBeenCalled();
+            expect(updateIssueSpy).not.toHaveBeenCalled();
         });
 
         it('does NOT prompt when shifting end date into the future', async () => {
-            renderEpicPage();
+            renderIssuePage();
             const endInput = screen.getByLabelText(/Target End/i);
             fireEvent.change(endInput, { target: { value: '2026-03-15' } });
             
             expect(mockShowConfirm).not.toHaveBeenCalled();
-            expect(updateEpicSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
+            expect(updateIssueSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
                 target_end: '2026-03-15'
             }));
         });
 
         it('shows an alert and prevents update if start date is not before end date', async () => {
-            renderEpicPage();
+            renderIssuePage();
             const startInput = screen.getByLabelText(/Target Start/i);
             fireEvent.change(startInput, { target: { value: '2026-02-26' } });
             expect(mockShowAlert).toHaveBeenCalledWith('Invalid Dates', 'The Start Date must be before the End Date.');
-            expect(updateEpicSpy).not.toHaveBeenCalled();
+            expect(updateIssueSpy).not.toHaveBeenCalled();
         });
 
         it('shows an alert and prevents update if start date is equal to end date', async () => {
-            renderEpicPage();
+            renderIssuePage();
             const startInput = screen.getByLabelText(/Target Start/i);
             fireEvent.change(startInput, { target: { value: '2026-02-25' } });
             expect(mockShowAlert).toHaveBeenCalledWith('Invalid Dates', expect.any(String));
-            expect(updateEpicSpy).not.toHaveBeenCalled();
+            expect(updateIssueSpy).not.toHaveBeenCalled();
         });
     });
 
@@ -180,7 +180,7 @@ describe('EpicPage', () => {
         it('shows error alert when handleSync fails', async () => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (api.syncJiraIssue as any).mockRejectedValueOnce(new Error('Jira API Error'));
-            renderEpicPage();
+            renderIssuePage();
             const syncButton = screen.getByText('Sync from Jira');
             await act(async () => {
                 fireEvent.click(syncButton);
@@ -193,7 +193,7 @@ describe('EpicPage', () => {
         it('shows error alert when handleSync throws exception', async () => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (api.syncJiraIssue as any).mockRejectedValueOnce(new Error('Network Failure'));
-            renderEpicPage();
+            renderIssuePage();
             const syncButton = screen.getByText('Sync from Jira');
             await act(async () => {
                 fireEvent.click(syncButton);
@@ -207,11 +207,11 @@ describe('EpicPage', () => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (api.syncJiraIssue as any).mockResolvedValueOnce({ 
                 fields: { 
-                    summary: 'Synced Epic',
+                    summary: 'Synced Issue',
                     customfield_10005: 80 
                 } 
             });
-            renderEpicPage();
+            renderIssuePage();
             const syncButton = screen.getByText('Sync from Jira');
             await act(async () => {
                 fireEvent.click(syncButton);
@@ -224,7 +224,7 @@ describe('EpicPage', () => {
 
     describe('General Rendering', () => {
         it('renders Jira Key correctly', () => {
-            renderEpicPage();
+            renderIssuePage();
             const jiraKeyInput = screen.getByLabelText(/Jira Key/i) as HTMLInputElement;
             expect(jiraKeyInput.value).toBe('J-1');
         });
@@ -242,9 +242,9 @@ describe('EpicPage', () => {
                 showConfirm: mockShowConfirm,
                 showAlert: mockShowAlert,
                 data: extendedData,
-                updateEpic: updateEpicSpy
+                updateIssue: updateIssueSpy
             });
-            renderEpicPage({ ...defaultProps, data: extendedData });
+            renderIssuePage({ ...defaultProps, data: extendedData });
             expect(screen.getByText('Past')).toBeDefined();
             expect(screen.getByText('Active')).toBeDefined();
             expect(screen.queryByText('Future')).toBeNull();
@@ -258,9 +258,9 @@ describe('EpicPage', () => {
                 { id: 'wi1', name: 'Work Item 1', total_effort_mds: 10, score: 50, customer_targets: [] },
                 { id: 'wi2', name: 'Work Item 2', total_effort_mds: 20, score: 30, customer_targets: [] }
             ],
-            epics: [
+            issues: [
                 {
-                    ...mockData.epics[0],
+                    ...mockData.issues[0],
                     work_item_id: 'wi1'
                 }
             ]
@@ -272,9 +272,9 @@ describe('EpicPage', () => {
                 showConfirm: mockShowConfirm,
                 showAlert: mockShowAlert,
                 data: dataWithWorkItems,
-                updateEpic: updateEpicSpy
+                updateIssue: updateIssueSpy
             });
-            renderEpicPage({ ...defaultProps, data: dataWithWorkItems });
+            renderIssuePage({ ...defaultProps, data: dataWithWorkItems });
             const workItemInput = screen.getByPlaceholderText('Search for a work item...') as HTMLInputElement;
             expect(workItemInput.value).toBe('Work Item 1');
         });
@@ -285,15 +285,15 @@ describe('EpicPage', () => {
                 showConfirm: mockShowConfirm,
                 showAlert: mockShowAlert,
                 data: dataWithWorkItems,
-                updateEpic: updateEpicSpy
+                updateIssue: updateIssueSpy
             });
-            renderEpicPage({ ...defaultProps, data: dataWithWorkItems });
+            renderIssuePage({ ...defaultProps, data: dataWithWorkItems });
             const workItemInput = screen.getByPlaceholderText('Search for a work item...');
             fireEvent.change(workItemInput, { target: { value: '' } });
             fireEvent.change(workItemInput, { target: { value: 'Work Item 2' } });
             const option = await screen.findByText('Work Item 2');
             fireEvent.click(option);
-            expect(updateEpicSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
+            expect(updateIssueSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
                 work_item_id: 'wi2'
             }));
         });
@@ -304,52 +304,52 @@ describe('EpicPage', () => {
                 showConfirm: mockShowConfirm,
                 showAlert: mockShowAlert,
                 data: dataWithWorkItems,
-                updateEpic: updateEpicSpy
+                updateIssue: updateIssueSpy
             });
-            renderEpicPage({ ...defaultProps, data: dataWithWorkItems });
+            renderIssuePage({ ...defaultProps, data: dataWithWorkItems });
             const workItemInput = screen.getByPlaceholderText('Search for a work item...');
             fireEvent.change(workItemInput, { target: { value: '' } });
             fireEvent.change(workItemInput, { target: { value: 'Unassigned' } });
             const option = await screen.findByText('--- Unassigned ---');
             fireEvent.click(option);
-            expect(updateEpicSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
+            expect(updateIssueSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
                 work_item_id: undefined
             }));
         });
     });
 
-    describe('Epic Management', () => {
-        it('deletes the epic after confirmation', async () => {
-            const deleteEpicSpy = vi.fn();
+    describe('Issue Management', () => {
+        it('deletes the issue after confirmation', async () => {
+            const deleteIssueSpy = vi.fn();
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (useValueStreamContext as any).mockReturnValue({
                 showConfirm: mockShowConfirm,
                 showAlert: mockShowAlert,
                 data: mockData,
-                updateEpic: vi.fn()
+                updateIssue: vi.fn()
             });
-            renderEpicPage({ ...defaultProps, deleteEpic: deleteEpicSpy });
-            const deleteBtn = screen.getByText('Delete Epic');
+            renderIssuePage({ ...defaultProps, deleteIssue: deleteIssueSpy });
+            const deleteBtn = screen.getByText('Delete Issue');
             fireEvent.click(deleteBtn);
-            expect(mockShowConfirm).toHaveBeenCalledWith('Delete Epic', expect.stringContaining('Epic 1'));
+            expect(mockShowConfirm).toHaveBeenCalledWith('Delete Issue', expect.stringContaining('Issue 1'));
             await waitFor(() => {
-                expect(deleteEpicSpy).toHaveBeenCalledWith('e1');
+                expect(deleteIssueSpy).toHaveBeenCalledWith('e1');
                 expect(mockNavigate).toHaveBeenCalledWith(-1);
             });
         });
 
         it('adds and removes manual effort overrides', () => {
-            renderEpicPage();
+            renderIssuePage();
             const table = screen.getByRole('table');
             const tableInputs = within(table).getAllByRole('spinbutton');
             const pastInput = tableInputs[0]; 
             fireEvent.change(pastInput, { target: { value: '8' } });
-            expect(updateEpicSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
+            expect(updateIssueSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
                 sprint_effort_overrides: expect.objectContaining({ 's_past': 8 })
             }));
             const removeBtns = screen.getAllByTitle('Remove Override');
             fireEvent.click(removeBtns[0]);
-            expect(updateEpicSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
+            expect(updateIssueSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
                 sprint_effort_overrides: {} 
             }));
         });

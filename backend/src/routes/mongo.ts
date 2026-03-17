@@ -4,7 +4,7 @@ import { getSettingsPath } from './settings';
 import { getDb } from '../utils/mongoServer';
 import { augmentConfig, unmaskSettings, maskSettings } from '../utils/configHelpers';
 
-const ALLOWED_COLLECTIONS = ['customers', 'workItems', 'teams', 'epics', 'sprints', 'valueStreams'];
+const ALLOWED_COLLECTIONS = ['customers', 'workItems', 'teams', 'issues', 'sprints', 'valueStreams'];
 
 export const mongoRoutes: FastifyPluginAsync = async (fastify) => {
 

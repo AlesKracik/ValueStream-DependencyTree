@@ -33,7 +33,7 @@ const mockData: ValueStreamData = {
         { id: 't2', name: 'Gamma Team', total_capacity_mds: 10, country: 'Canada' },
         { id: 't3', name: 'Beta Team', total_capacity_mds: 100, country: 'Brazil' }
     ],
-    epics: [],
+    issues: [],
     sprints: [],
     valueStreams: [],
     metrics: { maxScore: 100, maxRoi: 10 }

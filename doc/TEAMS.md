@@ -24,7 +24,7 @@ The system calculates available capacity for each team per sprint:
 
 ## Team Management
 - **Add Team:** New teams can be created from the Team List page.
-- **Delete Team:** Teams can be deleted from their detail page (includes a confirmation dialog and automatic clearing of team assignments for affected epics).
+- **Delete Team:** Teams can be deleted from their detail page (includes a confirmation dialog and automatic clearing of team assignments for affected issues).
 
 ## Visual Representation
 - **Node Type:** `TeamNode`.
@@ -32,15 +32,15 @@ The system calculates available capacity for each team per sprint:
 - **Pivot Point:** In the layout, Team nodes serve as the vertical anchors for their respective Gantt swimlanes.
 
 ## Relationships
-- **Epics:** Teams are assigned to Epics. Multiple Epics for the same team in the same sprint will vertically stack within the team's swimlane.
+- **Issues:** Teams are assigned to Issues. Multiple Issues for the same team in the same sprint will vertically stack within the team's swimlane.
 
 ```mermaid
 graph TD
     Team[Team Node] -->|Anchor| Lane[Gantt Swimlane]
-    Epic1[Epic A] --> Lane
-    Epic2[Epic B] --> Lane
+    Issue1[Issue A] --> Lane
+    Issue2[Issue B] --> Lane
     Capacity[Sprint Capacity Marker] -->|Status| Lane
 ```
 
 ## Logic
-- **Utilization:** The capacity marker (above the Gantt lane) turns red if the sum of effort from all Epics assigned to that team in a given sprint exceeds the calculated available capacity.
+- **Utilization:** The capacity marker (above the Gantt lane) turns red if the sum of effort from all Issues assigned to that team in a given sprint exceeds the calculated available capacity.

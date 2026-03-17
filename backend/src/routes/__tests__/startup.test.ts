@@ -50,7 +50,7 @@ describe('Startup (No Settings File)', () => {
     expect(json.customers).toEqual([]);
     expect(json.workItems).toEqual([]);
     expect(json.teams).toEqual([]);
-    expect(json.epics).toEqual([]);
+    expect(json.issues).toEqual([]);
     expect(json.sprints).toEqual([]);
     expect(json.valueStreams).toEqual([]);
     expect(json.metrics).toEqual({ maxScore: 1, maxRoi: 1 });

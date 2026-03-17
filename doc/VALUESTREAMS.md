@@ -19,7 +19,7 @@ export interface ValueStreamParameters {
   minTcvFilter: string;
   minScoreFilter: string;
   teamFilter: string;
-  epicFilter: string;
+  issueFilter: string;
   startSprintId?: string; // Persistent Time Range
   endSprintId?: string;
 }
@@ -31,7 +31,7 @@ The ValueStream employs a multi-layered filtering system that combines **Server-
 
 ### 1. The Hydration Phase (Server-Side)
 When a ValueStream is loaded, the client requests data using the `ValueStreamId`. The backend (MongoDB or the Vite proxy) applies the **Persistent Filters** directly to the database query:
-- **Optimization:** Only the relevant subset of customers, work items, and epics is transmitted over the network.
+- **Optimization:** Only the relevant subset of customers, work items, and issues is transmitted over the network.
 - **Scoring:** RICE scores are calculated on the full dataset before filtering to ensure accuracy.
 - **Global Metrics:** The server returns global max values (e.g., `maxScore`) so the UI remains consistently scaled even when only a few items are visible.
 
@@ -47,7 +47,7 @@ As users type in the filter bar, the `useGraphLayout` hook applies **Transient F
 | **Initial Load** | Database | Fetches items matching Persistent ValueStream Parameters. |
 | **Numeric Thresholds** | Server & Client | `Math.max(Transient, Persistent)` - stricter wins. |
 | **Text Searches** | Server & Client | Logical AND - must match persistent criteria AND transient search string. |
-| **Intersection** | Client | Hides items that don't form a complete path (Customer -> WorkItem -> Epic). |
+| **Intersection** | Client | Hides items that don't form a complete path (Customer -> WorkItem -> Issue). |
 
 ```mermaid
 graph TD

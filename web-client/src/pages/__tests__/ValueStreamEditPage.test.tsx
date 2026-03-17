@@ -29,7 +29,7 @@ const mockData: ValueStreamData = {
     customers: [],
     workItems: [],
     teams: [],
-    epics: [],
+    issues: [],
     sprints: [
         { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' },
         { id: 's2', name: 'Sprint 2', start_date: '2026-01-15', end_date: '2026-01-28' }
@@ -46,7 +46,7 @@ describe('ValueStreamEditPage', () => {
     const addValueStream = vi.fn();
     const updateValueStream = vi.fn();
     const deleteValueStream = vi.fn();
-    const updateEpic = vi.fn();
+    const updateIssue = vi.fn();
     const mockShowConfirm = vi.fn().mockResolvedValue(true);
 
     const defaultProps = {
@@ -65,7 +65,7 @@ describe('ValueStreamEditPage', () => {
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: mockData,
-            updateEpic
+            updateIssue
         });
     });
 

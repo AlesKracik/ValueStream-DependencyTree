@@ -55,19 +55,19 @@ graph LR
 - **Tooltip:** Hovering over the node displays the `description`.
 - **Status Icons:**
     - `📦`: Released (linked to a sprint).
-    - `🕒`: Missing dates in connected Epics.
-    - `📏`: Effort Not Estimated (0 MDs on item or any connected epic).
+    - `🕒`: Missing dates in connected Issues.
+    - `📏`: Effort Not Estimated (0 MDs on item or any connected issue).
     - `🌐`: Global (targets all customers).
 
 ## Relationships
 - **Customers:** Linked via `customer_targets`.
-- **Epics:** One Work Item can spawn multiple Epics (execution units) across different Teams.
+- **Issues:** One Work Item can spawn multiple Issues (execution units) across different Teams.
 
 ```mermaid
 erDiagram
-    WORK_ITEM ||--o{ EPIC : "spawns"
+    WORK_ITEM ||--o{ ISSUE : "spawns"
     WORK_ITEM }o--o{ CUSTOMER : "delivers value to"
-    EPIC {
+    ISSUE {
         string id
         number effort_md
     }

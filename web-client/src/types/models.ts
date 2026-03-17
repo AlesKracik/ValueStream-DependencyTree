@@ -87,12 +87,12 @@ export interface Team {
   sprint_capacity_overrides?: Record<string, number>;
 }
 
-export interface EpicDependency {
-  epic_id: string;
+export interface IssueDependency {
+  issue_id: string;
   dependency_type: 'FS' | 'FF';
 }
 
-export interface Epic {
+export interface Issue {
   id: string;
   jira_key: string;
   work_item_id?: string;
@@ -103,7 +103,7 @@ export interface Epic {
   name?: string;
   external_url?: string;
   sprint_effort_overrides?: Record<string, number>;
-  dependencies?: EpicDependency[];
+  dependencies?: IssueDependency[];
 }
 
 export interface Sprint {
@@ -192,7 +192,7 @@ export interface ValueStreamParameters {
   minTcvFilter: string;
   minScoreFilter: string;
   teamFilter: string;
-  epicFilter: string;
+  issueFilter: string;
   startSprintId?: string;
   endSprintId?: string;
 }
@@ -209,7 +209,7 @@ export interface ValueStreamData {
   customers: Customer[];
   workItems: WorkItem[];
   teams: Team[];
-  epics: Epic[];
+  issues: Issue[];
   sprints: Sprint[];
   valueStreams: ValueStreamEntity[];
   metrics: {
@@ -226,7 +226,7 @@ export interface ValueStreamViewState {
   minTcvFilter: string;
   minScoreFilter: string;
   teamFilter: string;
-  epicFilter: string;
+  issueFilter: string;
   showDependencies: boolean;
   disableHoverHighlight: boolean;
   selectedNodeId?: string | null;
@@ -245,12 +245,12 @@ export interface ValueStreamDataState {
   addWorkItem: (workItem: WorkItem) => void;
   deleteWorkItem: (id: string) => void;
   updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
-  addEpic: (epic: Epic) => void;
-  deleteEpic: (id: string) => void;
+  addIssue: (issue: Issue) => void;
+  deleteIssue: (id: string) => void;
   updateTeam: (id: string, updates: Partial<Team>, immediate?: boolean) => Promise<void>;
   addTeam: (team: Team) => void;
   deleteTeam: (id: string) => void;
-  updateEpic: (id: string, updates: Partial<Epic>, immediate?: boolean) => Promise<void>;
+  updateIssue: (id: string, updates: Partial<Issue>, immediate?: boolean) => Promise<void>;
   addSprint: (sprint: Sprint) => void;
   updateSprint: (id: string, updates: Partial<Sprint>, immediate?: boolean) => Promise<void>;
   deleteSprint: (id: string) => void;

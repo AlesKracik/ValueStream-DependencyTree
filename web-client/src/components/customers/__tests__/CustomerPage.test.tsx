@@ -53,7 +53,7 @@ const mockData: ValueStreamData = {
         { id: 'f1', name: 'Feature 1', total_effort_mds: 10, score: 0, customer_targets: [{ customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }] }
     ],
     teams: [],
-    epics: [],
+    issues: [],
     sprints: [],
     metrics: { maxScore: 100, maxRoi: 10 }
 };
@@ -79,7 +79,7 @@ describe('CustomerPage', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             data: mockData,
-            updateEpic: vi.fn(),
+            updateIssue: vi.fn(),
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert
         });
@@ -828,7 +828,7 @@ describe('CustomerPage', () => {
                 success: true, 
                 data: { issues: [{ key: 'BUG-1', fields: { summary: 'Bug 1', status: { name: 'New' }, priority: { name: 'High' } } }] } 
             })
-        } as any);
+        } as unknown as Response);
 
         await act(async () => {
             render(

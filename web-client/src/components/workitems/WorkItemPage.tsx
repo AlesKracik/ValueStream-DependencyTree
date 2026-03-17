@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { ValueStreamData, WorkItem, Epic } from '../../types/models';
+import type { ValueStreamData, WorkItem, Issue } from '../../types/models';
 import { syncJiraIssue, syncAhaFeature } from "../../utils/api";
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';
@@ -18,9 +18,9 @@ export interface WorkItemPageProps {
     addWorkItem: (f: WorkItem) => void;
     deleteWorkItem: (id: string) => void;
     updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
-    addEpic: (e: Epic) => void;
-    deleteEpic: (id: string) => void;
-    updateEpic: (id: string, updates: Partial<Epic>, immediate?: boolean) => Promise<void>;
+    addIssue: (e: Issue) => void;
+    deleteIssue: (id: string) => void;
+    updateIssue: (id: string, updates: Partial<Issue>, immediate?: boolean) => Promise<void>;
 }
 
 export const WorkItemPage: React.FC<WorkItemPageProps> = ({
@@ -32,9 +32,9 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     addWorkItem,
     deleteWorkItem,
     updateWorkItem,
-    addEpic,
-    deleteEpic,
-    updateEpic
+    addIssue,
+    deleteIssue,
+    updateIssue
 }) => {
     const { showAlert, showConfirm } = useValueStreamContext();
     const navigate = useNavigate();
@@ -43,7 +43,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     // Draft states for new workItem creation
     const [newWorkItemDraft, setNewWorkItemDraft] = useState<Partial<WorkItem>>({ name: '', description: '', total_effort_mds: 0, customer_targets: [] });
     const [newWorkItemCustomers, setNewWorkItemCustomers] = useState<{ customerId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have', tcv_history_id?: string }[]>([]);
-    const [newWorkItemEpics, setNewWorkItemEpics] = useState<Epic[]>([]);
+    const [newWorkItemIssues, setNewWorkItemIssues] = useState<Issue[]>([]);
     const [syncingId, setSyncingId] = useState<string | null>(null);
     const [isSyncingAha, setIsSyncingAha] = useState(false);
 
@@ -133,13 +133,13 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
         ? newWorkItemCustomers.map(nfc => data.customers.find(c => c.id === nfc.customerId)!).filter(Boolean)
         : data?.customers.filter(c => workItem?.customer_targets?.some(ct => ct.customer_id === c.id)) || [];
 
-    const epics = isNew ? newWorkItemEpics : data?.epics.filter(e => e.work_item_id === workItemId) || [];
-    const calculatedEffort = workItem && data ? calculateWorkItemEffort(workItem, epics) : 0;
+    const issues = isNew ? newWorkItemIssues : (data?.issues || []).filter(e => e.work_item_id === workItemId);
+    const calculatedEffort = workItem && data ? calculateWorkItemEffort(workItem, issues) : 0;
     const calculatedTcv = workItem && data ? calculateWorkItemTcv(workItem, data.customers, data.workItems) : 0;
 
-    const handleAddEpic = () => {
+    const handleAddIssue = () => {
         const newId = generateId('e');
-        const newEpic: Epic = {
+        const newIssue: Issue = {
             id: newId,
             jira_key: 'TBD',
             name: '',
@@ -148,19 +148,19 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
             work_item_id: workItemId
         };
         if (isNew) {
-            setNewWorkItemEpics(prev => [...prev, newEpic]);
+            setNewWorkItemIssues(prev => [...prev, newIssue]);
         } else {
-            addEpic(newEpic);
+            addIssue(newIssue);
         }
     };
 
-    const handleDeleteEpic = async (id: string, name: string) => {
+    const handleDeleteIssue = async (id: string, name: string) => {
         if (isNew) {
-            setNewWorkItemEpics(prev => prev.filter(e => e.id !== id));
+            setNewWorkItemIssues(prev => prev.filter(e => e.id !== id));
         } else {
-            const confirmed = await showConfirm('Delete Epic', `Are you sure you want to delete "${name}"? This will permanently remove the epic from the database.`);
+            const confirmed = await showConfirm('Delete Issue', `Are you sure you want to delete "${name}"? This will permanently remove the issue from the database.`);
             if (confirmed) {
-                deleteEpic(id);
+                deleteIssue(id);
             }
         }
     };
@@ -184,14 +184,14 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     }))
                 };
 
-                const epicsToAdd = newWorkItemEpics.map(e => ({
+                const issuesToAdd = newWorkItemIssues.map(e => ({
                     ...e,
                     id: generateId('e'),
                     work_item_id: newId
                 }));
 
                 addWorkItem(newFeat);
-                epicsToAdd.forEach(e => addEpic(e));
+                issuesToAdd.forEach(e => addIssue(e));
 
                 setTimeout(() => {
                     onBack();
@@ -203,7 +203,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     };
 
     const handleDelete = async () => {
-        const confirmed = await showConfirm('Delete Work Item', 'Are you sure you want to delete this work item? It will be removed from all associated epics.');
+        const confirmed = await showConfirm('Delete Work Item', 'Are you sure you want to delete this work item? It will be removed from all associated issues.');
         if (!confirmed) return;
         try {
             deleteWorkItem(workItemId);
@@ -213,20 +213,20 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
         }
     };
 
-    const syncEpic = async (id: string, jiraKey: string) => {
+    const syncIssue = async (id: string, jiraKey: string) => {
         setSyncingId(id);
         try {
             const issueData = await syncJiraIssue(jiraKey, data?.settings?.jira || {});
             const updates = parseJiraIssue(issueData, data?.teams || []);
             
             if (isNew) {
-                setNewWorkItemEpics(prev => prev.map(e => e.id === id ? { 
+                setNewWorkItemIssues(prev => prev.map(e => e.id === id ? { 
                     ...e, 
                     ...updates,
                     team_id: updates.team_id || e.team_id || (data?.teams[0]?.id || '')
                 } : e));
             } else {
-                updateEpic(id, updates);
+                updateIssue(id, updates);
             }
         } catch (err: unknown) {
             console.error('Sync failed', err);
@@ -465,9 +465,9 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                             <div className={customerStyles.addWorkItemBox}>
                                 <h3>Target a Customer</h3>
                                 <SearchableDropdown
-                                    options={data?.customers
+                                    options={(data?.customers || [])
                                         .filter(c => !targetedCustomers.find(tc => tc.id === c.id))
-                                        .map(c => ({ id: c.id, label: c.name })) || []}
+                                        .map(c => ({ id: c.id, label: c.name }))}
                                     onSelect={(customerId) => {
                                         const newTarget = { customerId, tcv_type: 'existing' as const, priority: 'Should-have' as const };
                                         if (isNew) setNewWorkItemCustomers(prev => [...prev, newTarget]);
@@ -482,12 +482,12 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
             )
         },
         {
-            id: 'epics',
-            label: `Engineering Epics (${epics.length})`,
+            id: 'issues',
+            label: `Engineering Issues (${issues.length})`,
             content: (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {epics.map(epic => (
-                        <div key={epic.id} style={{ 
+                    {issues.map(issue => (
+                        <div key={issue.id} style={{ 
                             padding: '16px', 
                             backgroundColor: 'var(--bg-tertiary)', 
                             borderRadius: '8px', 
@@ -497,20 +497,20 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                 <div style={{ width: '120px', display: 'flex', gap: '4px', alignItems: 'center' }}>
                                     <input
                                         type="text"
-                                        value={epic.jira_key}
+                                        value={issue.jira_key}
                                         placeholder="Key"
                                         onChange={e => {
                                             if (isNew) {
-                                                setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, jira_key: e.target.value } : ev));
+                                                setNewWorkItemIssues(prev => prev.map(ev => ev.id === issue.id ? { ...ev, jira_key: e.target.value } : ev));
                                             } else {
-                                                updateEpic(epic.id, { jira_key: e.target.value });
+                                                updateIssue(issue.id, { jira_key: e.target.value });
                                             }
                                         }}
                                         style={{ flex: 1, minWidth: '60px' }}
                                     />
-                                    {epic.jira_key && epic.jira_key !== 'TBD' && data?.settings.jira.base_url && (
+                                    {issue.jira_key && issue.jira_key !== 'TBD' && data?.settings.jira.base_url && (
                                         <a 
-                                            href={`${data.settings.jira.base_url.replace(/\/$/, '')}/browse/${epic.jira_key}`} 
+                                            href={`${data.settings.jira.base_url.replace(/\/$/, '')}/browse/${issue.jira_key}`} 
                                             target="_blank" 
                                             rel="noopener noreferrer" 
                                             title="Open in Jira"
@@ -523,23 +523,23 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                 <div style={{ flex: 1 }}>
                                     <input
                                         type="text"
-                                        value={epic.name}
-                                        placeholder="Epic Name"
+                                        value={issue.name}
+                                        placeholder="Issue Name"
                                         onChange={e => {
                                             if (isNew) {
-                                                setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, name: e.target.value } : ev));
+                                                setNewWorkItemIssues(prev => prev.map(ev => ev.id === issue.id ? { ...ev, name: e.target.value } : ev));
                                             } else {
-                                                updateEpic(epic.id, { name: e.target.value });
+                                                updateIssue(issue.id, { name: e.target.value });
                                             }
                                         }}
                                         style={{ width: '100%' }}
                                     />
                                 </div>
                                 <div style={{ display: 'flex', gap: '8px' }}>
-                                    <button className="btn-primary" style={{ fontSize: '12px' }} onClick={() => syncEpic(epic.id, epic.jira_key)} disabled={syncingId === epic.id}>
-                                        {syncingId === epic.id ? 'Syncing...' : 'Sync from Jira'}
+                                    <button className="btn-primary" style={{ fontSize: '12px' }} onClick={() => syncIssue(issue.id, issue.jira_key)} disabled={syncingId === issue.id}>
+                                        {syncingId === issue.id ? 'Syncing...' : 'Sync from Jira'}
                                     </button>
-                                    <button className="btn-danger" onClick={() => handleDeleteEpic(epic.id, epic.name || epic.jira_key)}>
+                                    <button className="btn-danger" onClick={() => handleDeleteIssue(issue.id, issue.name || issue.jira_key)}>
                                         Delete
                                     </button>
                                 </div>
@@ -549,12 +549,12 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '25%' }}>
                                     <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Team:</span>
                                     <select
-                                        value={epic.team_id}
+                                        value={issue.team_id}
                                         onChange={e => {
                                             if (isNew) {
-                                                setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, team_id: e.target.value } : ev));
+                                                setNewWorkItemIssues(prev => prev.map(ev => ev.id === issue.id ? { ...ev, team_id: e.target.value } : ev));
                                             } else {
-                                                updateEpic(epic.id, { team_id: e.target.value });
+                                                updateIssue(issue.id, { team_id: e.target.value });
                                             }
                                         }}
                                         style={{ width: '100%' }}
@@ -566,13 +566,13 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                     <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Effort:</span>
                                     <input
                                         type="number"
-                                        value={epic.effort_md}
+                                        value={issue.effort_md}
                                         onChange={e => {
                                             const val = parseInt(e.target.value) || 0;
                                             if (isNew) {
-                                                setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, effort_md: val } : ev));
+                                                setNewWorkItemIssues(prev => prev.map(ev => ev.id === issue.id ? { ...ev, effort_md: val } : ev));
                                             } else {
-                                                updateEpic(epic.id, { effort_md: val });
+                                                updateIssue(issue.id, { effort_md: val });
                                             }
                                         }}
                                         style={{ width: '100%' }}
@@ -583,22 +583,22 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
                                         <input
                                             type="date"
-                                            value={epic.target_start || ''}
+                                            value={issue.target_start || ''}
                                             style={{ width: '100%' }}
                                             onChange={async e => {
                                                 const newStart = e.target.value;
-                                                if (newStart && epic.target_end && newStart >= epic.target_end) {
+                                                if (newStart && issue.target_end && newStart >= issue.target_end) {
                                                     await showAlert('Invalid Dates', 'The Start Date must be before the End Date.');
                                                     return;
                                                 }
                                                 if (isNew) {
-                                                    setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, target_start: newStart } : ev));
+                                                    setNewWorkItemIssues(prev => prev.map(ev => ev.id === issue.id ? { ...ev, target_start: newStart } : ev));
                                                 } else {
-                                                    updateEpic(epic.id, { target_start: newStart });
+                                                    updateIssue(issue.id, { target_start: newStart });
                                                 }
                                             }}
                                         />
-                                        {!epic.target_start && <span title="Missing start date" style={{ cursor: 'help' }}>⚠️</span>}
+                                        {!issue.target_start && <span title="Missing start date" style={{ cursor: 'help' }}>⚠️</span>}
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '180px' }}>
@@ -606,28 +606,28 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
                                         <input
                                             type="date"
-                                            value={epic.target_end || ''}
+                                            value={issue.target_end || ''}
                                             style={{ width: '100%' }}
                                             onChange={async e => {
                                                 const newEnd = e.target.value;
-                                                if (epic.target_start && newEnd && epic.target_start >= newEnd) {
+                                                if (issue.target_start && newEnd && issue.target_start >= newEnd) {
                                                     await showAlert('Invalid Dates', 'The Start Date must be before the End Date.');
                                                     return;
                                                 }
                                                 if (isNew) {
-                                                    setNewWorkItemEpics(prev => prev.map(ev => ev.id === epic.id ? { ...ev, target_end: newEnd } : ev));
+                                                    setNewWorkItemIssues(prev => prev.map(ev => ev.id === issue.id ? { ...ev, target_end: newEnd } : ev));
                                                 } else {
-                                                    updateEpic(epic.id, { target_end: newEnd });
+                                                    updateIssue(issue.id, { target_end: newEnd });
                                                 }
                                             }}
                                         />
-                                        {!epic.target_end && <span title="Missing end date" style={{ cursor: 'help' }}>⚠️</span>}
+                                        {!issue.target_end && <span title="Missing end date" style={{ cursor: 'help' }}>⚠️</span>}
                                     </div>
                                 </div>
                                 <button 
                                     className="btn-secondary" 
                                     style={{ padding: '4px 8px', fontSize: '12px' }}
-                                    onClick={() => navigate(`/epic/${epic.id}`)}
+                                    onClick={() => navigate(`/issue/${issue.id}`)}
                                     disabled={isNew}
                                 >
                                     Details ↗
@@ -635,31 +635,31 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                             </div>
                         </div>
                     ))}
-                    {epics.length === 0 && (
-                        <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>No epics linked yet.</div>
+                    {issues.length === 0 && (
+                        <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>No issues linked yet.</div>
                     )}
 
                     <div className={customerStyles.addWorkItemBox}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                            <h3 style={{ margin: 0 }}>Associated Epics</h3>
-                            <button className="btn-primary" onClick={handleAddEpic}>+ New Epic</button>
+                            <h3 style={{ margin: 0 }}>Associated Issues</h3>
+                            <button className="btn-primary" onClick={handleAddIssue}>+ New Issue</button>
                         </div>
 
                         <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-secondary)', paddingTop: '16px' }}>
-                            <h3 style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '12px' }}>Link Existing Epic</h3>
+                            <h3 style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '12px' }}>Link Existing Issue</h3>
                             <SearchableDropdown
-                                options={data?.epics
+                                options={(data?.issues || [])
                                     .filter(e => e.work_item_id !== workItemId)
-                                    .map(e => ({ id: e.id, label: `${e.jira_key !== 'TBD' ? e.jira_key : ''} ${e.name || 'Unnamed Epic'}` })) || []}
-                                onSelect={(epicId) => {
+                                    .map(e => ({ id: e.id, label: `${e.jira_key !== 'TBD' ? e.jira_key : ''} ${e.name || 'Unnamed Issue'}` }))}
+                                onSelect={(issueId) => {
                                     if (isNew) {
-                                        const epicToAssign = data?.epics.find(e => e.id === epicId);
-                                        if (epicToAssign) setNewWorkItemEpics(prev => [...prev, { ...epicToAssign, work_item_id: 'new' }]);
+                                        const issueToAssign = data?.issues.find(e => e.id === issueId);
+                                        if (issueToAssign) setNewWorkItemIssues(prev => [...prev, { ...issueToAssign, work_item_id: 'new' }]);
                                     } else {
-                                        updateEpic(epicId, { work_item_id: workItemId });
+                                        updateIssue(issueId, { work_item_id: workItemId });
                                     }
                                 }}
-                                placeholder="Search for an unassigned epic to link..."
+                                placeholder="Search for an unassigned issue to link..."
                             />
                         </div>
                     </div>

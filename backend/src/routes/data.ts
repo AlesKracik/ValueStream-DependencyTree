@@ -59,10 +59,10 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
       }
   });
 
-  fastify.get('/api/data/epics', async (request, reply) => {
+  fastify.get('/api/data/issues', async (request, reply) => {
       try {
           const db = await getAppDb();
-          const docs = await logQuery('Epics', 'epics', 'find', db.collection('epics').find({}).toArray());
+          const docs = await logQuery('Issues', 'issues', 'find', db.collection('issues').find({}).toArray());
           return reply.send(docs.map(({ _id, ...rest }) => rest));
       } catch (e: any) {
           return reply.code(500).send({ success: false, error: e.message });
@@ -99,17 +99,17 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/api/data/workItems', async (request, reply) => {
       try {
           const db = await getAppDb();
-          // WorkItems require customers and epics to calculate RICE scores
-          const [customers, workItems, epics] = await Promise.all([
+          // WorkItems require customers and issues to calculate RICE scores
+          const [customers, workItems, issues] = await Promise.all([
             db.collection('customers').find({}).toArray(),
             db.collection('workItems').find({}).toArray(),
-            db.collection('epics').find({}).toArray()
+            db.collection('issues').find({}).toArray()
           ]);
 
           const { workItems: scoredItems, metrics } = enrichWorkItemsWithMetrics(
               workItems.map(({ _id, ...rest }) => rest), 
               customers.map(({ _id, ...rest }) => rest), 
-              epics.map(({ _id, ...rest }) => rest)
+              issues.map(({ _id, ...rest }) => rest)
           );
 
           return reply.send({ workItems: scoredItems, metrics });
@@ -126,7 +126,7 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
       
       const dbData: any = {
         settings: maskSettings(settings),
-        customers: [], workItems: [], teams: [], epics: [], sprints: [], valueStreams: [],
+        customers: [], workItems: [], teams: [], issues: [], sprints: [], valueStreams: [],
         metrics: { maxScore: 1, maxRoi: 1 }
       };
 
@@ -141,21 +141,21 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
           const sprintsWithoutIdForWorkspace = rawSprintsForWorkspace.map(({ _id, ...rest }) => rest);
           dbData.sprints = await assignMissingQuarters(sprintsWithoutIdForWorkspace, db, settings.general?.fiscal_year_start_month || 1);
 
-          const [customers, workItems, teams, epics] = await Promise.all([
+          const [customers, workItems, teams, issues] = await Promise.all([
             logQuery('Customers', 'customers', 'find', db.collection('customers').find({}).toArray()),
             logQuery('WorkItems', 'workItems', 'find', db.collection('workItems').find({}).toArray()),
             logQuery('Teams', 'teams', 'find', db.collection('teams').find({}).toArray()),
-            logQuery('Epics', 'epics', 'find', db.collection('epics').find({}).toArray())
+            logQuery('Issues', 'issues', 'find', db.collection('issues').find({}).toArray())
           ]);
 
           dbData.customers = customers.map(({ _id, ...rest }) => rest);
           dbData.teams = teams.map(({ _id, ...rest }) => rest);
-          dbData.epics = epics.map(({ _id, ...rest }) => rest);
+          dbData.issues = issues.map(({ _id, ...rest }) => rest);
 
           const { workItems: scoredItems, metrics } = enrichWorkItemsWithMetrics(
               workItems.map(({ _id, ...rest }) => rest), 
               dbData.customers, 
-              dbData.epics
+              dbData.issues
           );
           
           dbData.workItems = scoredItems;

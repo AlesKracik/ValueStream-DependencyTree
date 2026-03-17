@@ -2,7 +2,7 @@
 import * as React from "react";
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import type { Settings, ValueStreamData, Epic } from "../types/models";
+import type { Settings, ValueStreamData, Issue } from "../types/models";
 import styles from './List.module.css';
 import { authorizedFetch, syncJiraIssue } from "../utils/api";
 import { generateId } from '../utils/security';
@@ -16,8 +16,8 @@ interface SettingsPageProps {
   data: ValueStreamData | null;
   loading?: boolean;
   error?: Error | null;
-  updateEpic: (id: string, updates: Partial<Epic>, immediate?: boolean) => Promise<void>;
-  addEpic: (epic: Epic) => void;
+  updateIssue: (id: string, updates: Partial<Issue>, immediate?: boolean) => Promise<void>;
+  addIssue: (issue: Issue) => void;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -50,8 +50,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   data,
   loading,
   error,
-  updateEpic,
-  addEpic,
+  updateIssue,
+  addIssue,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get("tab") as "general" | "persistence" | "jira" | "aha" | "ai") || "general";
@@ -458,9 +458,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
   const handleSyncAllFromJira = async () => {
     if (!data) return;
-    const epicsWithKeys = data.epics.filter(e => e.jira_key && e.jira_key !== "TBD");
-    if (epicsWithKeys.length === 0) {
-      setImportSyncResult({ success: true, message: "No epics with Jira keys found to sync." });
+    const issuesWithKeys = data.issues.filter(e => e.jira_key && e.jira_key !== "TBD");
+    if (issuesWithKeys.length === 0) {
+      setImportSyncResult({ success: true, message: "No issues with Jira keys found to sync." });
       return;
     }
     const { jira } = localFormData;
@@ -474,17 +474,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     let successCount = 0;
     let failCount = 0;
 
-    for (let i = 0; i < epicsWithKeys.length; i++) {
-      const epic = epicsWithKeys[i];
-      setSyncProgress(`Syncing ${i + 1}/${epicsWithKeys.length}: ${epic.jira_key}`);
+    for (let i = 0; i < issuesWithKeys.length; i++) {
+      const issue = issuesWithKeys[i];
+      setSyncProgress(`Syncing ${i + 1}/${issuesWithKeys.length}: ${issue.jira_key}`);
       try {
-        const issueData = await syncJiraIssue(epic.jira_key, jira);
+        const issueData = await syncJiraIssue(issue.jira_key, jira);
         
         const updates = parseJiraIssue(issueData, data.teams);
-        await updateEpic(epic.id, updates, true);
+        await updateIssue(issue.id, updates, true);
         successCount++;
       } catch (err: unknown) {
-        console.error(`Error syncing ${epic.jira_key}:`, err);
+        console.error(`Error syncing ${issue.jira_key}:`, err);
         failCount++;
       }
     }
@@ -514,7 +514,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     let updateCount = 0;
 
     try {
-      const finalJql = importJql.toLowerCase().includes("issuetype") ? importJql : `(${importJql}) AND issuetype = Epic`;
+      const finalJql = importJql.toLowerCase().includes("issuetype") ? importJql : `(${importJql}) AND issuetype = Issue`;
       setImportProgress("Fetching issues...");
       const response = await authorizedFetch("/api/jira/search", {
         method: "POST",
@@ -546,14 +546,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         
         const updates = parseJiraIssue(issue, data.teams);
 
-        const existingEpic = data.epics.find((e) => e.jira_key === jiraKey);
+        const existingIssue = data.issues.find((e) => e.jira_key === jiraKey);
         try {
-          if (existingEpic) {
-            await updateEpic(existingEpic.id, updates, true);
+          if (existingIssue) {
+            await updateIssue(existingIssue.id, updates, true);
             updateCount++;
-          } else if (addEpic) {
+          } else if (addIssue) {
             const newId = generateId('e');
-            const newEpic: Epic = {
+            const newIssue: Issue = {
               id: newId,
               jira_key: jiraKey,
               team_id: updates.team_id || (data.teams.length > 0 ? data.teams[0].id : ""),
@@ -562,7 +562,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               target_start: updates.target_start,
               target_end: updates.target_end,
             };
-            addEpic(newEpic);
+            addIssue(newIssue);
             createCount++;
           }
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1551,10 +1551,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   Common
                 </button>
                 <button
-                  onClick={() => setSubTab("epics")}
-                  className={`${styles.tabButton} ${activeSubTab === "epics" ? styles.activeTab : ''}`}
+                  onClick={() => setSubTab("issues")}
+                  className={`${styles.tabButton} ${activeSubTab === "issues" ? styles.activeTab : ''}`}
                 >
-                  Epics
+                  Issues
                 </button>
                 <button
                   onClick={() => setSubTab("customer")}
@@ -1633,13 +1633,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   </div>
                 )}
 
-                {activeSubTab === "epics" && (
+                {activeSubTab === "issues" && (
                   <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                     <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                       Import JQL Query:
                       <input
                         type="text"
-                        placeholder="project = PROJ AND issuetype = Epic"
+                        placeholder="project = PROJ AND issuetype = Issue"
                         value={importJql}
                         onChange={(e) => setImportJql(e.target.value)}
                       />
@@ -1661,7 +1661,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         style={{ alignSelf: "flex-start" }}
                         disabled={isTesting || isSyncing || isImporting || ((!localFormData.jira.base_url && !settings?.jira?.base_url) && (!localFormData.jira.api_token && !settings?.jira?.api_token))}
                       >
-                        {isSyncing ? syncProgress : "Sync Epics from Jira"}
+                        {isSyncing ? syncProgress : "Sync Issues from Jira"}
                       </button>
                     </div>
 

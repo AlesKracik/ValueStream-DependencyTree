@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useMemo } from 'react';
-import type { ValueStreamData, Epic, ValueStreamViewState } from '../types/models';
+import type { ValueStreamData, Issue, ValueStreamViewState } from '../types/models';
 import { NotificationModal } from '../components/common/NotificationModal';
 
 interface NotificationConfig {
@@ -18,9 +18,9 @@ interface NotificationContextType {
 
 interface ValueStreamContextType extends NotificationContextType {
     data: ValueStreamData | null;
-    updateEpic: (id: string, updates: Partial<Epic>, immediate?: boolean) => Promise<void>;
-    addEpic: (epic: Epic) => void;
-    deleteEpic: (id: string) => void;
+    updateIssue: (id: string, updates: Partial<Issue>, immediate?: boolean) => Promise<void>;
+    addIssue: (issue: Issue) => void;
+    deleteIssue: (id: string) => void;
     uiState: Record<string, { filter?: string; sortBy?: string; sortOrder?: 'asc' | 'desc'; scrollPosition?: number }>;
     updateUiState: (key: string, value: { filter?: string; sortBy?: string; sortOrder?: 'asc' | 'desc'; scrollPosition?: number }) => void;
     viewState: ValueStreamViewState;
@@ -103,9 +103,9 @@ export const ValueStreamProvider: React.FC<{
     children: React.ReactNode;
     value: { 
         data: ValueStreamData | null; 
-        updateEpic: (id: string, updates: Partial<Epic>, immediate?: boolean) => Promise<void>;
-        addEpic: (epic: Epic) => void;
-        deleteEpic: (id: string) => void;
+        updateIssue: (id: string, updates: Partial<Issue>, immediate?: boolean) => Promise<void>;
+        addIssue: (issue: Issue) => void;
+        deleteIssue: (id: string) => void;
     };
 }> = ({ children, value }) => {
     const { showAlert, showConfirm } = useNotificationContext();
@@ -118,7 +118,7 @@ export const ValueStreamProvider: React.FC<{
         minTcvFilter: '',
         minScoreFilter: '',
         teamFilter: '',
-        epicFilter: '',
+        issueFilter: '',
         showDependencies: false,
         disableHoverHighlight: true,
         isInitialOffsetSet: false,

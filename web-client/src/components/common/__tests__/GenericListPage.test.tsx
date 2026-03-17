@@ -37,9 +37,9 @@ describe('GenericListPage State Persistence', () => {
                 <NotificationProvider>
                     <ValueStreamProvider value={{ 
                         data: null, 
-                        updateEpic: vi.fn(), 
-                        addEpic: vi.fn(), 
-                        deleteEpic: vi.fn() 
+                        updateIssue: vi.fn(), 
+                        addIssue: vi.fn(), 
+                        deleteIssue: vi.fn() 
                     }}>
                         <main> {/* Mock the main scroll container */}
                             <button onClick={() => setShow(prev => !prev)}>Toggle</button>

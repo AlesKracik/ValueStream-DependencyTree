@@ -177,14 +177,14 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                     {(() => {
                         const workItem = data.workItems.find(f => f.id === domainId);
                         if (!workItem) return null;
-                        const workItemEpics = data.epics.filter(e => e.work_item_id === workItem.id);
-                        const calculatedEffort = calculateWorkItemEffort(workItem, workItemEpics);
-                        const epicSum = workItemEpics.reduce((sum, e) => sum + (e.effort_md || 0), 0);
+                        const workItemIssues = data.issues.filter(e => e.work_item_id === workItem.id);
+                        const calculatedEffort = calculateWorkItemEffort(workItem, workItemIssues);
+                        const issueSum = workItemIssues.reduce((sum, e) => sum + (e.effort_md || 0), 0);
                         
                         return (
                             <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '-8px', padding: '0 4px' }}>
                                 Effective total: <span style={{ color: 'var(--accent-text)', fontWeight: 'bold' }}>{calculatedEffort} MDs</span>
-                                {epicSum > 0 && <span> (Epic sum: {epicSum} MDs takes precedence)</span>}
+                                {issueSum > 0 && <span> (Issue sum: {issueSum} MDs takes precedence)</span>}
                             </div>
                         );
                     })()}

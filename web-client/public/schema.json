@@ -8,7 +8,7 @@
         "customers",
         "workItems",
         "teams",
-        "epics",
+        "issues",
         "sprints",
         "valueStreams"
     ],
@@ -203,7 +203,7 @@
                 }
             }
         },
-        "epics": {
+        "issues": {
             "type": "array",
             "items": {
                 "type": "object",
@@ -226,9 +226,9 @@
                         "type": "array",
                         "items": {
                             "type": "object",
-                            "required": ["epic_id", "dependency_type"],
+                            "required": ["issue_id", "dependency_type"],
                             "properties": {
-                                "epic_id": { "type": "string" },
+                                "issue_id": { "type": "string" },
                                 "dependency_type": { "type": "string", "enum": ["FS", "FF"] }
                             }
                         }
@@ -264,7 +264,7 @@
                         "type": "object",
                         "required": [
                             "customerFilter", "workItemFilter", "releasedFilter", 
-                            "minTcvFilter", "minScoreFilter", "teamFilter", "epicFilter"
+                            "minTcvFilter", "minScoreFilter", "teamFilter", "issueFilter"
                         ],
                         "properties": {
                             "customerFilter": { "type": "string" },
@@ -273,7 +273,7 @@
                             "minTcvFilter": { "type": "string" },
                             "minScoreFilter": { "type": "string" },
                             "teamFilter": { "type": "string" },
-                            "epicFilter": { "type": "string" },
+                            "issueFilter": { "type": "string" },
                             "startSprintId": { "type": "string" },
                             "endSprintId": { "type": "string" }
                         }

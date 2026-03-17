@@ -3,7 +3,7 @@ import { differenceInDays, parseISO, min, max, format, isWeekend } from 'date-fn
 import type { Node, Edge } from '@xyflow/react';
 import type { ValueStreamData, ValueStreamParameters } from '../types/models';
 import Holidays from 'date-holidays';
-import { calculateWorkItemEffort, calculateEpicEffortPerSprint, calculateEpicIntensityRatio } from '../utils/businessLogic';
+import { calculateWorkItemEffort, calculateIssueEffortPerSprint, calculateIssueIntensityRatio } from '../utils/businessLogic';
 
 interface Holiday {
     date: string;
@@ -22,7 +22,7 @@ export function useGraphLayout(
     workItemFilter: string = '',
     releasedFilter: 'all' | 'released' | 'unreleased' = 'all',
     teamFilter: string = '',
-    epicFilter: string = '',
+    issueFilter: string = '',
     showDependencies: boolean = true,
     minTcv: number = 0,
     minScore: number = 0,
@@ -80,14 +80,14 @@ export function useGraphLayout(
         const bcf = (baseParams?.customerFilter || '').toLowerCase();
         const bff = (baseParams?.workItemFilter || '').toLowerCase();
         const btf = (baseParams?.teamFilter || '').toLowerCase();
-        const bef = (baseParams?.epicFilter || '').toLowerCase();
+        const bef = (baseParams?.issueFilter || '').toLowerCase();
         const bMinTcv = Number(baseParams?.minTcvFilter) || 0;
         const bMinScore = Number(baseParams?.minScoreFilter) || 0;
 
         const cf = customerFilter.toLowerCase();
         const ff = workItemFilter.toLowerCase();
         const tf = teamFilter.toLowerCase();
-        const ef = epicFilter.toLowerCase();
+        const ef = issueFilter.toLowerCase();
 
         const combinedMinScore = Math.max(minScore, bMinScore);
         const combinedMinTcv = Math.max(minTcv, bMinTcv);
@@ -116,7 +116,7 @@ export function useGraphLayout(
         const visibleCustomers = new Set<string>();
         const visibleWorkItems = new Set<string>();
         const visibleTeams = new Set<string>();
-        const visibleEpics = new Set<string>();
+        const visibleIssues = new Set<string>();
 
         const hasRangeFilter = !!rangeStartDate || !!rangeEndDate;
 
@@ -148,16 +148,16 @@ export function useGraphLayout(
             }).map(f => f.id)
         );
 
-        const validEpics = new Set(
-            data.epics.filter(e => {
+        const validIssues = new Set(
+            (data.issues || []).filter(e => {
                 const team = data.teams.find(t => t.id === e.team_id);
                 const transientTeamMatch = !tf || (team && team.name.toLowerCase().includes(tf));
                 const baseTeamMatch = !btf || (team && team.name.toLowerCase().includes(btf));
                 
                 const workItem = data.workItems.find(f => f.id === e.work_item_id);
-                const epicName = e.name || workItem?.name || 'Task';
-                const transientEpicMatch = !ef || epicName.toLowerCase().includes(ef);
-                const baseEpicMatch = !bef || epicName.toLowerCase().includes(bef);
+                const issueName = e.name || workItem?.name || 'Task';
+                const transientIssueMatch = !ef || issueName.toLowerCase().includes(ef);
+                const baseIssueMatch = !bef || issueName.toLowerCase().includes(bef);
 
                 // Sprint Range Filter: Proper overlap check
                 let rangeMatch = true;
@@ -175,19 +175,19 @@ export function useGraphLayout(
                     }
                 }
 
-                return transientTeamMatch && baseTeamMatch && transientEpicMatch && baseEpicMatch && rangeMatch;
+                return transientTeamMatch && baseTeamMatch && transientIssueMatch && baseIssueMatch && rangeMatch;
             }).map(e => e.id)
         );
 
         const hasCustomerFilter = cf !== '' || bcf !== '' || combinedMinTcv > 0;
         const hasWorkItemFilter = ff !== '' || bff !== '' || combinedMinScore > 0 || releasedFilter !== 'all' || bRel !== 'all';
-        const hasTeamEpicFilter = tf !== '' || btf !== '' || ef !== '' || bef !== '' || hasRangeFilter;
+        const hasTeamIssueFilter = tf !== '' || btf !== '' || ef !== '' || bef !== '' || hasRangeFilter;
 
         if (!isFilterActive && !selectedNodeId) {
             data.customers.forEach(c => visibleCustomers.add(c.id));
             data.workItems.forEach(f => visibleWorkItems.add(f.id));
             data.teams.forEach(t => visibleTeams.add(t.id));
-            data.epics.forEach(e => visibleEpics.add(e.id));
+            (data.issues || []).forEach(e => visibleIssues.add(e.id));
         } else {
             // Build intersection graph
             data.workItems.forEach(f => {
@@ -217,49 +217,49 @@ export function useGraphLayout(
                         .map(ct => ct.customer_id);
                 }
 
-                // Find connected valid Epics
-                const connectedValidEpics = data.epics
-                    .filter(e => e.work_item_id === f.id && validEpics.has(e.id));
+                // Find connected valid Issues
+                const connectedValidIssues = (data.issues || [])
+                    .filter(e => e.work_item_id === f.id && validIssues.has(e.id));
 
                 // Strict intersection rules:
                 // If a customer filter is active (transient or base), we MUST have a valid connected customer,
                 // UNLESS it is a global work item which is shown regardless of customer matches.
                 if (hasCustomerFilter && connectedValidCustomers.length === 0 && !f.all_customers_target) return;
 
-                // If a team/epic filter is active (transient or base), we MUST have a valid connected epic.
-                if (hasTeamEpicFilter && connectedValidEpics.length === 0) return;
+                // If a team/issue filter is active (transient or base), we MUST have a valid connected issue.
+                if (hasTeamIssueFilter && connectedValidIssues.length === 0) return;
 
                 // If it survives to here, this workitem path is fully viable!
                 visibleWorkItems.add(f.id);
                 connectedValidCustomers.forEach(cId => visibleCustomers.add(cId));
-                connectedValidEpics.forEach(e => {
-                    visibleEpics.add(e.id);
+                connectedValidIssues.forEach(e => {
+                    visibleIssues.add(e.id);
                     visibleTeams.add(e.team_id);
                 });
             });
 
             // Special case: WorkItemless Customers
             // If ONLY customer filters are applied, standalone valid customers should appear.
-            // If a range filter is active, we don't show standalone customers (they must be in a connection tree of an in-range epic)
-            if (!hasTeamEpicFilter && !hasWorkItemFilter && !hasRangeFilter) {
+            // If a range filter is active, we don't show standalone customers (they must be in a connection tree of an in-range issue)
+            if (!hasTeamIssueFilter && !hasWorkItemFilter && !hasRangeFilter) {
                 validCustomers.forEach(cId => {
                     visibleCustomers.add(cId);
                 });
             }
 
-            // Special case: WorkItemless Epics
-            // If NO customer/workitem filters are applied, standalone valid epics should appear.
+            // Special case: WorkItemless Issues
+            // If NO customer/workitem filters are applied, standalone valid issues should appear.
             if (!hasCustomerFilter && !hasWorkItemFilter) {
-                data.epics.forEach(e => {
-                    if ((!e.work_item_id || e.work_item_id === 'UNASSIGNED') && validEpics.has(e.id)) {
-                        visibleEpics.add(e.id);
+                (data.issues || []).forEach(e => {
+                    if ((!e.work_item_id || e.work_item_id === 'UNASSIGNED') && validIssues.has(e.id)) {
+                        visibleIssues.add(e.id);
                         visibleTeams.add(e.team_id);
                     }
                 });
             }
 
             // Special case: Standalone Teams
-            // If a team filter is active, ensure matching teams are visible even if they have no epics or workitems
+            // If a team filter is active, ensure matching teams are visible even if they have no issues or workitems
             if (tf || btf) {
                 data.teams.forEach(t => {
                     const transientTeamMatch = !tf || t.name.toLowerCase().includes(tf);
@@ -299,23 +299,23 @@ export function useGraphLayout(
                 }
             });
 
-            data.epics.forEach(epic => {
+            (data.issues || []).forEach(issue => {
                 logicalEdges.push({
-                    id: `edge__${epic.work_item_id}__${epic.team_id}__${epic.id}`,
-                    source: `workitem-${epic.work_item_id}`,
-                    target: `team-${epic.team_id}`
+                    id: `edge__${issue.work_item_id}__${issue.team_id}__${issue.id}`,
+                    source: `workitem-${issue.work_item_id}`,
+                    target: `team-${issue.team_id}`
                 });
                 logicalEdges.push({
-                    id: `edge-team-gantt-${epic.id}`,
-                    source: `team-${epic.team_id}`,
-                    target: `gantt-${epic.id}`
+                    id: `edge-team-gantt-${issue.id}`,
+                    source: `team-${issue.team_id}`,
+                    target: `gantt-${issue.id}`
                 });
-                if (epic.dependencies && showDependencies) {
-                    epic.dependencies.forEach(dep => {
+                if (issue.dependencies && showDependencies) {
+                    issue.dependencies.forEach(dep => {
                         logicalEdges.push({
-                            id: `dep-${dep.epic_id}-to-${epic.id}-${dep.dependency_type}`,
-                            source: `gantt-${dep.epic_id}`,
-                            target: `gantt-${epic.id}`,
+                            id: `dep-${dep.issue_id}-to-${issue.id}-${dep.dependency_type}`,
+                            source: `gantt-${dep.issue_id}`,
+                            target: `gantt-${issue.id}`,
                         });
                     });
                 }
@@ -323,49 +323,49 @@ export function useGraphLayout(
 
             const hNodes = new Set<string>();
             const visitedTarget = new Set<string>();
-            const traceDownstream = (currentNodeId: string, sourceEpicId?: string) => {
-                const contextKey = `${currentNodeId}-${sourceEpicId || 'none'}`;
+            const traceDownstream = (currentNodeId: string, sourceIssueId?: string) => {
+                const contextKey = `${currentNodeId}-${sourceIssueId || 'none'}`;
                 if (visitedTarget.has(contextKey)) return;
                 visitedTarget.add(contextKey);
 
                 hNodes.add(currentNodeId);
                 let outgoingEdges = logicalEdges.filter(e => e.source === currentNodeId);
 
-                if (currentNodeId.startsWith('team-') && sourceEpicId) {
-                    outgoingEdges = outgoingEdges.filter(e => e.target === `gantt-${sourceEpicId}`);
+                if (currentNodeId.startsWith('team-') && sourceIssueId) {
+                    outgoingEdges = outgoingEdges.filter(e => e.target === `gantt-${sourceIssueId}`);
                 }
 
                 outgoingEdges.forEach(e => {
-                    let nextEpicId = sourceEpicId;
+                    let nextIssueId = sourceIssueId;
                     if (currentNodeId.startsWith('workitem-') && e.id.startsWith('edge__')) {
                         const parts = e.id.split('__');
                         if (parts.length >= 4) {
-                            nextEpicId = parts[3];
+                            nextIssueId = parts[3];
                         }
                     }
-                    traceDownstream(e.target, nextEpicId);
+                    traceDownstream(e.target, nextIssueId);
                 });
             };
 
             const visitedSource = new Set<string>();
-            const traceUpstream = (currentNodeId: string, sourceEpicId?: string) => {
-                const contextKey = `${currentNodeId}-${sourceEpicId || 'none'}`;
+            const traceUpstream = (currentNodeId: string, sourceIssueId?: string) => {
+                const contextKey = `${currentNodeId}-${sourceIssueId || 'none'}`;
                 if (visitedSource.has(contextKey)) return;
                 visitedSource.add(contextKey);
 
                 hNodes.add(currentNodeId);
                 let incomingEdges = logicalEdges.filter(e => e.target === currentNodeId);
 
-                if (currentNodeId.startsWith('team-') && sourceEpicId) {
-                    incomingEdges = incomingEdges.filter(e => e.id.endsWith(`__${sourceEpicId}`));
+                if (currentNodeId.startsWith('team-') && sourceIssueId) {
+                    incomingEdges = incomingEdges.filter(e => e.id.endsWith(`__${sourceIssueId}`));
                 }
 
                 incomingEdges.forEach(e => {
-                    let nextEpicId = sourceEpicId;
+                    let nextIssueId = sourceIssueId;
                     if (currentNodeId.startsWith('gantt-')) {
-                        nextEpicId = currentNodeId.replace('gantt-', '');
+                        nextIssueId = currentNodeId.replace('gantt-', '');
                     }
-                    traceUpstream(e.source, nextEpicId);
+                    traceUpstream(e.source, nextIssueId);
                 });
             };
 
@@ -376,17 +376,17 @@ export function useGraphLayout(
             const newVisibleCustomers = new Set<string>();
             const newVisibleWorkItems = new Set<string>();
             const newVisibleTeams = new Set<string>();
-            const newVisibleEpics = new Set<string>();
+            const newVisibleIssues = new Set<string>();
 
             visibleCustomers.forEach(id => { if (hNodes.has(`customer-${id}`)) newVisibleCustomers.add(id); });
             visibleWorkItems.forEach(id => { if (hNodes.has(`workitem-${id}`)) newVisibleWorkItems.add(id); });
             visibleTeams.forEach(id => { if (hNodes.has(`team-${id}`)) newVisibleTeams.add(id); });
-            visibleEpics.forEach(id => { if (hNodes.has(`gantt-${id}`)) newVisibleEpics.add(id); });
+            visibleIssues.forEach(id => { if (hNodes.has(`gantt-${id}`)) newVisibleIssues.add(id); });
 
             visibleCustomers.clear(); newVisibleCustomers.forEach(id => visibleCustomers.add(id));
             visibleWorkItems.clear(); newVisibleWorkItems.forEach(id => visibleWorkItems.add(id));
             visibleTeams.clear(); newVisibleTeams.forEach(id => visibleTeams.add(id));
-            visibleEpics.clear(); newVisibleEpics.forEach(id => visibleEpics.add(id));
+            visibleIssues.clear(); newVisibleIssues.forEach(id => visibleIssues.add(id));
         }
 
         // 1. Process Customers (Column 1)
@@ -426,18 +426,18 @@ export function useGraphLayout(
         const workItemsToProcess = [...data.workItems]
             .filter(f => visibleWorkItems.has(f.id))
             .map(f => {
-                const epicsForWorkItem = data.epics.filter(e => e.work_item_id === f.id && visibleEpics.has(e.id));
-                const epicMdsSum = epicsForWorkItem.reduce((sum, e) => sum + e.effort_md, 0);
-                const hasDatelessEpics = epicsForWorkItem.some(e => !e.target_start || !e.target_end);
+                const issuesForWorkItem = (data.issues || []).filter(e => e.work_item_id === f.id && visibleIssues.has(e.id));
+                const issueMdsSum = issuesForWorkItem.reduce((sum, e) => sum + e.effort_md, 0);
+                const hasDatelessIssues = issuesForWorkItem.some(e => !e.target_start || !e.target_end);
                 
                 // Use centralized logic for effort warning
-                const totalEffort = calculateWorkItemEffort(f, data.epics);
-                const hasUnestimatedEffort = totalEffort === 0 || epicsForWorkItem.some(e => (e.effort_md || 0) === 0);
+                const totalEffort = calculateWorkItemEffort(f, data.issues);
+                const hasUnestimatedEffort = totalEffort === 0 || issuesForWorkItem.some(e => (e.effort_md || 0) === 0);
 
                 return {
                     ...f,
-                    epicMdsSum,
-                    hasDatelessEpics,
+                    issueMdsSum,
+                    hasDatelessIssues,
                     hasUnestimatedEffort,
                     calculatedEffort: totalEffort
                 };
@@ -461,13 +461,13 @@ export function useGraphLayout(
                     label: workItem.name,
                     description: workItem.description,
                     effortMds: workItem.calculatedEffort,
-                    epicMds: workItem.epicMdsSum,
+                    issueMds: workItem.issueMdsSum,
                     score: score,
                     maxScore: maxScore,
                     baseSize: 100,
                     isGlobal: !!workItem.all_customers_target,
                     releasedInSprintId: workItem.released_in_sprint_id,
-                    hasDatelessEpics: workItem.hasDatelessEpics,
+                    hasDatelessIssues: workItem.hasDatelessIssues,
                     hasUnestimatedEffort: workItem.hasUnestimatedEffort,
                 },
             });
@@ -543,23 +543,23 @@ export function useGraphLayout(
         });
 
         // 4.1. Pre-calculate global team capacity usage (NOT affected by UI filters)
-        data.epics.forEach(epic => {
-            const team = data.teams.find(t => t.id === epic.team_id);
+        (data.issues || []).forEach(issue => {
+            const team = data.teams.find(t => t.id === issue.team_id);
             if (!team) return;
 
-            const epicSprintEffort = calculateEpicEffortPerSprint(epic, sprints);
-            Object.entries(epicSprintEffort).forEach(([sprintId, effort]) => {
+            const issueSprintEffort = calculateIssueEffortPerSprint(issue, sprints);
+            Object.entries(issueSprintEffort).forEach(([sprintId, effort]) => {
                 if (teamSprintUsage[team.id][sprintId] !== undefined) {
                     teamSprintUsage[team.id][sprintId] += effort;
                 }
             });
         });
 
-        const visibleEpicIds = new Set(visibleEpics);
-        const allEpicsToShow = (data.epics || []).filter(e => visibleEpicIds.has(e.id));
+        const visibleIssueIds = new Set(visibleIssues);
+        const allIssuesToShow = (data.issues || []).filter(e => visibleIssueIds.has(e.id));
         
-        // Sort epics: first those with dates (by start date), then those without.
-        const sortedEpics = [...allEpicsToShow].sort((a, b) => {
+        // Sort issues: first those with dates (by start date), then those without.
+        const sortedIssues = [...allIssuesToShow].sort((a, b) => {
             const hasDateA = !!(a.target_start && a.target_end);
             const hasDateB = !!(b.target_start && b.target_end);
             
@@ -571,25 +571,25 @@ export function useGraphLayout(
             return 0;
         });
 
-        const epicLanes: Record<string, number> = {};
+        const issueLanes: Record<string, number> = {};
 
-        sortedEpics.forEach(epic => {
-            const team = data.teams.find(t => t.id === epic.team_id);
+        sortedIssues.forEach(issue => {
+            const team = data.teams.find(t => t.id === issue.team_id);
             if (!team) return;
 
             const lanes = teamLanes[team.id].endDates;
             let laneIdx = 0;
 
-            if (epic.target_start && epic.target_end) {
-                const start = parseISO(epic.target_start);
-                const end = parseISO(epic.target_end);
+            if (issue.target_start && issue.target_end) {
+                const start = parseISO(issue.target_start);
+                const end = parseISO(issue.target_end);
                 
                 while (laneIdx < lanes.length && start <= lanes[laneIdx]) {
                     laneIdx++;
                 }
                 lanes[laneIdx] = end;
 
-                epicLanes[epic.id] = laneIdx;
+                issueLanes[issue.id] = laneIdx;
                 if (laneIdx + 1 > teamMaxLanes[team.id]) {
                     teamMaxLanes[team.id] = laneIdx + 1;
                 }
@@ -629,20 +629,20 @@ export function useGraphLayout(
 
         // 5. Create Edges (WorkItem -> Team)
         let maxRemainingMd = 0.0001;
-        data.epics.forEach(epic => {
-            if (!epic.work_item_id || !visibleWorkItems.has(epic.work_item_id) || !visibleTeams.has(epic.team_id) || !visibleEpics.has(epic.id)) return;
-            if (epic.effort_md > maxRemainingMd) maxRemainingMd = epic.effort_md;
+        (data.issues || []).forEach(issue => {
+            if (!issue.work_item_id || !visibleWorkItems.has(issue.work_item_id) || !visibleTeams.has(issue.team_id) || !visibleIssues.has(issue.id)) return;
+            if (issue.effort_md > maxRemainingMd) maxRemainingMd = issue.effort_md;
         });
 
-        data.epics.forEach(epic => {
-            if (!epic.work_item_id || !visibleWorkItems.has(epic.work_item_id) || !visibleTeams.has(epic.team_id) || !visibleEpics.has(epic.id)) return;
+        (data.issues || []).forEach(issue => {
+            if (!issue.work_item_id || !visibleWorkItems.has(issue.work_item_id) || !visibleTeams.has(issue.team_id) || !visibleIssues.has(issue.id)) return;
 
             // Scale width based on remaining MDs, keeping min 2px and max 10px
-            const normalizedStrokeWidth = Math.min(10, Math.max(2, (epic.effort_md / maxRemainingMd) * 10));
+            const normalizedStrokeWidth = Math.min(10, Math.max(2, (issue.effort_md / maxRemainingMd) * 10));
             edges.push({
-                id: `edge__${epic.work_item_id}__${epic.team_id}__${epic.id}`,
-                source: `workitem-${epic.work_item_id}`,
-                target: `team-${epic.team_id}`,
+                id: `edge__${issue.work_item_id}__${issue.team_id}__${issue.id}`,
+                source: `workitem-${issue.work_item_id}`,
+                target: `team-${issue.team_id}`,
                 type: 'default',
                 style: {
                     strokeWidth: normalizedStrokeWidth,
@@ -652,18 +652,18 @@ export function useGraphLayout(
         });
 
         // 6. Process Timeline and Gantt Bars
-        if (data.epics && data.epics.length > 0) {
-            sortedEpics.forEach(epic => {
-                if (!visibleEpics.has(epic.id)) return;
+        if (data.issues && data.issues.length > 0) {
+            sortedIssues.forEach(issue => {
+                if (!visibleIssues.has(issue.id)) return;
 
-                const team = data.teams.find(t => t.id === epic.team_id);
+                const team = data.teams.find(t => t.id === issue.team_id);
                 if (!team) return;
 
                 const baseY = teamBaseY[team.id];
 
-                if (epic.target_start && epic.target_end) {
-                    const start = parseISO(epic.target_start);
-                    const end = parseISO(epic.target_end);
+                if (issue.target_start && issue.target_end) {
+                    const start = parseISO(issue.target_start);
+                    const end = parseISO(issue.target_end);
 
                     // Only render if it overlaps the visible window
                     if (end < windowStartDate || start > windowEndDate) return;
@@ -675,18 +675,18 @@ export function useGraphLayout(
                     // Ensure duration doesn't go negative or 0 if start == end
                     const visibleDuration = Math.max(1, differenceInDays(renderEnd, renderStart) + 1);
 
-                    const laneIdx = epicLanes[epic.id];
+                    const laneIdx = issueLanes[issue.id];
                     const maxLanes = Math.max(teamMaxLanes[team.id] || 1, 1);
 
                     // Center vertically around baseY
                     const ganttStartY = baseY - ((maxLanes - 1) * 45) / 2;
                     const yPos = ganttStartY + (laneIdx * 45);
 
-                    const workItem = data.workItems.find(f => f.id === epic.work_item_id);
+                    const workItem = data.workItems.find(f => f.id === issue.work_item_id);
 
                     // Build the segments for heat/intensity mapping using centralized logic
                     const segments: { startOffsetPixels: number, widthPixels: number, intensity: number, color: string, isFrozen: boolean }[] = [];
-                    const epicSprintEffort = calculateEpicEffortPerSprint(epic, sprints);
+                    const issueSprintEffort = calculateIssueEffortPerSprint(issue, sprints);
 
                     sprints.forEach(sprint => {
                         const sprintStart = parseISO(sprint.start_date);
@@ -706,13 +706,13 @@ export function useGraphLayout(
                                 segmentWidthPixels = (visibleDuration * PIXELS_PER_DAY) - segmentOffsetPixels;
                             }
 
-                            const segmentEffort = epicSprintEffort[sprint.id] || 0;
-                            const totalEpicDuration = Math.max(1, differenceInDays(end, start) + 1);
+                            const segmentEffort = issueSprintEffort[sprint.id] || 0;
+                            const totalIssueDuration = Math.max(1, differenceInDays(end, start) + 1);
 
                             // Calculate mathematical strictly uniform proportion for the baseline:
-                            const baselineProportion = overlapCalendarDays / totalEpicDuration;
-                            const baselineEffort = (epic.effort_md || 0) * baselineProportion;
-                            const intensityRatio = calculateEpicIntensityRatio(segmentEffort, baselineEffort);
+                            const baselineProportion = overlapCalendarDays / totalIssueDuration;
+                            const baselineEffort = (issue.effort_md || 0) * baselineProportion;
+                            const intensityRatio = calculateIssueIntensityRatio(segmentEffort, baselineEffort);
 
                             // Progress-Aware Color Logic: Sprints older than Active Sprint are frozen
                             const isFrozen = sprintEnd < activeSprintStartDate;
@@ -729,29 +729,29 @@ export function useGraphLayout(
                     });
 
                     nodes.push({
-                        id: `gantt-${epic.id}`,
+                        id: `gantt-${issue.id}`,
                         type: 'ganttBarNode',
                         position: {
                             x: COL_GANTT_START_X + (daysOffset * PIXELS_PER_DAY),
                             y: yPos
                         },
                         data: {
-                            label: `${epic.name || workItem?.name || 'Task'} (${epic.effort_md} MDs)`,
+                            label: `${issue.name || workItem?.name || 'Task'} (${issue.effort_md} MDs)`,
                             width: visibleDuration * PIXELS_PER_DAY,
                             color: 'var(--node-workitem-bg)',
-                            jiraKey: epic.jira_key,
+                            jiraKey: issue.jira_key,
                             jiraBaseUrl: data?.settings?.jira?.base_url,
-                            epicId: epic.id,
-                            targetStart: epic.target_start!,
-                            targetEnd: epic.target_end!,
+                            issueId: issue.id,
+                            targetStart: issue.target_start!,
+                            targetEnd: issue.target_end!,
                             segments: segments
                         },
                     });
 
                     edges.push({
-                        id: `edge-team-gantt-${epic.id}`,
-                        source: `team-${epic.team_id}`,
-                        target: `gantt-${epic.id}`,
+                        id: `edge-team-gantt-${issue.id}`,
+                        source: `team-${issue.team_id}`,
+                        target: `gantt-${issue.id}`,
                         type: 'default',
                         style: {
                             strokeWidth: 1.5,
@@ -761,19 +761,19 @@ export function useGraphLayout(
                     });
                 }
 
-                // Map Explicit Epic Dependencies
-                if (epic.dependencies && showDependencies) {
-                    epic.dependencies.forEach(dep => {
-                        // Only draw the dependency edge if the source epic is also currently visible
-                        if (!visibleEpics.has(dep.epic_id)) return;
+                // Map Explicit Issue Dependencies
+                if (issue.dependencies && showDependencies) {
+                    issue.dependencies.forEach(dep => {
+                        // Only draw the dependency edge if the source issue is also currently visible
+                        if (!visibleIssues.has(dep.issue_id)) return;
 
                         const targetHandle = dep.dependency_type === 'FF' ? 'target-finish' : 'target-start';
 
                         edges.push({
-                            id: `dep-${dep.epic_id}-to-${epic.id}-${dep.dependency_type}`,
-                            source: `gantt-${dep.epic_id}`,
+                            id: `dep-${dep.issue_id}-to-${issue.id}-${dep.dependency_type}`,
+                            source: `gantt-${dep.issue_id}`,
                             sourceHandle: 'source-finish',
-                            target: `gantt-${epic.id}`,
+                            target: `gantt-${issue.id}`,
                             targetHandle: targetHandle,
                             type: 'default',
                             animated: true,
@@ -901,7 +901,7 @@ export function useGraphLayout(
         }
 
         // Apply Highlights
-        const isAnyFilterActive = !!(customerFilter || workItemFilter || teamFilter || epicFilter || minTcv > 0 || minScore > 0 || selectedNodeId);
+        const isAnyFilterActive = !!(customerFilter || workItemFilter || teamFilter || issueFilter || minTcv > 0 || minScore > 0 || selectedNodeId);
 
         if (hoveredNodeId || isAnyFilterActive) {
             const hNodes = new Set<string>();
@@ -915,61 +915,61 @@ export function useGraphLayout(
                 };
 
                 const visitedTarget = new Set<string>();
-                const traceDownstream = (currentNodeId: string, sourceEpicId?: string) => {
-                    const contextKey = `${currentNodeId}-${sourceEpicId || 'none'}`;
+                const traceDownstream = (currentNodeId: string, sourceIssueId?: string) => {
+                    const contextKey = `${currentNodeId}-${sourceIssueId || 'none'}`;
                     if (visitedTarget.has(contextKey)) return;
                     visitedTarget.add(contextKey);
 
                     hNodes.add(currentNodeId);
                     let outgoingEdges = edges.filter(e => e.source === currentNodeId);
 
-                    // If at a team node, only follow edges to the specific epic's Gantt bar
-                    if (currentNodeId.startsWith('team-') && sourceEpicId) {
-                        outgoingEdges = outgoingEdges.filter(e => e.target === `gantt-${sourceEpicId}`);
+                    // If at a team node, only follow edges to the specific issue's Gantt bar
+                    if (currentNodeId.startsWith('team-') && sourceIssueId) {
+                        outgoingEdges = outgoingEdges.filter(e => e.target === `gantt-${sourceIssueId}`);
                     }
 
                     outgoingEdges.forEach(e => {
                         hEdges.add(e.id);
                         markHandle(e.source, e.sourceHandle || '');
 
-                        let nextEpicId = sourceEpicId;
-                        // Extract epic context when passing from WorkItem to Team
+                        let nextIssueId = sourceIssueId;
+                        // Extract issue context when passing from WorkItem to Team
                         if (currentNodeId.startsWith('workitem-') && e.id.startsWith('edge__')) {
                             const parts = e.id.split('__');
                             if (parts.length >= 4) {
-                                nextEpicId = parts[3];
+                                nextIssueId = parts[3];
                             }
                         }
 
-                        traceDownstream(e.target, nextEpicId);
+                        traceDownstream(e.target, nextIssueId);
                     });
                 };
 
                 const visitedSource = new Set<string>();
-                const traceUpstream = (currentNodeId: string, sourceEpicId?: string) => {
-                    const contextKey = `${currentNodeId}-${sourceEpicId || 'none'}`;
+                const traceUpstream = (currentNodeId: string, sourceIssueId?: string) => {
+                    const contextKey = `${currentNodeId}-${sourceIssueId || 'none'}`;
                     if (visitedSource.has(contextKey)) return;
                     visitedSource.add(contextKey);
 
                     hNodes.add(currentNodeId);
                     let incomingEdges = edges.filter(e => e.target === currentNodeId);
 
-                    // If at a team node, only follow incoming edges from the workitem that owns this epic
-                    if (currentNodeId.startsWith('team-') && sourceEpicId) {
-                        incomingEdges = incomingEdges.filter(e => e.id.endsWith(`__${sourceEpicId}`));
+                    // If at a team node, only follow incoming edges from the workitem that owns this issue
+                    if (currentNodeId.startsWith('team-') && sourceIssueId) {
+                        incomingEdges = incomingEdges.filter(e => e.id.endsWith(`__${sourceIssueId}`));
                     }
 
                     incomingEdges.forEach(e => {
                         hEdges.add(e.id);
                         markHandle(e.source, e.sourceHandle || '');
 
-                        let nextEpicId = sourceEpicId;
-                        // Extract epic context when passing backwards from Gantt to Team
+                        let nextIssueId = sourceIssueId;
+                        // Extract issue context when passing backwards from Gantt to Team
                         if (currentNodeId.startsWith('gantt-')) {
-                            nextEpicId = currentNodeId.replace('gantt-', '');
+                            nextIssueId = currentNodeId.replace('gantt-', '');
                         }
 
-                        traceUpstream(e.source, nextEpicId);
+                        traceUpstream(e.source, nextIssueId);
                     });
                 };
 
@@ -1029,7 +1029,7 @@ export function useGraphLayout(
         }
 
         return { nodes, edges };
-    }, [data, hoveredNodeId, sprintOffset, customerFilter, workItemFilter, releasedFilter, teamFilter, epicFilter, showDependencies, minTcv, minScore, selectedNodeId, baseParams]);
+    }, [data, hoveredNodeId, sprintOffset, customerFilter, workItemFilter, releasedFilter, teamFilter, issueFilter, showDependencies, minTcv, minScore, selectedNodeId, baseParams]);
 }
 
 

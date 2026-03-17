@@ -22,7 +22,7 @@ const mockData: ValueStreamData = {
     teams: [
         { id: 'team-uuid-123', name: 'Team Alpha', total_capacity_mds: 10, sprint_capacity_overrides: { 'sprint-uuid-456': 7 } }
     ],
-    epics: [],
+    issues: [],
     sprints: [
         { id: 'sprint-uuid-456', name: 'Sprint 1', start_date: '2026-02-12', end_date: '2026-02-26' }
     ],
@@ -33,7 +33,7 @@ describe('EditNodeModal', () => {
     const onUpdateCustomer = vi.fn();
     const onUpdateWorkItem = vi.fn();
     const onUpdateTeam = vi.fn();
-    const onUpdateEpic = vi.fn();
+    const onUpdateIssue = vi.fn();
     const onClose = vi.fn();
 
     const defaultProps = {
@@ -42,7 +42,7 @@ describe('EditNodeModal', () => {
         onUpdateCustomer,
         onUpdateWorkItem,
         onUpdateTeam,
-        onUpdateEpic
+        onUpdateIssue
     };
 
     it('correctly extracts team and sprint info from node.data for sprintCapacityNode', () => {

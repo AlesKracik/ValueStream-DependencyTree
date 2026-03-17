@@ -37,7 +37,7 @@ describe('Data Routes', () => {
           case 'customers': return createMockCollection([{ id: 'c1', existing_tcv: 1000 }]);
           case 'workItems': return createMockCollection([{ id: 'w1', total_effort_mds: 10 }]);
           case 'teams': return createMockCollection([{ id: 't1', name: 'Team A' }]);
-          case 'epics': return createMockCollection([{ id: 'e1', effort_md: 5, work_item_id: 'w1' }]);
+          case 'issues': return createMockCollection([{ id: 'e1', effort_md: 5, work_item_id: 'w1' }]);
           default: return createMockCollection([]);
         }
       })
@@ -76,7 +76,7 @@ describe('Data Routes', () => {
     expect(json.customers).toHaveLength(1);
     expect(json.workItems).toHaveLength(1);
     expect(json.teams).toHaveLength(1);
-    expect(json.epics).toHaveLength(1);
+    expect(json.issues).toHaveLength(1);
     expect(json.sprints).toHaveLength(1);
     expect(json.valueStreams).toHaveLength(1);
 

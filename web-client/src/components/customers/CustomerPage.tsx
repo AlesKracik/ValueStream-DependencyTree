@@ -562,8 +562,8 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                         </thead>
                         <tbody>
                             {targetedWorkItems.map(workItem => {
-                                const workItemEpics = data ? data.epics.filter(e => e.work_item_id === workItem.id) : [];
-                                const calculatedEffort = calculateWorkItemEffort(workItem, workItemEpics);
+                                const workItemIssues = data ? data.issues.filter(e => e.work_item_id === workItem.id) : [];
+                                const calculatedEffort = calculateWorkItemEffort(workItem, workItemIssues);
                                 
                                 const targetDef = isNew
                                     ? newCustomerWorkItems.find(ncf => ncf.workItemId === workItem.id)!

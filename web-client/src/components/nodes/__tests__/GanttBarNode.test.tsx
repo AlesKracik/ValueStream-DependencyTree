@@ -30,7 +30,7 @@ const mockData: ValueStreamData = {
         { id: 's_past', name: 'Past', start_date: '2026-01-01', end_date: '2026-01-14' },
         { id: 's_curr', name: 'Active', start_date: '2026-02-15', end_date: '2026-02-28' }
     ],
-    epics: [
+    issues: [
         {
             id: 'e1',
             jira_key: 'J-1',
@@ -44,7 +44,7 @@ const mockData: ValueStreamData = {
 };
 
 describe('GanttBarNode Auto-Freeze', () => {
-    const updateEpicSpy = vi.fn();
+    const updateIssueSpy = vi.fn();
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -54,10 +54,10 @@ describe('GanttBarNode Auto-Freeze', () => {
 
     it('automatically snapshots past effort into overrides if they do not exist', async () => {
         const nodeData = {
-            label: 'Epic 1',
+            label: 'Issue 1',
             width: 400,
             color: '#8b5cf6',
-            epicId: 'e1',
+            issueId: 'e1',
             targetStart: '2026-01-05',
             targetEnd: '2026-02-25',
             segments: [
@@ -68,7 +68,7 @@ describe('GanttBarNode Auto-Freeze', () => {
 
         render(
             <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy, addEpic: vi.fn(), deleteEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateIssue: updateIssueSpy, addIssue: vi.fn(), deleteIssue: vi.fn() }}>
                     <GanttBarNode data={nodeData} />
                 </ValueStreamProvider>
             </NotificationProvider>
@@ -79,8 +79,8 @@ describe('GanttBarNode Auto-Freeze', () => {
             vi.runAllTimers();
         });
 
-        // The useEffect should trigger updateEpic with new overrides for s_past
-        expect(updateEpicSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
+        // The useEffect should trigger updateIssue with new overrides for s_past
+        expect(updateIssueSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
             sprint_effort_overrides: expect.objectContaining({
                 's_past': expect.any(Number)
             })
@@ -89,10 +89,10 @@ describe('GanttBarNode Auto-Freeze', () => {
 
     it('calculates proportional effort correctly and avoids NaN by using effort_md', async () => {
         const nodeData = {
-            label: 'Epic 1',
+            label: 'Issue 1',
             width: 400,
             color: '#8b5cf6',
-            epicId: 'e1',
+            issueId: 'e1',
             targetStart: '2026-01-05',
             targetEnd: '2026-02-25',
             segments: [
@@ -103,7 +103,7 @@ describe('GanttBarNode Auto-Freeze', () => {
 
         render(
             <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: updateEpicSpy, addEpic: vi.fn(), deleteEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateIssue: updateIssueSpy, addIssue: vi.fn(), deleteIssue: vi.fn() }}>
                     <GanttBarNode data={nodeData} />
                 </ValueStreamProvider>
             </NotificationProvider>
@@ -116,7 +116,7 @@ describe('GanttBarNode Auto-Freeze', () => {
         // Verify the calculation result isn't NaN or null
          
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const call = (updateEpicSpy as any).mock.calls.find((c: any) => c[0] === 'e1');
+        const call = (updateIssueSpy as any).mock.calls.find((c: any) => c[0] === 'e1');
         expect(call).toBeDefined();
         const overrides = call![1].sprint_effort_overrides;
         const pastEffort = overrides['s_past'];

@@ -1,5 +1,5 @@
 import { parseISO, differenceInDays, max, min, format } from 'date-fns';
-import type { WorkItem, Epic, Customer, Sprint, Team } from '../types/models';
+import type { WorkItem, Issue, Customer, Sprint, Team } from '../types/models';
 import { countBusinessDays } from './dateHelpers';
 
 /**
@@ -7,9 +7,9 @@ import { countBusinessDays } from './dateHelpers';
  */
 
 /**
- * Parses Jira issue data into a partial Epic object.
+ * Parses Jira issue data into a partial Issue object.
  */
-export const parseJiraIssue = (issue: any, teams: Team[]): Partial<Epic> => {
+export const parseJiraIssue = (issue: any, teams: Team[]): Partial<Issue> => {
     const fields = issue.fields;
     const names = issue.names || {};
     let targetStartKey = "";
@@ -22,7 +22,7 @@ export const parseJiraIssue = (issue: any, teams: Team[]): Partial<Epic> => {
         if (name === "Team") teamKey = key;
     });
 
-    const updates: Partial<Epic> = {};
+    const updates: Partial<Issue> = {};
     if (fields.summary) updates.name = fields.summary;
     
     // Effort: Jira is source of truth (even if 0)
@@ -55,27 +55,27 @@ export const parseJiraIssue = (issue: any, teams: Team[]): Partial<Epic> => {
 };
 
 /**
- * Calculates the proportional effort for an epic within a specific sprint
+ * Calculates the proportional effort for an issue within a specific sprint
  * based on business days overlap.
  */
-export const calculateProportionalEffort = (epic: Epic, sprint: Sprint, countryCode?: string): number => {
-    if (!epic.target_start || !epic.target_end || !sprint.start_date || !sprint.end_date) return 0;
+export const calculateProportionalEffort = (issue: Issue, sprint: Sprint, countryCode?: string): number => {
+    if (!issue.target_start || !issue.target_end || !sprint.start_date || !sprint.end_date) return 0;
 
     const sStart = parseISO(sprint.start_date);
     const sEnd = parseISO(sprint.end_date);
-    const eStart = parseISO(epic.target_start);
-    const eEnd = parseISO(epic.target_end);
+    const eStart = parseISO(issue.target_start);
+    const eEnd = parseISO(issue.target_end);
 
     const overlapStart = max([sStart, eStart]);
     const overlapEnd = min([sEnd, eEnd]);
 
     if (overlapStart <= overlapEnd) {
         const overlapDays = countBusinessDays(format(overlapStart, 'yyyy-MM-dd'), format(overlapEnd, 'yyyy-MM-dd'), countryCode);
-        const totalEpicDays = countBusinessDays(epic.target_start, epic.target_end, countryCode);
+        const totalIssueDays = countBusinessDays(issue.target_start, issue.target_end, countryCode);
         
-        if (totalEpicDays === 0) return 0;
+        if (totalIssueDays === 0) return 0;
 
-        const proportionalEffort = (epic.effort_md * (overlapDays / totalEpicDays));
+        const proportionalEffort = (issue.effort_md * (overlapDays / totalIssueDays));
         return Math.round(proportionalEffort * 10) / 10;
     }
     return 0;
@@ -84,12 +84,12 @@ export const calculateProportionalEffort = (epic: Epic, sprint: Sprint, countryC
 /**
  * Calculates the total effort for a work item in man-days (MDs).
  * It is the maximum of the work item's own 'total_effort_mds' 
- * or the sum of all its related epics' effort.
+ * or the sum of all its related issues' effort.
  */
-export const calculateWorkItemEffort = (workItem: WorkItem, epics: Epic[]): number => {
-    const epicsForWorkItem = epics.filter(e => e.work_item_id === workItem.id);
-    const epicMdsSum = epicsForWorkItem.reduce((sum, e) => sum + (e.effort_md || 0), 0);
-    return epicMdsSum > 0 ? epicMdsSum : (workItem.total_effort_mds || 0);
+export const calculateWorkItemEffort = (workItem: WorkItem, issues: Issue[]): number => {
+    const issuesForWorkItem = issues.filter(e => e.work_item_id === workItem.id);
+    const issueMdsSum = issuesForWorkItem.reduce((sum, e) => sum + (e.effort_md || 0), 0);
+    return issueMdsSum > 0 ? issueMdsSum : (workItem.total_effort_mds || 0);
 };
 
 /**
@@ -156,21 +156,21 @@ export const calculateWorkItemTcv = (workItem: WorkItem, customers: Customer[], 
  * Calculates the RICE/ROI Score for a work item.
  * Score = Total Impact / Effort (min 1 MD)
  */
-export const calculateWorkItemScore = (workItem: WorkItem, customers: Customer[], allWorkItems: WorkItem[], epics: Epic[]): number => {
+export const calculateWorkItemScore = (workItem: WorkItem, customers: Customer[], allWorkItems: WorkItem[], issues: Issue[]): number => {
     const impact = calculateWorkItemTcv(workItem, customers, allWorkItems);
-    const effort = Math.max(calculateWorkItemEffort(workItem, epics), 1);
+    const effort = Math.max(calculateWorkItemEffort(workItem, issues), 1);
     return impact / effort;
 };
 
 /**
- * Calculates how much effort from an Epic falls into each sprint.
+ * Calculates how much effort from an Issue falls into each sprint.
  * Respects manual overrides and distributes the remaining effort proportionally.
  */
-export const calculateEpicEffortPerSprint = (epic: Epic, allSprints: Sprint[]): Record<string, number> => {
-    if (!epic.target_start || !epic.target_end) return {};
+export const calculateIssueEffortPerSprint = (issue: Issue, allSprints: Sprint[]): Record<string, number> => {
+    if (!issue.target_start || !issue.target_end) return {};
 
-    const start = parseISO(epic.target_start);
-    const end = parseISO(epic.target_end);
+    const start = parseISO(issue.target_start);
+    const end = parseISO(issue.target_end);
     const duration = Math.max(1, differenceInDays(end, start) + 1);
 
     let totalOverrideMd = 0;
@@ -186,7 +186,7 @@ export const calculateEpicEffortPerSprint = (epic: Epic, allSprints: Sprint[]): 
         
         if (oStart <= oEnd) {
             const days = differenceInDays(oEnd, oStart) + 1;
-            const overrideValue = epic.sprint_effort_overrides?.[sprint.id];
+            const overrideValue = issue.sprint_effort_overrides?.[sprint.id];
             const isOverridden = overrideValue !== undefined;
             
             overlaps.push({ sprintId: sprint.id, days, isOverridden, overrideValue });
@@ -198,7 +198,7 @@ export const calculateEpicEffortPerSprint = (epic: Epic, allSprints: Sprint[]): 
         }
     });
 
-    const remainingDefaultMd = Math.max(0, (epic.effort_md || 0) - totalOverrideMd);
+    const remainingDefaultMd = Math.max(0, (issue.effort_md || 0) - totalOverrideMd);
     const remainingDefaultDays = Math.max(0, duration - overrideDays);
 
     const result: Record<string, number> = {};
@@ -218,7 +218,7 @@ export const calculateEpicEffortPerSprint = (epic: Epic, allSprints: Sprint[]): 
  * Calculates the intensity ratio for visual heat mapping.
  * 1.0 is neutral (uniform distribution).
  */
-export const calculateEpicIntensityRatio = (actualEffort: number, baselineEffort: number): number => {
+export const calculateIssueIntensityRatio = (actualEffort: number, baselineEffort: number): number => {
     if (baselineEffort > 0) {
         return actualEffort / baselineEffort;
     }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import type { Epic, ValueStreamData } from '../../types/models';
+import type { Issue, ValueStreamData } from '../../types/models';
 import { useNavigate, useParams } from 'react-router-dom';
-import { calculateEpicEffortPerSprint } from '../../utils/businessLogic';
+import { calculateIssueEffortPerSprint } from '../../utils/businessLogic';
 import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers';
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import { syncJiraIssue } from '../../utils/api';
@@ -9,59 +9,59 @@ import { GenericDetailPage, type DetailTab } from '../common/GenericDetailPage';
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import customerStyles from '../customers/CustomerPage.module.css';
 
-interface EpicPageProps {
+interface IssuePageProps {
     data: ValueStreamData | null;
     loading: boolean;
-    updateEpic: (id: string, updates: Partial<Epic>) => Promise<void>;
-    deleteEpic: (id: string) => void;
+    updateIssue: (id: string, updates: Partial<Issue>) => Promise<void>;
+    deleteIssue: (id: string) => void;
 }
 
-export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, deleteEpic }) => {
+export const IssuePage: React.FC<IssuePageProps> = ({ data, loading, updateIssue, deleteIssue }) => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { showAlert, showConfirm } = useValueStreamContext();
     
-    const epic = data?.epics.find(e => e.id === id);
-    const team = data?.teams.find(t => t.id === epic?.team_id);
-    const workItem = data?.workItems.find(wi => wi.id === epic?.work_item_id);
+    const issue = data?.issues.find(e => e.id === id);
+    const team = data?.teams.find(t => t.id === issue?.team_id);
+    const workItem = data?.workItems.find(wi => wi.id === issue?.work_item_id);
 
     const [localDates, setLocalDates] = useState({
-        start: epic?.target_start || '',
-        end: epic?.target_end || ''
+        start: issue?.target_start || '',
+        end: issue?.target_end || ''
     });
 
-    if (!epic && !loading) {
+    if (!issue && !loading) {
         return (
             <GenericDetailPage
-                entityTitle="Epic Not Found"
+                entityTitle="Issue Not Found"
                 onBack={() => navigate(-1)}
-                mainDetails={<div>Epic not found</div>}
+                mainDetails={<div>Issue not found</div>}
                 loading={loading}
                 data={data}
             />
         );
     }
 
-    const effortPerSprint = calculateEpicEffortPerSprint(epic, data?.sprints || []);
+    const effortPerSprint = calculateIssueEffortPerSprint(issue, data?.sprints || []);
 
     const handleDelete = async () => {
-        if (!epic) return;
-        const confirmed = await showConfirm('Delete Epic', `Are you sure you want to delete "${epic.name}"?`);
+        if (!issue) return;
+        const confirmed = await showConfirm('Delete Issue', `Are you sure you want to delete "${issue.name}"?`);
         if (confirmed) {
-            deleteEpic(epic.id);
+            deleteIssue(issue.id);
             navigate(-1);
         }
     };
 
     const handleSync = async () => {
         try {
-            const jiraData = await syncJiraIssue(epic.jira_key || '', data?.settings?.jira || {});
+            const jiraData = await syncJiraIssue(issue.jira_key || '', data?.settings?.jira || {});
             if (jiraData) {
-                const updates: Partial<Epic> = {
+                const updates: Partial<Issue> = {
                     name: jiraData.fields.summary,
                     effort_md: (jiraData.fields.customfield_10005 || 0) / 8 // Example mapping
                 };
-                await updateEpic(epic.id, updates);
+                await updateIssue(issue.id, updates);
             }
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -70,7 +70,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
     };
 
     const handleOverrideChange = (sprintId: string, value: string) => {
-        const overrides = { ...(epic.sprint_effort_overrides || {}) };
+        const overrides = { ...(issue.sprint_effort_overrides || {}) };
         if (value === '') {
             delete overrides[sprintId];
         } else {
@@ -79,7 +79,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
                 overrides[sprintId] = parsed;
             }
         }
-        updateEpic(epic.id, { sprint_effort_overrides: overrides });
+        updateIssue(issue.id, { sprint_effort_overrides: overrides });
     };
 
     const handleDateChange = async (field: 'start' | 'end', value: string) => {
@@ -92,24 +92,24 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
         }
 
         setLocalDates({ start: newStart, end: newEnd });
-        const updates: Partial<Epic> = { [field === 'start' ? 'target_start' : 'target_end']: value };
+        const updates: Partial<Issue> = { [field === 'start' ? 'target_start' : 'target_end']: value };
         
-        if (field === 'start' && epic.sprint_effort_overrides && Object.keys(epic.sprint_effort_overrides).length > 0) {
+        if (field === 'start' && issue.sprint_effort_overrides && Object.keys(issue.sprint_effort_overrides).length > 0) {
             const confirmed = await showConfirm(
                 'Historical Work Warning',
-                'Moving the start date will clear any historical work overrides for this epic. Do you want to proceed?'
+                'Moving the start date will clear any historical work overrides for this issue. Do you want to proceed?'
             );
             if (!confirmed) {
                 setLocalDates({
-                    start: epic.target_start || '',
-                    end: epic.target_end || ''
+                    start: issue.target_start || '',
+                    end: issue.target_end || ''
                 });
                 return;
             }
             updates.sprint_effort_overrides = undefined;
         }
 
-        updateEpic(epic.id, updates);
+        updateIssue(issue.id, updates);
     };
 
     const workItemOptions = data?.workItems.map(wi => ({ id: wi.id, label: wi.name })) || [];
@@ -123,9 +123,9 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
                     Name
                     <input 
                         type="text" 
-                        value={epic.name || ''} 
-                        onChange={e => updateEpic(epic.id, { name: e.target.value })}
-                        placeholder="Epic Name"
+                        value={issue.name || ''} 
+                        onChange={e => updateIssue(issue.id, { name: e.target.value })}
+                        placeholder="Issue Name"
                     />
                 </label>
                 <label>
@@ -133,7 +133,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <SearchableDropdown
                             options={workItemOptions}
-                            onSelect={(wiId) => updateEpic(epic.id, { work_item_id: wiId === 'UNASSIGNED' ? undefined : wiId })}
+                            onSelect={(wiId) => updateIssue(issue.id, { work_item_id: wiId === 'UNASSIGNED' ? undefined : wiId })}
                             placeholder="Search for a work item..."
                             clearOnSelect={false}
                             initialValue={workItem?.name || 'Unassigned'}
@@ -146,8 +146,8 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
                     Jira Key
                     <input 
                         type="text" 
-                        value={epic.jira_key || ''} 
-                        onChange={e => updateEpic(epic.id, { jira_key: e.target.value })}
+                        value={issue.jira_key || ''} 
+                        onChange={e => updateIssue(issue.id, { jira_key: e.target.value })}
                     />
                 </label>
                 <label>
@@ -170,8 +170,8 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
                     Total Effort (MDs)
                     <input 
                         type="number" 
-                        value={epic.effort_md} 
-                        onChange={e => updateEpic(epic.id, { effort_md: parseFloat(e.target.value) })}
+                        value={issue.effort_md} 
+                        onChange={e => updateIssue(issue.id, { effort_md: parseFloat(e.target.value) })}
                     />
                 </label>
             </div>
@@ -201,7 +201,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
                         <tbody>
                             {data?.sprints.filter(s => effortPerSprint[s.id] !== undefined).map(sprint => {
                                 const effective = Math.round((effortPerSprint[sprint.id] || 0) * 10) / 10;
-                                const isOverridden = epic.sprint_effort_overrides?.[sprint.id] !== undefined;
+                                const isOverridden = issue.sprint_effort_overrides?.[sprint.id] !== undefined;
 
                                 // Holiday calculation logic
                                 const { holidayCount } = calculateWorkingDays(sprint.start_date, sprint.end_date, team?.country);
@@ -233,7 +233,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                                 <input 
                                                     type="number"
-                                                    value={epic.sprint_effort_overrides?.[sprint.id] ?? ''}
+                                                    value={issue.sprint_effort_overrides?.[sprint.id] ?? ''}
                                                     placeholder={effective > 0 ? String(effective) : '-'}
                                                     onChange={e => handleOverrideChange(sprint.id, e.target.value)}
                                                     title={isOverridden ? 'Manual Override Active' : 'Calculated Proportion'}
@@ -279,7 +279,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
 
     return (
         <GenericDetailPage
-            entityTitle={`Epic: ${epic.name}`}
+            entityTitle={`Issue: ${issue.name}`}
             onBack={() => navigate(-1)}
             mainDetails={mainDetails}
             tabs={tabs}
@@ -287,7 +287,7 @@ export const EpicPage: React.FC<EpicPageProps> = ({ data, loading, updateEpic, d
             data={data}
             actions={
                 <div style={{ display: 'flex', gap: '12px' }}>
-                    <button className="btn-danger" onClick={handleDelete}>Delete Epic</button>
+                    <button className="btn-danger" onClick={handleDelete}>Delete Issue</button>
                     <button className="btn-primary" onClick={handleSync}>Sync from Jira</button>
                 </div>
             }

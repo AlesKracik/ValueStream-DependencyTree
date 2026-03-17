@@ -1,0 +1,47 @@
+# Issues (Execution Layer)
+
+## Overview
+Issues are the primary units of execution. They physically exist on the timeline and are the final link in the chain from Customer to Delivery.
+
+## Data Model
+```typescript
+export interface Issue {
+  id: string;
+  name?: string;
+  jira_key: string;
+  work_item_id: string;
+  team_id: string;
+  effort_md: number;
+  target_start?: string; // YYYY-MM-DD
+  target_end?: string;   // YYYY-MM-DD
+  dependencies?: IssueDependency[];
+  sprint_effort_overrides?: Record<string, number>;
+}
+```
+
+## Visual Representation
+- **Node Type:** `GanttBarNode`.
+- **Placement:** Positioned on the X-axis based on `target_start`/`target_end` relative to the visible sprint window. Positioned on the Y-axis inside the swimlane of their assigned `team_id`.
+- **Color:** Inherits the specific color assigned to its parent `WorkItem`.
+- **Intensity:** The brightness of segments indicates the concentration of effort in a specific sprint.
+
+## Relationships
+- **Work Items:** Every Issue belongs to one parent Work Item.
+- **Teams:** Every Issue is assigned to one Team.
+- **Dependencies:** Issues can depend on other Issues (`Finish-to-Start` or `Finish-to-Finish`), rendered as animated orange arrows.
+
+```mermaid
+graph LR
+    WI[Work Item] -->|Owns| E[Issue]
+    Team[Team] -->|Executes| E
+    E -->|Visualized on| Timeline[Gantt Chart]
+```
+
+## Logic
+- **Effort Distribution:** Effort is distributed proportionally across all sprints overlapping with the issue's timeline.
+- **Manual Overrides:** Users can manually override the calculated effort for specific sprints.
+  - **Visual Feedback:** Active overrides are highlighted in blue in the Issue Detail page.
+  - **Quick Clear:** Users can click the "×" button to revert to the proportional calculation.
+- **Historical Actuals (Auto-Freeze):** Sprints older than the active sprint are automatically "frozen". If an issue has effort in a past sprint but no manual override, the system snapshots the current calculation as a permanent override to prevent historical data from shifting when dates are changed.
+- **Centralized Math:** All effort calculations (Gantt heat-mapping, team capacity usage, and detail page tables) are powered by a centralized business logic utility (`calculateIssueEffortPerSprint`) ensuring perfect consistency across the UI.
+- **Sync:** Can be updated from Jira to pull latest dates, team, and effort.

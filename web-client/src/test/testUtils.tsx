@@ -3,14 +3,14 @@ import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ValueStreamProvider, NotificationProvider } from '../contexts/ValueStreamContext';
 import { vi } from 'vitest';
-import type { ValueStreamData, Epic } from '../types/models';
+import type { ValueStreamData, Issue } from '../types/models';
 
 interface RenderOptions {
     route?: string;
     data?: ValueStreamData | null;
-    updateEpic?: (id: string, updates: Partial<Epic>, immediate?: boolean) => Promise<void>;
-    addEpic?: (epic: Epic) => void;
-    deleteEpic?: (id: string) => void;
+    updateIssue?: (id: string, updates: Partial<Issue>, immediate?: boolean) => Promise<void>;
+    addIssue?: (issue: Issue) => void;
+    deleteIssue?: (id: string) => void;
 }
 
 export function renderWithProviders(
@@ -18,14 +18,14 @@ export function renderWithProviders(
     {
         route = '/',
         data = null,
-        updateEpic = vi.fn().mockResolvedValue(undefined),
-        addEpic = vi.fn(),
-        deleteEpic = vi.fn()
+        updateIssue = vi.fn().mockResolvedValue(undefined),
+        addIssue = vi.fn(),
+        deleteIssue = vi.fn()
     }: RenderOptions = {}
 ) {
     return render(
         <NotificationProvider>
-            <ValueStreamProvider value={{ data, updateEpic, addEpic, deleteEpic }}>
+            <ValueStreamProvider value={{ data, updateIssue, addIssue, deleteIssue }}>
                 <MemoryRouter initialEntries={[route]}>
                     {ui}
                 </MemoryRouter>

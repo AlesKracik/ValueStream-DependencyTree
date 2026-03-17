@@ -18,9 +18,9 @@ const mockData: ValueStreamData = {
     },
     customers: [],    workItems: [],
     teams: [],
-    epics: [
-        { id: 'e1', jira_key: 'E1', team_id: 't1', effort_md: 10, name: 'Epic 1' },
-        { id: 'e2', jira_key: 'E2', team_id: 't1', effort_md: 20, name: 'Epic 2' }
+    issues: [
+        { id: 'e1', jira_key: 'E1', team_id: 't1', effort_md: 10, name: 'Issue 1' },
+        { id: 'e2', jira_key: 'E2', team_id: 't1', effort_md: 20, name: 'Issue 2' }
     ],
     sprints: [],
     metrics: { maxScore: 100, maxRoi: 10 }
@@ -44,7 +44,7 @@ describe('useValueStreamData Persistence', () => {
         vi.restoreAllMocks();
     });
 
-    it('debounces multiple updates to the SAME epic', async () => {
+    it('debounces multiple updates to the SAME issue', async () => {
         // Use a small debounce for testing with real timers
         const { result } = renderHook(() => useValueStreamData(undefined, {}, 50));
         await waitFor(() => expect(result.current.loading).toBe(false));
@@ -52,40 +52,40 @@ describe('useValueStreamData Persistence', () => {
         vi.mocked(fetch).mockClear();
 
         await act(async () => {
-            result.current.updateEpic('e1', { name: 'Update 1' });
-            result.current.updateEpic('e1', { name: 'Update 2' });
-            result.current.updateEpic('e1', { name: 'Update 3' });
+            result.current.updateIssue('e1', { name: 'Update 1' });
+            result.current.updateIssue('e1', { name: 'Update 2' });
+            result.current.updateIssue('e1', { name: 'Update 3' });
         });
 
         // Wait for the debounce to expire
         await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1), { timeout: 1000 });
         
         expect(fetch).toHaveBeenCalledWith(
-            '/api/entity/epics',
+            '/api/entity/issues',
             expect.objectContaining({
                 body: expect.stringContaining('"name":"Update 3"')
             })
         );
     });
 
-    it('does NOT debounce updates to DIFFERENT epics (independent timers)', async () => {
+    it('does NOT debounce updates to DIFFERENT issues (independent timers)', async () => {
         const { result } = renderHook(() => useValueStreamData(undefined, {}, 50));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         vi.mocked(fetch).mockClear();
 
         await act(async () => {
-            result.current.updateEpic('e1', { name: 'Epic 1 Updated' });
-            result.current.updateEpic('e2', { name: 'Epic 2 Updated' });
+            result.current.updateIssue('e1', { name: 'Issue 1 Updated' });
+            result.current.updateIssue('e2', { name: 'Issue 2 Updated' });
         });
 
         // Both should be called independently
         await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2), { timeout: 1000 });
 
-        expect(fetch).toHaveBeenCalledWith('/api/entity/epics', expect.objectContaining({
+        expect(fetch).toHaveBeenCalledWith('/api/entity/issues', expect.objectContaining({
             body: expect.stringContaining('"id":"e1"')
         }));
-        expect(fetch).toHaveBeenCalledWith('/api/entity/epics', expect.objectContaining({
+        expect(fetch).toHaveBeenCalledWith('/api/entity/issues', expect.objectContaining({
             body: expect.stringContaining('"id":"e2"')
         }));
     });
@@ -97,13 +97,13 @@ describe('useValueStreamData Persistence', () => {
         vi.mocked(fetch).mockClear();
 
         await act(async () => {
-            await result.current.updateEpic('e1', { name: 'Immediate Update' }, true);
+            await result.current.updateIssue('e1', { name: 'Immediate Update' }, true);
         });
 
         // Should have called fetch immediately without waiting for debounce
         expect(fetch).toHaveBeenCalledTimes(1);
         expect(fetch).toHaveBeenCalledWith(
-            '/api/entity/epics',
+            '/api/entity/issues',
             expect.objectContaining({
                 method: 'POST',
                 body: expect.stringContaining('"name":"Immediate Update"')
@@ -127,7 +127,7 @@ describe('useValueStreamData Persistence', () => {
         await waitFor(() => expect(result.current.loading).toBe(false));
 
         let updateResolved = false;
-        const updatePromise = result.current.updateEpic('e1', { name: 'Async Test' }, true).then(() => {
+        const updatePromise = result.current.updateIssue('e1', { name: 'Async Test' }, true).then(() => {
             updateResolved = true;
         });
 

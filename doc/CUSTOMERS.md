@@ -57,7 +57,7 @@ erDiagram
 
 ## Logic & Filtering
 - **Min TCV Filter:** Global filter that hides customers (and their downstream trees) if their total TCV is below the threshold.
-- **Standalone Visibility:** Customers with no linked Work Items are only visible if no Work Item, Team, or Epic filters are active.
+- **Standalone Visibility:** Customers with no linked Work Items are only visible if no Work Item, Team, or Issue filters are active.
 
 ## Support Issues & Jira Integration
 The system allows tracking customer support health through both manual entries and Jira integration.

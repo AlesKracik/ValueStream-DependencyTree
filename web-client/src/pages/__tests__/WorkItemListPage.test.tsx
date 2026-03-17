@@ -35,7 +35,7 @@ const mockData: ValueStreamData = {
         { id: 'w3', name: 'Beta Item', score: 30, total_effort_mds: 10, customer_targets: [], released_in_sprint_id: 's2' }
     ],
     teams: [],
-    epics: [],
+    issues: [],
     sprints: [
         { id: 's1', name: 'Sprint 1', start_date: '2024-01-01', end_date: '2024-01-14' },
         { id: 's2', name: 'Sprint 2', start_date: '2024-01-15', end_date: '2024-01-28' },

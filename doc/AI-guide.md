@@ -3,7 +3,7 @@
 This document provides a high-level map of the ValueStream Dependency Tree project to help AI assistants orient quickly and compartmentalize tasks without exhaustive codebase scanning.
 
 ## 1. Core Purpose
-A React-based visualization tool that maps value from **Customers** (Demand) through **Work Items** (Strategy) to **Epics/Teams** (Execution) on a **Gantt Timeline**.
+A React-based visualization tool that maps value from **Customers** (Demand) through **Work Items** (Strategy) to **Issues/Teams** (Execution) on a **Gantt Timeline**.
 
 ## 2. Domain Entities & Relations
 Defined in: `web-client/src/types/models.ts`
@@ -11,7 +11,7 @@ Defined in: `web-client/src/types/models.ts`
 ### Entities
 - **Customer**: Root nodes. Have TCV (Total Contract Value), TCV History, and Support Issues.
 - **WorkItem**: Strategy nodes. Linked to multiple Customers via `customer_targets` or a global `all_customers_target`.
-- **Epic**: Execution nodes. Linked to ONE WorkItem and ONE Team. Contains Effort (man-days) and Dependencies (FS/FF).
+- **Issue**: Execution nodes. Linked to ONE WorkItem and ONE Team. Contains Effort (man-days) and Dependencies (FS/FF).
 - **Team**: Capacity nodes. Have total capacity and per-sprint overrides.
 - **Sprint**: Time nodes. Define the Gantt scale and release targets.
 
@@ -20,10 +20,10 @@ Defined in: `web-client/src/types/models.ts`
 - **Support**: A list of active support items to review, aggregated from all customers.
 
 ### Relationship Graph
-`Customer` <--[targets]-- `WorkItem` <--[fulfills]-- `Epic` --[assigned to]--> `Team`
+`Customer` <--[targets]-- `WorkItem` <--[fulfills]-- `Issue` --[assigned to]--> `Team`
 `Sprint` --[release target]--> `WorkItem`
-`Sprint` --[contains]--> `Epic`
-`Epic` --[depends on]--> `Epic` (FS/FF)
+`Sprint` --[contains]--> `Issue`
+`Issue` --[depends on]--> `Issue` (FS/FF)
 
 ## 3. Architecture & Code Map
 
@@ -40,7 +40,7 @@ The backend is a standalone Fastify server running on port 4000. All endpoints r
 The backend encapsulates complex business logic (RICE scoring, fiscal quarter mapping) within a dedicated `backend/src/services/` layer, separating it from the data fetching routes.
 
 - `GET /api/workspace`: Fetches the entire workspace state (used for heavy Graph visualizations). Calculates global scaling metrics (`maxScore`, `maxRoi`).
-- `GET /api/data/{collection}`: Granular endpoints (e.g., `/api/data/customers`, `/api/data/workItems`) allowing the frontend to lazily load only the required entities for specific list or detail views. The `workItems` endpoint internally joins with epics/customers to pre-calculate RICE scores before returning.
+- `GET /api/data/{collection}`: Granular endpoints (e.g., `/api/data/customers`, `/api/data/workItems`) allowing the frontend to lazily load only the required entities for specific list or detail views. The `workItems` endpoint internally joins with issues/customers to pre-calculate RICE scores before returning.
 - `GET /api/settings` & `POST /api/settings`: Retrieves or updates `settings.json`. Handles masking/unmasking of sensitive credentials.
 - `POST /api/entity/{collection}/{id}`: Upserts or deletes documents in MongoDB.
 - `POST /api/mongo/query`: Executes JSON-based queries (find/aggregate) against the customer or app database.
@@ -55,8 +55,8 @@ The backend encapsulates complex business logic (RICE scoring, fiscal quarter ma
 Centralized in `backend/src/utils/businessLogic.ts`:
 
 - **Effort Management**:
-    - **Work Items**: Effort is the maximum of its manual `total_effort_mds` or the sum of its linked Epics.
-    - **Epic Distribution**: `calculateEpicEffortPerSprint()` distributes total effort across overlapping Sprints based on business days, respecting manual overrides.
+    - **Work Items**: Effort is the maximum of its manual `total_effort_mds` or the sum of its linked Issues.
+    - **Issue Distribution**: `calculateIssueEffortPerSprint()` distributes total effort across overlapping Sprints based on business days, respecting manual overrides.
 
 - **Value & Scoring (RICE/ROI)**:
     - **TCV Calculation**: 
@@ -83,7 +83,7 @@ Centralized in `backend/src/utils/businessLogic.ts`:
 - **GenericListPage**: Used for all list views (Support, ValueStreams, etc.). Supports persistence of filters/sorts and robust scroll restoration.
 - **GenericDetailPage**: Used for all entity details.
     - **CustomerPage**: TCV management (Actual vs Potential), Promotion (Potential -> Actual), Support linking to Jira issues, and Custom Field fetching.
-    - **WorkItemPage**: Global targeting, ROI metrics, and Epic management with Jira synchronization.
+    - **WorkItemPage**: Global targeting, ROI metrics, and Issue management with Jira synchronization.
 
 ### Support Workflow
 - **Aggregation**: `SupportPage` flattens issues from all customers.

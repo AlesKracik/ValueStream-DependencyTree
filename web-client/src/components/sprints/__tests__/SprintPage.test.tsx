@@ -29,7 +29,7 @@ const mockData: ValueStreamData = {
     customers: [],
     workItems: [],
     teams: [],
-    epics: [],
+    issues: [],
     sprints: [
         { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY2026 Q1' }
     ],
@@ -59,7 +59,7 @@ describe('SprintPage', () => {
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: mockData,
-            updateEpic: vi.fn()
+            updateIssue: vi.fn()
         });
     });
 
@@ -67,7 +67,7 @@ describe('SprintPage', () => {
         return render(
             <MemoryRouter initialEntries={[`/sprint/${id}`]}>
                 <NotificationProvider>
-                    <ValueStreamProvider value={{ data: props.data || mockData, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
+                    <ValueStreamProvider value={{ data: props.data || mockData, updateIssue: vi.fn(), addIssue: vi.fn(), deleteIssue: vi.fn() }}>
                         <Routes>
                             <Route path="/sprint/:id" element={<SprintPage {...props} error={null} />} />
                         </Routes>
@@ -164,7 +164,7 @@ describe('SprintPage', () => {
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: pastData,
-            updateEpic: vi.fn()
+            updateIssue: vi.fn()
         });
 
         renderSprintPage({ ...defaultProps, data: pastData }, 's1');
@@ -190,7 +190,7 @@ describe('SprintPage', () => {
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: pastData,
-            updateEpic: vi.fn()
+            updateIssue: vi.fn()
         });
 
         renderSprintPage({ ...defaultProps, data: pastData }, 's2');

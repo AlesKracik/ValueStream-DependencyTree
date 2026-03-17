@@ -53,15 +53,15 @@ const mockData: ValueStreamData = {
     customers: [],
     workItems: [],
     teams: [],
-    epics: [],
+    issues: [],
     sprints: [],
     metrics: { maxScore: 100, maxRoi: 10 }
 };
 
 describe('SettingsPage', () => {
     const onUpdateSettings = vi.fn();
-    const updateEpic = vi.fn();
-    const addEpic = vi.fn();
+    const updateIssue = vi.fn();
+    const addIssue = vi.fn();
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -102,8 +102,8 @@ describe('SettingsPage', () => {
                     settings={mockSettings} 
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
-                    updateEpic={updateEpic}
-                    addEpic={addEpic}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
                 />
             </MemoryRouter>
         );
@@ -119,8 +119,8 @@ describe('SettingsPage', () => {
                     settings={mockSettings} 
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
-                    updateEpic={updateEpic}
-                    addEpic={addEpic}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
                 />
             </MemoryRouter>
         );
@@ -151,8 +151,8 @@ describe('SettingsPage', () => {
                     settings={mockSettings} 
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
-                    updateEpic={updateEpic}
-                    addEpic={addEpic}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
                 />
             </MemoryRouter>
         );
@@ -196,8 +196,8 @@ describe('SettingsPage', () => {
                     settings={awsSettings} 
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
-                    updateEpic={updateEpic}
-                    addEpic={addEpic}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
                 />
             </MemoryRouter>
         );
@@ -213,8 +213,8 @@ describe('SettingsPage', () => {
                     settings={mockSettings} 
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
-                    updateEpic={updateEpic}
-                    addEpic={addEpic}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
                 />
             </MemoryRouter>
         );
@@ -265,8 +265,8 @@ describe('SettingsPage', () => {
                     settings={roleSettings} 
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
-                    updateEpic={updateEpic}
-                    addEpic={addEpic}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
                 />
             </MemoryRouter>
         );
@@ -316,8 +316,8 @@ describe('SettingsPage', () => {
                     settings={ssoManualSettings} 
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
-                    updateEpic={updateEpic}
-                    addEpic={addEpic}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
                 />
             </MemoryRouter>
         );
@@ -335,8 +335,8 @@ describe('SettingsPage', () => {
                     settings={DEFAULT_SETTINGS} 
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
-                    updateEpic={updateEpic}
-                    addEpic={addEpic}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
                 />
             </MemoryRouter>
         );
@@ -356,8 +356,8 @@ describe('SettingsPage', () => {
                     settings={{} as any} 
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
-                    updateEpic={updateEpic}
-                    addEpic={addEpic}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
                 />
             </MemoryRouter>
         );
@@ -376,8 +376,8 @@ describe('SettingsPage', () => {
                     settings={DEFAULT_SETTINGS} 
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
-                    updateEpic={updateEpic}
-                    addEpic={addEpic}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
                 />
             </MemoryRouter>
         );
@@ -394,8 +394,8 @@ describe('SettingsPage', () => {
                     settings={mockSettings} 
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
-                    updateEpic={updateEpic}
-                    addEpic={addEpic}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
                 />
             </MemoryRouter>
         );
@@ -420,8 +420,8 @@ describe('SettingsPage', () => {
                     settings={mockSettings} 
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
-                    updateEpic={updateEpic}
-                    addEpic={addEpic}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
                 />
             </MemoryRouter>
         );
@@ -451,8 +451,8 @@ describe('SettingsPage', () => {
                     settings={mockSettings} 
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
-                    updateEpic={updateEpic}
-                    addEpic={addEpic}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
                 />
             </MemoryRouter>
         );
@@ -472,8 +472,8 @@ describe('SettingsPage', () => {
                     settings={mockSettings} 
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
-                    updateEpic={updateEpic}
-                    addEpic={addEpic}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
                 />
             </MemoryRouter>
         );
@@ -521,8 +521,8 @@ describe('SettingsPage', () => {
                     settings={awsSettings} 
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
-                    updateEpic={updateEpic}
-                    addEpic={addEpic}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
                 />
             </MemoryRouter>
         );

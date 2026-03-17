@@ -5,7 +5,7 @@ import { parseISO, differenceInDays } from 'date-fns';
 import '@xyflow/react/dist/style.css';
 
 import { useGraphLayout } from '../../hooks/useGraphLayout';
-import type { ValueStreamData, Customer, WorkItem, Team, ValueStreamViewState, ValueStreamParameters, Epic } from '../../types/models';
+import type { ValueStreamData, Customer, WorkItem, Team, ValueStreamViewState, ValueStreamParameters, Issue } from '../../types/models';
 import { CustomerNode } from '../nodes/CustomerNode';
 import { WorkItemNode } from '../nodes/WorkItemNode';
 import { TeamNode } from '../nodes/TeamNode';
@@ -71,7 +71,7 @@ export interface ValueStreamProps {
     updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
     updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
     updateTeam: (id: string, updates: Partial<Team>, immediate?: boolean) => Promise<void>;
-    updateEpic: (id: string, updates: Partial<Epic>, immediate?: boolean) => Promise<void>;
+    updateIssue: (id: string, updates: Partial<Issue>, immediate?: boolean) => Promise<void>;
     currentValueStreamId?: string;
     
     viewState: ValueStreamViewState;
@@ -79,7 +79,7 @@ export interface ValueStreamProps {
     onNavigateToCustomer: (id: string) => void;
     onNavigateToWorkItem: (id: string) => void;
     onNavigateToTeam: (id: string) => void;
-    onNavigateToEpic: (id: string) => void;
+    onNavigateToIssue: (id: string) => void;
     onNavigateToSprint: (id: string) => void;
     onNavigateToValueStreamEdit: (id: string) => void;
 }
@@ -91,7 +91,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
      viewState, setViewState,
     onNavigateToCustomer,
     onNavigateToWorkItem,
-    onNavigateToEpic,
+    onNavigateToIssue,
     onNavigateToTeam,
     onNavigateToSprint,
     onNavigateToValueStreamEdit
@@ -111,7 +111,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         minTcvFilter: currentValueStream?.parameters?.minTcvFilter || '',
         minScoreFilter: currentValueStream?.parameters?.minScoreFilter || '',
         teamFilter: currentValueStream?.parameters?.teamFilter || '',
-        epicFilter: currentValueStream?.parameters?.epicFilter || '',
+        issueFilter: currentValueStream?.parameters?.issueFilter || '',
         startSprintId: currentValueStream?.parameters?.startSprintId || '',
         endSprintId: currentValueStream?.parameters?.endSprintId || ''
     }), [currentValueStream]);
@@ -124,7 +124,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         viewState.workItemFilter,
         viewState.releasedFilter,
         viewState.teamFilter,
-        viewState.epicFilter,
+        viewState.issueFilter,
         viewState.showDependencies,
         viewState.minTcvFilter ? Number(viewState.minTcvFilter) : 0,
         viewState.minScoreFilter ? Number(viewState.minScoreFilter) : 0,
@@ -278,9 +278,9 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
             const teamId = node.id.replace('team-', '');
             onNavigateToTeam(teamId);
         } else if (node.type === 'ganttBarNode') {
-            // epic id format is gantt-{id}
-            const epicId = node.id.replace('gantt-', '');
-            onNavigateToEpic(epicId);
+            // issue id format is gantt-{id}
+            const issueId = node.id.replace('gantt-', '');
+            onNavigateToIssue(issueId);
         } else if (node.type === 'sprintCapacityNode') {
             // Navigate to the team page for editing overrides
             const teamId = node.data.teamId as string;
@@ -290,7 +290,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                 onNavigateToSprint('list');
             }
         }
-    }, [onNavigateToCustomer, onNavigateToWorkItem, onNavigateToTeam, onNavigateToEpic, onNavigateToSprint]);
+    }, [onNavigateToCustomer, onNavigateToWorkItem, onNavigateToTeam, onNavigateToIssue, onNavigateToSprint]);
 
     const onNodeContextMenu = useCallback(
         (event: React.MouseEvent, node: Node) => {
@@ -324,7 +324,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         customerFilter: viewState.customerFilter,
         workItemFilter: viewState.workItemFilter,
         teamFilter: viewState.teamFilter,
-        epicFilter: viewState.epicFilter,
+        issueFilter: viewState.issueFilter,
         minTcvFilter: viewState.minTcvFilter,
         minScoreFilter: viewState.minScoreFilter
     });
@@ -335,7 +335,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
             customerFilter: viewState.customerFilter,
             workItemFilter: viewState.workItemFilter,
             teamFilter: viewState.teamFilter,
-            epicFilter: viewState.epicFilter,
+            issueFilter: viewState.issueFilter,
             minTcvFilter: viewState.minTcvFilter,
             minScoreFilter: viewState.minScoreFilter
         });
@@ -343,7 +343,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         viewState.customerFilter,
         viewState.workItemFilter,
         viewState.teamFilter,
-        viewState.epicFilter,
+        viewState.issueFilter,
         viewState.minTcvFilter,
         viewState.minScoreFilter
     ]);
@@ -444,9 +444,9 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                             />
                             <input
                                 type="text"
-                                placeholder="Epics..."
-                                value={localFilters.epicFilter}
-                                onChange={e => handleFilterChange('epicFilter', e.target.value)}
+                                placeholder="Issues..."
+                                value={localFilters.issueFilter}
+                                onChange={e => handleFilterChange('issueFilter', e.target.value)}
                                 style={{ width: '120px' }}
                             />
                         </div>
@@ -521,7 +521,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                     onNodeMouseEnter={onNodeMouseEnter}
                     onNodeMouseLeave={onNodeMouseLeave}
                     onNodeContextMenu={onNodeContextMenu}
-                    onPaneContextMenu={onPaneContextMenu as any}
+                    onPaneContextMenu={onPaneContextMenu as unknown as React.MouseEventHandler}
                     onNodeClick={onNodeClick}
                     onMoveEnd={(_, viewport) => {
                         setViewState(s => ({ ...s, viewport }));

@@ -49,7 +49,7 @@ vi.mock('@xyflow/react', async (importOriginal) => {
             setViewport: vi.fn(),
             getNodes: vi.fn(() => []),
             getEdges: vi.fn(() => []),
-        } as any)),
+        } as unknown as ReturnType<typeof useReactFlow>)),
     };
 });
 
@@ -69,7 +69,7 @@ const mockData: ValueStreamData = {
     customers: [{ id: 'c1', name: 'Customer 1', existing_tcv: 100, potential_tcv: 50 }],
     workItems: [{ id: 'w1', name: 'Work Item 1', total_effort_mds: 10, score: 0, customer_targets: [] }],
     teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 100 }],
-    epics: [{ id: 'e1', jira_key: 'E1', work_item_id: 'w1', team_id: 't1', effort_md: 5, target_start: '2026-01-01', target_end: '2026-01-14' }],
+    issues: [{ id: 'e1', jira_key: 'E1', work_item_id: 'w1', team_id: 't1', effort_md: 5, target_start: '2026-01-01', target_end: '2026-01-14' }],
     sprints: [{ id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY2026 Q1' }],
     metrics: { maxScore: 100, maxRoi: 10 }
 };
@@ -79,7 +79,7 @@ const mockViewState: ValueStreamViewState = {
     customerFilter: '',
     workItemFilter: '',
     teamFilter: '',
-    epicFilter: '',
+    issueFilter: '',
     releasedFilter: 'all',
     minTcvFilter: '',
     minScoreFilter: '',
@@ -99,13 +99,13 @@ describe('Value Stream', () => {
         updateCustomer: vi.fn(),
         updateWorkItem: vi.fn(),
         updateTeam: vi.fn(),
-        updateEpic: vi.fn(),
+        updateIssue: vi.fn(),
         viewState: mockViewState,
         setViewState: vi.fn(),
         onNavigateToCustomer,
         onNavigateToWorkItem: vi.fn(),
         onNavigateToTeam: vi.fn(),
-        onNavigateToEpic: vi.fn(),
+        onNavigateToIssue: vi.fn(),
         onNavigateToSprint,
         onNavigateToValueStreamEdit: vi.fn()
     };
@@ -118,7 +118,7 @@ describe('Value Stream', () => {
         const onNavigateToTeam = vi.fn();
         render(
             <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateIssue: vi.fn(), addIssue: vi.fn(), deleteIssue: vi.fn() }}>
                     <ReactFlowProvider>
                         <ValueStream 
                             {...defaultProps}
@@ -138,7 +138,7 @@ describe('Value Stream', () => {
     it('navigates to customer page when customer node is clicked', () => {
         render(
             <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateIssue: vi.fn(), addIssue: vi.fn(), deleteIssue: vi.fn() }}>
                     <ReactFlowProvider>
                         <ValueStream 
                             {...defaultProps}
@@ -157,7 +157,7 @@ describe('Value Stream', () => {
         const onNavigateToWorkItem = vi.fn();
         render(
             <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateIssue: vi.fn(), addIssue: vi.fn(), deleteIssue: vi.fn() }}>
                     <ReactFlowProvider>
                         <ValueStream 
                             {...defaultProps}
@@ -173,21 +173,21 @@ describe('Value Stream', () => {
         expect(onNavigateToWorkItem).toHaveBeenCalledWith('w1');
     });
 
-    it('navigates to epic page when gantt bar node is clicked', () => {
-        const onNavigateToEpic = vi.fn();
+    it('navigates to issue page when gantt bar node is clicked', () => {
+        const onNavigateToIssue = vi.fn();
         // Gantt node id is gantt-e1 in useGraphLayout
         const ganttNodeData = {
             ...mockData,
-            epics: [{ ...mockData.epics[0], name: 'Epic 1' }]
+            issues: [{ ...mockData.issues[0], name: 'Issue 1' }]
         };
         render(
             <NotificationProvider>
-                <ValueStreamProvider value={{ data: ganttNodeData as any, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: ganttNodeData as unknown as ValueStreamData, updateIssue: vi.fn(), addIssue: vi.fn(), deleteIssue: vi.fn() }}>
                     <ReactFlowProvider>
                         <ValueStream 
                             {...defaultProps}
                             data={ganttNodeData}
-                            onNavigateToEpic={onNavigateToEpic}
+                            onNavigateToIssue={onNavigateToIssue}
                         />
                     </ReactFlowProvider>
                 </ValueStreamProvider>
@@ -195,10 +195,10 @@ describe('Value Stream', () => {
         );
         
         // GanttBarNode renders the name + effort
-        const epicNode = screen.getByText(/Epic 1/i);
-        fireEvent.click(epicNode);
+        const issueNode = screen.getByText(/Issue 1/i);
+        fireEvent.click(issueNode);
 
-        expect(onNavigateToEpic).toHaveBeenCalledWith('e1');
+        expect(onNavigateToIssue).toHaveBeenCalledWith('e1');
     });
 
     it('navigates to value stream edit page when "Edit Parameters" is clicked', () => {
@@ -211,7 +211,7 @@ describe('Value Stream', () => {
 
         render(
             <NotificationProvider>
-                <ValueStreamProvider value={{ data: dataWithVS, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: dataWithVS, updateIssue: vi.fn(), addIssue: vi.fn(), deleteIssue: vi.fn() }}>
                     <ReactFlowProvider>
                         <ValueStream 
                             {...defaultProps}
@@ -243,7 +243,7 @@ describe('Value Stream', () => {
 
         render(
             <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateIssue: vi.fn(), addIssue: vi.fn(), deleteIssue: vi.fn() }}>
                     <ReactFlowProvider>
                         <ValueStream 
                             {...defaultProps}
@@ -274,7 +274,7 @@ describe('Value Stream', () => {
 
         render(
             <NotificationProvider>
-                <ValueStreamProvider value={{ data: mockData, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
+                <ValueStreamProvider value={{ data: mockData, updateIssue: vi.fn(), addIssue: vi.fn(), deleteIssue: vi.fn() }}>
                     <ReactFlowProvider>
                         <ValueStream 
                             {...defaultProps}

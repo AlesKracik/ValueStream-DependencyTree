@@ -1,7 +1,7 @@
 # Jira Integration
 
 ## Overview
-The application integrates with Atlassian Jira to hydrate execution data (Epics) and track customer-linked issues.
+The application integrates with Atlassian Jira to hydrate execution data (Issues) and track customer-linked issues.
 
 ## Connection Architecture
 To bypass browser CORS restrictions, all Jira API requests are routed through a server-side proxy managed by the Vite development server.
@@ -46,7 +46,7 @@ The system maintains customer support health using a hybrid synchronization mode
 ## Bulk Sync & Import
 The Jira settings are organized into three sub-tabs for better management:
 - **Common:** Configure the Jira Base URL, API Version, and Personal Access Token (PAT). Includes a **Test Connection** tool.
-- **Epics:** Tools for bulk operations:
-    - **Import from Jira:** Executes a custom JQL query and creates new Epics (and potentially Work Items) in the local database.
-    - **Sync Epics from Jira:** Iterates through all local epics with a `jira_key` and refreshes their metadata.
+- **Issues:** Tools for bulk operations:
+    - **Import from Jira:** Executes a custom JQL query and creates new Issues (and potentially Work Items) in the local database.
+    - **Sync Issues from Jira:** Iterates through all local issues with a `jira_key` and refreshes their metadata.
 - **Customer:** Define JQL queries to automatically identify and track specific issue types linked to customers using the `{{CUSTOMER_ID}}` placeholder.

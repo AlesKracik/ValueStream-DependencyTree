@@ -30,7 +30,7 @@ const MOCK_DATA: ValueStreamData = {
     teams: [
         { id: 't1', name: 'Team Alpha', total_capacity_mds: 10 }
     ],
-    epics: [
+    issues: [
         { 
             id: 'e1', jira_key: 'J-1', work_item_id: 'f1', team_id: 't1', effort_md: 10, 
             target_start: '2026-01-01', target_end: '2026-03-31' // Spans Q1
@@ -43,12 +43,12 @@ const MOCK_DATA: ValueStreamData = {
     metrics: { maxScore: 100, maxRoi: 10 }
 };
 
-describe('reproduce_epic_bug', () => {
-    it('should show an epic that spans the filtered range', () => {
+describe('reproduce_issue_bug', () => {
+    it('should show an issue that spans the filtered range', () => {
         // Filter for February only
         const baseParams = {
             customerFilter: '', workItemFilter: '', releasedFilter: 'all' as const,
-            minTcvFilter: '', minScoreFilter: '', teamFilter: '', epicFilter: '',
+            minTcvFilter: '', minScoreFilter: '', teamFilter: '', issueFilter: '',
             startSprintId: 's1', endSprintId: 's2'
         };
 
@@ -62,7 +62,7 @@ describe('reproduce_epic_bug', () => {
         
         // e1 should be visible
         const e1Node = result.current.nodes.find(n => n.id === 'gantt-e1');
-        expect(e1Node, 'Epic e1 should be visible because it spans the range').toBeDefined();
+        expect(e1Node, 'Issue e1 should be visible because it spans the range').toBeDefined();
     });
 
     it('should show a global work item even if no customers match the TCV filter but they are otherwise visible', () => {
@@ -77,7 +77,7 @@ describe('reproduce_epic_bug', () => {
                     customer_targets: []
                 }
             ],
-            epics: [
+            issues: [
                 { id: 'e2', jira_key: 'J-2', work_item_id: 'f2', team_id: 't1', effort_md: 10, target_start: '2026-02-01', target_end: '2026-02-14' }
             ]
         };
@@ -85,7 +85,7 @@ describe('reproduce_epic_bug', () => {
         // Filter for Min TCV = 1000. Customer c1 has only 100.
         const baseParams = {
             customerFilter: '', workItemFilter: '', releasedFilter: 'all' as const,
-            minTcvFilter: '1000', minScoreFilter: '', teamFilter: '', epicFilter: '',
+            minTcvFilter: '1000', minScoreFilter: '', teamFilter: '', issueFilter: '',
             startSprintId: '', endSprintId: ''
         };
 

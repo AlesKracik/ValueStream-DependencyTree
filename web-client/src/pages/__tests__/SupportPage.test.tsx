@@ -61,7 +61,7 @@ const mockData: ValueStreamData = {
     ],
     workItems: [],
     teams: [],
-    epics: [],
+    issues: [],
     sprints: [],
     metrics: { maxScore: 100, maxRoi: 10 }
 };

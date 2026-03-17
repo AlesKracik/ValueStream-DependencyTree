@@ -45,7 +45,7 @@ const mockData: ValueStreamData = {
         { id: 'f1', name: 'Feat 1', total_effort_mds: 10, score: 0, customer_targets: [{ customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }] }
     ],
     teams: [],
-    epics: [],
+    issues: [],
     sprints: [
         { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY2026 Q1' }
     ],
@@ -97,7 +97,7 @@ describe('useValueStreamData', () => {
             customerFilter: 'cust', 
             workItemFilter: 'work', 
             teamFilter: 'team', 
-            epicFilter: 'epic',
+            issueFilter: 'issue',
             releasedFilter: 'released' as const,
             minTcvFilter: '500',
             minScoreFilter: '10'
@@ -105,7 +105,7 @@ describe('useValueStreamData', () => {
         renderHook(() => useValueStreamData('dash789', filters, 0));
         
         await waitFor(() => {
-            const expectedUrl = '/api/workspace?valueStreamId=dash789&customerFilter=cust&workItemFilter=work&teamFilter=team&epicFilter=epic&releasedFilter=released&minTcvFilter=500&minScoreFilter=10';
+            const expectedUrl = '/api/workspace?valueStreamId=dash789&customerFilter=cust&workItemFilter=work&teamFilter=team&issueFilter=issue&releasedFilter=released&minTcvFilter=500&minScoreFilter=10';
             expect(fetch).toHaveBeenCalledWith(
                 expect.stringContaining(expectedUrl),
                 expect.objectContaining({
@@ -235,13 +235,13 @@ describe('useValueStreamData', () => {
         );
     });
 
-    it('cascades deleteWorkItem to epics', async () => {
-        const dataWithEpic: ValueStreamData = {
+    it('cascades deleteWorkItem to issues', async () => {
+        const dataWithIssue: ValueStreamData = {
             ...mockData,
-            epics: [{ id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', effort_md: 5, name: 'Epic 1' }]
+            issues: [{ id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', effort_md: 5, name: 'Issue 1' }]
         };
         vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => {
-            if (url.startsWith('/api/workspace')) return Promise.resolve({ ok: true, json: () => Promise.resolve(dataWithEpic) });
+            if (url.startsWith('/api/workspace')) return Promise.resolve({ ok: true, json: () => Promise.resolve(dataWithIssue) });
             return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
         }));
 
@@ -253,10 +253,10 @@ describe('useValueStreamData', () => {
         });
 
         expect(result.current.data?.workItems).toHaveLength(0);
-        const e1 = result.current.data?.epics.find(e => e.id === 'e1');
+        const e1 = result.current.data?.issues.find(e => e.id === 'e1');
         expect(e1?.work_item_id).toBeUndefined();
         expect(fetch).toHaveBeenCalledWith(
-            '/api/entity/epics',
+            '/api/entity/issues',
             expect.objectContaining({
                 method: 'POST',
                 headers: expect.objectContaining({

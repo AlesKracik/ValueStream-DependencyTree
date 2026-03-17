@@ -29,7 +29,7 @@ const MOCK_DATA: ValueStreamData = {
             ]
         }
     ],
-    epics: [
+    issues: [
         { id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', effort_md: 1, target_start: '2026-01-01', target_end: '2026-01-14' }
     ],
     teams: [{ id: 't1', name: 'T1', total_capacity_mds: 10 }],

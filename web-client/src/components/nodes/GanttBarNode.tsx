@@ -3,8 +3,8 @@ import { Handle, Position } from '@xyflow/react';
 import { addDays, format, parseISO } from 'date-fns';
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import { sanitizeUrl } from '../../utils/security';
-import { calculateEpicEffortPerSprint } from '../../utils/businessLogic';
-import type { Epic } from '../../types/models';
+import { calculateIssueEffortPerSprint } from '../../utils/businessLogic';
+import type { Issue } from '../../types/models';
 
 export interface GanttBarNodeData {
     label: string;
@@ -12,7 +12,7 @@ export interface GanttBarNodeData {
     color: string;
     jiraKey?: string;
     jiraBaseUrl?: string;
-    epicId: string;
+    issueId: string;
     targetStart: string;
     targetEnd: string;
     segments?: { 
@@ -27,7 +27,7 @@ export interface GanttBarNodeData {
 const PIXELS_PER_DAY = 20;
 
 export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
-    const { data: ValueStreamData, updateEpic, showConfirm } = useValueStreamContext();
+    const { data: ValueStreamData, updateIssue, showConfirm } = useValueStreamContext();
     const [dragState, setDragState] = useState<{ active: 'left' | 'right' | null, startX: number, currentDelta: number }>({
         active: null,
         startX: 0,
@@ -100,35 +100,35 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
 
             // Safety check for past work
             if (ValueStreamData) {
-                const epic = ValueStreamData.epics.find(ep => ep.id === data.epicId);
-                if (epic) {
+                const issue = ValueStreamData.issues.find(ep => ep.id === data.issueId);
+                if (issue) {
                     const activeSprintStart = getActiveSprintStart();
                     const isFutureEndShiftOnly = (newEndStr !== endStr) && (newStartStr === startStr) && parseISO(newEndStr) >= activeSprintStart;
 
-                    const updates: Partial<Epic> = { 
+                    const updates: Partial<Issue> = { 
                         target_start: newStartStr,
                         target_end: newEndStr
                     };
 
                     if (!isFutureEndShiftOnly) {
                         const pastSprints = ValueStreamData.sprints.filter(s => parseISO(s.end_date) < activeSprintStart);
-                        const hasPastWork = pastSprints.some(s => epic.sprint_effort_overrides?.[s.id] !== undefined);
+                        const hasPastWork = pastSprints.some(s => issue.sprint_effort_overrides?.[s.id] !== undefined);
 
                         if (hasPastWork) {
                             const confirmed = await showConfirm(
                                 "Historical Work Warning",
-                                "This Epic has recorded effort in past sprints. Shifting the start date or moving the end date into the past will overwrite this historical data. Do you want to recalculate past work?"
+                                "This Issue has recorded effort in past sprints. Shifting the start date or moving the end date into the past will overwrite this historical data. Do you want to recalculate past work?"
                             );
                             if (!confirmed) {
                                 setDragState({ active: null, startX: 0, currentDelta: 0 });
                                 return;
                             }
-                            const newOverrides = { ...(epic.sprint_effort_overrides || {}) };
+                            const newOverrides = { ...(issue.sprint_effort_overrides || {}) };
                             pastSprints.forEach(s => delete newOverrides[s.id]);
                             updates.sprint_effort_overrides = Object.keys(newOverrides).length > 0 ? newOverrides : undefined;
                         }
                     }
-                    updateEpic(data.epicId, updates);
+                    updateIssue(data.issueId, updates);
                 }
             }
         }
@@ -141,16 +141,16 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
     useEffect(() => {
         if (!ValueStreamData) return;
 
-        const epic = ValueStreamData.epics.find(ep => ep.id === data.epicId);
-        if (!epic) return;
+        const issue = ValueStreamData.issues.find(ep => ep.id === data.issueId);
+        if (!issue) return;
 
         const activeSprintStart = getActiveSprintStart();
         const pastSprints = ValueStreamData.sprints.filter(s => parseISO(s.end_date) < activeSprintStart);
         
         let needsUpdate = false;
-        const newOverrides = { ...(epic.sprint_effort_overrides || {}) };
+        const newOverrides = { ...(issue.sprint_effort_overrides || {}) };
 
-        const calculatedEffortPerSprint = calculateEpicEffortPerSprint(epic, ValueStreamData.sprints);
+        const calculatedEffortPerSprint = calculateIssueEffortPerSprint(issue, ValueStreamData.sprints);
 
         pastSprints.forEach(s => {
             if (newOverrides[s.id] === undefined && calculatedEffortPerSprint[s.id] !== undefined) {
@@ -160,9 +160,9 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
         });
 
         if (needsUpdate) {
-            updateEpic(data.epicId, { sprint_effort_overrides: newOverrides });
+            updateIssue(data.issueId, { sprint_effort_overrides: newOverrides });
         }
-    }, [ValueStreamData, data.epicId, data.targetStart, data.targetEnd, getActiveSprintStart, updateEpic]);
+    }, [ValueStreamData, data.issueId, data.targetStart, data.targetEnd, getActiveSprintStart, updateIssue]);
 
     // Calculate visual dimensions based on drag state
     let visualWidth = data.width;

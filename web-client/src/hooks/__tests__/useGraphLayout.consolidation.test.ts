@@ -28,9 +28,9 @@ const MOCK_DATA: ValueStreamData = {
         { id: 't1', name: 'Team Alpha', total_capacity_mds: 10 },
         { id: 't2', name: 'Team Beta', total_capacity_mds: 10 }
     ],
-    epics: [
-        { id: 'e1', jira_key: 'E1', name: 'Alpha Epic Name', work_item_id: 'f1', team_id: 't1', effort_md: 5, target_start: '2026-01-01', target_end: '2026-01-10' },
-        { id: 'e2', jira_key: 'E2', name: 'Beta Epic Name', work_item_id: 'f2', team_id: 't2', effort_md: 5, target_start: '2026-01-01', target_end: '2026-01-10' }
+    issues: [
+        { id: 'e1', jira_key: 'E1', name: 'Alpha Issue Name', work_item_id: 'f1', team_id: 't1', effort_md: 5, target_start: '2026-01-01', target_end: '2026-01-10' },
+        { id: 'e2', jira_key: 'E2', name: 'Beta Issue Name', work_item_id: 'f2', team_id: 't2', effort_md: 5, target_start: '2026-01-01', target_end: '2026-01-10' }
     ],
     sprints: [
         { id: 's1', name: 'S1', start_date: '2026-01-01', end_date: '2026-01-14' }
@@ -39,7 +39,7 @@ const MOCK_DATA: ValueStreamData = {
 };
 
 const emptyParams: ValueStreamParameters = {
-    customerFilter: '', workItemFilter: '', teamFilter: '', epicFilter: '',
+    customerFilter: '', workItemFilter: '', teamFilter: '', issueFilter: '',
     releasedFilter: 'all', minTcvFilter: '', minScoreFilter: ''
 };
 
@@ -67,9 +67,9 @@ describe('useGraphLayout - Filter Consolidation (Base vs Transient)', () => {
         expect(result.current.nodes.some(n => n.id === 'team-t2')).toBe(false);
     });
 
-    it('consolidates Epic filters using Logical AND', () => {
-        const baseParams = { ...emptyParams, epicFilter: 'Epic' };
-        // We use 'Beta' as EPIC filter transiently.
+    it('consolidates Issue filters using Logical AND', () => {
+        const baseParams = { ...emptyParams, issueFilter: 'Issue' };
+        // We use 'Beta' as ISSUE filter transiently.
         // We must also NOT filter out its path. If customerFilter is '', all paths are valid.
         const { result } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', '', 'all', '', 'Beta', true, 0, 0, null, baseParams));
         

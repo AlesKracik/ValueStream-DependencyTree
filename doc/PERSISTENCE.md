@@ -4,7 +4,7 @@
 The application uses a dual-mode persistence strategy to balance ease of local development with robust multi-user storage.
 
 ## Data Storage
-- **MongoDB:** Primary storage for production-like environments. Entities are stored in collections named after their logical types: `customers`, `workItems`, `teams`, `epics`, `sprints`, and `valueStreams`.
+- **MongoDB:** Primary storage for production-like environments. Entities are stored in collections named after their logical types: `customers`, `workItems`, `teams`, `issues`, `sprints`, and `valueStreams`.
 
 ## The Vite Backend Plugin
 The "backend" logic resides in `web-client/vite.config.ts`. It provides a comprehensive set of REST endpoints for data management, integration, and security.
@@ -14,7 +14,7 @@ The "backend" logic resides in `web-client/vite.config.ts`. It provides a compre
 #### 1. `GET /api/loadData`
 The primary hydration endpoint. It fetches all entities, applies migrations, calculates RICE scores, and aggregates global metrics.
 - **Parameters:** Supports `ValueStreamId` and various filters (`customerFilter`, `minTcv`, etc.).
-- **Logic:** Performs complex joins (e.g., Epic effort summed into Work Items) and ROI calculations.
+- **Logic:** Performs complex joins (e.g., Issue effort summed into Work Items) and ROI calculations.
 
 #### 2. `POST /api/entity/{collection}`
 Upserts a single document into one of the allowed collections (`customers`, `workItems`, etc.).

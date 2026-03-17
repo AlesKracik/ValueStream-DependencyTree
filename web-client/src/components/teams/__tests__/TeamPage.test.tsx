@@ -31,7 +31,7 @@ const mockData: ValueStreamData = {
     teams: [
         { id: 't1', name: 'Team 1', total_capacity_mds: 10, country: 'Default', sprint_capacity_overrides: {} }
     ],
-    epics: [],
+    issues: [],
     sprints: [
         { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' },
         { id: 's2', name: 'Sprint 2', start_date: '2026-01-15', end_date: '2026-01-28' }
@@ -60,7 +60,7 @@ describe('TeamPage', () => {
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: mockData,
-            updateEpic: vi.fn()
+            updateIssue: vi.fn()
         });
     });
 
@@ -68,7 +68,7 @@ describe('TeamPage', () => {
         return render(
             <MemoryRouter initialEntries={[`/team/${id}`]}>
                 <NotificationProvider>
-                    <ValueStreamProvider value={{ data: props.data || mockData, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
+                    <ValueStreamProvider value={{ data: props.data || mockData, updateIssue: vi.fn(), addIssue: vi.fn(), deleteIssue: vi.fn() }}>
                         <Routes>
                             <Route path="/team/:id" element={<TeamPage {...props} />} />
                         </Routes>
@@ -110,7 +110,7 @@ describe('TeamPage', () => {
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWithCZ,
-            updateEpic: vi.fn()
+            updateIssue: vi.fn()
         });
 
         renderTeamPage({ ...defaultProps, data: dataWithCZ });
@@ -148,7 +148,7 @@ describe('TeamPage', () => {
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWithOverride,
-            updateEpic: vi.fn()
+            updateIssue: vi.fn()
         });
 
         renderTeamPage({ ...defaultProps, data: dataWithOverride });
@@ -211,7 +211,7 @@ describe('TeamPage', () => {
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWithCZ,
-            updateEpic: vi.fn()
+            updateIssue: vi.fn()
         });
 
         renderTeamPage({ ...defaultProps, data: dataWithCZ });
@@ -233,7 +233,7 @@ describe('TeamPage', () => {
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWith20,
-            updateEpic: vi.fn()
+            updateIssue: vi.fn()
         });
 
         renderTeamPage({ ...defaultProps, data: dataWith20 });

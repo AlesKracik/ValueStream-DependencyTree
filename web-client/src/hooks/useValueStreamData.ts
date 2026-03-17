@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import type { ValueStreamData, Customer, WorkItem, Team, Epic, Settings, Sprint, ValueStreamEntity, ValueStreamParameters } from '../types/models';
+import type { ValueStreamData, Customer, WorkItem, Team, Issue, Settings, Sprint, ValueStreamEntity, ValueStreamParameters } from '../types/models';
 import { authorizedFetch, debounce } from '../utils/api';
 import { calculateQuarter } from '../utils/dateHelpers';
 
@@ -134,7 +134,7 @@ export function useValueStreamData(
                 // Preserve existing un-fetched data in the state context so we don't wipe it out
                 setData(prev => {
                     const base = prev || { 
-                        customers: [], workItems: [], epics: [], sprints: [], teams: [], valueStreams: [], settings: {} 
+                        customers: [], workItems: [], issues: [], sprints: [], teams: [], valueStreams: [], settings: {} 
                     } as unknown as ValueStreamData;
                     return { ...base, ...finalData };
                 });
@@ -238,20 +238,20 @@ export function useValueStreamData(
         setData(prev => {
             if (!prev) return prev;
             
-            const updatedEpics = (prev.epics || []).map(e => e.work_item_id === id ? { ...e, work_item_id: undefined } : e);
+            const updatedIssues = (prev.issues || []).map(e => e.work_item_id === id ? { ...e, work_item_id: undefined } : e);
             
             persistEntity('workItems', 'DELETE', { id }, showAlert);
             
-            (prev.epics || []).forEach((oldE, i) => {
+            (prev.issues || []).forEach((oldE, i) => {
                 if (oldE.work_item_id === id) {
-                    persistEntity('epics', 'POST', updatedEpics[i], showAlert);
+                    persistEntity('issues', 'POST', updatedIssues[i], showAlert);
                 }
             });
 
             return {
                 ...prev,
                 workItems: (prev.workItems || []).filter(f => f.id !== id),
-                epics: updatedEpics
+                issues: updatedIssues
             };
         });
     };
@@ -308,42 +308,42 @@ export function useValueStreamData(
         setData(prev => {
             if (!prev) return prev;
             
-            const updatedEpics = (prev.epics || []).map(e => e.team_id === id ? { ...e, team_id: '' } : e);
+            const updatedIssues = (prev.issues || []).map(e => e.team_id === id ? { ...e, team_id: '' } : e);
             
             persistEntity('teams', 'DELETE', { id }, showAlert);
             
-            (prev.epics || []).forEach((oldE, i) => {
+            (prev.issues || []).forEach((oldE, i) => {
                 if (oldE.team_id === id) {
-                    persistEntity('epics', 'POST', updatedEpics[i], showAlert);
+                    persistEntity('issues', 'POST', updatedIssues[i], showAlert);
                 }
             });
 
             return {
                 ...prev,
                 teams: (prev.teams || []).filter(t => t.id !== id),
-                epics: updatedEpics
+                issues: updatedIssues
             };
         });
     };
 
-    const addEpic = (epic: Epic) => {
-        persistEntity('epics', 'POST', epic, showAlert);
+    const addIssue = (issue: Issue) => {
+        persistEntity('issues', 'POST', issue, showAlert);
         setData(prev => {
             if (!prev) return prev;
-            return { ...prev, epics: [...(prev.epics || []), epic] };
+            return { ...prev, issues: [...(prev.issues || []), issue] };
         });
     };
 
-    const deleteEpic = (id: string) => {
-        persistEntity('epics', 'DELETE', { id }, showAlert);
+    const deleteIssue = (id: string) => {
+        persistEntity('issues', 'DELETE', { id }, showAlert);
         setData(prev => {
             if (!prev) return prev;
-            return { ...prev, epics: (prev.epics || []).filter(e => e.id !== id) };
+            return { ...prev, issues: (prev.issues || []).filter(e => e.id !== id) };
         });
     };
 
-    const updateEpic = async (id: string, updates: Partial<Epic>, immediate = false) => {
-        const existing = data?.epics?.find(e => e.id === id);
+    const updateIssue = async (id: string, updates: Partial<Issue>, immediate = false) => {
+        const existing = data?.issues?.find(e => e.id === id);
         if (!existing) return;
         const updated = { ...existing, ...updates };
 
@@ -351,14 +351,14 @@ export function useValueStreamData(
             if (!prev) return prev;
             return {
                 ...prev,
-                epics: (prev.epics || []).map(e => e.id === id ? updated : e)
+                issues: (prev.issues || []).map(e => e.id === id ? updated : e)
             };
         });
 
         if (immediate) {
-            await persistEntity('epics', 'POST', updated, showAlert);
+            await persistEntity('issues', 'POST', updated, showAlert);
         } else {
-            debouncedPersist('epics', 'POST', updated);
+            debouncedPersist('issues', 'POST', updated);
         }
     };
 
@@ -522,12 +522,12 @@ export function useValueStreamData(
         addWorkItem,
         deleteWorkItem,
         updateWorkItem,
-        addEpic,
-        deleteEpic,
+        addIssue,
+        deleteIssue,
         updateTeam,
         addTeam,
         deleteTeam,
-        updateEpic,
+        updateIssue,
         addSprint,
         updateSprint,
         deleteSprint,

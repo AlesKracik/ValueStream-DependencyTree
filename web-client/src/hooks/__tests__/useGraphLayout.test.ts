@@ -37,7 +37,7 @@ const MOCK_DATA: ValueStreamData = {
     teams: [
         { id: 't1', name: 'Team Alpha', total_capacity_mds: 10 }
     ],
-    epics: [
+    issues: [
         { id: 'e1', jira_key: 'J-1', work_item_id: 'f1', team_id: 't1', effort_md: 8, target_start: '2026-02-12', target_end: '2026-02-26' },
         { id: 'e2', jira_key: 'J-2', work_item_id: 'f2', team_id: 't1', effort_md: 5, target_start: '2026-02-12', target_end: '2026-02-26' },
         { id: 'e3', jira_key: 'J-3', work_item_id: 'f1', team_id: 't1', effort_md: 3 }
@@ -108,7 +108,7 @@ describe('useGraphLayout Math Engine', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect((unfilteredCapNode?.data as any).usedMds).toBe(13);
 
-        // With filter that hides workitem f2 (and thus epic e2)
+        // With filter that hides workitem f2 (and thus issue e2)
         const { result: resultFiltered } = renderHook(() => useGraphLayout(MOCK_DATA, null, 0, '', 'Low RICE Feat'));
         
         // Confirm f2 is hidden
@@ -127,7 +127,7 @@ describe('useGraphLayout Math Engine', () => {
                 { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' },
                 { id: 's2', name: 'Sprint 2', start_date: '2026-01-15', end_date: '2026-01-28' }
             ],
-            epics: [
+            issues: [
                 { id: 'e1', jira_key: 'J-1', work_item_id: 'f1', team_id: 't1', effort_md: 5, target_start: '2026-01-01', target_end: '2026-01-10' }, // s1
                 { id: 'e2', jira_key: 'J-2', work_item_id: 'f2', team_id: 't1', effort_md: 5, target_start: '2026-01-15', target_end: '2026-01-20' }  // s2
             ]
@@ -136,7 +136,7 @@ describe('useGraphLayout Math Engine', () => {
         // Filter for s1 ONLY
         const baseParams = {
             customerFilter: '', workItemFilter: '', releasedFilter: 'all' as const,
-            minTcvFilter: '', minScoreFilter: '', teamFilter: '', epicFilter: '',
+            minTcvFilter: '', minScoreFilter: '', teamFilter: '', issueFilter: '',
             startSprintId: 's1', endSprintId: 's1'
         };
 
@@ -158,9 +158,9 @@ describe('useGraphLayout Math Engine', () => {
             workItems: [
                 { id: 'f1', name: 'Estimated Feat', total_effort_mds: 10, score: 50, customer_targets: [] },
                 { id: 'f2', name: 'Unestimated Feat (0 MDs)', total_effort_mds: 0, score: 50, customer_targets: [] },
-                { id: 'f3', name: 'Feat with Unestimated Epic', total_effort_mds: 10, score: 50, customer_targets: [] },
+                { id: 'f3', name: 'Feat with Unestimated Issue', total_effort_mds: 10, score: 50, customer_targets: [] },
             ],
-            epics: [
+            issues: [
                 { id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', effort_md: 5 },
                 { id: 'e2', jira_key: 'E2', work_item_id: 'f3', team_id: 't1', effort_md: 0 },
             ]
@@ -229,7 +229,7 @@ describe('useGraphLayout Math Engine', () => {
         expect((capNode?.data as any).totalCapacityMds).toBe(9);
     });
 
-    it('highlights the Epic (Gantt) when hovering the WorkItem even if IDs have dashes', () => {
+    it('highlights the Issue (Gantt) when hovering the WorkItem even if IDs have dashes', () => {
         const DASH_DATA: ValueStreamData = {
             ...MOCK_DATA,
             customers: [{ id: 'c-1', name: 'Cust 1', existing_tcv: 100, existing_tcv_valid_from: '2026-01-01', potential_tcv: 0 }],
@@ -240,7 +240,7 @@ describe('useGraphLayout Math Engine', () => {
                 customer_targets: [{ customer_id: 'c-1', tcv_type: 'existing', priority: 'Must-have' }]
             }],
             teams: [{ id: 't-1', name: 'Team Alpha', total_capacity_mds: 10 }],
-            epics: [{ id: 'e-1', jira_key: 'J-1', work_item_id: 'wi-1', team_id: 't-1', effort_md: 8, target_start: '2026-02-12', target_end: '2026-02-26' }]
+            issues: [{ id: 'e-1', jira_key: 'J-1', work_item_id: 'wi-1', team_id: 't-1', effort_md: 8, target_start: '2026-02-12', target_end: '2026-02-26' }]
         };
 
         // Hovering over WorkItem wi-1

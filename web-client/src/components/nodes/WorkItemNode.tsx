@@ -6,13 +6,13 @@ interface WorkItemNodeData {
     label: string;
     description?: string;
     effortMds: number;
-    epicMds?: number;
+    issueMds?: number;
     score: number;
     maxScore: number;
     baseSize: number;
     isGlobal?: boolean;
     releasedInSprintId?: string;
-    hasDatelessEpics?: boolean;
+    hasDatelessIssues?: boolean;
     hasUnestimatedEffort?: boolean;
 }
 
@@ -59,8 +59,8 @@ export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
                 {data.releasedInSprintId && (
                     <div title={`Released in Sprint ${data.releasedInSprintId}`} style={{ fontSize: `${iconSize}px`, filter: 'var(--icon-filter)' }}>📦</div>
                 )}
-                {data.hasDatelessEpics && (
-                    <div title="Has epics without target dates" style={{ color: 'var(--status-danger)', fontSize: `${iconSize}px`, filter: 'var(--icon-filter)' }}>🕒</div>
+                {data.hasDatelessIssues && (
+                    <div title="Has issues without target dates" style={{ color: 'var(--status-danger)', fontSize: `${iconSize}px`, filter: 'var(--icon-filter)' }}>🕒</div>
                 )}
                 {data.hasUnestimatedEffort && (
                     <div title="Effort is not estimated (0 MDs)" style={{ color: 'var(--status-warning)', fontSize: `${iconSize}px`, filter: 'var(--icon-filter)' }}>📏</div>

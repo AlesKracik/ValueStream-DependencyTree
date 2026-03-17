@@ -63,10 +63,10 @@ describe('WorkItemNode', () => {
         expect(indicator.style.color).toBe('var(--status-warning)');
     });
 
-    it('renders the dateless epics warning icon when hasDatelessEpics is true', () => {
-        render(<WorkItemNode data={{ ...mockData, hasDatelessEpics: true }} />);
+    it('renders the dateless issues warning icon when hasDatelessIssues is true', () => {
+        render(<WorkItemNode data={{ ...mockData, hasDatelessIssues: true }} />);
         
-        const indicator = screen.getByTitle(/Has epics without target dates/i);
+        const indicator = screen.getByTitle(/Has issues without target dates/i);
         expect(indicator).toBeDefined();
         expect(indicator.textContent).toContain('🕒');
         expect(indicator.style.color).toBe('var(--status-danger)');

@@ -39,7 +39,7 @@ export const ValueStreamEditPage: React.FC<ValueStreamEditPageProps> = ({
             minTcvFilter: '',
             minScoreFilter: '',
             teamFilter: '',
-            epicFilter: '',
+            issueFilter: '',
             startSprintId: '',
             endSprintId: ''
         }
@@ -185,8 +185,8 @@ export const ValueStreamEditPage: React.FC<ValueStreamEditPageProps> = ({
                                     <input type="text" value={ValueStream.parameters.teamFilter || ''} onChange={e => updateParam('teamFilter', e.target.value)} placeholder="Filter by team name..." />
                                 </label>
                                 <label>
-                                    Epic Filter:
-                                    <input type="text" value={ValueStream.parameters.epicFilter || ''} onChange={e => updateParam('epicFilter', e.target.value)} placeholder="Filter by epic name..." />
+                                    Issue Filter:
+                                    <input type="text" value={ValueStream.parameters.issueFilter || ''} onChange={e => updateParam('issueFilter', e.target.value)} placeholder="Filter by issue name..." />
                                 </label>
                             </div>
                             <div className={styles.formGrid} style={{ marginTop: '24px' }}>

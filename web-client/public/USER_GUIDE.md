@@ -124,7 +124,7 @@ A prioritization dashboard for the product organization.
 *   **Intention:** ROI-driven prioritization using the RICE framework.
 *   **Visibility:** 
     *   **RICE Score:** Calculated as `(Total Impact TCV / Combined Effort MDs)`.
-    *   **Effort (MDs):** Total man-days required, rolling up from connected Epics or the baseline manual estimate.
+    *   **Effort (MDs):** Total man-days required, rolling up from connected Issues or the baseline manual estimate.
     *   **Release Target:** The specific sprint where this item is delivered.
 *   **Actions:** Sort the list to identify high-ROI opportunities.
 
@@ -136,34 +136,34 @@ Define the "What" and the "How" of a strategic goal.
 **Details:**
 *   **Actions:** 
     *   **Define Scope:** Toggle the **"Global"** flag if the item benefits every customer (e.g., core infrastructure).
-    *   **Set Score Components:** Adjust "Baseline Effort" estimates if no epics are yet defined.
+    *   **Set Score Components:** Adjust "Baseline Effort" estimates if no issues are yet defined.
     *   **Release Planning:** Select the target **Release Sprint** to place the item on the ValueStream timeline.
 
 **Tab: Targeted Customers**
 Define exactly which accounts this initiative is for. Choose the TCV type (Existing/Potential) for each account to drive the RICE score.
 
-**Tab: Epics & Engineering**
+**Tab: Issues & Engineering**
 
-![Work Item Epics](images/workitem-detail-epics.png)
+![Work Item Issues](images/workitem-detail-issues.png)
 
 *   **Intention:** Breaking down strategy into deliverable technical units.
 *   **Actions:** 
-    *   **Epic Linkage:** Add new Epics or link existing ones. 
-    *   **Estimate Roll-up:** Set individual Man-Day estimates for each Epic. The Work Item's total effort is automatically updated.
+    *   **Issue Linkage:** Add new Issues or link existing ones. 
+    *   **Estimate Roll-up:** Set individual Man-Day estimates for each Issue. The Work Item's total effort is automatically updated.
 
 ---
 
-### 📦 Epics
+### 📦 Issues
 
 The granular execution units that bridge Product strategy and Engineering delivery.
 
-#### Epic Detail View
+#### Issue Detail View
 
-![Epic Detail](images/epic-detail.png)
+![Issue Detail](images/issue-detail.png)
 
 **Details:**
 *   **Jira Sync:** Link a **Jira Key** and click **"Sync from Jira"** to pull real-time Status, Summary, and Effort estimates.
-*   **Timeline Control:** Set Target Start/End dates. If these are missing, the epic will show a ⚠️ warning icon.
+*   **Timeline Control:** Set Target Start/End dates. If these are missing, the issue will show a ⚠️ warning icon.
 *   **Sprint Effort Distribution:** View and override how effort is allocated across the timeline. Overridden values are highlighted in bold blue.
 
 ---
@@ -214,7 +214,7 @@ Instead of one global view, you can create multiple **Value Stream Scopes**. The
 *   **Custom Persistence:** Save specific filters to create focused dashboards (e.g., "Mobile Team Path", "Top 10 Customers", "Q3 Roadmap").
 *   **Time Ranges:** Limit the scope to a specific **Start** and **End Sprint** to visualize specific fiscal quarters or release cycles.
 *   **Structural Filters:** Pre-define filters for:
-    *   **Names:** Customer, Work Item, Team, or Epic search strings.
+    *   **Names:** Customer, Work Item, Team, or Issue search strings.
     *   **Release Status:** Filter by "Released Only" or "Unreleased Only".
     *   **Impact Thresholds:** Set minimum **TCV Impact** ($) or **RICE Score** to filter out noise and focus on high-value initiatives.
 
@@ -222,7 +222,7 @@ Instead of one global view, you can create multiple **Value Stream Scopes**. The
 
 ![ValueStream View](images/ValueStream.png)
 
-The Live Graph is a multi-layered dependency tree that maps demand (Customers) to execution (Epics) over a temporal Gantt timeline.
+The Live Graph is a multi-layered dependency tree that maps demand (Customers) to execution (Issues) over a temporal Gantt timeline.
 
 ##### 1. Node Anatomy & Visual Cues
 
@@ -236,17 +236,17 @@ The Live Graph is a multi-layered dependency tree that maps demand (Customers) t
     *   **Warning Indicators:**
         *   🌐 **Global:** This item impacts all existing customers.
         *   📦 **Released:** The item is already delivered in a past/active sprint.
-        *   🕒 **Missing Dates:** One or more linked Epics lack target start/end dates.
+        *   🕒 **Missing Dates:** One or more linked Issues lack target start/end dates.
         *   📏 **No Effort:** Effort is not yet estimated (0 MDs).
 
 *   **👥 Teams (Capacity Nodes):**
     *   **Baseline Capacity:** Shows total team velocity.
     *   **Size Scaling:** Nodes represent the team's total capacity relative to other teams.
 
-*   **📊 Gantt Bars (Execution Nodes/Epics):**
+*   **📊 Gantt Bars (Execution Nodes/Issues):**
     *   **Heat/Intensity Mapping:** Bars are segmented by sprint. A segment's brightness (White glow) or darkness (Black shade) indicates if the effort allocated to that sprint is higher or lower than the mathematical uniform baseline.
     *   **Frozen History:** Segments in the past (before the active sprint) are marked with a diagonal stripe pattern and are automatically snapshotted to preserve historical accuracy.
-    *   **Status Colors:** Epics are Slate Blue (Past) or Purple (Future/Active).
+    *   **Status Colors:** Issues are Slate Blue (Past) or Purple (Future/Active).
 
 *   **📅 Sprint Capacity (Timeline Header):**
     *   **Visual Health:** Sprint headers change color based on team utilization:
@@ -260,22 +260,22 @@ The Live Graph is a multi-layered dependency tree that maps demand (Customers) t
 *   **Navigation & Viewport:**
     *   **Timeline Shifting:** Use the `<` and `>` buttons in the header to slide the Gantt view across sprints.
     *   **Reset View:** Instantly scrolls to the top of the graph and aligns the viewport with the **Active Sprint**.
-    *   **Left-Click:** Navigate to the detail page of any Customer, Work Item, Team, or Epic.
+    *   **Left-Click:** Navigate to the detail page of any Customer, Work Item, Team, or Issue.
 
 *   **Drill-Down & Tracing:**
     *   **Hover Tracing:** Hover any node to trace its upstream (demand) and downstream (execution) dependencies. All unrelated nodes are dimmed.
     *   **Right-Click (Drill-Down):** Isolate a specific node. The graph filters to show *only* the dependency tree connected to that node. Right-click the background to reset the filter.
 
 *   **Direct Manipulation:**
-    *   **Drag-to-Resize:** Modify Epic timelines directly by dragging the left or right edges of a Gantt bar. 
+    *   **Drag-to-Resize:** Modify Issue timelines directly by dragging the left or right edges of a Gantt bar. 
     *   **Timeline Constraints:** Shifting work into the past or changing historical dates will trigger a warning if existing effort data exists for those periods.
 
 ##### 3. Strategic Indicators
 
 *   **Edge Thickness:** 
     *   **Demand (Customer -> WorkItem):** Thickness represents the ROI of the connection (TCV / Work Item Effort).
-    *   **Execution (WorkItem -> Team):** Thickness represents the relative effort (Man-Days) required by that specific Epic.
-*   **Dependency Tracing:** Explicit Epic-to-Epic dependencies (Finish-to-Start or Finish-to-Finish) are shown as animated orange lines, highlighting critical paths and potential bottlenecks.
+    *   **Execution (WorkItem -> Team):** Thickness represents the relative effort (Man-Days) required by that specific Issue.
+*   **Dependency Tracing:** Explicit Issue-to-Issue dependencies (Finish-to-Start or Finish-to-Finish) are shown as animated orange lines, highlighting critical paths and potential bottlenecks.
 
 ---
 
@@ -308,7 +308,7 @@ A bird's-eye view of account stability across the customer base.
     4.  Click **"Fetch SSO Credentials"** to populate temporary access tokens.
 *   **Jira Integration:** 
     *   **Common:** Base URL and API Token (PAT).
-    *   **Epics:** Import entire projects or components via JQL.
+    *   **Issues:** Import entire projects or components via JQL.
     *   **Customer:** Define JQL templates (using `{{CUSTOMER_ID}}`) to drive the Support Health dashboard.
 *   **General:**
     *   **Theme:** Switch between **Dark mode** and **Filips mode** (high-contrast pastel).

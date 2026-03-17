@@ -24,7 +24,7 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
         { 
             label: 'Effort', 
             key: 'effort', 
-            getValue: (w) => data ? calculateWorkItemEffort(w, data.epics) : 0 
+            getValue: (w) => data ? calculateWorkItemEffort(w, data.issues) : 0 
         },
         {
             label: 'Released',
@@ -43,7 +43,7 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
         },
         { 
             header: 'Effort', 
-            render: (w) => data ? `${calculateWorkItemEffort(w, data.epics).toLocaleString()} MDs` : '0 MDs',
+            render: (w) => data ? `${calculateWorkItemEffort(w, data.issues).toLocaleString()} MDs` : '0 MDs',
             flex: 1,
             sortKey: 'effort'
         },

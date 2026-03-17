@@ -6,7 +6,7 @@ import { ReactFlowProvider } from '@xyflow/react';
 import { ValueStream } from './components/valuestream/ValueStream';
 import { CustomerPage } from './components/customers/CustomerPage';
 import { WorkItemPage } from './components/workitems/WorkItemPage';
-import { EpicPage } from './components/epics/EpicPage';
+import { IssuePage } from './components/issues/IssuePage';
 import { TeamPage } from './components/teams/TeamPage';
 import { SprintPage } from './components/sprints/SprintPage';
 
@@ -40,7 +40,7 @@ function ValueStreamRouteWrapper() {
     minTcvFilter: viewState.minTcvFilter,
     minScoreFilter: viewState.minScoreFilter,
     teamFilter: viewState.teamFilter,
-    epicFilter: viewState.epicFilter
+    issueFilter: viewState.issueFilter
   }, 1000, showAlert);
 
   return (
@@ -51,7 +51,7 @@ function ValueStreamRouteWrapper() {
       setViewState={setViewState}
       onNavigateToCustomer={(id) => navigate(`/customer/${id}`)}
       onNavigateToWorkItem={(id) => navigate(`/workitem/${id}`)}
-      onNavigateToEpic={(id) => navigate(`/epic/${id}`)}
+      onNavigateToIssue={(id) => navigate(`/issue/${id}`)}
       onNavigateToTeam={(id) => navigate(`/team/${id}`)}
       onNavigateToSprint={(id) => id === 'list' ? navigate('/sprints') : navigate(`/sprint/${id}`)}
       onNavigateToValueStreamEdit={(id) => navigate(`/valueStream/edit/${id}`)}
@@ -71,8 +71,8 @@ function WorkItemPageRouteWrapper({ valueStreamState }: { valueStreamState: Valu
   return <WorkItemPage workItemId={id!} onBack={() => navigate(-1)} {...valueStreamState} />;
 }
 
-function EpicPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
-  return <EpicPage data={valueStreamState.data} loading={valueStreamState.loading} updateEpic={valueStreamState.updateEpic} deleteEpic={valueStreamState.deleteEpic} />;
+function IssuePageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
+  return <IssuePage data={valueStreamState.data} loading={valueStreamState.loading} updateIssue={valueStreamState.updateIssue} deleteIssue={valueStreamState.deleteIssue} />;
 }
 
 function TeamPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
@@ -105,8 +105,8 @@ function SettingsPageRouteWrapper({ valueStreamState }: { valueStreamState: Valu
       data={valueStreamState.data} 
       loading={valueStreamState.loading}
       error={valueStreamState.error}
-      updateEpic={valueStreamState.updateEpic} 
-      addEpic={valueStreamState.addEpic} 
+      updateIssue={valueStreamState.updateIssue} 
+      addIssue={valueStreamState.addIssue} 
     />
   );
 }
@@ -125,9 +125,9 @@ function MainAppContent() {
   return (
     <ValueStreamProvider value={{ 
       data: globalState.data, 
-      updateEpic: globalState.updateEpic,
-      addEpic: globalState.addEpic,
-      deleteEpic: globalState.deleteEpic
+      updateIssue: globalState.updateIssue,
+      addIssue: globalState.addIssue,
+      deleteIssue: globalState.deleteIssue
     }}>
       <BrowserRouter>
         <Routes>
@@ -156,7 +156,7 @@ function MainAppContent() {
             <Route path="/valueStream/edit/:id" element={<ValueStreamEditPageRouteWrapper valueStreamState={globalState} />} />
             <Route path="/customer/:id" element={<CustomerPageRouteWrapper valueStreamState={globalState} />} />
             <Route path="/workitem/:id" element={<WorkItemPageRouteWrapper valueStreamState={globalState} />} />
-            <Route path="/epic/:id" element={<EpicPageRouteWrapper valueStreamState={globalState} />} />
+            <Route path="/issue/:id" element={<IssuePageRouteWrapper valueStreamState={globalState} />} />
             <Route path="/team/:id" element={<TeamPageRouteWrapper valueStreamState={globalState} />} />
           </Route>
         </Routes>

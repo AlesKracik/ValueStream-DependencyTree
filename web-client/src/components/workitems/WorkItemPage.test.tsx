@@ -63,7 +63,7 @@ const mockData: ValueStreamData = {
             ]
         }
     ],
-    epics: [],
+    issues: [],
     teams: [],
     sprints: [],
     metrics: { maxScore: 100, maxRoi: 10 }
@@ -78,9 +78,9 @@ describe('WorkItemPage', () => {
         addWorkItem: vi.fn(),
         deleteWorkItem: vi.fn(),
         updateWorkItem: vi.fn(),
-        addEpic: vi.fn(),
-        deleteEpic: vi.fn(),
-        updateEpic: vi.fn()
+        addIssue: vi.fn(),
+        deleteIssue: vi.fn(),
+        updateIssue: vi.fn()
     };
 
     const mockShowConfirm = vi.fn().mockResolvedValue(true);
@@ -90,7 +90,7 @@ describe('WorkItemPage', () => {
         return render(
             <MemoryRouter>
                 <NotificationProvider>
-                    <ValueStreamProvider value={{ data: props.data || mockData, updateEpic: vi.fn(), addEpic: vi.fn(), deleteEpic: vi.fn() }}>
+                    <ValueStreamProvider value={{ data: props.data || mockData, updateIssue: vi.fn(), addIssue: vi.fn(), deleteIssue: vi.fn() }}>
                         <WorkItemPage {...props} workItemId={workItemId} />
                     </ValueStreamProvider>
                 </NotificationProvider>
@@ -105,7 +105,7 @@ describe('WorkItemPage', () => {
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
             data: mockData,
-            updateEpic: vi.fn()
+            updateIssue: vi.fn()
         });
     });
 
@@ -150,11 +150,11 @@ describe('WorkItemPage', () => {
         expect(niceToHaveOptions[0].value).toBe('Nice-to-have');
     });
 
-    it('should include epics with "UNASSIGNED" work_item_id in the assignment dropdown', () => {
+    it('should include issues with "UNASSIGNED" work_item_id in the assignment dropdown', () => {
         const dataWithUnassigned: ValueStreamData = {
             ...mockData,
-            epics: [
-                { id: 'e-unassigned', jira_key: 'PROJ-123', work_item_id: 'UNASSIGNED', team_id: 't1', effort_md: 5, name: 'Unassigned Epic' }
+            issues: [
+                { id: 'e-unassigned', jira_key: 'PROJ-123', work_item_id: 'UNASSIGNED', team_id: 't1', effort_md: 5, name: 'Unassigned Issue' }
             ],
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
         };
@@ -164,20 +164,20 @@ describe('WorkItemPage', () => {
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
             data: dataWithUnassigned,
-            updateEpic: vi.fn()
+            updateIssue: vi.fn()
         });
 
         renderPage({ ...defaultProps, data: dataWithUnassigned });
 
-        // Switch to Epics tab
-        const epicsTab = screen.getByText(/Engineering Epics \(/i);
-        fireEvent.click(epicsTab);
+        // Switch to Issues tab
+        const issuesTab = screen.getByText(/Engineering Issues \(/i);
+        fireEvent.click(issuesTab);
 
-        const epicInput = screen.getByPlaceholderText('Search for an unassigned epic to link...');
-        fireEvent.focus(epicInput);
+        const issueInput = screen.getByPlaceholderText('Search for an unassigned issue to link...');
+        fireEvent.focus(issueInput);
 
         // Options should appear in the list
-        const option = screen.getByText('PROJ-123 Unassigned Epic');
+        const option = screen.getByText('PROJ-123 Unassigned Issue');
         expect(option).toBeDefined();
     });
 
@@ -215,7 +215,7 @@ describe('WorkItemPage', () => {
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
             data: dataWithGlobal,
-            updateEpic: vi.fn()
+            updateIssue: vi.fn()
         });
 
         renderPage({ ...defaultProps, data: dataWithGlobal });
@@ -230,30 +230,30 @@ describe('WorkItemPage', () => {
         });
     });
 
-    it('shows an alert and prevents epic update if start date is not before end date', async () => {
-        const dataWithEpic: ValueStreamData = {
+    it('shows an alert and prevents issue update if start date is not before end date', async () => {
+        const dataWithIssue: ValueStreamData = {
             ...mockData,
-            epics: [
+            issues: [
                 { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5, target_start: '2026-01-01', target_end: '2026-01-14' }
             ],
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
         };
 
-        const updateEpicSpy = vi.fn();
+        const updateIssueSpy = vi.fn();
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
-            data: dataWithEpic,
-            updateEpic: updateEpicSpy
+            data: dataWithIssue,
+            updateIssue: updateIssueSpy
         });
 
-        renderPage({ ...defaultProps, data: dataWithEpic, updateEpic: updateEpicSpy });
+        renderPage({ ...defaultProps, data: dataWithIssue, updateIssue: updateIssueSpy });
 
-        // Switch to Epics tab
-        const epicsTab = screen.getByText(/Engineering Epics \(/i);
-        fireEvent.click(epicsTab);
+        // Switch to Issues tab
+        const issuesTab = screen.getByText(/Engineering Issues \(/i);
+        fireEvent.click(issuesTab);
 
         // Since it's a table, let's find by value
         const startInput = screen.getByDisplayValue('2026-01-01');
@@ -263,13 +263,13 @@ describe('WorkItemPage', () => {
 
         expect(mockShowAlert).toHaveBeenCalledWith('Invalid Dates', 'The Start Date must be before the End Date.');
         
-        expect(updateEpicSpy).not.toHaveBeenCalled();
+        expect(updateIssueSpy).not.toHaveBeenCalled();
     });
 
-    it('shows warning icon for epics with missing dates', async () => {
-        const dataWithDatelessEpic: ValueStreamData = {
+    it('shows warning icon for issues with missing dates', async () => {
+        const dataWithDatelessIssue: ValueStreamData = {
             ...mockData,
-            epics: [
+            issues: [
                 { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5, target_start: undefined, target_end: undefined }
             ],
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
@@ -279,15 +279,15 @@ describe('WorkItemPage', () => {
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
-            data: dataWithDatelessEpic,
-            updateEpic: vi.fn()
+            data: dataWithDatelessIssue,
+            updateIssue: vi.fn()
         });
 
-        renderPage({ ...defaultProps, data: dataWithDatelessEpic });
+        renderPage({ ...defaultProps, data: dataWithDatelessIssue });
 
-        // Switch to Epics tab
-        const epicsTab = screen.getByText(/Engineering Epics \(/i);
-        fireEvent.click(epicsTab);
+        // Switch to Issues tab
+        const issuesTab = screen.getByText(/Engineering Issues \(/i);
+        fireEvent.click(issuesTab);
 
         // Check for ⚠️ icon
         const warningIcon = screen.getByTitle(/Missing start date/i);
@@ -307,7 +307,7 @@ describe('WorkItemPage', () => {
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
             data: dataWithDesc,
-            updateEpic: vi.fn()
+            updateIssue: vi.fn()
         });
 
         renderPage({ ...defaultProps, data: dataWithDesc });
@@ -331,7 +331,7 @@ describe('WorkItemPage', () => {
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
             data: dataWithSprint,
-            updateEpic: vi.fn()
+            updateIssue: vi.fn()
         });
 
         renderPage({ ...defaultProps, data: dataWithSprint });
@@ -376,10 +376,10 @@ describe('WorkItemPage', () => {
         }));
     });
 
-    it('shows error alert when syncEpic fails', async () => {
-        const dataWithEpic: ValueStreamData = {
+    it('shows error alert when syncIssue fails', async () => {
+        const dataWithIssue: ValueStreamData = {
             ...mockData,
-            epics: [
+            issues: [
                 { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5 }
             ],
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
@@ -393,15 +393,15 @@ describe('WorkItemPage', () => {
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
-            data: dataWithEpic,
-            updateEpic: vi.fn()
+            data: dataWithIssue,
+            updateIssue: vi.fn()
         });
 
-        renderPage({ ...defaultProps, data: dataWithEpic });
+        renderPage({ ...defaultProps, data: dataWithIssue });
 
-        // Switch to Epics tab
-        const epicsTab = screen.getByText(/Engineering Epics \(/i);
-        fireEvent.click(epicsTab);
+        // Switch to Issues tab
+        const issuesTab = screen.getByText(/Engineering Issues \(/i);
+        fireEvent.click(issuesTab);
 
         // Click Sync button
         const syncButton = screen.getByText('Sync from Jira');
@@ -415,10 +415,10 @@ describe('WorkItemPage', () => {
         });
     });
 
-    it('shows error alert when syncEpic throws exception', async () => {
-        const dataWithEpic: ValueStreamData = {
+    it('shows error alert when syncIssue throws exception', async () => {
+        const dataWithIssue: ValueStreamData = {
             ...mockData,
-            epics: [
+            issues: [
                 { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5 }
             ],
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
@@ -432,15 +432,15 @@ describe('WorkItemPage', () => {
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
-            data: dataWithEpic,
-            updateEpic: vi.fn()
+            data: dataWithIssue,
+            updateIssue: vi.fn()
         });
 
-        renderPage({ ...defaultProps, data: dataWithEpic });
+        renderPage({ ...defaultProps, data: dataWithIssue });
 
-        // Switch to Epics tab
-        const epicsTab = screen.getByText(/Engineering Epics \(/i);
-        fireEvent.click(epicsTab);
+        // Switch to Issues tab
+        const issuesTab = screen.getByText(/Engineering Issues \(/i);
+        fireEvent.click(issuesTab);
 
         // Click Sync button
         const syncButton = screen.getByText('Sync from Jira');
@@ -455,9 +455,9 @@ describe('WorkItemPage', () => {
     });
 
     it('passes correct jira settings to syncJiraIssue', async () => {
-        const dataWithEpic: ValueStreamData = {
+        const dataWithIssue: ValueStreamData = {
             ...mockData,
-            epics: [
+            issues: [
                 { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5 }
             ],
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
@@ -465,21 +465,21 @@ describe('WorkItemPage', () => {
 
         // Mock successful sync
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (api.syncJiraIssue as any).mockResolvedValueOnce({ fields: { summary: 'Synced Epic' } });
+        (api.syncJiraIssue as any).mockResolvedValueOnce({ fields: { summary: 'Synced Issue' } });
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
-            data: dataWithEpic,
-            updateEpic: vi.fn()
+            data: dataWithIssue,
+            updateIssue: vi.fn()
         });
 
-        renderPage({ ...defaultProps, data: dataWithEpic });
+        renderPage({ ...defaultProps, data: dataWithIssue });
 
-        // Switch to Epics tab
-        const epicsTab = screen.getByText(/Engineering Epics \(/i);
-        fireEvent.click(epicsTab);
+        // Switch to Issues tab
+        const issuesTab = screen.getByText(/Engineering Issues \(/i);
+        fireEvent.click(issuesTab);
 
         // Click Sync button
         const syncButton = screen.getByText('Sync from Jira');
@@ -505,26 +505,26 @@ describe('WorkItemPage', () => {
         });
     });
 
-    it('adds a new epic to the work item', () => {
+    it('adds a new issue to the work item', () => {
         renderPage();
 
-        const epicsTab = screen.getByText(/Engineering Epics \(/i);
-        fireEvent.click(epicsTab);
+        const issuesTab = screen.getByText(/Engineering Issues \(/i);
+        fireEvent.click(issuesTab);
 
-        const addBtn = screen.getByText('+ New Epic');
+        const addBtn = screen.getByText('+ New Issue');
         fireEvent.click(addBtn);
 
-        expect(defaultProps.addEpic).toHaveBeenCalledWith(expect.objectContaining({
+        expect(defaultProps.addIssue).toHaveBeenCalledWith(expect.objectContaining({
             work_item_id: 'f1',
             jira_key: 'TBD'
         }));
     });
 
-    it('deletes an epic after confirmation', async () => {
-        const dataWithEpic: ValueStreamData = {
+    it('deletes an issue after confirmation', async () => {
+        const dataWithIssue: ValueStreamData = {
             ...mockData,
-            epics: [
-                { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5, name: 'Epic to delete' }
+            issues: [
+                { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5, name: 'Issue to delete' }
             ],
             teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
         };
@@ -533,30 +533,30 @@ describe('WorkItemPage', () => {
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
-            data: dataWithEpic,
-            updateEpic: vi.fn()
+            data: dataWithIssue,
+            updateIssue: vi.fn()
         });
 
-        renderPage({ ...defaultProps, data: dataWithEpic });
+        renderPage({ ...defaultProps, data: dataWithIssue });
 
-        const epicsTab = screen.getByText(/Engineering Epics \(/i);
-        fireEvent.click(epicsTab);
+        const issuesTab = screen.getByText(/Engineering Issues \(/i);
+        fireEvent.click(issuesTab);
 
         const deleteBtn = screen.getByText('Delete');
         fireEvent.click(deleteBtn);
 
-        expect(mockShowConfirm).toHaveBeenCalledWith('Delete Epic', expect.stringContaining('Epic to delete'));
+        expect(mockShowConfirm).toHaveBeenCalledWith('Delete Issue', expect.stringContaining('Issue to delete'));
         
         await waitFor(() => {
-            expect(defaultProps.deleteEpic).toHaveBeenCalledWith('e1');
+            expect(defaultProps.deleteIssue).toHaveBeenCalledWith('e1');
         });
     });
 
-    it('updates epic fields: Team, Effort, and Dates', async () => {
-        const dataWithEpic: ValueStreamData = {
+    it('updates issue fields: Team, Effort, and Dates', async () => {
+        const dataWithIssue: ValueStreamData = {
             ...mockData,
-            epics: [
-                { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5, name: 'Test Epic' }
+            issues: [
+                { id: 'e1', jira_key: 'E-1', work_item_id: 'f1', team_id: 't1', effort_md: 5, name: 'Test Issue' }
             ],
             teams: [
                 { id: 't1', name: 'Team 1', total_capacity_mds: 10 },
@@ -568,31 +568,31 @@ describe('WorkItemPage', () => {
         (useValueStreamContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
-            data: dataWithEpic,
-            updateEpic: defaultProps.updateEpic
+            data: dataWithIssue,
+            updateIssue: defaultProps.updateIssue
         });
 
-        renderPage({ ...defaultProps, data: dataWithEpic });
+        renderPage({ ...defaultProps, data: dataWithIssue });
 
-        const epicsTab = screen.getByText(/Engineering Epics \(/i);
-        fireEvent.click(epicsTab);
+        const issuesTab = screen.getByText(/Engineering Issues \(/i);
+        fireEvent.click(issuesTab);
 
         // Update Team
         const teamSelect = screen.getByDisplayValue('Team 1');
         fireEvent.change(teamSelect, { target: { value: 't2' } });
-        expect(defaultProps.updateEpic).toHaveBeenCalledWith('e1', { team_id: 't2' });
+        expect(defaultProps.updateIssue).toHaveBeenCalledWith('e1', { team_id: 't2' });
 
         // Update Effort
         const effortInput = screen.getByDisplayValue('5');
         fireEvent.change(effortInput, { target: { value: '15' } });
-        expect(defaultProps.updateEpic).toHaveBeenCalledWith('e1', { effort_md: 15 });
+        expect(defaultProps.updateIssue).toHaveBeenCalledWith('e1', { effort_md: 15 });
 
         // Update Start Date
         // Find empty start date input
         const emptyDateInputs = screen.getAllByDisplayValue('').filter(i => (i as HTMLInputElement).type === 'date');
         fireEvent.change(emptyDateInputs[0], { target: { value: '2026-03-01' } });
         
-        expect(defaultProps.updateEpic).toHaveBeenCalledWith('e1', { target_start: '2026-03-01' });
+        expect(defaultProps.updateIssue).toHaveBeenCalledWith('e1', { target_start: '2026-03-01' });
     });
 
     it('syncs data from Aha! into synced data and allows applying it', async () => {
@@ -677,26 +677,26 @@ describe('WorkItemPage', () => {
         }));
     });
 
-    it('saves new work item with draft epics', () => {
+    it('saves new work item with draft issues', () => {
         renderPage(defaultProps, 'new');
 
         fireEvent.change(screen.getByLabelText(/Name:/i), { target: { value: 'New Feature' } });
 
-        const epicsTab = screen.getByText(/Engineering Epics \(/i);
-        fireEvent.click(epicsTab);
+        const issuesTab = screen.getByText(/Engineering Issues \(/i);
+        fireEvent.click(issuesTab);
 
-        fireEvent.click(screen.getByText('+ New Epic'));
+        fireEvent.click(screen.getByText('+ New Issue'));
         
-        // Find the newly added epic row and fill it
+        // Find the newly added issue row and fill it
         fireEvent.change(screen.getByPlaceholderText('Key'), { target: { value: 'PROJ-999' } });
-        fireEvent.change(screen.getByPlaceholderText('Epic Name'), { target: { value: 'Draft Epic' } });
+        fireEvent.change(screen.getByPlaceholderText('Issue Name'), { target: { value: 'Draft Issue' } });
 
         fireEvent.click(screen.getByText('Save Work Item'));
 
         expect(defaultProps.addWorkItem).toHaveBeenCalledWith(expect.objectContaining({ name: 'New Feature' }));
-        expect(defaultProps.addEpic).toHaveBeenCalledWith(expect.objectContaining({
+        expect(defaultProps.addIssue).toHaveBeenCalledWith(expect.objectContaining({
             jira_key: 'PROJ-999',
-            name: 'Draft Epic',
+            name: 'Draft Issue',
             work_item_id: expect.any(String) // the new work item ID
         }));
     });
