@@ -677,6 +677,53 @@ describe('WorkItemPage', () => {
         }));
     });
 
+    it('preserves HTML in Aha tab synced data and strips it in applyAhaData', async () => {
+        const mockFeature = {
+            id: 'aha-123',
+            reference_num: 'PROD-1',
+            name: 'Aha Feature Name',
+            description: { body: '<h3>Aha Title</h3><p>Detailed <b>description</b></p>' },
+            url: 'https://test.aha.io/features/PROD-1',
+            requirements: [
+                { id: 'r1', reference_num: 'PROD-1-R1', name: 'Requirement 1', description: { body: '<ul><li>Req point</li></ul>' }, url: 'req-url' }
+            ]
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (api.syncAhaFeature as any).mockResolvedValueOnce(mockFeature);
+
+        renderPage(defaultProps, 'new');
+
+        // Switch to Aha tab and sync
+        fireEvent.click(screen.getByText(/Aha! Integration/i));
+        fireEvent.change(screen.getByPlaceholderText('PROD-123'), { target: { value: 'PROD-1' } });
+        await act(async () => {
+            fireEvent.click(screen.getByText('Sync from Aha!'));
+        });
+
+        await waitFor(() => {
+            // Synced Information section should show raw text (or we can check innerHTML if we have the element)
+            // Since we use dangerouslySetInnerHTML, we check if the content is rendered
+            const syncedDescContainer = screen.getByText(/Detailed/i).closest('div');
+            expect(syncedDescContainer?.innerHTML).toContain('<h3>Aha Title</h3>');
+            expect(syncedDescContainer?.innerHTML).toContain('<b>description</b>');
+
+            const reqDescContainer = screen.getByText(/Req point/i).closest('div');
+            expect(reqDescContainer?.innerHTML).toContain('<li>Req point</li>');
+        });
+
+        // Click Apply button
+        await act(async () => {
+            fireEvent.click(screen.getByText('Apply to Work Item'));
+        });
+
+        await waitFor(() => {
+            // Main description textarea should have STRIPPED text
+            const textarea = screen.getByPlaceholderText(/Add a detailed description/i) as HTMLTextAreaElement;
+            expect(textarea.value).toBe('Aha TitleDetailed description');
+        });
+    });
+
     it('saves new work item with draft issues', () => {
         renderPage(defaultProps, 'new');
 

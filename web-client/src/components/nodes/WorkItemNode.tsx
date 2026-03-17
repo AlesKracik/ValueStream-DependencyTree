@@ -37,13 +37,16 @@ export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
     };
 
     const iconSize = Math.max(10, nodeSize * 0.15);
+    
+    // Simple regex to strip HTML for the native browser tooltip
+    const cleanDescription = data.description?.replace(/<[^>]*>?/gm, '');
 
     return (
         <BaseCircleNode
             size={nodeSize}
             label={data.label}
             backgroundColor="var(--node-workitem-bg)"
-            tooltip={data.description}
+            tooltip={cleanDescription}
             handles={handles}
         >
             <div style={{ 

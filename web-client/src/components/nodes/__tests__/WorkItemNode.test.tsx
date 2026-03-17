@@ -33,6 +33,18 @@ describe('WorkItemNode', () => {
         expect(container).toBeDefined();
     });
 
+    it('strips HTML tags from the description for the tooltip', () => {
+        const dataWithHtml = {
+            ...mockData,
+            description: '<p>Line 1</p><br/><ul><li>Item 1</li></ul>'
+        };
+        render(<WorkItemNode data={dataWithHtml} />);
+        
+        // Tooltip should have tags removed
+        const container = screen.getByTitle('Line 1Item 1');
+        expect(container).toBeDefined();
+    });
+
     it('renders the global icon when isGlobal is true', () => {
         render(<WorkItemNode data={{ ...mockData, isGlobal: true }} />);
         

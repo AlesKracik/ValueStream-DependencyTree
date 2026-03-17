@@ -67,14 +67,14 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
             
             const syncedData: NonNullable<WorkItem['aha_synced_data']> = {
                 name: feature.name,
-                description: feature.description?.body ? stripHtml(feature.description.body) : '',
+                description: feature.description?.body || '',
                 score: feature.score,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 requirements: feature.requirements?.map((r: any) => ({
                     id: r.id,
                     reference_num: r.reference_num,
                     name: r.name,
-                    description: r.description?.body ? stripHtml(r.description.body) : '',
+                    description: r.description?.body || '',
                     url: r.url
                 })) || []
             };
@@ -117,7 +117,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
 
         const updates: Partial<WorkItem> = {};
         if (workItem.aha_synced_data.name) updates.name = workItem.aha_synced_data.name;
-        if (workItem.aha_synced_data.description) updates.description = workItem.aha_synced_data.description;
+        if (workItem.aha_synced_data.description) updates.description = stripHtml(workItem.aha_synced_data.description);
         if (workItem.aha_synced_data.total_effort_mds !== undefined) updates.total_effort_mds = workItem.aha_synced_data.total_effort_mds;
         if (workItem.aha_synced_data.score !== undefined) updates.score = workItem.aha_synced_data.score;
 
@@ -738,9 +738,16 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                         </div>
                                         <div>
                                             <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Description</div>
-                                            <div style={{ fontSize: '13px', maxHeight: '150px', overflowY: 'auto', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-primary)', padding: '8px', borderRadius: '4px' }}>
-                                                {workItem.aha_synced_data.description || <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>No description</span>}
-                                            </div>
+                                            {workItem.aha_synced_data.description ? (
+                                                <div 
+                                                    style={{ fontSize: '13px', maxHeight: '150px', overflowY: 'auto', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-primary)', padding: '8px', borderRadius: '4px' }}
+                                                    dangerouslySetInnerHTML={{ __html: workItem.aha_synced_data.description }}
+                                                />
+                                            ) : (
+                                                <div style={{ fontSize: '13px', maxHeight: '150px', overflowY: 'auto', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-primary)', padding: '8px', borderRadius: '4px' }}>
+                                                    <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>No description</span>
+                                                </div>
+                                            )}
                                         </div>
                                         <div style={{ display: 'flex', gap: '32px' }}>
                                             <div>
@@ -770,9 +777,10 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                                                 </div>
                                                 <div style={{ fontSize: '13px', fontWeight: '500', marginBottom: '6px' }}>{req.name}</div>
                                                 {req.description && (
-                                                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-tertiary)', padding: '8px', borderRadius: '4px', borderLeft: '3px solid var(--border-secondary)' }}>
-                                                        {req.description}
-                                                    </div>
+                                                    <div 
+                                                        style={{ fontSize: '12px', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-tertiary)', padding: '8px', borderRadius: '4px', borderLeft: '3px solid var(--border-secondary)' }}
+                                                        dangerouslySetInnerHTML={{ __html: req.description }}
+                                                    />
                                                 )}
                                             </div>
                                         ))}
