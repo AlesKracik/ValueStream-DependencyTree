@@ -43,6 +43,10 @@ export const llmRoutes: FastifyPluginAsync = async (fastify) => {
         const env = { ...process.env, AUGMENT_SESSION_AUTH: apiKey };
         const { stdout } = await execPromise(`npx --no-install auggie --print --quiet "${prompt.replace(/"/g, '\\"')}"`, { env });
         resultText = stdout.trim();
+      } else if (provider === 'glean') {
+        const env = { ...process.env, GLEAN_SESSION_TOKEN: apiKey };
+        const { stdout } = await execPromise(`npx --no-install glean --print --quiet "${prompt.replace(/"/g, '\\"')}"`, { env });
+        resultText = stdout.trim();
       }
       
       return reply.send({ success: true, text: resultText });

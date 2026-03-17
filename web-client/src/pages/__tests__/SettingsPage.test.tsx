@@ -536,4 +536,28 @@ describe('SettingsPage', () => {
             expect(screen.getByRole('link', { name: /https:\/\/device\.sso\.aws/i })).toBeDefined();
         });
     });
+
+    it('renders Glean provider in AI settings', async () => {
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=ai']}>
+                <SettingsPage 
+                    settings={mockSettings} 
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
+                />
+            </MemoryRouter>
+        );
+
+        const select = screen.getByLabelText(/LLM Provider:/i) as HTMLSelectElement;
+        fireEvent.change(select, { target: { value: 'glean' } });
+
+        expect(screen.getByText(/Glean Session Token:/i)).toBeDefined();
+        const input = screen.getByPlaceholderText(/Session token\.\.\./i) as HTMLInputElement;
+        expect(input).toBeDefined();
+        
+        // Model input should be hidden for glean
+        expect(screen.queryByLabelText(/LLM Model \(Optional\):/i)).toBeNull();
+    });
 });

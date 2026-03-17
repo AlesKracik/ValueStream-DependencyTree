@@ -1864,21 +1864,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   <option value="gemini">Google Gemini</option>
                   <option value="anthropic">Anthropic</option>
                   <option value="augment">Augment CLI</option>
+                  <option value="glean">Glean</option>
                 </select>
               </label>
 
               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-                {localFormData.ai?.provider === 'augment' ? 'Augment Session Auth:' : 'LLM API Key:'}
+                {localFormData.ai?.provider === 'augment' ? 'Augment Session Auth:' : 
+                 localFormData.ai?.provider === 'glean' ? 'Glean Session Token:' : 'LLM API Key:'}
                 <input
                   type="password"
-                  placeholder={localFormData.ai?.provider === 'augment' ? "Session token..." : "sk-..."}
+                  placeholder={localFormData.ai?.provider === 'augment' || localFormData.ai?.provider === 'glean' ? "Session token..." : "sk-..."}
                   value={localFormData.ai?.api_key || ""}
                   onChange={(e) => updateFormData('ai.api_key', e.target.value)}
                   onBlur={() => onUpdateSettings({ ai: { ...localFormData.ai, api_key: localFormData.ai.api_key } })}
                 />
               </label>
 
-              {localFormData.ai?.provider !== 'augment' && (
+              {localFormData.ai?.provider !== 'augment' && localFormData.ai?.provider !== 'glean' && (
                 <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                   LLM Model (Optional):
                   <input
