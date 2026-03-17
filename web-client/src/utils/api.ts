@@ -91,3 +91,21 @@ export const syncAhaFeature = async (
 
     return resData.feature;
 };
+
+export const llmGenerate = async (
+    prompt: string,
+    config: unknown
+): Promise<string> => {
+    const response = await authorizedFetch("/api/llm/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, config }),
+    });
+
+    const resData = await response.json().catch(() => ({}));
+    if (!response.ok || !resData.success) {
+        throw new Error(resData?.error || "Failed to generate LLM response");
+    }
+
+    return resData.text;
+};

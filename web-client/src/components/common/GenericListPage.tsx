@@ -35,6 +35,8 @@ interface GenericListPageProps<T> {
         label: string;
         onClick: () => void;
     };
+    additionalControls?: React.ReactNode;
+    renderBelowControls?: () => React.ReactNode;
     loadingMessage?: string;
     emptyMessage?: string;
 }
@@ -55,6 +57,8 @@ export function GenericListPage<T extends { id: string }>({
     renderItemRight,
     columns,
     actionButton,
+    additionalControls,
+    renderBelowControls,
     loadingMessage = "Loading...",
     emptyMessage = "No items found."
 }: GenericListPageProps<T>) {
@@ -260,7 +264,9 @@ export function GenericListPage<T extends { id: string }>({
                     className={styles.filterInput}
                     style={{ flex: 1, minWidth: '200px' }}
                 />
+                {additionalControls}
             </div>
+            {renderBelowControls && renderBelowControls()}
 
             <div className={styles.list} ref={listRef}>
                 {columns && (

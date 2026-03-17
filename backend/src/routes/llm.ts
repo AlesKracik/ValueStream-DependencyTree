@@ -44,9 +44,29 @@ export const llmRoutes: FastifyPluginAsync = async (fastify) => {
         const { stdout } = await execPromise(`npx --no-install auggie --print --quiet "${prompt.replace(/"/g, '\\"')}"`, { env });
         resultText = stdout.trim();
       } else if (provider === 'glean') {
-        const env = { ...process.env, GLEAN_SESSION_TOKEN: apiKey };
-        const { stdout } = await execPromise(`npx --no-install glean --print --quiet "${prompt.replace(/"/g, '\\"')}"`, { env });
-        resultText = stdout.trim();
+        const gleanUrl = config.ai?.glean_url || 'https://glean.com';
+        const apiUrl = `${gleanUrl.replace(/\/$/, '')}/rest/api/v1/chat`;
+        
+        const r = await fetch(apiUrl, {
+          method: 'POST', 
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Cookie': `glean-session-store=${apiKey}` 
+          },
+          body: JSON.stringify({ 
+            messages: [{ author: 'USER', text: prompt }],
+            stream: false
+          })
+        });
+        
+        if (!r.ok) {
+          const errData = await r.json().catch(() => ({}));
+          throw new Error(errData?.error || `Glean API error: ${r.status}`);
+        }
+        
+        const d = await r.json() as any;
+        const aiMessage = d.messages?.reverse().find((m: any) => m.author === 'GLEAN_AI');
+        resultText = aiMessage?.text || '';
       }
       
       return reply.send({ success: true, text: resultText });

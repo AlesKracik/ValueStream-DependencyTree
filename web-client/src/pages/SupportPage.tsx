@@ -1,8 +1,11 @@
-import React, { useMemo, useEffect } from 'react';
-import type { ValueStreamData, Customer } from '../types/models';
+import React, { useMemo, useEffect, useState } from 'react';
+import type { ValueStreamData, Customer, SupportIssue } from '../types/models';
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption, ListColumn } from '../components/common/GenericListPage';
 import { useNavigate } from 'react-router-dom';
+import { llmGenerate } from '../utils/api';
+import { generateId } from '../utils/security';
+import { useValueStreamContext } from '../contexts/ValueStreamContext';
 
 interface Props {
     data: ValueStreamData | null;
@@ -23,6 +26,23 @@ interface SupportIssueWithCustomer {
     created_at?: string;
     priority?: string;
     url?: string;
+}
+
+interface LLMIssue {
+    summary: string;
+    impact: string;
+    rootCause: string;
+    jiraTickets: string[];
+}
+
+interface LLMCustomer {
+    name: string;
+    orgId: string;
+    issues: LLMIssue[];
+}
+
+interface LLMResults {
+    customers: LLMCustomer[];
 }
 
 const STATUS_ORDER: Record<string, number> = {
@@ -47,6 +67,10 @@ const ACTIVITY_ORDER: Record<string, number> = {
 
 export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) => {
     const navigate = useNavigate();
+    const { showAlert } = useValueStreamContext();
+    const [isAISearching, setIsAISearching] = useState(false);
+    const [aiResults, setAiResults] = useState<LLMResults | null>(null);
+    const [showAIResults, setShowAIResults] = useState(false);
 
     // Automatic cleanup of expired issues
     useEffect(() => {
@@ -68,6 +92,123 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             }
         });
     }, [data, loading, updateCustomer]);
+
+    const handleAISearch = async () => {
+        if (!data?.settings?.ai?.support?.prompt) {
+            showAlert('AI Support prompt not defined in settings.', 'error');
+            return;
+        }
+
+        setIsAISearching(true);
+        try {
+            const schema = {
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "title": "CustomerIssues",
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "customers": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": ["name", "orgId", "issues"],
+                            "properties": {
+                                "name": { "type": "string", "description": "Customer display name" },
+                                "orgId": { "type": "string", "description": "Unique organization identifier" },
+                                "issues": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "required": ["summary", "impact", "rootCause", "jiraTickets"],
+                                        "properties": {
+                                            "summary": { "type": "string", "description": "Short description of the issue" },
+                                            "impact": { "type": "string", "description": "Business/technical impact of the issue" },
+                                            "rootCause": { "type": "string", "description": "Root cause analysis" },
+                                            "jiraTickets": {
+                                                "type": "array",
+                                                "description": "Associated Jira ticket keys",
+                                                "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+-[0-9]+$" }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "required": ["customers"]
+            };
+
+            const prompt = `${data.settings.ai.support.prompt}\n\nReturn ONLY a JSON object matching this schema:\n${JSON.stringify(schema, null, 2)}`;
+            const resultText = await llmGenerate(prompt, data.settings);
+            
+            // Extract JSON from potential markdown code blocks
+            const jsonMatch = resultText.match(/```json\s*([\s\S]*?)\s*```/) || resultText.match(/\{[\s\S]*\}/);
+            const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : resultText;
+            
+            const results: LLMResults = JSON.parse(jsonStr);
+            setAiResults(results);
+            setShowAIResults(true);
+        } catch (err) {
+            console.error('AI search failed:', err);
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            showAlert(`AI Search failed: ${errorMessage}`, 'error');
+        } finally {
+            setIsAISearching(false);
+        }
+    };
+
+    const handleCreateSupportItem = async (customer: Customer, llmIssue: LLMIssue) => {
+        const newIssue: SupportIssue = {
+            id: generateId('si'),
+            description: `${llmIssue.summary}\n\nImpact: ${llmIssue.impact}\nRoot Cause: ${llmIssue.rootCause}`,
+            status: 'to do',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            related_jiras: llmIssue.jiraTickets
+        };
+
+        const updatedIssues = [...(customer.support_issues || []), newIssue];
+        await updateCustomer(customer.id, { support_issues: updatedIssues }, true);
+        showAlert(`Created support item for ${customer.name}`, 'success');
+    };
+
+    const handleUpdateSupportItem = async (customer: Customer, issueId: string, llmIssue: LLMIssue) => {
+        const updatedIssues = (customer.support_issues || []).map(issue => {
+            if (issue.id === issueId) {
+                return {
+                    ...issue,
+                    description: `${issue.description}\n\n--- AI Update ---\n${llmIssue.summary}\n\nImpact: ${llmIssue.impact}\nRoot Cause: ${llmIssue.rootCause}`,
+                    updated_at: new Date().toISOString(),
+                    related_jiras: Array.from(new Set([...(issue.related_jiras || []), ...llmIssue.jiraTickets]))
+                };
+            }
+            return issue;
+        });
+
+        await updateCustomer(customer.id, { support_issues: updatedIssues }, true);
+        showAlert(`Updated support item for ${customer.name}`, 'success');
+    };
+
+    const findCustomerMatch = (llmCustomer: LLMCustomer) => {
+        if (!data) return null;
+        
+        // Try pairing by orgId (customer_id in our model)
+        if (llmCustomer.orgId) {
+            const match = data.customers.find(c => c.customer_id === llmCustomer.orgId);
+            if (match) return match;
+        }
+        
+        // Try pairing by name
+        const match = data.customers.find(c => 
+            c.name.toLowerCase() === llmCustomer.name.toLowerCase() ||
+            c.name.toLowerCase().includes(llmCustomer.name.toLowerCase()) ||
+            llmCustomer.name.toLowerCase().includes(c.name.toLowerCase())
+        );
+        return match || null;
+    };
 
     const allIssues = useMemo(() => {
         if (!data) return [];
@@ -249,6 +390,102 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         }
     ], []);
 
+    const renderAIResults = () => {
+        if (!showAIResults || !aiResults) return null;
+
+        return (
+            <div style={{ 
+                marginTop: '16px', 
+                backgroundColor: 'var(--bg-secondary)', 
+                borderRadius: '8px', 
+                border: '1px solid var(--border-primary)',
+                padding: '16px'
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ margin: 0, color: 'var(--accent-primary)' }}>AI Search Results</h3>
+                    <button 
+                        className="btn-secondary" 
+                        onClick={() => setShowAIResults(false)}
+                        style={{ fontSize: '12px', padding: '4px 8px' }}
+                    >
+                        Hide
+                    </button>
+                </div>
+                
+                {aiResults.customers.length === 0 ? (
+                    <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>No new issues found by AI.</div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        {aiResults.customers.map((lc, i) => {
+                            const match = findCustomerMatch(lc);
+                            return (
+                                <div key={i} style={{ borderBottom: '1px solid var(--border-secondary)', paddingBottom: '16px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                                        <span style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{lc.name}</span>
+                                        {lc.orgId && <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>({lc.orgId})</span>}
+                                        {match ? (
+                                            <span style={{ fontSize: '10px', backgroundColor: 'var(--status-success)', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>MATCHED: {match.name}</span>
+                                        ) : (
+                                            <span style={{ fontSize: '10px', backgroundColor: 'var(--status-danger)', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>NO MATCH</span>
+                                        )}
+                                    </div>
+                                    
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginLeft: '16px' }}>
+                                        {lc.issues.map((issue, j) => (
+                                            <div key={j} style={{ backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '6px', borderLeft: '3px solid var(--accent-primary)' }}>
+                                                <div style={{ fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '4px' }}>{issue.summary}</div>
+                                                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                                                    <strong>Impact:</strong> {issue.impact}<br/>
+                                                    <strong>Root Cause:</strong> {issue.rootCause}
+                                                </div>
+                                                {issue.jiraTickets.length > 0 && (
+                                                    <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+                                                        {issue.jiraTickets.map(key => (
+                                                            <span key={key} style={{ fontSize: '10px', backgroundColor: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: '4px' }}>{key}</span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                
+                                                {match && (
+                                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                        <button 
+                                                            className="btn-primary" 
+                                                            style={{ fontSize: '11px', padding: '4px 8px' }}
+                                                            onClick={() => handleCreateSupportItem(match, issue)}
+                                                        >
+                                                            Create New
+                                                        </button>
+                                                        
+                                                        {match.support_issues && match.support_issues.length > 0 && (
+                                                            <select 
+                                                                style={{ fontSize: '11px', padding: '4px 8px' }}
+                                                                onChange={(e) => {
+                                                                    if (e.target.value) {
+                                                                        handleUpdateSupportItem(match, e.target.value, issue);
+                                                                        e.target.value = '';
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <option value="">Update existing...</option>
+                                                                {match.support_issues.map(si => (
+                                                                    <option key={si.id} value={si.id}>{si.description.substring(0, 40)}...</option>
+                                                                ))}
+                                                            </select>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     return (
         <GenericListPage<SupportIssueWithCustomer>
             pageId="support"
@@ -271,6 +508,19 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                 }
             }}
             columns={columns}
+            additionalControls={
+                data?.settings?.ai?.provider && data?.settings?.ai?.support?.prompt ? (
+                    <button 
+                        className="btn-primary" 
+                        onClick={handleAISearch} 
+                        disabled={isAISearching}
+                        style={{ minWidth: '120px' }}
+                    >
+                        {isAISearching ? 'AI Searching...' : 'AI Support Search'}
+                    </button>
+                ) : null
+            }
+            renderBelowControls={renderAIResults}
             emptyMessage="No support issues tracked."
             loadingMessage="Loading support issues..."
         />

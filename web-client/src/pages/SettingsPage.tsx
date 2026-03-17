@@ -1910,6 +1910,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       </select>
                     </label>
 
+                    {localFormData.ai?.provider === 'glean' && (
+                      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                        Glean URL:
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                          Usually follows https://COMPANY-be.glean.com notation
+                        </span>
+                        <input
+                          type="text"
+                          placeholder="https://company-be.glean.com"
+                          value={localFormData.ai?.glean_url || ""}
+                          onChange={(e) => updateFormData('ai.glean_url', e.target.value)}
+                          onBlur={() => onUpdateSettings({ ai: { ...localFormData.ai, glean_url: localFormData.ai.glean_url } })}
+                        />
+                      </label>
+                    )}
+
                     <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                       {localFormData.ai?.provider === 'augment' ? 'Augment Session Auth:' : 
                        localFormData.ai?.provider === 'glean' ? 'Glean Session Token:' : 'LLM API Key:'}

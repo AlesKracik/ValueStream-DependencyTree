@@ -178,6 +178,7 @@ export interface AISettings {
   support?: {
     prompt: string;
   };
+  glean_url?: string;
 }
 
 export interface Settings {
