@@ -182,6 +182,35 @@ describe('useValueStreamData', () => {
         });
     });
 
+    it('omits Content-Type and body on DELETE requests', async () => {
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 0));
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        vi.mocked(global.fetch).mockClear();
+
+        act(() => {
+            result.current.deleteCustomer('c1');
+        });
+
+        // The exact call for deleting the customer
+        expect(fetch).toHaveBeenCalledWith(
+            '/api/entity/customers/c1',
+            expect.objectContaining({
+                method: 'DELETE',
+                body: undefined,
+            })
+        );
+
+        // Verify headers don't have Content-Type
+        const deleteCall = vi.mocked(global.fetch).mock.calls.find(call => 
+            call[0] === '/api/entity/customers/c1' && (call[1] as RequestInit)?.method === 'DELETE'
+        );
+        expect(deleteCall).toBeDefined();
+        
+        const callHeaders = deleteCall![1]?.headers as Record<string, string>;
+        expect(callHeaders).not.toHaveProperty('Content-Type');
+    });
+
     it('cascades deleteCustomer to workItem targets', async () => {
         const { result } = renderHook(() => useValueStreamData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));

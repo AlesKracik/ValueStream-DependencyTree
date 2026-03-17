@@ -8,7 +8,7 @@ const persistEntity = async (collection: string, method: 'POST' | 'DELETE', enti
     try {
         const response = await authorizedFetch(`/api/entity/${collection}${method === 'DELETE' ? `/${entity.id}` : ''}`, {
             method,
-            headers: { 'Content-Type': 'application/json' },
+            headers: method === 'DELETE' ? undefined : { 'Content-Type': 'application/json' },
             body: method === 'DELETE' ? undefined : JSON.stringify(entity)
         });
 
