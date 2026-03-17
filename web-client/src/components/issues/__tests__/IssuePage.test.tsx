@@ -203,12 +203,33 @@ describe('IssuePage', () => {
             }, { timeout: 2000 });
         });
 
-        it('passes correct jira settings to syncJiraIssue', async () => {
+        it('updates issue with data from parseJiraIssue on successful sync', async () => {
+            // Mock syncJiraIssue to return data that parseJiraIssue understands (timeestimate in seconds)
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (api.syncJiraIssue as any).mockResolvedValueOnce({ 
                 fields: { 
                     summary: 'Synced Issue',
-                    customfield_10005: 80 
+                    timeestimate: 28800 * 5 // 28800s = 8h = 1MD, so 5 MDs
+                } 
+            });
+            renderIssuePage();
+            const syncButton = screen.getByText('Sync from Jira');
+            await act(async () => {
+                fireEvent.click(syncButton);
+            });
+            await waitFor(() => {
+                expect(updateIssueSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
+                    name: 'Synced Issue',
+                    effort_md: 5
+                }));
+            });
+        });
+
+        it('passes correct jira settings to syncJiraIssue', async () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (api.syncJiraIssue as any).mockResolvedValueOnce({ 
+                fields: { 
+                    summary: 'Synced Issue'
                 } 
             });
             renderIssuePage();

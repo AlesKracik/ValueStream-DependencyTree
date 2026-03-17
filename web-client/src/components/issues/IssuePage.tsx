@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Issue, ValueStreamData } from '../../types/models';
 import { useNavigate, useParams } from 'react-router-dom';
-import { calculateIssueEffortPerSprint } from '../../utils/businessLogic';
+import { calculateIssueEffortPerSprint, parseJiraIssue } from '../../utils/businessLogic';
 import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers';
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import { syncJiraIssue } from '../../utils/api';
@@ -30,6 +30,15 @@ export const IssuePage: React.FC<IssuePageProps> = ({ data, loading, updateIssue
         end: issue?.target_end || ''
     });
 
+    React.useEffect(() => {
+        if (issue) {
+            setLocalDates({
+                start: issue.target_start || '',
+                end: issue.target_end || ''
+            });
+        }
+    }, [issue, issue?.id, issue?.target_start, issue?.target_end]);
+
     if (!issue && !loading) {
         return (
             <GenericDetailPage
@@ -54,14 +63,20 @@ export const IssuePage: React.FC<IssuePageProps> = ({ data, loading, updateIssue
     };
 
     const handleSync = async () => {
+        if (!issue) return;
         try {
             const jiraData = await syncJiraIssue(issue.jira_key || '', data?.settings?.jira || {});
             if (jiraData) {
-                const updates: Partial<Issue> = {
-                    name: jiraData.fields.summary,
-                    effort_md: (jiraData.fields.customfield_10005 || 0) / 8 // Example mapping
-                };
+                const updates = parseJiraIssue(jiraData, data?.teams || []);
                 await updateIssue(issue.id, updates);
+                
+                // Update localDates to reflect synced values in the UI
+                if (updates.target_start !== undefined || updates.target_end !== undefined) {
+                    setLocalDates({
+                        start: updates.target_start || issue.target_start || '',
+                        end: updates.target_end || issue.target_end || ''
+                    });
+                }
             }
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'Unknown error';
