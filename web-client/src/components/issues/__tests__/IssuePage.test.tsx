@@ -45,7 +45,8 @@ const mockData: ValueStreamData = {
             }
         },
         jira: { base_url: '', api_version: '3', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
-        ai: { provider: 'openai', support: { prompt: '' } }
+        ai: { provider: 'openai', support: { prompt: '' } },
+        aha: { subdomain: "", api_key: "" }
     },
     customers: [],
     workItems: [],

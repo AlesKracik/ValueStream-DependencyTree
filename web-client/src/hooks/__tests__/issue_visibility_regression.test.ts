@@ -13,7 +13,8 @@ const MOCK_DATA: ValueStreamData = {
                 customer: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false }
             }
         },
-        jira: { base_url: "https://jira", api_version: "3" },
+        jira: { base_url: "https://jira", api_version: "3", api_token: '', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
+        aha: { subdomain: '', api_key: '' },
         ai: { provider: 'openai', support: { prompt: '' } }
     },
     customers: [

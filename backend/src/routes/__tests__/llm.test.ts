@@ -3,7 +3,15 @@ import { FastifyInstance } from 'fastify';
 import { llmRoutes } from '../llm';
 import fastify from 'fastify';
 import fs from 'fs';
-import { exec } from 'child_process';
+
+// Mock everything from gleanHelpers
+vi.mock('../../utils/gleanHelpers', () => ({
+  getGleanSettings: vi.fn(),
+  refreshGleanToken: vi.fn(),
+  gleanChatRequest: vi.fn()
+}));
+
+import { getGleanSettings, gleanChatRequest } from '../../utils/gleanHelpers';
 
 vi.mock('child_process', () => ({
   exec: vi.fn()
@@ -16,9 +24,6 @@ vi.mock('fs', () => ({
   }
 }));
 
-// Global fetch is available in Node 18+ and Vitest environment
-const originalFetch = global.fetch;
-
 describe('llmRoutes', () => {
   let app: FastifyInstance;
 
@@ -26,20 +31,25 @@ describe('llmRoutes', () => {
     app = fastify();
     await app.register(llmRoutes);
     vi.clearAllMocks();
-    global.fetch = vi.fn();
-  });
-
-  afterAll(() => {
-    global.fetch = originalFetch;
   });
 
   it('calls glean API when glean provider is selected', async () => {
     (fs.existsSync as any).mockReturnValue(true);
     (fs.readFileSync as any).mockReturnValue(JSON.stringify({
-      ai: { provider: 'glean', api_key: 'test-session-token' }
+      ai: { provider: 'glean', glean_url: 'https://test.glean.com' }
     }));
     
-    (global.fetch as any).mockResolvedValue({
+    (getGleanSettings as any).mockReturnValue({
+      tokens: {
+        'https://test.glean.com': {
+          access_token: 'test-token',
+          expires_at: Date.now() + 3600000
+        }
+      },
+      clients: {}
+    });
+
+    (gleanChatRequest as any).mockResolvedValue({
       ok: true,
       json: async () => ({
         messages: [{ author: 'GLEAN_AI', fragments: [{ text: 'Glean API response' }] }]
@@ -51,7 +61,7 @@ describe('llmRoutes', () => {
       url: '/api/llm/generate',
       payload: {
         prompt: 'Hello AI',
-        config: { ai: { provider: 'glean', api_key: 'test-session-token' } }
+        config: { ai: { provider: 'glean', glean_url: 'https://test.glean.com' } }
       }
     });
 
@@ -60,14 +70,12 @@ describe('llmRoutes', () => {
     expect(data.success).toBe(true);
     expect(data.text).toBe('Glean API response');
     
-    expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('glean.com/rest/api/v1/chat'),
-        expect.objectContaining({
-            headers: expect.objectContaining({ 
-                'Cookie': 'glean-session-store=test-session-token' 
-            }),
-            body: expect.stringContaining('"fragments":[{"text":"Hello AI"}]')
-        })
+    expect(gleanChatRequest).toHaveBeenCalledWith(
+        'https://test.glean.com',
+        'test-token',
+        expect.arrayContaining([
+            expect.objectContaining({ fragments: [{ text: 'Hello AI' }] })
+        ])
     );
   });
 });

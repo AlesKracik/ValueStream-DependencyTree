@@ -34,6 +34,7 @@ const mockSettings: Settings = {
             jql_noop: 'project = TEST AND cf[123] = "{{CUSTOMER_ID}}" AND status = Blocked'
         }
     },
+    aha: { subdomain: '', api_key: '' },
     ai: { provider: 'openai', support: { prompt: '' } }
 };
 

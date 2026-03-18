@@ -15,6 +15,7 @@ const mockData: ValueStreamData = {
             }
         },
         jira: { base_url: "https://jira", api_version: "3" },
+        aha: { subdomain: "", api_key: "" },
         ai: { provider: 'openai', support: { prompt: '' } }
     },
     customers: [],

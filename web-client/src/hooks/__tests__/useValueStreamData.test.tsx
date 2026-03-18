@@ -29,6 +29,7 @@ const mockSettings: Settings = {
         api_version: '3',
         api_token: 'token'
     },
+    aha: { subdomain: '', api_key: '' },
     ai: {
         provider: 'openai',
         api_key: ''

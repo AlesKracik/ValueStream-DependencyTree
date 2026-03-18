@@ -35,7 +35,8 @@ const mockData: ValueStreamData = {
                 jql_noop: "status = Blocked"
             }
         },
-        ai: { provider: 'openai', support: { prompt: '' } }
+        ai: { provider: 'openai', support: { prompt: '' } },
+        aha: { subdomain: "", api_key: "" }
     },
     customers: [
         { 

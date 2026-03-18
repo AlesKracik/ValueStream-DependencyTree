@@ -37,6 +37,7 @@ const mockSettings: Settings = {
         api_token: 'token',
         customer: { jql_new: '', jql_in_progress: '', jql_noop: '' }
     },
+    aha: { subdomain: '', api_key: '' },
     ai: {
         provider: 'openai',
         api_key: '',

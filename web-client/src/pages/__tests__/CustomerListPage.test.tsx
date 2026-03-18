@@ -17,16 +17,16 @@ vi.mock('react-router-dom', async () => {
 const mockData: ValueStreamData = {
     settings: {
         general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
-        persistence: { 
-            mongo: { 
+        persistence: {
+            mongo: {
                 app: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false },
                 customer: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false }
             }
         },
-        jira: { base_url: '', api_version: '3', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
+        jira: { base_url: '', api_version: '3', api_token: '', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
+        aha: { subdomain: '', api_key: '' },
         ai: { provider: 'openai', support: { prompt: '' } }
-    },
-    customers: [
+    },    customers: [
         { id: 'c1', name: 'Alpha Cust', existing_tcv: 5000, potential_tcv: 1000 },
         { id: 'c2', name: 'Gamma Cust', existing_tcv: 1000, potential_tcv: 10000 },
         { id: 'c3', name: 'Beta Cust', existing_tcv: 10000, potential_tcv: 500 }
