@@ -315,7 +315,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         [setViewState, handleFitView]
     );
 
-    const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
+    const onPaneContextMenu = useCallback((event: React.MouseEvent | MouseEvent) => {
         event.preventDefault();
         handleFitView();
     }, [handleFitView]);
@@ -521,7 +521,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                     onNodeMouseEnter={onNodeMouseEnter}
                     onNodeMouseLeave={onNodeMouseLeave}
                     onNodeContextMenu={onNodeContextMenu}
-                    onPaneContextMenu={onPaneContextMenu as unknown as React.MouseEventHandler}
+                    onPaneContextMenu={onPaneContextMenu}
                     onNodeClick={onNodeClick}
                     onMoveEnd={(_, viewport) => {
                         setViewState(s => ({ ...s, viewport }));

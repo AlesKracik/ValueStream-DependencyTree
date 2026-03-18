@@ -39,7 +39,8 @@ export const IssuePage: React.FC<IssuePageProps> = ({ data, loading, updateIssue
         }
     }, [issue, issue?.id, issue?.target_start, issue?.target_end]);
 
-    if (!issue && !loading) {
+    if (!issue) {
+        if (loading) return null;
         return (
             <GenericDetailPage
                 entityTitle="Issue Not Found"

@@ -3,7 +3,6 @@ import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import { SettingsPage, DEFAULT_SETTINGS } from '../SettingsPage';
 import type { ValueStreamData, Settings } from '../../types/models';
 import { MemoryRouter } from 'react-router-dom';
-import * as React from 'react';
 
 // Mock ValueStreamContext
 const mockShowAlert = vi.fn();
@@ -656,9 +655,6 @@ describe('SettingsPage', () => {
             </MemoryRouter>
         );
 
-        expect(screen.getByText(/Glean Session Token:/i)).toBeDefined();
-        expect(screen.getByDisplayValue('test-token')).toBeDefined();
-        
         expect(screen.getByLabelText(/Glean URL:/i)).toBeDefined();
         expect(screen.getByDisplayValue('https://custom-glean.com')).toBeDefined();
 

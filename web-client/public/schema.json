@@ -85,6 +85,41 @@
                             "properties": {
                                 "prompt": { "type": "string" }
                             }
+                        },
+                        "glean_url": { "type": "string" },
+                        "glean_state": {
+                            "type": "object",
+                            "properties": {
+                                "tokens": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "object",
+                                        "properties": {
+                                            "access_token": { "type": "string" },
+                                            "refresh_token": { "type": "string" },
+                                            "expires_at": { "type": "number" },
+                                            "client_id": { "type": "string" },
+                                            "client_secret": { "type": "string" },
+                                            "token_endpoint": { "type": "string" }
+                                        }
+                                    }
+                                },
+                                "clients": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                        "type": "object",
+                                        "properties": {
+                                            "client_id": { "type": "string" },
+                                            "client_secret": { "type": "string" },
+                                            "registration_client_uri": { "type": "string" },
+                                            "registration_access_token": { "type": "string" },
+                                            "registration_endpoint": { "type": "string" },
+                                            "token_endpoint": { "type": "string" },
+                                            "authorization_endpoint": { "type": "string" }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

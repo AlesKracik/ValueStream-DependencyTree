@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { Settings, ValueStreamData, Issue } from "../types/models";
 import styles from './List.module.css';
-import { authorizedFetch, syncJiraIssue } from "../utils/api";
+import { authorizedFetch, syncJiraIssue, gleanAuthStatus, gleanAuthLogin } from "../utils/api";
 import { generateId } from '../utils/security';
 import { useValueStreamContext } from "../contexts/ValueStreamContext";
 import { PageWrapper } from "../components/layout/PageWrapper";
@@ -128,6 +128,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [importProgress, setImportProgress] = useState<string>("");
   const [isSSOLoginLoading, setIsSSOLoginLoading] = useState(false);
   const [ssoMessage, setSSOMessage] = useState<SSOMessage | null>(null);
+  const [isGleanAuthenticated, setIsGleanAuthenticated] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -247,6 +248,44 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         setSSOMessage({ success: false, message: msg });
     } finally {
         setIsSSOLoginLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const checkGleanStatus = async () => {
+      if (localFormData.ai?.provider === 'glean' && localFormData.ai?.glean_url) {
+        try {
+          const status = await gleanAuthStatus(localFormData.ai.glean_url);
+          setIsGleanAuthenticated(status);
+        } catch (err) {
+          console.error('Failed to check Glean status:', err);
+        }
+      }
+    };
+
+    if (searchParams.get('glean_auth') === 'success') {
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        newParams.delete('glean_auth');
+        return newParams;
+      });
+    } else if (searchParams.get('glean_error')) {
+      setSearchParams(prev => {
+        const newParams = new URLSearchParams(prev);
+        newParams.delete('glean_error');
+        return newParams;
+      });
+    }
+
+    checkGleanStatus();
+  }, [localFormData.ai?.provider, localFormData.ai?.glean_url, searchParams, setSearchParams]);
+
+  const handleGleanLogin = async () => {
+    if (!localFormData.ai?.glean_url) return;
+    try {
+      await gleanAuthLogin(localFormData.ai.glean_url);
+    } catch (err: any) {
+      console.error('Glean login failed:', err);
     }
   };
 
@@ -1911,32 +1950,52 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     </label>
 
                     {localFormData.ai?.provider === 'glean' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                          Glean URL:
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                            Usually follows https://COMPANY-be.glean.com notation
+                          </span>
+                          <input
+                            type="text"
+                            placeholder="https://company-be.glean.com"
+                            value={localFormData.ai?.glean_url || ""}
+                            onChange={(e) => updateFormData('ai.glean_url', e.target.value)}
+                            onBlur={() => onUpdateSettings({ ai: { ...localFormData.ai, glean_url: localFormData.ai.glean_url } })}
+                          />
+                        </label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <button
+                            type="button"
+                            className="btn-primary"
+                            onClick={handleGleanLogin}
+                            disabled={!localFormData.ai?.glean_url}
+                            style={{ alignSelf: 'flex-start' }}
+                          >
+                            {isGleanAuthenticated ? 'Reconnect Glean' : 'Connect Glean'}
+                          </button>
+                          {isGleanAuthenticated && (
+                            <span style={{ color: 'var(--status-success)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--status-success)' }}></span>
+                              Connected to Glean
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {localFormData.ai?.provider !== 'glean' && (
                       <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-                        Glean URL:
-                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                          Usually follows https://COMPANY-be.glean.com notation
-                        </span>
+                        {localFormData.ai?.provider === 'augment' ? 'Augment Session Auth:' : 'LLM API Key:'}
                         <input
-                          type="text"
-                          placeholder="https://company-be.glean.com"
-                          value={localFormData.ai?.glean_url || ""}
-                          onChange={(e) => updateFormData('ai.glean_url', e.target.value)}
-                          onBlur={() => onUpdateSettings({ ai: { ...localFormData.ai, glean_url: localFormData.ai.glean_url } })}
+                          type="password"
+                          placeholder={localFormData.ai?.provider === 'augment' ? "Session token..." : "sk-..."}
+                          value={localFormData.ai?.api_key || ""}
+                          onChange={(e) => updateFormData('ai.api_key', e.target.value)}
+                          onBlur={() => onUpdateSettings({ ai: { ...localFormData.ai, api_key: localFormData.ai.api_key } })}
                         />
                       </label>
                     )}
-
-                    <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-                      {localFormData.ai?.provider === 'augment' ? 'Augment Session Auth:' : 
-                       localFormData.ai?.provider === 'glean' ? 'Glean Session Token:' : 'LLM API Key:'}
-                      <input
-                        type="password"
-                        placeholder={localFormData.ai?.provider === 'augment' || localFormData.ai?.provider === 'glean' ? "Session token..." : "sk-..."}
-                        value={localFormData.ai?.api_key || ""}
-                        onChange={(e) => updateFormData('ai.api_key', e.target.value)}
-                        onBlur={() => onUpdateSettings({ ai: { ...localFormData.ai, api_key: localFormData.ai.api_key } })}
-                      />
-                    </label>
 
                     {localFormData.ai?.provider !== 'augment' && localFormData.ai?.provider !== 'glean' && (
                       <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>

@@ -109,3 +109,74 @@ export const llmGenerate = async (
 
     return resData.text;
 };
+
+export const gleanAuthLogin = async (gleanUrl: string): Promise<void> => {
+    const response = await authorizedFetch("/api/glean/auth/init", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gleanUrl }),
+    });
+
+    const resData = await response.json().catch(() => ({}));
+    if (!response.ok || !resData.authUrl) {
+        throw new Error(resData?.error || "Failed to initialize Glean auth");
+    }
+
+    window.location.href = resData.authUrl;
+};
+
+export const gleanAuthStatus = async (gleanUrl: string): Promise<boolean> => {
+    const response = await authorizedFetch(`/api/glean/status?gleanUrl=${encodeURIComponent(gleanUrl)}`);
+    const resData = await response.json().catch(() => ({ authenticated: false }));
+    return !!resData.authenticated;
+};
+
+export const gleanChat = async (gleanUrl: string, prompt: string, onStream?: (text: string) => void): Promise<any> => {
+    const response = await authorizedFetch("/api/glean/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            gleanUrl,
+            messages: [{ author: 'USER', fragments: [{ text: prompt }] }],
+            stream: !!onStream
+        }),
+    });
+
+    if (!response.ok) {
+        const resData = await response.json().catch(() => ({}));
+        throw new Error(resData?.error || "Glean chat failed");
+    }
+
+    if (onStream && response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let fullText = '';
+        
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value, { stream: true });
+            // Glean SSE format: data: {...}
+            const lines = chunk.split('\n');
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const data = JSON.parse(line.slice(6));
+                        // The structure depends on Glean API, usually messages[0].fragments[0].text
+                        const text = data.messages?.[0]?.fragments?.[0]?.text || '';
+                        if (text) {
+                            fullText += text;
+                            onStream(fullText);
+                        }
+                    } catch (e) {
+                        // Not all lines are valid JSON or have the expected structure
+                    }
+                }
+            }
+        }
+        return { messages: [{ author: 'GLEAN_AI', fragments: [{ text: fullText }] }] };
+    }
+
+    return await response.json();
+};

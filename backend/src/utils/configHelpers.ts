@@ -13,7 +13,11 @@ const SENSITIVE_FIELDS = [
   'aws_sso_account_id',
   'aws_sso_role_name',
   'oidc_token', 
-  'api_key'
+  'api_key',
+  'access_token',
+  'refresh_token',
+  'client_secret',
+  'registration_access_token'
 ];
 
 const MASK = '********';

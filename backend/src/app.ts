@@ -19,6 +19,7 @@ import { jiraRoutes } from './routes/jira';
 import { ahaRoutes } from './routes/aha';
 import { llmRoutes } from './routes/llm';
 import { awsRoutes } from './routes/aws';
+import { gleanRoutes } from './routes/glean';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -52,6 +53,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(ahaRoutes);
   await app.register(llmRoutes);
   await app.register(awsRoutes);
+  await app.register(gleanRoutes);
 
   return app;
 }

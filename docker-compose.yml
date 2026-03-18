@@ -29,6 +29,7 @@ services:
       # Proxy configurations for SSH tunnels
       - SOCKS_PROXY_HOST=${SOCKS_PROXY_HOST:-ssh-proxy}
       - SOCKS_PROXY_PORT=${SOCKS_PROXY_PORT:-1080}
+      - GLEAN_REDIRECT_BASE_URL=${GLEAN_REDIRECT_BASE_URL:-http://localhost:4000}
     env_file:
       - .env
     volumes:

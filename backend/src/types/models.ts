@@ -179,6 +179,25 @@ export interface AISettings {
     prompt: string;
   };
   glean_url?: string;
+  glean_state?: {
+    tokens?: Record<string, {
+      access_token: string;
+      refresh_token?: string;
+      expires_at: number;
+      client_id: string;
+      client_secret: string;
+      token_endpoint: string;
+    }>;
+    clients?: Record<string, {
+      client_id: string;
+      client_secret: string;
+      registration_client_uri?: string;
+      registration_access_token?: string;
+      registration_endpoint: string;
+      token_endpoint: string;
+      authorization_endpoint: string;
+    }>;
+  };
 }
 
 export interface Settings {

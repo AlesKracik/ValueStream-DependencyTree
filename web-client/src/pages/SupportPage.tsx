@@ -2,8 +2,8 @@ import React, { useMemo, useEffect, useState } from 'react';
 import type { ValueStreamData, Customer, SupportIssue } from '../types/models';
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption, ListColumn } from '../components/common/GenericListPage';
-import { useNavigate } from 'react-router-dom';
-import { llmGenerate } from '../utils/api';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { llmGenerate, gleanAuthLogin, gleanAuthStatus, gleanChat } from '../utils/api';
 import { generateId } from '../utils/security';
 import { useValueStreamContext } from '../contexts/ValueStreamContext';
 
@@ -67,10 +67,51 @@ const ACTIVITY_ORDER: Record<string, number> = {
 
 export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { showAlert } = useValueStreamContext();
     const [isAISearching, setIsAISearching] = useState(false);
+    const [searchProgress, setSearchProgress] = useState<string | null>(null);
+    const [streamingText, setStreamingText] = useState<string>('');
     const [aiResults, setAiResults] = useState<LLMResults | null>(null);
     const [showAIResults, setShowAIResults] = useState(false);
+    const [isGleanAuthenticated, setIsGleanAuthenticated] = useState(false);
+
+    // Check Glean status on mount and when query params change
+    useEffect(() => {
+        const checkStatus = async () => {
+            if (data?.settings?.ai?.provider === 'glean' && data?.settings?.ai?.glean_url) {
+                try {
+                    const status = await gleanAuthStatus(data.settings.ai.glean_url);
+                    setIsGleanAuthenticated(status);
+                } catch (err) {
+                    console.error('Failed to check Glean status:', err);
+                }
+            }
+        };
+
+        const params = new URLSearchParams(location.search);
+        if (params.get('glean_auth') === 'success') {
+            showAlert('Successfully authenticated with Glean!', 'success');
+            navigate('/support', { replace: true });
+        } else if (params.get('glean_error')) {
+            showAlert(`Glean authentication failed: ${params.get('glean_error')}`, 'error');
+            navigate('/support', { replace: true });
+        }
+
+        checkStatus();
+    }, [data?.settings?.ai, location.search, navigate, showAlert]);
+
+    const handleGleanLogin = async () => {
+        if (!data?.settings?.ai?.glean_url) {
+            showAlert('Glean URL not configured.', 'error');
+            return;
+        }
+        try {
+            await gleanAuthLogin(data.settings.ai.glean_url);
+        } catch (err: any) {
+            showAlert(`Glean login failed: ${err.message}`, 'error');
+        }
+    };
 
     // Automatic cleanup of expired issues
     useEffect(() => {
@@ -99,7 +140,14 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             return;
         }
 
+        if (data.settings.ai.provider === 'glean' && !isGleanAuthenticated) {
+            showAlert('Please connect to Glean first.', 'error');
+            return;
+        }
+
         setIsAISearching(true);
+        setSearchProgress('Preparing search prompt...');
+        setStreamingText('');
         try {
             const schema = {
                 "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -142,13 +190,27 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             };
 
             const prompt = `${data.settings.ai.support.prompt}\n\nReturn ONLY a JSON object matching this schema:\n${JSON.stringify(schema, null, 2)}`;
-            const resultText = await llmGenerate(prompt, data.settings);
             
+            let resultText: string;
+            if (data.settings.ai.provider === 'glean' && data.settings.ai.glean_url) {
+                setSearchProgress('Contacting Glean AI...');
+                const chatRes = await gleanChat(data.settings.ai.glean_url, prompt, (text) => {
+                    setStreamingText(text);
+                });
+                const aiMessage = chatRes.messages?.reverse().find((m: any) => m.author === 'GLEAN_AI');
+                resultText = aiMessage?.fragments?.[0]?.text || JSON.stringify(chatRes);
+            } else {
+                setSearchProgress(`Contacting ${data.settings.ai.provider} LLM...`);
+                resultText = await llmGenerate(prompt, data.settings);
+            }
+            
+            setSearchProgress('Analyzing and parsing results...');
             // Extract JSON from potential markdown code blocks
             const jsonMatch = resultText.match(/```json\s*([\s\S]*?)\s*```/) || resultText.match(/\{[\s\S]*\}/);
             const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : resultText;
             
             const results: LLMResults = JSON.parse(jsonStr);
+            setSearchProgress(`Found issues for ${results.customers?.length || 0} customers.`);
             setAiResults(results);
             setShowAIResults(true);
         } catch (err) {
@@ -157,6 +219,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             showAlert(`AI Search failed: ${errorMessage}`, 'error');
         } finally {
             setIsAISearching(false);
+            setSearchProgress(null);
         }
     };
 
@@ -391,7 +454,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
     ], []);
 
     const renderAIResults = () => {
-        if (!showAIResults || !aiResults) return null;
+        if (!isAISearching && (!showAIResults || !aiResults)) return null;
 
         return (
             <div style={{ 
@@ -402,85 +465,114 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                 padding: '16px'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h3 style={{ margin: 0, color: 'var(--accent-primary)' }}>AI Search Results</h3>
-                    <button 
-                        className="btn-secondary" 
-                        onClick={() => setShowAIResults(false)}
-                        style={{ fontSize: '12px', padding: '4px 8px' }}
-                    >
-                        Hide
-                    </button>
+                    <h3 style={{ margin: 0, color: 'var(--accent-primary)' }}>
+                        {isAISearching ? `AI Search in Progress: ${searchProgress || ''}` : 'AI Search Results'}
+                    </h3>
+                    {!isAISearching && (
+                        <button 
+                            className="btn-secondary" 
+                            onClick={() => setShowAIResults(false)}
+                            style={{ fontSize: '12px', padding: '4px 8px' }}
+                        >
+                            Hide
+                        </button>
+                    )}
                 </div>
+
+                {isAISearching && streamingText && (
+                    <div style={{ 
+                        marginBottom: '20px', 
+                        padding: '12px', 
+                        backgroundColor: 'rgba(0,0,0,0.2)', 
+                        borderRadius: '6px',
+                        border: '1px dashed var(--border-secondary)',
+                        fontFamily: 'monospace',
+                        fontSize: '12px',
+                        maxHeight: '300px',
+                        overflowY: 'auto',
+                        whiteSpace: 'pre-wrap',
+                        color: 'var(--text-secondary)'
+                    }}>
+                        <div style={{ color: 'var(--accent-primary)', marginBottom: '8px', fontWeight: 'bold', fontSize: '10px', textTransform: 'uppercase' }}>
+                            Raw Stream:
+                        </div>
+                        {streamingText}
+                    </div>
+                )}
                 
-                {aiResults.customers.length === 0 ? (
-                    <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>No new issues found by AI.</div>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        {aiResults.customers.map((lc, i) => {
-                            const match = findCustomerMatch(lc);
-                            return (
-                                <div key={i} style={{ borderBottom: '1px solid var(--border-secondary)', paddingBottom: '16px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                                        <span style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{lc.name}</span>
-                                        {lc.orgId && <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>({lc.orgId})</span>}
-                                        {match ? (
-                                            <span style={{ fontSize: '10px', backgroundColor: 'var(--status-success)', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>MATCHED: {match.name}</span>
-                                        ) : (
-                                            <span style={{ fontSize: '10px', backgroundColor: 'var(--status-danger)', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>NO MATCH</span>
-                                        )}
-                                    </div>
-                                    
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginLeft: '16px' }}>
-                                        {lc.issues.map((issue, j) => (
-                                            <div key={j} style={{ backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '6px', borderLeft: '3px solid var(--accent-primary)' }}>
-                                                <div style={{ fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '4px' }}>{issue.summary}</div>
-                                                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                                                    <strong>Impact:</strong> {issue.impact}<br/>
-                                                    <strong>Root Cause:</strong> {issue.rootCause}
-                                                </div>
-                                                {issue.jiraTickets.length > 0 && (
-                                                    <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
-                                                        {issue.jiraTickets.map(key => (
-                                                            <span key={key} style={{ fontSize: '10px', backgroundColor: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: '4px' }}>{key}</span>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                                
-                                                {match && (
-                                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                                        <button 
-                                                            className="btn-primary" 
-                                                            style={{ fontSize: '11px', padding: '4px 8px' }}
-                                                            onClick={() => handleCreateSupportItem(match, issue)}
-                                                        >
-                                                            Create New
-                                                        </button>
-                                                        
-                                                        {match.support_issues && match.support_issues.length > 0 && (
-                                                            <select 
-                                                                style={{ fontSize: '11px', padding: '4px 8px' }}
-                                                                onChange={(e) => {
-                                                                    if (e.target.value) {
-                                                                        handleUpdateSupportItem(match, e.target.value, issue);
-                                                                        e.target.value = '';
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <option value="">Update existing...</option>
-                                                                {match.support_issues.map(si => (
-                                                                    <option key={si.id} value={si.id}>{si.description.substring(0, 40)}...</option>
-                                                                ))}
-                                                            </select>
-                                                        )}
-                                                    </div>
+                {!isAISearching && aiResults && (
+                    <>
+                        {aiResults.customers.length === 0 ? (
+                            <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>No new issues found by AI.</div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                {aiResults.customers.map((lc, i) => {
+                                    const match = findCustomerMatch(lc);
+                                    return (
+                                        <div key={i} style={{ borderBottom: '1px solid var(--border-secondary)', paddingBottom: '16px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                                                <span style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{lc.name}</span>
+                                                {lc.orgId && <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>({lc.orgId})</span>}
+                                                {match ? (
+                                                    <span style={{ fontSize: '10px', backgroundColor: 'var(--status-success)', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>MATCHED: {match.name}</span>
+                                                ) : (
+                                                    <span style={{ fontSize: '10px', backgroundColor: 'var(--status-danger)', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>NO MATCH</span>
                                                 )}
                                             </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                            
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginLeft: '16px' }}>
+                                                {lc.issues.map((issue, j) => (
+                                                    <div key={j} style={{ backgroundColor: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '6px', borderLeft: '3px solid var(--accent-primary)' }}>
+                                                        <div style={{ fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '4px' }}>{issue.summary}</div>
+                                                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                                                            <strong>Impact:</strong> {issue.impact}<br/>
+                                                            <strong>Root Cause:</strong> {issue.rootCause}
+                                                        </div>
+                                                        {issue.jiraTickets.length > 0 && (
+                                                            <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+                                                                {issue.jiraTickets.map(key => (
+                                                                    <span key={key} style={{ fontSize: '10px', backgroundColor: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: '4px' }}>{key}</span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                        
+                                                        {match && (
+                                                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                                <button 
+                                                                    className="btn-primary" 
+                                                                    style={{ fontSize: '11px', padding: '4px 8px' }}
+                                                                    onClick={() => handleCreateSupportItem(match, issue)}
+                                                                >
+                                                                    Create New
+                                                                </button>
+                                                                
+                                                                {match.support_issues && match.support_issues.length > 0 && (
+                                                                    <select 
+                                                                        style={{ fontSize: '11px', padding: '4px 8px' }}
+                                                                        onChange={(e) => {
+                                                                            if (e.target.value) {
+                                                                                handleUpdateSupportItem(match, e.target.value, issue);
+                                                                                e.target.value = '';
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        <option value="">Update existing...</option>
+                                                                        {match.support_issues.map(si => (
+                                                                            <option key={si.id} value={si.id}>{si.description.substring(0, 40)}...</option>
+                                                                        ))}
+                                                                    </select>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         );
@@ -510,14 +602,25 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             columns={columns}
             additionalControls={
                 data?.settings?.ai?.provider && data?.settings?.ai?.support?.prompt ? (
-                    <button 
-                        className="btn-primary" 
-                        onClick={handleAISearch} 
-                        disabled={isAISearching}
-                        style={{ minWidth: '120px' }}
-                    >
-                        {isAISearching ? 'AI Searching...' : 'AI Support Search'}
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        {data.settings.ai.provider === 'glean' && !isGleanAuthenticated && (
+                            <button 
+                                className="btn-secondary" 
+                                onClick={handleGleanLogin}
+                                style={{ minWidth: '120px' }}
+                            >
+                                Connect Glean
+                            </button>
+                        )}
+                        <button 
+                            className="btn-primary" 
+                            onClick={handleAISearch} 
+                            disabled={isAISearching || (data.settings.ai.provider === 'glean' && !isGleanAuthenticated)}
+                            style={{ minWidth: '160px' }}
+                        >
+                            {isAISearching ? (searchProgress || 'AI Searching...') : 'AI Support Search'}
+                        </button>
+                    </div>
                 ) : null
             }
             renderBelowControls={renderAIResults}
