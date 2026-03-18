@@ -172,12 +172,13 @@ export interface PersistenceSettings {
 }
 
 export interface AISettings {
-  provider: 'openai' | 'gemini' | 'anthropic' | 'augment';
+  provider: 'openai' | 'gemini' | 'anthropic' | 'augment' | 'glean';
   api_key?: string;
   model?: string;
   support?: {
     prompt: string;
   };
+  glean_url?: string;
 }
 
 export interface Settings {

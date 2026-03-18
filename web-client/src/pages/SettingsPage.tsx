@@ -66,7 +66,7 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   jira: { base_url: '', api_version: '3', api_token: '', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
   aha: { subdomain: '', api_key: '' },
-  ai: { provider: 'openai', api_key: '', model: '', support: { prompt: '' } }
+  ai: { provider: 'openai', api_key: '', model: '', glean_url: '', support: { prompt: '' } }
 };
 
 interface MongoTestResult {

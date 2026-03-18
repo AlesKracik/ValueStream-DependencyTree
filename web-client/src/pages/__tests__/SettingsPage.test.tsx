@@ -639,7 +639,8 @@ describe('SettingsPage', () => {
             ai: {
                 ...mockSettings.ai,
                 provider: 'glean' as const,
-                api_key: 'test-token'
+                api_key: 'test-token',
+                glean_url: 'https://custom-glean.com'
             }
         };
 
@@ -657,6 +658,19 @@ describe('SettingsPage', () => {
 
         expect(screen.getByText(/Glean Session Token:/i)).toBeDefined();
         expect(screen.getByDisplayValue('test-token')).toBeDefined();
+        
+        expect(screen.getByLabelText(/Glean URL:/i)).toBeDefined();
+        expect(screen.getByDisplayValue('https://custom-glean.com')).toBeDefined();
+
+        const urlInput = screen.getByLabelText(/Glean URL:/i);
+        await act(async () => {
+            fireEvent.change(urlInput, { target: { value: 'https://new-glean.com' } });
+            fireEvent.blur(urlInput);
+        });
+
+        expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
+            ai: expect.objectContaining({ glean_url: 'https://new-glean.com' })
+        }));
         
         // Model input should be hidden for glean
         expect(screen.queryByLabelText(/LLM Model \(Optional\):/i)).toBeNull();
