@@ -54,19 +54,19 @@ export const llmRoutes: FastifyPluginAsync = async (fastify) => {
             'Cookie': `glean-session-store=${apiKey}` 
           },
           body: JSON.stringify({ 
-            messages: [{ author: 'USER', text: prompt }],
+            messages: [{ author: 'USER', fragments: [{ text: prompt }] }],
             stream: false
           })
         });
         
         if (!r.ok) {
-          const errData = await r.json().catch(() => ({}));
+          const errData = await r.json().catch(() => ({})) as any;
           throw new Error(errData?.error || `Glean API error: ${r.status}`);
         }
         
         const d = await r.json() as any;
         const aiMessage = d.messages?.reverse().find((m: any) => m.author === 'GLEAN_AI');
-        resultText = aiMessage?.text || '';
+        resultText = aiMessage?.fragments?.map((f: any) => f.text || '').join('') || aiMessage?.text || '';
       }
       
       return reply.send({ success: true, text: resultText });

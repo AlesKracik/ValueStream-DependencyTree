@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { FastifyInstance } from 'fastify';
 import { llmRoutes } from '../llm';
 import fastify from 'fastify';
@@ -16,6 +16,9 @@ vi.mock('fs', () => ({
   }
 }));
 
+// Global fetch is available in Node 18+ and Vitest environment
+const originalFetch = global.fetch;
+
 describe('llmRoutes', () => {
   let app: FastifyInstance;
 
@@ -23,16 +26,24 @@ describe('llmRoutes', () => {
     app = fastify();
     await app.register(llmRoutes);
     vi.clearAllMocks();
+    global.fetch = vi.fn();
   });
 
-  it('calls glean CLI when glean provider is selected', async () => {
+  afterAll(() => {
+    global.fetch = originalFetch;
+  });
+
+  it('calls glean API when glean provider is selected', async () => {
     (fs.existsSync as any).mockReturnValue(true);
     (fs.readFileSync as any).mockReturnValue(JSON.stringify({
       ai: { provider: 'glean', api_key: 'test-session-token' }
     }));
     
-    (exec as any).mockImplementation((cmd: string, options: any, cb: any) => {
-      cb(null, { stdout: 'Glean response' });
+    (global.fetch as any).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        messages: [{ author: 'GLEAN_AI', fragments: [{ text: 'Glean API response' }] }]
+      })
     });
 
     const response = await app.inject({
@@ -47,14 +58,16 @@ describe('llmRoutes', () => {
     expect(response.statusCode).toBe(200);
     const data = JSON.parse(response.body);
     expect(data.success).toBe(true);
-    expect(data.text).toBe('Glean response');
+    expect(data.text).toBe('Glean API response');
     
-    expect(exec).toHaveBeenCalledWith(
-        expect.stringContaining('npx --no-install glean'),
+    expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('glean.com/rest/api/v1/chat'),
         expect.objectContaining({
-            env: expect.objectContaining({ GLEAN_SESSION_TOKEN: 'test-session-token' })
-        }),
-        expect.any(Function)
+            headers: expect.objectContaining({ 
+                'Cookie': 'glean-session-store=test-session-token' 
+            }),
+            body: expect.stringContaining('"fragments":[{"text":"Hello AI"}]')
+        })
     );
   });
 });

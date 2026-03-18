@@ -48,7 +48,7 @@ The backend encapsulates complex business logic (RICE scoring, fiscal quarter ma
 #### Integrations
 - `POST /api/jira/issue`: Fetches details for a specific Jira key.
 - `POST /api/jira/search`: Executes a JQL search.
-- `POST /api/llm/generate`: Generates text using OpenAI, Gemini, or Augment.
+- `POST /api/llm/generate`: Generates text using OpenAI, Gemini, Augment, or Glean.
 - `POST /api/aws/sso/*`: Manages AWS SSO authentication for secure MongoDB tunneling via device-code flow.
 
 ### Business Logic & Metrics
