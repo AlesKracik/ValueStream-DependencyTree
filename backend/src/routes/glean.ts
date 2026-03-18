@@ -48,6 +48,10 @@ export async function gleanRoutes(app: FastifyInstance) {
       if (!authServerUrl) throw new Error('No authorization server found in discovery data');
 
       const authServerBase = authServerUrl.replace(/\/$/, '');
+      const discoveryBases = [
+        authServerBase,
+        normalizedUrl
+      ];
       const discoveryPaths = [
         '/.well-known/oauth-authorization-server',
         '/.well-known/openid-configuration'
@@ -56,23 +60,32 @@ export async function gleanRoutes(app: FastifyInstance) {
       let discoveryRes: any;
       let discoveryUrl = '';
       
-      for (const path of discoveryPaths) {
-        discoveryUrl = `${authServerBase}${path}`;
-        app.log.info(`Trying discovery at ${discoveryUrl}`);
-        try {
-          const res = await fetch(discoveryUrl);
-          if (res.ok) {
-            discoveryRes = res;
-            break;
+      // Try combinations of bases and paths
+      for (const base of discoveryBases) {
+        for (const path of discoveryPaths) {
+          discoveryUrl = `${base}${path}`;
+          app.log.info(`Trying discovery at ${discoveryUrl}`);
+          try {
+            const res = await fetch(discoveryUrl);
+            if (res.ok) {
+              const contentType = res.headers.get('content-type') || '';
+              if (contentType.includes('application/json')) {
+                discoveryRes = res;
+                break;
+              }
+              app.log.warn(`Discovery at ${discoveryUrl} returned success but wrong content-type: ${contentType}`);
+            } else {
+              app.log.warn(`Discovery at ${discoveryUrl} returned ${res.status} ${res.statusText}`);
+            }
+          } catch (e: any) {
+            app.log.warn(`Discovery at ${discoveryUrl} failed: ${e.message}`);
           }
-          app.log.warn(`Discovery at ${discoveryUrl} returned ${res.status} ${res.statusText}`);
-        } catch (e: any) {
-          app.log.warn(`Discovery at ${discoveryUrl} failed: ${e.message}`);
         }
+        if (discoveryRes) break;
       }
 
       if (!discoveryRes) {
-        throw new Error(`Glean discovery failed: No authorization server metadata found at ${authServerBase} (tried ${discoveryPaths.join(', ')})`);
+        throw new Error(`Glean discovery failed: No valid JSON metadata found at ${authServerBase} or ${normalizedUrl}`);
       }
       
       let discoveryData: { 
