@@ -282,17 +282,26 @@ export async function gleanRoutes(app: FastifyInstance) {
       if (stream && chatRes.body) {
         reply.raw.writeHead(200, {
           'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
+          'Cache-Control': 'no-cache, no-transform',
           'Connection': 'keep-alive',
+          'X-Content-Type-Options': 'nosniff',
+          'X-Accel-Buffering': 'no'
         });
         
         const reader = chatRes.body.getReader();
         let chunkCount = 0;
+        const decoder = new TextDecoder();
+        
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
+          
           chunkCount++;
-          if (chunkCount % 10 === 0) app.log.info(`Sent ${chunkCount} chunks to client`);
+          if (chunkCount === 1 || chunkCount % 100 === 0) {
+            const sample = decoder.decode(value.slice(0, 100));
+            app.log.info(`Sent chunk ${chunkCount}, sample: ${sample.replace(/\n/g, '\\n')}`);
+          }
+          
           reply.raw.write(value);
         }
         reply.raw.end();

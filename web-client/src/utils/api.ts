@@ -153,36 +153,47 @@ export const gleanChat = async (gleanUrl: string, prompt: string, onStream?: (te
         let fullText = '';
         let buffer = '';
         
+        console.log('[GLEAN_DEBUG] Starting stream reader');
+        
         while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+                console.log('[GLEAN_DEBUG] Stream reader done');
+                break;
+            }
             
-            buffer += decoder.decode(value, { stream: true });
+            const chunk = decoder.decode(value, { stream: true });
+            console.log(`[GLEAN_DEBUG] Received chunk (${value.length} bytes):`, chunk);
+            buffer += chunk;
+            
             const lines = buffer.split('\n');
-            
             // Keep the last partial line in the buffer
             buffer = lines.pop() || '';
             
             for (const line of lines) {
                 const trimmed = line.trim();
-                if (!trimmed || !trimmed.startsWith('data: ')) continue;
+                if (!trimmed) continue;
                 
-                try {
-                    const dataStr = trimmed.slice(6);
-                    console.log('[GLEAN_DEBUG] Stream line:', dataStr);
-                    const data = JSON.parse(dataStr);
-                    // The structure depends on Glean API
-                    // often it's messages[0].fragments[0].text
-                    const text = data.messages?.[0]?.fragments?.[0]?.text || '';
-                    if (text) {
-                        fullText += text;
-                        onStream(fullText);
+                console.log('[GLEAN_DEBUG] Processing line:', trimmed);
+                
+                // Glean might use 'data: ' or 'data:'
+                if (trimmed.startsWith('data:')) {
+                    try {
+                        const dataStr = trimmed.startsWith('data: ') ? trimmed.slice(6) : trimmed.slice(5);
+                        const data = JSON.parse(dataStr);
+                        // The structure depends on Glean API
+                        const text = data.messages?.[0]?.fragments?.[0]?.text || '';
+                        if (text) {
+                            fullText += text;
+                            onStream(fullText);
+                        }
+                    } catch (e) {
+                        console.warn('[GLEAN_DEBUG] Failed to parse JSON from line:', trimmed, e);
                     }
-                } catch (e) {
-                    // Not all lines are valid JSON or have the expected structure
                 }
             }
         }
+        console.log('[GLEAN_DEBUG] Final fullText length:', fullText.length);
         return { messages: [{ author: 'GLEAN_AI', fragments: [{ text: fullText }] }] };
     }
 
