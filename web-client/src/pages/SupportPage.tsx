@@ -6,6 +6,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { llmGenerate, gleanAuthLogin, gleanAuthStatus, gleanChat } from '../utils/api';
 import { generateId } from '../utils/security';
 import { useValueStreamContext } from '../contexts/ValueStreamContext';
+import { extractFirstJSONObject } from '../utils/businessLogic';
 
 interface Props {
     data: ValueStreamData | null;
@@ -209,9 +210,9 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                 throw new Error('AI returned an empty response.');
             }
 
-            // Extract JSON from potential markdown code blocks
-            const jsonMatch = resultText.match(/```json\s*([\s\S]*?)\s*```/) || resultText.match(/\{[\s\S]*\}/);
-            const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : resultText;
+            // Extract JSON from potential markdown code blocks or raw text
+            const jsonMatch = resultText.match(/```json\s*([\s\S]*?)\s*```/);
+            const jsonStr = extractFirstJSONObject(jsonMatch ? jsonMatch[1] : resultText);
             
             try {
                 const results: LLMResults = JSON.parse(jsonStr);

@@ -256,3 +256,55 @@ export const calculateIssueIntensityRatio = (actualEffort: number, baselineEffor
     }
     return actualEffort > 0 ? 2 : 1;
 };
+
+/**
+ * Extracts the first valid JSON object from a string by balancing braces.
+ * This is more robust than regex for "messy" LLM output that might include
+ * conversational filler or trailing characters.
+ */
+export const extractFirstJSONObject = (str: string): string => {
+    const firstOpen = str.indexOf('{');
+    if (firstOpen === -1) return str;
+
+    let balance = 0;
+    let inString = false;
+    let escape = false;
+
+    for (let i = firstOpen; i < str.length; i++) {
+        const char = str[i];
+
+        if (escape) {
+            escape = false;
+            continue;
+        }
+
+        if (char === '\\') {
+            escape = true;
+            continue;
+        }
+
+        if (char === '"') {
+            inString = !inString;
+            continue;
+        }
+
+        if (!inString) {
+            if (char === '{') balance++;
+            else if (char === '}') {
+                balance--;
+                if (balance === 0) {
+                    // Found the closing brace for the first open brace
+                    return str.substring(firstOpen, i + 1);
+                }
+            }
+        }
+    }
+
+    // Fallback if not balanced properly, try to find the last }
+    const lastClose = str.lastIndexOf('}');
+    if (lastClose > firstOpen) {
+        return str.substring(firstOpen, lastClose + 1);
+    }
+
+    return str;
+};
