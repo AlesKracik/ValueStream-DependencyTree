@@ -47,10 +47,33 @@ export async function gleanRoutes(app: FastifyInstance) {
       const authServerUrl = resourceData.authorization_servers?.[0];
       if (!authServerUrl) throw new Error('No authorization server found in discovery data');
 
-      const discoveryUrl = `${authServerUrl.replace(/\/$/, '')}/.well-known/oauth-authorization-server/oauth`;
-      app.log.info(`Fetching oauth-authorization-server from ${discoveryUrl}`);
-      const discoveryRes = await fetch(discoveryUrl);
-      if (!discoveryRes.ok) throw new Error(`Failed to fetch oauth-authorization-server from ${discoveryUrl}: ${discoveryRes.status} ${discoveryRes.statusText}`);
+      const authServerBase = authServerUrl.replace(/\/$/, '');
+      const discoveryPaths = [
+        '/.well-known/oauth-authorization-server',
+        '/.well-known/openid-configuration'
+      ];
+
+      let discoveryRes: any;
+      let discoveryUrl = '';
+      
+      for (const path of discoveryPaths) {
+        discoveryUrl = `${authServerBase}${path}`;
+        app.log.info(`Trying discovery at ${discoveryUrl}`);
+        try {
+          const res = await fetch(discoveryUrl);
+          if (res.ok) {
+            discoveryRes = res;
+            break;
+          }
+          app.log.warn(`Discovery at ${discoveryUrl} returned ${res.status} ${res.statusText}`);
+        } catch (e: any) {
+          app.log.warn(`Discovery at ${discoveryUrl} failed: ${e.message}`);
+        }
+      }
+
+      if (!discoveryRes) {
+        throw new Error(`Glean discovery failed: No authorization server metadata found at ${authServerBase} (tried ${discoveryPaths.join(', ')})`);
+      }
       
       let discoveryData: { 
         authorization_endpoint: string; 
@@ -61,8 +84,8 @@ export async function gleanRoutes(app: FastifyInstance) {
         discoveryData = await discoveryRes.json() as any;
       } catch (e) {
         const text = await discoveryRes.text().catch(() => 'unavailable');
-        app.log.error(`Failed to parse oauth-authorization-server from ${discoveryUrl}. Response: ${text.substring(0, 500)}`);
-        throw new Error(`Glean discovery failed at auth server: expected JSON but received ${discoveryRes.headers.get('content-type')}`);
+        app.log.error(`Failed to parse discovery response from ${discoveryUrl}. Response: ${text.substring(0, 500)}`);
+        throw new Error(`Glean discovery failed at ${discoveryUrl}: expected JSON but received ${discoveryRes.headers.get('content-type')}`);
       }
 
       // Dynamic Client Registration (DCR)
