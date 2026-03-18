@@ -62,9 +62,10 @@ export const llmRoutes: FastifyPluginAsync = async (fastify) => {
           token = await refreshGleanToken(normalizedUrl, token, gleanState);
         }
 
-        const d = await gleanChatRequest(normalizedUrl, token.access_token, [
+        const res = await gleanChatRequest(normalizedUrl, token.access_token, [
           { author: 'USER', fragments: [{ text: prompt }] }
         ]);
+        const d = await res.json() as any;
         
         const aiMessage = d.messages?.reverse().find((m: any) => m.author === 'GLEAN_AI');
         resultText = aiMessage?.fragments?.map((f: any) => f.text || '').join('') || aiMessage?.text || '';
