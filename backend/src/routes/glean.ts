@@ -29,21 +29,41 @@ export async function gleanRoutes(app: FastifyInstance) {
 
     try {
       const normalizedUrl = gleanUrl.replace(/\/$/, '');
+      app.log.info(`Initializing Glean auth for ${normalizedUrl}`);
       
       // Discovery
       const resourceRes = await fetch(`${normalizedUrl}/.well-known/oauth-protected-resource`);
-      if (!resourceRes.ok) throw new Error(`Failed to fetch oauth-protected-resource from ${normalizedUrl}`);
-      const resourceData = await resourceRes.json() as { authorization_servers?: string[] };
+      if (!resourceRes.ok) throw new Error(`Failed to fetch oauth-protected-resource from ${normalizedUrl}: ${resourceRes.status} ${resourceRes.statusText}`);
+      
+      let resourceData: { authorization_servers?: string[] };
+      try {
+        resourceData = await resourceRes.json() as any;
+      } catch (e) {
+        const text = await resourceRes.text().catch(() => 'unavailable');
+        app.log.error(`Failed to parse oauth-protected-resource from ${normalizedUrl}. Response: ${text.substring(0, 500)}`);
+        throw new Error(`Glean discovery failed: expected JSON but received ${resourceRes.headers.get('content-type')}`);
+      }
+      
       const authServerUrl = resourceData.authorization_servers?.[0];
-      if (!authServerUrl) throw new Error('No authorization server found');
+      if (!authServerUrl) throw new Error('No authorization server found in discovery data');
 
-      const discoveryRes = await fetch(`${authServerUrl.replace(/\/$/, '')}/.well-known/oauth-authorization-server/oauth`);
-      if (!discoveryRes.ok) throw new Error('Failed to fetch oauth-authorization-server');
-      const discoveryData = await discoveryRes.json() as { 
+      const discoveryUrl = `${authServerUrl.replace(/\/$/, '')}/.well-known/oauth-authorization-server/oauth`;
+      app.log.info(`Fetching oauth-authorization-server from ${discoveryUrl}`);
+      const discoveryRes = await fetch(discoveryUrl);
+      if (!discoveryRes.ok) throw new Error(`Failed to fetch oauth-authorization-server from ${discoveryUrl}: ${discoveryRes.status} ${discoveryRes.statusText}`);
+      
+      let discoveryData: { 
         authorization_endpoint: string; 
         token_endpoint: string; 
         registration_endpoint: string;
       };
+      try {
+        discoveryData = await discoveryRes.json() as any;
+      } catch (e) {
+        const text = await discoveryRes.text().catch(() => 'unavailable');
+        app.log.error(`Failed to parse oauth-authorization-server from ${discoveryUrl}. Response: ${text.substring(0, 500)}`);
+        throw new Error(`Glean discovery failed at auth server: expected JSON but received ${discoveryRes.headers.get('content-type')}`);
+      }
 
       // Dynamic Client Registration (DCR)
       const gleanState = getGleanSettings();
@@ -62,11 +82,18 @@ export async function gleanRoutes(app: FastifyInstance) {
         });
 
         if (!registrationRes.ok) {
-          const err = await registrationRes.text();
-          throw new Error(`Registration failed: ${err}`);
+          const err = await registrationRes.text().catch(() => 'unknown error');
+          throw new Error(`Registration failed: ${registrationRes.status} ${registrationRes.statusText} - ${err}`);
         }
 
-        const registrationData = await registrationRes.json() as GleanClientCredentials;
+        let registrationData: GleanClientCredentials;
+        try {
+          registrationData = await registrationRes.json() as any;
+        } catch (e) {
+          const text = await registrationRes.text().catch(() => 'unavailable');
+          app.log.error(`Failed to parse registration response from ${discoveryData.registration_endpoint}. Response: ${text.substring(0, 500)}`);
+          throw new Error(`Registration failed: expected JSON but received ${registrationRes.headers.get('content-type')}`);
+        }
         client = {
           ...registrationData,
           registration_endpoint: discoveryData.registration_endpoint,
@@ -137,11 +164,18 @@ export async function gleanRoutes(app: FastifyInstance) {
       });
 
       if (!tokenRes.ok) {
-        const err = await tokenRes.text();
-        throw new Error(`Token exchange failed: ${err}`);
+        const err = await tokenRes.text().catch(() => 'unknown error');
+        throw new Error(`Token exchange failed: ${tokenRes.status} ${tokenRes.statusText} - ${err}`);
       }
 
-      const tokenData = await tokenRes.json() as GleanTokenResponse;
+      let tokenData: GleanTokenResponse;
+      try {
+        tokenData = await tokenRes.json() as any;
+      } catch (e) {
+        const text = await tokenRes.text().catch(() => 'unavailable');
+        app.log.error(`Failed to parse token response from ${client.token_endpoint}. Response: ${text.substring(0, 500)}`);
+        throw new Error(`Token exchange failed: expected JSON but received ${tokenRes.headers.get('content-type')}`);
+      }
       
       gleanState.tokens[pkce.gleanUrl] = {
         access_token: tokenData.access_token,
@@ -225,7 +259,14 @@ export async function gleanRoutes(app: FastifyInstance) {
         return reply;
       }
 
-      const data = await chatRes.json();
+      let data: any;
+      try {
+        data = await chatRes.json();
+      } catch (e) {
+        const text = await chatRes.text().catch(() => 'unavailable');
+        app.log.error(`Failed to parse chat response from ${normalizedUrl}. Response: ${text.substring(0, 500)}`);
+        throw new Error(`Glean chat failed: expected JSON but received ${chatRes.headers.get('content-type')}`);
+      }
       return data;
     } catch (err: any) {
       app.log.error(err);

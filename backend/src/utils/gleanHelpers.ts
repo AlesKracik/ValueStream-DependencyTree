@@ -52,12 +52,20 @@ export async function refreshGleanToken(normalizedUrl: string, token: any, glean
   });
 
   if (!refreshRes.ok) {
+    const err = await refreshRes.text().catch(() => 'unknown error');
     delete gleanState.tokens[normalizedUrl];
     saveGleanSettings(gleanState);
-    throw new Error('Failed to refresh Glean token');
+    throw new Error(`Failed to refresh Glean token: ${refreshRes.status} ${refreshRes.statusText} - ${err}`);
   }
 
-  const tokenData = await refreshRes.json() as GleanTokenResponse;
+  let tokenData: GleanTokenResponse;
+  try {
+    tokenData = await refreshRes.json() as any;
+  } catch (e) {
+    const text = await refreshRes.text().catch(() => 'unavailable');
+    console.error(`Failed to parse refresh token response from ${token.token_endpoint}. Response: ${text.substring(0, 500)}`);
+    throw new Error(`Refresh token failed: expected JSON but received ${refreshRes.headers.get('content-type')}`);
+  }
   const newToken = {
     ...token,
     access_token: tokenData.access_token,
