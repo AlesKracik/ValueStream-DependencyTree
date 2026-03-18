@@ -605,9 +605,9 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                     <div style={{ display: 'flex', gap: '8px' }}>
                         {data.settings.ai.provider === 'glean' && !isGleanAuthenticated && (
                             <button 
-                                className="btn-secondary" 
+                                className="btn-primary" 
                                 onClick={handleGleanLogin}
-                                style={{ minWidth: '120px' }}
+                                style={{ minWidth: '160px' }}
                             >
                                 Connect Glean
                             </button>
