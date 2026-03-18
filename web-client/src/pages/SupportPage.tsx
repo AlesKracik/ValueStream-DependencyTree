@@ -205,14 +205,23 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             }
             
             setSearchProgress('Analyzing and parsing results...');
+            if (!resultText) {
+                throw new Error('AI returned an empty response.');
+            }
+
             // Extract JSON from potential markdown code blocks
             const jsonMatch = resultText.match(/```json\s*([\s\S]*?)\s*```/) || resultText.match(/\{[\s\S]*\}/);
             const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : resultText;
             
-            const results: LLMResults = JSON.parse(jsonStr);
-            setSearchProgress(`Found issues for ${results.customers?.length || 0} customers.`);
-            setAiResults(results);
-            setShowAIResults(true);
+            try {
+                const results: LLMResults = JSON.parse(jsonStr);
+                setSearchProgress(`Found issues for ${results.customers?.length || 0} customers.`);
+                setAiResults(results);
+                setShowAIResults(true);
+            } catch (e) {
+                console.error('Failed to parse AI JSON:', e, 'Original text:', resultText);
+                throw new Error(`Failed to parse AI response as JSON: ${e instanceof Error ? e.message : String(e)}`);
+            }
         } catch (err) {
             console.error('AI search failed:', err);
             const errorMessage = err instanceof Error ? err.message : String(err);
@@ -502,7 +511,17 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                 
                 {!isAISearching && aiResults && (
                     <>
-                        {aiResults.customers.length === 0 ? (
+                        {!aiResults.customers ? (
+                            <div style={{ padding: '20px', backgroundColor: 'rgba(255,0,0,0.1)', borderRadius: '6px', border: '1px solid var(--status-danger)' }}>
+                                <div style={{ color: 'var(--status-danger)', fontWeight: 'bold', marginBottom: '8px' }}>Invalid AI Response Format</div>
+                                <div style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '12px' }}>
+                                    The AI returned a response but it did not match the required JSON schema (missing "customers" property).
+                                </div>
+                                <div style={{ fontSize: '12px', fontFamily: 'monospace', backgroundColor: 'rgba(0,0,0,0.3)', padding: '10px', borderRadius: '4px', overflowX: 'auto' }}>
+                                    {JSON.stringify(aiResults, null, 2)}
+                                </div>
+                            </div>
+                        ) : aiResults.customers.length === 0 ? (
                             <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>No new issues found by AI.</div>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

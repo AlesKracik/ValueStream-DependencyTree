@@ -151,27 +151,33 @@ export const gleanChat = async (gleanUrl: string, prompt: string, onStream?: (te
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let fullText = '';
+        let buffer = '';
         
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             
-            const chunk = decoder.decode(value, { stream: true });
-            // Glean SSE format: data: {...}
-            const lines = chunk.split('\n');
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            
+            // Keep the last partial line in the buffer
+            buffer = lines.pop() || '';
+            
             for (const line of lines) {
-                if (line.startsWith('data: ')) {
-                    try {
-                        const data = JSON.parse(line.slice(6));
-                        // The structure depends on Glean API, usually messages[0].fragments[0].text
-                        const text = data.messages?.[0]?.fragments?.[0]?.text || '';
-                        if (text) {
-                            fullText += text;
-                            onStream(fullText);
-                        }
-                    } catch (e) {
-                        // Not all lines are valid JSON or have the expected structure
+                const trimmed = line.trim();
+                if (!trimmed || !trimmed.startsWith('data: ')) continue;
+                
+                try {
+                    const data = JSON.parse(trimmed.slice(6));
+                    // The structure depends on Glean API
+                    // Often it's messages[0].fragments[0].text
+                    const text = data.messages?.[0]?.fragments?.[0]?.text || '';
+                    if (text) {
+                        fullText += text;
+                        onStream(fullText);
                     }
+                } catch (e) {
+                    // Not all lines are valid JSON or have the expected structure
                 }
             }
         }
