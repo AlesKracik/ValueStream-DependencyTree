@@ -577,7 +577,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                                                         {match && (
                                                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                                                 <button 
-                                                                    className="btn-secondary" 
+                                                                    className="btn-danger" 
                                                                     style={{ fontSize: '11px', padding: '4px 8px' }}
                                                                     onClick={() => removeProcessedIssue(lc.orgId, issue.summary)}
                                                                 >
