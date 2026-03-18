@@ -576,6 +576,13 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                                                         {match && (
                                                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                                                 <button 
+                                                                    className="btn-secondary" 
+                                                                    style={{ fontSize: '11px', padding: '4px 8px' }}
+                                                                    onClick={() => removeProcessedIssue(lc.orgId, issue.summary)}
+                                                                >
+                                                                    Dismiss
+                                                                </button>
+                                                                <button 
                                                                     className="btn-primary" 
                                                                     style={{ fontSize: '11px', padding: '4px 8px' }}
                                                                     onClick={() => handleCreateSupportItem(match, issue, lc.orgId)}
