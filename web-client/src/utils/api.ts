@@ -153,17 +153,11 @@ export const gleanChat = async (gleanUrl: string, prompt: string, onStream?: (te
         let fullText = '';
         let buffer = '';
         
-        console.log('[GLEAN_DEBUG] Starting stream reader');
-        
         while (true) {
             const { done, value } = await reader.read();
-            if (done) {
-                console.log('[GLEAN_DEBUG] Stream reader done');
-                break;
-            }
+            if (done) break;
             
             const chunk = decoder.decode(value, { stream: true });
-            console.log(`[GLEAN_DEBUG] Received chunk (${value.length} bytes):`, chunk);
             buffer += chunk;
             
             const lines = buffer.split('\n');
@@ -173,8 +167,6 @@ export const gleanChat = async (gleanUrl: string, prompt: string, onStream?: (te
             for (const line of lines) {
                 const trimmed = line.trim();
                 if (!trimmed) continue;
-                
-                console.log('[GLEAN_DEBUG] Processing line:', trimmed);
                 
                 try {
                     // Try to parse as SSE first, then fallback to raw JSON
@@ -198,7 +190,6 @@ export const gleanChat = async (gleanUrl: string, prompt: string, onStream?: (te
                 }
             }
         }
-        console.log('[GLEAN_DEBUG] Final fullText length:', fullText.length);
         return { messages: [{ author: 'GLEAN_AI', fragments: [{ text: fullText }] }] };
     }
 

@@ -289,19 +289,9 @@ export async function gleanRoutes(app: FastifyInstance) {
         });
         
         const reader = chatRes.body.getReader();
-        let chunkCount = 0;
-        const decoder = new TextDecoder();
-        
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          
-          chunkCount++;
-          if (chunkCount === 1 || chunkCount % 100 === 0) {
-            const sample = decoder.decode(value.slice(0, 100));
-            app.log.info(`Sent chunk ${chunkCount}, sample: ${sample.replace(/\n/g, '\\n')}`);
-          }
-          
           reply.raw.write(value);
         }
         reply.raw.end();

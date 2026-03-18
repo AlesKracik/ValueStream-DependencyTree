@@ -84,9 +84,6 @@ export async function gleanChatRequest(normalizedUrl: string, accessToken: strin
     messages
   });
 
-  console.log(`[GLEAN_DEBUG] Request to ${url}`);
-  console.log(`[GLEAN_DEBUG] Body: ${body}`);
-
   const chatRes = await fetch(url, {
     method: 'POST',
     headers: {
