@@ -167,21 +167,22 @@ export async function gleanRoutes(app: FastifyInstance) {
   // 2. OAuth Callback
   app.get('/api/glean/auth/callback', async (req: FastifyRequest<{ Querystring: { code: string; state: string; error?: string } }>, reply) => {
     const { code, state, error } = req.query;
+    const frontendBase = (process.env.GLEAN_FRONTEND_BASE_URL || 'http://localhost:5173').replace(/\/$/, '');
 
     if (error) {
-      return reply.redirect(`/support?glean_error=${encodeURIComponent(error)}`);
+      return reply.redirect(`${frontendBase}/support?glean_error=${encodeURIComponent(error)}`);
     }
 
     const pkce = pkceStore[state];
     if (!pkce) {
-      return reply.redirect(`/support?glean_error=invalid_state`);
+      return reply.redirect(`${frontendBase}/support?glean_error=invalid_state`);
     }
     delete pkceStore[state];
 
     const gleanState = getGleanSettings();
     const client = gleanState.clients[pkce.gleanUrl];
     if (!client) {
-      return reply.redirect(`/support?glean_error=client_missing`);
+      return reply.redirect(`${frontendBase}/support?glean_error=client_missing`);
     }
 
     try {
@@ -224,10 +225,10 @@ export async function gleanRoutes(app: FastifyInstance) {
       saveGleanSettings(gleanState);
 
       // Redirect back to support page - the frontend will check status
-      return reply.redirect('/support?glean_auth=success');
+      return reply.redirect(`${frontendBase}/support?glean_auth=success`);
     } catch (err: any) {
       app.log.error(err);
-      return reply.redirect(`/support?glean_error=${encodeURIComponent(err.message)}`);
+      return reply.redirect(`${frontendBase}/support?glean_error=${encodeURIComponent(err.message)}`);
     }
   });
 
