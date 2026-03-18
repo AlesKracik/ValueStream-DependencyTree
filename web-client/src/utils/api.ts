@@ -176,18 +176,23 @@ export const gleanChat = async (gleanUrl: string, prompt: string, onStream?: (te
                 
                 console.log('[GLEAN_DEBUG] Processing line:', trimmed);
                 
-                // Glean might use 'data: ' or 'data:'
-                if (trimmed.startsWith('data:')) {
-                    try {
-                        const dataStr = trimmed.startsWith('data: ') ? trimmed.slice(6) : trimmed.slice(5);
-                        const data = JSON.parse(dataStr);
-                        // The structure depends on Glean API
-                        const text = data.messages?.[0]?.fragments?.[0]?.text || '';
-                        if (text) {
-                            fullText += text;
-                            onStream(fullText);
-                        }
-                    } catch (e) {
+                try {
+                    // Try to parse as SSE first, then fallback to raw JSON
+                    let dataStr = trimmed;
+                    if (trimmed.startsWith('data:')) {
+                        dataStr = trimmed.startsWith('data: ') ? trimmed.slice(6) : trimmed.slice(5);
+                    }
+                    
+                    const data = JSON.parse(dataStr);
+                    // Extract text from messages array
+                    const text = data.messages?.[0]?.fragments?.[0]?.text || '';
+                    if (text) {
+                        fullText += text;
+                        onStream(fullText);
+                    }
+                } catch (e) {
+                    // Only log if it really looks like it should have been JSON
+                    if (trimmed.startsWith('{') || trimmed.startsWith('data:')) {
                         console.warn('[GLEAN_DEBUG] Failed to parse JSON from line:', trimmed, e);
                     }
                 }
