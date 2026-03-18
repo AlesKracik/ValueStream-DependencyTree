@@ -287,9 +287,12 @@ export async function gleanRoutes(app: FastifyInstance) {
         });
         
         const reader = chatRes.body.getReader();
+        let chunkCount = 0;
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
+          chunkCount++;
+          if (chunkCount % 10 === 0) app.log.info(`Sent ${chunkCount} chunks to client`);
           reply.raw.write(value);
         }
         reply.raw.end();

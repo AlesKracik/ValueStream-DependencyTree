@@ -78,16 +78,23 @@ export async function refreshGleanToken(normalizedUrl: string, token: any, glean
 }
 
 export async function gleanChatRequest(normalizedUrl: string, accessToken: string, messages: any[], stream: boolean = false) {
-  const chatRes = await fetch(`${normalizedUrl}/rest/api/v1/chat`, {
+  const url = `${normalizedUrl}/rest/api/v1/chat`;
+  const body = JSON.stringify({
+    stream,
+    messages
+  });
+
+  console.log(`[GLEAN_DEBUG] Request to ${url}`);
+  console.log(`[GLEAN_DEBUG] Body: ${body}`);
+
+  const chatRes = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`
+      'Authorization': `Bearer ${accessToken}`,
+      'X-Glean-Auth-Type': 'OAUTH'
     },
-    body: JSON.stringify({
-      stream,
-      messages
-    })
+    body
   });
 
   if (!chatRes.ok) {

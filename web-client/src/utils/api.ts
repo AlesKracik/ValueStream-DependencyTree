@@ -168,9 +168,11 @@ export const gleanChat = async (gleanUrl: string, prompt: string, onStream?: (te
                 if (!trimmed || !trimmed.startsWith('data: ')) continue;
                 
                 try {
-                    const data = JSON.parse(trimmed.slice(6));
+                    const dataStr = trimmed.slice(6);
+                    console.log('[GLEAN_DEBUG] Stream line:', dataStr);
+                    const data = JSON.parse(dataStr);
                     // The structure depends on Glean API
-                    // Often it's messages[0].fragments[0].text
+                    // often it's messages[0].fragments[0].text
                     const text = data.messages?.[0]?.fragments?.[0]?.text || '';
                     if (text) {
                         fullText += text;
