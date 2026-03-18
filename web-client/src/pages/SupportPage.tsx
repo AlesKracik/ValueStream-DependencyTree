@@ -232,7 +232,23 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         }
     };
 
-    const handleCreateSupportItem = async (customer: Customer, llmIssue: LLMIssue) => {
+    const removeProcessedIssue = (customerOrgId: string, summary: string) => {
+        if (!aiResults) return;
+        
+        const updatedCustomers = aiResults.customers.map(c => {
+            if (c.orgId === customerOrgId) {
+                return {
+                    ...c,
+                    issues: c.issues.filter(i => i.summary !== summary)
+                };
+            }
+            return c;
+        }).filter(c => c.issues.length > 0);
+
+        setAiResults({ customers: updatedCustomers });
+    };
+
+    const handleCreateSupportItem = async (customer: Customer, llmIssue: LLMIssue, customerOrgId: string) => {
         const newIssue: SupportIssue = {
             id: generateId('si'),
             description: `${llmIssue.summary}\n\nImpact: ${llmIssue.impact}\nRoot Cause: ${llmIssue.rootCause}`,
@@ -244,10 +260,11 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
 
         const updatedIssues = [...(customer.support_issues || []), newIssue];
         await updateCustomer(customer.id, { support_issues: updatedIssues }, true);
+        removeProcessedIssue(customerOrgId, llmIssue.summary);
         showAlert(`Created support item for ${customer.name}`, 'success');
     };
 
-    const handleUpdateSupportItem = async (customer: Customer, issueId: string, llmIssue: LLMIssue) => {
+    const handleUpdateSupportItem = async (customer: Customer, issueId: string, llmIssue: LLMIssue, customerOrgId: string) => {
         const updatedIssues = (customer.support_issues || []).map(issue => {
             if (issue.id === issueId) {
                 return {
@@ -261,6 +278,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         });
 
         await updateCustomer(customer.id, { support_issues: updatedIssues }, true);
+        removeProcessedIssue(customerOrgId, llmIssue.summary);
         showAlert(`Updated support item for ${customer.name}`, 'success');
     };
 
@@ -560,7 +578,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                                                                 <button 
                                                                     className="btn-primary" 
                                                                     style={{ fontSize: '11px', padding: '4px 8px' }}
-                                                                    onClick={() => handleCreateSupportItem(match, issue)}
+                                                                    onClick={() => handleCreateSupportItem(match, issue, lc.orgId)}
                                                                 >
                                                                     Create New
                                                                 </button>
@@ -570,7 +588,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                                                                         style={{ fontSize: '11px', padding: '4px 8px' }}
                                                                         onChange={(e) => {
                                                                             if (e.target.value) {
-                                                                                handleUpdateSupportItem(match, e.target.value, issue);
+                                                                                handleUpdateSupportItem(match, e.target.value, issue, lc.orgId);
                                                                                 e.target.value = '';
                                                                             }
                                                                         }}
