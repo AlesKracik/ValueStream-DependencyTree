@@ -33,12 +33,12 @@ interface LLMIssue {
     summary: string;
     impact: string;
     rootCause: string;
-    jiraTickets: string[];
+    jiraTickets?: string[];
 }
 
 interface LLMCustomer {
     name: string;
-    orgId: string;
+    customerId?: string;
     issues: LLMIssue[];
 }
 
@@ -161,16 +161,16 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                         "items": {
                             "type": "object",
                             "additionalProperties": false,
-                            "required": ["name", "orgId", "issues"],
+                            "required": ["name", "issues"],
                             "properties": {
                                 "name": { "type": "string", "description": "Customer display name" },
-                                "orgId": { "type": "string", "description": "Unique organization identifier" },
+                                "customerId": { "type": "string", "description": "Unique organization identifier" },
                                 "issues": {
                                     "type": "array",
                                     "items": {
                                         "type": "object",
                                         "additionalProperties": false,
-                                        "required": ["summary", "impact", "rootCause", "jiraTickets"],
+                                        "required": ["summary", "impact", "rootCause"],
                                         "properties": {
                                             "summary": { "type": "string", "description": "Short description of the issue" },
                                             "impact": { "type": "string", "description": "Business/technical impact of the issue" },
@@ -233,11 +233,11 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         }
     };
 
-    const removeProcessedIssue = (customerOrgId: string, summary: string) => {
+    const removeProcessedIssue = (customerId: string | undefined, summary: string) => {
         if (!aiResults) return;
         
         const updatedCustomers = aiResults.customers.map(c => {
-            if (c.orgId === customerOrgId) {
+            if (c.customerId === customerId) {
                 return {
                     ...c,
                     issues: c.issues.filter(i => i.summary !== summary)
@@ -249,55 +249,57 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         setAiResults({ customers: updatedCustomers });
     };
 
-    const handleCreateSupportItem = async (customer: Customer, llmIssue: LLMIssue, customerOrgId: string) => {
+    const handleCreateSupportItem = async (customer: Customer, llmIssue: LLMIssue, customerId: string | undefined) => {
         const newIssue: SupportIssue = {
             id: generateId('si'),
             description: `${llmIssue.summary}\n\nImpact: ${llmIssue.impact}\nRoot Cause: ${llmIssue.rootCause}`,
             status: 'to do',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            related_jiras: llmIssue.jiraTickets
+            related_jiras: llmIssue.jiraTickets || []
         };
 
         const updatedIssues = [...(customer.support_issues || []), newIssue];
         await updateCustomer(customer.id, { support_issues: updatedIssues }, true);
-        removeProcessedIssue(customerOrgId, llmIssue.summary);
+        removeProcessedIssue(customerId, llmIssue.summary);
         showAlert(`Created support item for ${customer.name}`, 'success');
     };
 
-    const handleUpdateSupportItem = async (customer: Customer, issueId: string, llmIssue: LLMIssue, customerOrgId: string) => {
+    const handleUpdateSupportItem = async (customer: Customer, issueId: string, llmIssue: LLMIssue, customerId: string | undefined) => {
         const updatedIssues = (customer.support_issues || []).map(issue => {
             if (issue.id === issueId) {
                 return {
                     ...issue,
                     description: `${issue.description}\n\n--- AI Update ---\n${llmIssue.summary}\n\nImpact: ${llmIssue.impact}\nRoot Cause: ${llmIssue.rootCause}`,
                     updated_at: new Date().toISOString(),
-                    related_jiras: Array.from(new Set([...(issue.related_jiras || []), ...llmIssue.jiraTickets]))
+                    related_jiras: Array.from(new Set([...(issue.related_jiras || []), ...(llmIssue.jiraTickets || [])]))
                 };
             }
             return issue;
         });
 
         await updateCustomer(customer.id, { support_issues: updatedIssues }, true);
-        removeProcessedIssue(customerOrgId, llmIssue.summary);
+        removeProcessedIssue(customerId, llmIssue.summary);
         showAlert(`Updated support item for ${customer.name}`, 'success');
     };
 
     const findCustomerMatch = (llmCustomer: LLMCustomer) => {
         if (!data) return null;
         
-        // Try pairing by orgId (customer_id in our model)
-        if (llmCustomer.orgId) {
-            const match = data.customers.find(c => c.customer_id === llmCustomer.orgId);
+        const lName = llmCustomer.name.toLowerCase().trim();
+        
+        // Try pairing by customerId (customer_id in our model)
+        if (llmCustomer.customerId && llmCustomer.customerId.trim() !== '') {
+            const match = data.customers.find(c => c.customer_id === llmCustomer.customerId);
             if (match) return match;
         }
         
         // Try pairing by name
-        const match = data.customers.find(c => 
-            c.name.toLowerCase() === llmCustomer.name.toLowerCase() ||
-            c.name.toLowerCase().includes(llmCustomer.name.toLowerCase()) ||
-            llmCustomer.name.toLowerCase().includes(c.name.toLowerCase())
-        );
+        const match = data.customers.find(c => {
+            const cName = c.name.toLowerCase().trim();
+            return cName === lName || cName.includes(lName) || lName.includes(cName);
+        });
+
         return match || null;
     };
 
@@ -550,7 +552,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                                         <div key={i} style={{ borderBottom: '1px solid var(--border-secondary)', paddingBottom: '16px' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
                                                 <span style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{lc.name}</span>
-                                                {lc.orgId && <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>({lc.orgId})</span>}
+                                                {lc.customerId && <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>({lc.customerId})</span>}
                                                 {match ? (
                                                     <span style={{ fontSize: '10px', backgroundColor: 'var(--status-success)', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>MATCHED: {match.name}</span>
                                                 ) : (
@@ -566,7 +568,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                                                             <strong>Impact:</strong> {issue.impact}<br/>
                                                             <strong>Root Cause:</strong> {issue.rootCause}
                                                         </div>
-                                                        {issue.jiraTickets.length > 0 && (
+                                                        {issue.jiraTickets && issue.jiraTickets.length > 0 && (
                                                             <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
                                                                 {issue.jiraTickets.map(key => (
                                                                     <span key={key} style={{ fontSize: '10px', backgroundColor: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: '4px' }}>{key}</span>
@@ -579,14 +581,14 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                                                                 <button 
                                                                     className="btn-danger" 
                                                                     style={{ fontSize: '11px', padding: '4px 8px' }}
-                                                                    onClick={() => removeProcessedIssue(lc.orgId, issue.summary)}
+                                                                    onClick={() => removeProcessedIssue(lc.customerId, issue.summary)}
                                                                 >
                                                                     Dismiss
                                                                 </button>
                                                                 <button 
                                                                     className="btn-primary" 
                                                                     style={{ fontSize: '11px', padding: '4px 8px' }}
-                                                                    onClick={() => handleCreateSupportItem(match, issue, lc.orgId)}
+                                                                    onClick={() => handleCreateSupportItem(match, issue, lc.customerId)}
                                                                 >
                                                                     Create New
                                                                 </button>
@@ -596,7 +598,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                                                                         style={{ fontSize: '11px', padding: '4px 8px' }}
                                                                         onChange={(e) => {
                                                                             if (e.target.value) {
-                                                                                handleUpdateSupportItem(match, e.target.value, issue, lc.orgId);
+                                                                                handleUpdateSupportItem(match, e.target.value, issue, lc.customerId);
                                                                                 e.target.value = '';
                                                                             }
                                                                         }}

@@ -3,7 +3,7 @@
   • sort gannt based on related score
   • add releases
   • add some filtering allowing not to upload whole db for valuestream
-  • add orgid to slack
+  • add customerId to slack
   • get team members from ldap
   • snowflake integration
   • keyring for tokens

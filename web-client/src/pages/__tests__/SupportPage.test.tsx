@@ -7,6 +7,13 @@ import type { ValueStreamData } from '../../types/models';
 const mockUpdateCustomer = vi.fn();
 const mockedNavigate = vi.fn();
 
+vi.mock('../../utils/api', () => ({
+    llmGenerate: vi.fn(),
+    gleanAuthLogin: vi.fn(),
+    gleanAuthStatus: vi.fn(),
+    gleanChat: vi.fn()
+}));
+
 vi.mock('react-router-dom', async () => {
     const actual = await vi.importActual('react-router-dom');
     return {
@@ -480,5 +487,95 @@ describe('SupportPage', () => {
         fireEvent.change(filterInput, { target: { value: 'Customer A' } });
         expect(screen.getByText('Active Issue')).toBeDefined();
         expect(screen.getByText('Expired Issue')).toBeDefined();
+    });
+
+    it('performs AI search and matches customers by customerId and name fallback', async () => {
+        const { llmGenerate } = await import('../../utils/api');
+        const mockedLlmGenerate = vi.mocked(llmGenerate);
+        
+        const aiResponse = {
+            customers: [
+                {
+                    name: 'Customer A',
+                    customerId: 'c_id_1',
+                    issues: [
+                        {
+                            summary: 'AI Found Issue 1',
+                            impact: 'High',
+                            rootCause: 'Bug',
+                            jiraTickets: ['JIRA-1']
+                        }
+                    ]
+                },
+                {
+                    name: 'Unknown Customer',
+                    customerId: 'non-existent',
+                    issues: [
+                        {
+                            summary: 'AI Found Issue 2',
+                            impact: 'Low',
+                            rootCause: 'Config',
+                            jiraTickets: []
+                        }
+                    ]
+                },
+                {
+                    name: 'Customer A', // Exact match for "Customer A"
+                    // customerId is missing
+                    issues: [
+                        {
+                            summary: 'AI Found Issue 3',
+                            impact: 'Medium',
+                            rootCause: 'Unknown'
+                            // jiraTickets is missing
+                        }
+                    ]
+                }
+            ]
+        };
+
+        mockedLlmGenerate.mockResolvedValue(JSON.stringify(aiResponse));
+
+        const dataWithCid: ValueStreamData = {
+            ...mockData,
+            settings: {
+                ...mockData.settings,
+                ai: { provider: 'openai', support: { prompt: 'Test prompt' } }
+            },
+            customers: [
+                {
+                    ...mockData.customers[0],
+                    customer_id: 'c_id_1'
+                }
+            ]
+        };
+
+        renderWithProviders(
+            <SupportPage data={dataWithCid} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        const aiSearchBtn = screen.getByText('AI Support Search');
+        fireEvent.click(aiSearchBtn);
+
+        await waitFor(() => {
+            expect(screen.getByText('AI Search Results')).toBeDefined();
+        });
+
+        // Check customerId match (Customer A matched by c_id_1)
+        expect(screen.getAllByText('MATCHED: Customer A').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText('(c_id_1)')).toBeDefined();
+        expect(screen.getByText('AI Found Issue 1')).toBeDefined();
+
+        // Check no match for unknown customer
+        const unknownResults = screen.getAllByText('NO MATCH');
+        expect(unknownResults.length).toBeGreaterThan(0);
+        expect(screen.getByText('AI Found Issue 2')).toBeDefined();
+
+        // Check name fallback match (Cust A matches Customer A)
+        await waitFor(() => {
+            const matches = screen.getAllByText('MATCHED: Customer A');
+            expect(matches.length).toBe(2);
+        });
+        expect(screen.getByText('AI Found Issue 3')).toBeDefined();
     });
 });

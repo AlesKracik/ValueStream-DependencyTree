@@ -2042,16 +2042,16 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               "items": { 
                                 "type": "object", 
                                 "additionalProperties": false, 
-                                "required": ["name", "orgId", "issues"], 
-                                "properties": { 
-                                  "name": { "type": "string", "description": "Customer display name" }, 
-                                  "orgId": { "type": "string", "description": "Unique organization identifier" }, 
-                                  "issues": { 
-                                    "type": "array", 
-                                    "items": { 
-                                      "type": "object", 
-                                      "additionalProperties": false, 
-                                      "required": ["summary", "impact", "rootCause", "jiraTickets"], 
+                                "required": ["name", "issues"],
+                                "properties": {
+                                  "name": { "type": "string", "description": "Customer display name" },
+                                  "customerId": { "type": "string", "description": "Unique organization identifier" },
+                                  "issues": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "additionalProperties": false,
+                                      "required": ["summary", "impact", "rootCause"],
                                       "properties": { 
                                         "summary": { "type": "string", "description": "Short description of the issue" }, 
                                         "impact": { "type": "string", "description": "Business/technical impact of the issue" }, 
