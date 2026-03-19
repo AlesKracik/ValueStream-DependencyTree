@@ -2017,7 +2017,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "100%" }}>
                       AI Support Discovery Prompt:
                       <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                        This prompt will be used to analyze Glean/Slack search results. It must return a JSON object matching the following schema:
+                        This prompt will be used to analyze Glean/Slack search results. It must return a JSON object matching the following schema. IMPORTANT: AI is instructed to NOT use ellipses (...) in the response.
                       </span>
                       <pre style={{ 
                         fontSize: '11px', 

@@ -190,7 +190,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                 "required": ["customers"]
             };
 
-            const prompt = `${data.settings.ai.support.prompt}\n\nReturn ONLY a JSON object matching this schema:\n${JSON.stringify(schema, null, 2)}`;
+            const prompt = `${data.settings.ai.support.prompt}\n\nReturn ONLY a JSON object matching this schema. IMPORTANT: DO NOT use ellipses (...) in your response; provide complete data or omit the field if unknown.\n\nSchema:\n${JSON.stringify(schema, null, 2)}`;
             
             let resultText: string;
             if (data.settings.ai.provider === 'glean' && data.settings.ai.glean_url) {

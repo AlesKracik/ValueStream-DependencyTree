@@ -42,7 +42,7 @@
     "api_key": "",
     "model": "gpt-4-turbo",
     "support": {
-      "prompt": "Analyze the following Slack conversations and extract customer issues. Your response MUST be a single JSON object matching this schema: {\"customers\": [{\"name\": \"string\", \"issues\": [{\"summary\": \"string\", \"impact\": \"string\", \"rootCause\": \"string\"}]}]}"
+      "prompt": "Analyze the following Slack conversations and extract customer issues. Your response MUST be a single JSON object matching this schema. IMPORTANT: DO NOT use ellipses (...) in your response; provide complete data or omit the field if unknown. Schema: {\"customers\": [{\"name\": \"string\", \"issues\": [{\"summary\": \"string\", \"impact\": \"string\", \"rootCause\": \"string\"}]}]}"
     }
   }
 }
