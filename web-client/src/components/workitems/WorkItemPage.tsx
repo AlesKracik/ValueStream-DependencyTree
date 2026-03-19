@@ -41,7 +41,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     const isNew = workItemId === 'new';
 
     // Draft states for new workItem creation
-    const [newWorkItemDraft, setNewWorkItemDraft] = useState<Partial<WorkItem>>({ name: '', description: '', total_effort_mds: 0, customer_targets: [] });
+    const [newWorkItemDraft, setNewWorkItemDraft] = useState<Partial<WorkItem>>({ name: '', description: '', status: 'Backlog', total_effort_mds: 0, customer_targets: [] });
     const [newWorkItemCustomers, setNewWorkItemCustomers] = useState<{ customerId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have', tcv_history_id?: string }[]>([]);
     const [newWorkItemIssues, setNewWorkItemIssues] = useState<Issue[]>([]);
     const [syncingId, setSyncingId] = useState<string | null>(null);
@@ -174,6 +174,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     id: newId,
                     name: newWorkItemDraft.name || 'New Work Item',
                     description: newWorkItemDraft.description || '',
+                    status: newWorkItemDraft.status as any || 'Backlog',
                     total_effort_mds: newWorkItemDraft.total_effort_mds || 0,
                     score: newWorkItemDraft.score || 0,
                     customer_targets: newWorkItemCustomers.map(c => ({
@@ -268,6 +269,22 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                             else updateWorkItem(workItemId, { total_effort_mds: val });
                         }}
                     />
+                </label>
+                <label>
+                    Status:
+                    <select
+                        value={workItem?.status || 'Backlog'}
+                        onChange={e => {
+                            const val = e.target.value as any;
+                            if (isNew) setNewWorkItemDraft(prev => ({ ...prev, status: val }));
+                            else updateWorkItem(workItemId, { status: val });
+                        }}
+                    >
+                        <option value="Backlog">Backlog</option>
+                        <option value="Planning">Planning</option>
+                        <option value="Development">Development</option>
+                        <option value="Done">Done</option>
+                    </select>
                 </label>
                 <label>
                     Released in Sprint:

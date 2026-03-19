@@ -204,6 +204,7 @@
                     "id": { "type": "string" },
                     "name": { "type": "string" },
                     "description": { "type": "string" },
+                    "status": { "type": "string", "enum": ["Backlog", "Planning", "Development", "Done"] },
                     "total_effort_mds": { "type": "number", "minimum": 0 },
                     "score": { "type": "number" },
                     "released_in_sprint_id": { "type": "string" },

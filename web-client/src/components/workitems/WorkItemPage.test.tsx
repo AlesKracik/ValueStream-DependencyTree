@@ -320,6 +320,22 @@ describe('WorkItemPage', () => {
         expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', { description: 'Updated description' });
     });
 
+    it('renders and updates the status field', () => {
+        renderPage();
+
+        const statusSelect = screen.getByDisplayValue('Backlog') as HTMLSelectElement;
+        expect(statusSelect).toBeDefined();
+
+        fireEvent.change(statusSelect, { target: { value: 'Planning' } });
+        expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', { status: 'Planning' });
+
+        fireEvent.change(statusSelect, { target: { value: 'Development' } });
+        expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', { status: 'Development' });
+
+        fireEvent.change(statusSelect, { target: { value: 'Done' } });
+        expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', { status: 'Done' });
+    });
+
     it('renders core edit fields and handles updates', () => {
         const dataWithSprint: ValueStreamData = {
             ...mockData,

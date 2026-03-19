@@ -9,6 +9,7 @@ export interface WorkItem {
   id: string;
   name: string;
   description?: string; // Detailed context/requirements
+  status: 'Backlog' | 'Planning' | 'Development' | 'Done';
   total_effort_mds: number; // Estimated man-days
   score: number;            // Calculated RICE score
   customer_targets: {

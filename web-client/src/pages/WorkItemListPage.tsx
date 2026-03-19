@@ -10,6 +10,8 @@ interface Props {
     loading: boolean;
 }
 
+const STATUS_ORDER = ['Backlog', 'Planning', 'Development', 'Done'];
+
 export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
     const navigate = useNavigate();
 
@@ -20,6 +22,11 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
             label: 'TCV', 
             key: 'tcv', 
             getValue: (w) => data ? calculateWorkItemTcv(w, data.customers, data.workItems) : 0 
+        },
+        {
+            label: 'Status',
+            key: 'status',
+            getValue: (w) => STATUS_ORDER.indexOf(w.status || 'Backlog')
         },
         { 
             label: 'Effort', 
@@ -52,6 +59,12 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
             render: (w) => data ? `$${calculateWorkItemTcv(w, data.customers, data.workItems).toLocaleString()}` : '$0',
             flex: 1,
             sortKey: 'tcv'
+        },
+        {
+            header: 'Status',
+            render: (w) => w.status || 'Backlog',
+            flex: 1,
+            sortKey: 'status'
         },
         { 
             header: 'Released', 

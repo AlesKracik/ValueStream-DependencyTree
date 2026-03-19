@@ -44,6 +44,7 @@ export interface WorkItem {
   id: string;
   name: string;
   description?: string;
+  status: 'Backlog' | 'Planning' | 'Development' | 'Done';
   total_effort_mds: number;
   released_in_sprint_id?: string;
   score: number;
