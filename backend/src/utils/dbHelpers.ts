@@ -59,6 +59,10 @@ export function buildMongoQuery(query: any, collection: string): any {
                 ];
             }
         }
+        const minScore = Number(query.minScoreFilter) || 0;
+        if (minScore > 0) {
+            mongoQuery.calculated_score = { $gte: minScore };
+        }
     }
 
     // --- Relational filters (for detail pages) ---
@@ -82,64 +86,80 @@ export function buildMongoQuery(query: any, collection: string): any {
 }
 
 /**
- * Applies a ValueStream's saved (static) parameters as hard filters on the workspace data.
- * Runs AFTER scoring so that computed fields (score, calculated_tcv) are available.
- *
- * This is the backend counterpart to the baseParams filtering in useGraphLayout —
- * the frontend still applies dynamic/transient filters on top of this.
+ * Builds per-collection MongoDB queries from ValueStream parameters.
+ * Used by the workspace endpoint to push filters to the DB layer.
+ * Filters that CAN be expressed as MongoDB queries: name text, released status,
+ * minScore (pre-computed), minTcv (via $expr).
+ * Filters that CANNOT: cross-entity (issue team membership, sprint range) — handled in applyValueStreamFilters.
+ */
+export function buildWorkspaceQueries(params: any): { customers: any; workItems: any; teams: any; issues: any } {
+    const customers: any = {};
+    const workItems: any = {};
+    const teams: any = {};
+    const issues: any = {};
+
+    // Customer filters
+    if (params.customerFilter) {
+        customers.name = { $regex: params.customerFilter, $options: 'i' };
+    }
+    const minTcv = Number(params.minTcvFilter) || 0;
+    if (minTcv > 0) {
+        customers.$expr = { $gte: [{ $add: [{ $ifNull: ['$existing_tcv', 0] }, { $ifNull: ['$potential_tcv', 0] }] }, minTcv] };
+    }
+
+    // WorkItem filters (scores are pre-computed on the document)
+    if (params.workItemFilter) {
+        workItems.name = { $regex: params.workItemFilter, $options: 'i' };
+    }
+    const minScore = Number(params.minScoreFilter) || 0;
+    if (minScore > 0) {
+        workItems.calculated_score = { $gte: minScore };
+    }
+    const rel = params.releasedFilter || 'all';
+    if (rel === 'released') {
+        workItems.released_in_sprint_id = { $exists: true, $ne: '' };
+    } else if (rel === 'unreleased') {
+        workItems.$or = [
+            { released_in_sprint_id: { $exists: false } },
+            { released_in_sprint_id: '' }
+        ];
+    }
+
+    // Team filters
+    if (params.teamFilter) {
+        teams.name = { $regex: params.teamFilter, $options: 'i' };
+    }
+
+    // Issue name filter (team membership and sprint range handled in-memory)
+    if (params.issueFilter) {
+        issues.name = { $regex: params.issueFilter, $options: 'i' };
+    }
+
+    return { customers, workItems, teams, issues };
+}
+
+/**
+ * Applies remaining in-memory filters that can't be expressed as MongoDB queries.
+ * DB-level filters (name text, released, minScore, minTcv) are already applied via buildWorkspaceQueries.
+ * This handles: cross-entity issue filtering (team membership + sprint range) and the post-filter threshold.
  */
 export function applyValueStreamFilters(data: any, params: any): any {
     if (!params) return data;
 
-    const cf = (params.customerFilter || '').toLowerCase();
-    const wf = (params.workItemFilter || '').toLowerCase();
     const tf = (params.teamFilter || '').toLowerCase();
-    const ef = (params.issueFilter || '').toLowerCase();
-    const rel = params.releasedFilter || 'all';
-    const minTcv = Number(params.minTcvFilter) || 0;
-    const minScore = Number(params.minScoreFilter) || 0;
 
     let { customers, workItems, teams, issues, sprints } = data;
 
-    // Customer filter: text match on name + minTcv on total TCV
-    if (cf || minTcv > 0) {
-        customers = customers.filter((c: any) => {
-            if (cf && !c.name.toLowerCase().includes(cf)) return false;
-            if (minTcv > 0) {
-                const totalTcv = (c.existing_tcv || 0) + (c.potential_tcv || 0);
-                if (totalTcv < minTcv) return false;
-            }
-            return true;
-        });
-    }
-
-    // WorkItem filter: text match + released status + minScore
-    if (wf || rel !== 'all' || minScore > 0) {
-        workItems = workItems.filter((w: any) => {
-            if (wf && !w.name.toLowerCase().includes(wf)) return false;
-            if (rel === 'released' && !w.released_in_sprint_id) return false;
-            if (rel === 'unreleased' && w.released_in_sprint_id) return false;
-            if (minScore > 0 && (w.score || 0) < minScore) return false;
-            return true;
-        });
-    }
-
-    // Team filter: text match on name
-    if (tf) {
-        teams = teams.filter((t: any) => t.name.toLowerCase().includes(tf));
-    }
-
-    // Issue filter: text match on name + team membership + sprint range
+    // Issue filter: team membership + sprint range (cross-entity, can't be done at DB level)
     const validTeamIds = tf ? new Set(teams.map((t: any) => t.id)) : null;
 
-    if (ef || validTeamIds || params.startSprintId || params.endSprintId) {
+    if (validTeamIds || params.startSprintId || params.endSprintId) {
         const startSprint = params.startSprintId ? sprints.find((s: any) => s.id === params.startSprintId) : null;
         const endSprint = params.endSprintId ? sprints.find((s: any) => s.id === params.endSprintId) : null;
         const rangeStart = startSprint ? new Date(startSprint.start_date) : null;
         const rangeEnd = endSprint ? new Date(endSprint.end_date) : null;
 
         issues = issues.filter((e: any) => {
-            if (ef && !(e.name || '').toLowerCase().includes(ef)) return false;
             if (validTeamIds && !validTeamIds.has(e.team_id)) return false;
 
             if (rangeStart || rangeEnd) {

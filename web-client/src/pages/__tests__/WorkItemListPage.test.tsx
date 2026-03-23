@@ -30,9 +30,9 @@ const mockData: ValueStreamData = {
         { id: 'c1', name: 'Cust A', existing_tcv: 1000, potential_tcv: 500 }
     ],
     workItems: [
-        { id: 'w1', name: 'Alpha Item', score: 10, total_effort_mds: 5, customer_targets: [{ customer_id: 'c1', tcv_type: 'existing' }], released_in_sprint_id: 's3' },
-        { id: 'w2', name: 'Gamma Item', score: 50, total_effort_mds: 20, customer_targets: [{ customer_id: 'c1', tcv_type: 'potential' }], released_in_sprint_id: 's1' },
-        { id: 'w3', name: 'Beta Item', score: 30, total_effort_mds: 10, customer_targets: [], released_in_sprint_id: 's2' }
+        { id: 'w1', name: 'Alpha Item', score: 10, calculated_score: 10, calculated_tcv: 1000, calculated_effort: 5, total_effort_mds: 5, customer_targets: [{ customer_id: 'c1', tcv_type: 'existing' }], released_in_sprint_id: 's3' },
+        { id: 'w2', name: 'Gamma Item', score: 50, calculated_score: 50, calculated_tcv: 500, calculated_effort: 20, total_effort_mds: 20, customer_targets: [{ customer_id: 'c1', tcv_type: 'potential' }], released_in_sprint_id: 's1' },
+        { id: 'w3', name: 'Beta Item', score: 30, calculated_score: 30, calculated_tcv: 0, calculated_effort: 10, total_effort_mds: 10, customer_targets: [], released_in_sprint_id: 's2' }
     ],
     teams: [],
     issues: [],

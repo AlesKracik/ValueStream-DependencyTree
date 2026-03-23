@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi, beforeEach } from 'vites
 import { FastifyInstance } from 'fastify';
 import { buildApp } from '../../app';
 import * as mongoServer from '../../utils/mongoServer';
+import * as metricsService from '../../services/metricsService';
 import fs from 'fs';
 
 describe('Entity Routes', () => {
@@ -27,6 +28,8 @@ describe('Entity Routes', () => {
       replaceOne: vi.fn().mockResolvedValue({ acknowledged: true }),
       deleteOne: vi.fn().mockResolvedValue({ acknowledged: true }),
       updateMany: vi.fn().mockResolvedValue({ modifiedCount: 0 }),
+      find: vi.fn().mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) }),
+      bulkWrite: vi.fn().mockResolvedValue({ ok: 1 }),
     };
 
     mockDb = {
@@ -201,5 +204,75 @@ describe('Entity Routes', () => {
     const json = JSON.parse(response.payload);
     expect(json.success).toBe(true);
     expect(json.cascaded).toEqual({});
+  });
+
+  it('should trigger score recomputation when saving a workItem', async () => {
+    const recomputeSpy = vi.spyOn(metricsService, 'recomputeScoresForWorkItems').mockResolvedValue();
+
+    await app.inject({
+      method: 'POST',
+      url: '/api/entity/workItems',
+      payload: { id: 'wi-new', name: 'New Work Item' }
+    });
+
+    expect(recomputeSpy).toHaveBeenCalledWith(mockDb);
+  });
+
+  it('should trigger score recomputation when saving a customer', async () => {
+    const recomputeSpy = vi.spyOn(metricsService, 'recomputeScoresForWorkItems').mockResolvedValue();
+
+    await app.inject({
+      method: 'POST',
+      url: '/api/entity/customers',
+      payload: { id: 'c-new', name: 'New Customer' }
+    });
+
+    expect(recomputeSpy).toHaveBeenCalledWith(mockDb);
+  });
+
+  it('should trigger score recomputation when saving an issue', async () => {
+    const recomputeSpy = vi.spyOn(metricsService, 'recomputeScoresForWorkItems').mockResolvedValue();
+
+    await app.inject({
+      method: 'POST',
+      url: '/api/entity/issues',
+      payload: { id: 'e-new', jira_key: 'TEST-1' }
+    });
+
+    expect(recomputeSpy).toHaveBeenCalledWith(mockDb);
+  });
+
+  it('should NOT trigger score recomputation when saving a team', async () => {
+    const recomputeSpy = vi.spyOn(metricsService, 'recomputeScoresForWorkItems').mockResolvedValue();
+
+    await app.inject({
+      method: 'POST',
+      url: '/api/entity/teams',
+      payload: { id: 't-new', name: 'New Team' }
+    });
+
+    expect(recomputeSpy).not.toHaveBeenCalled();
+  });
+
+  it('should trigger score recomputation when deleting a score-affecting entity', async () => {
+    const recomputeSpy = vi.spyOn(metricsService, 'recomputeScoresForWorkItems').mockResolvedValue();
+
+    await app.inject({
+      method: 'DELETE',
+      url: '/api/entity/customers/cust-del'
+    });
+
+    expect(recomputeSpy).toHaveBeenCalledWith(mockDb);
+  });
+
+  it('should NOT trigger score recomputation when deleting a sprint', async () => {
+    const recomputeSpy = vi.spyOn(metricsService, 'recomputeScoresForWorkItems').mockResolvedValue();
+
+    await app.inject({
+      method: 'DELETE',
+      url: '/api/entity/sprints/s-del'
+    });
+
+    expect(recomputeSpy).not.toHaveBeenCalled();
   });
 });

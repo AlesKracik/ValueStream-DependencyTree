@@ -24,7 +24,7 @@ const MOCK_DATA: ValueStreamData = {
         {
             id: 'f1',
             name: 'High Score Work Item',
-            total_effort_mds: 1, score: 500,
+            total_effort_mds: 1, score: 500, calculated_score: 500,
             customer_targets: [
                 { customer_id: 'c1', tcv_type: 'potential', priority: 'Must-have' }
             ]
@@ -32,7 +32,7 @@ const MOCK_DATA: ValueStreamData = {
         {
             id: 'f2',
             name: 'Low Score Work Item',
-            total_effort_mds: 10, score: 2,
+            total_effort_mds: 10, score: 2, calculated_score: 2,
             customer_targets: [
                 { customer_id: 'c2', tcv_type: 'potential', priority: 'Must-have' }
             ]

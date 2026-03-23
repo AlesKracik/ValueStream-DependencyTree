@@ -12,16 +12,19 @@ The backend is a standalone Fastify Node.js application in `backend/`. It provid
 ### Core Data Endpoints
 
 #### 1. `GET /api/workspace`
-The composite hydration endpoint for the Graph View. Fetches all entities, calculates RICE scores on the full dataset, and aggregates global metrics.
-- **Parameters:** Accepts `valueStreamId` — if provided, the backend looks up the ValueStream entity's saved `parameters` and applies them as hard post-scoring filters via `applyValueStreamFilters()`.
-- **Threshold Protection:** The full dataset is fetched unthrottled for correct scoring. After scoring and filtering, `applyValueStreamFilters()` checks the total entity count — returns `413` if it exceeds the threshold (default: 500), asking the user to tighten ValueStream parameters.
-- **Logic:** Performs complex joins (e.g., Issue effort summed into Work Items) and ROI calculations via `metricsService`.
+The composite hydration endpoint for the Graph View. Uses pre-computed RICE scores on WorkItem documents to enable DB-level filtering.
+- **Parameters:** Accepts `valueStreamId` — if provided, the backend looks up the ValueStream entity's saved `parameters` and builds per-collection MongoDB queries via `buildWorkspaceQueries()` (name text, released status, `calculated_score`, minTcv via `$expr`). Cross-entity filters (issue team membership, sprint range) are applied in-memory by `applyValueStreamFilters()`.
+- **Threshold Protection:** After DB-level and in-memory filtering, `applyValueStreamFilters()` checks the total entity count — returns `413` if it exceeds the threshold (default: 500), asking the user to tighten ValueStream parameters.
+- **Metrics:** `maxScore` and `maxRoi` are computed from pre-computed score fields via `computeMetricsFromPrecomputed()`.
 
 #### 2. `GET /api/data/{collection}`
 Granular endpoints (e.g., `/api/data/customers`, `/api/data/workItems`) allowing the frontend to lazily load only the required entities for specific list or detail views.
-- **Query Filtering:** Accepts query parameters mapped to MongoDB queries via `buildMongoQuery()`. Supports text filters (`customerFilter`, `teamFilter`), status filters (`releasedFilter`), and relational filters (`customerId`, `workItemId`, `teamId`).
+- **Query Filtering:** Accepts query parameters mapped to MongoDB queries via `buildMongoQuery()`. Supports text filters (`customerFilter`, `teamFilter`), status filters (`releasedFilter`), score filters (`minScoreFilter` using `calculated_score`), and relational filters (`customerId`, `workItemId`, `teamId`).
 - **Threshold Protection:** Each endpoint is guarded by `fetchWithThreshold()`.
-- **Special Case:** The `/api/data/workItems` endpoint internally joins with customers and issues to pre-calculate RICE scores before returning.
+- **WorkItems:** Reads pre-computed `calculated_score`, `calculated_tcv`, `calculated_effort` directly from documents — no cross-collection join needed.
+
+#### 2b. `POST /api/data/recomputeScores`
+Migration endpoint that recomputes and persists `calculated_tcv`, `calculated_effort`, `calculated_score` on all WorkItem documents. Run once after deployment to backfill existing data. Scores are also automatically recomputed on every entity save/delete for workItems, customers, and issues.
 
 #### 3. `POST /api/entity/{collection}`
 Upserts a single document into one of the allowed collections (`customers`, `workItems`, etc.).

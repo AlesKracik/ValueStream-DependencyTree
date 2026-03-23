@@ -31,7 +31,7 @@ Defined in: `web-client/src/types/models.ts`
 - **API Entry Point**: `backend/src/server.ts` (Fastify Node.js Application).
 - **API Routes**: Domain-specific logic is split into controllers in `backend/src/routes/` (e.g., `data.ts`, `jira.ts`, `auth.ts`).
 - **Database**: MongoDB (App data + External Customer data).
-- **Core Logic**: `backend/src/utils/mongoServer.ts` (Connections), `backend/src/utils/businessLogic.ts` (RICE scoring, metrics), and `backend/src/utils/dbHelpers.ts` (threshold protection, query building, ValueStream filtering).
+- **Core Logic**: `backend/src/utils/mongoServer.ts` (Connections), `backend/src/utils/businessLogic.ts` (RICE scoring, metrics), `backend/src/utils/dbHelpers.ts` (threshold protection, query building, ValueStream filtering), and `backend/src/services/metricsService.ts` (score pre-computation via `recomputeScoresForWorkItems`, metrics computation).
 
 ### Available APIs
 The backend is a standalone Fastify server running on port 4000. All endpoints require authorization via `ADMIN_SECRET` handled by a Fastify hook (`backend/src/plugins/auth.ts`). The Vite dev server proxies `/api` calls to this backend.
@@ -39,8 +39,9 @@ The backend is a standalone Fastify server running on port 4000. All endpoints r
 #### Core Data & Services
 The backend encapsulates complex business logic (RICE scoring, fiscal quarter mapping) within a dedicated `backend/src/services/` layer, separating it from the data fetching routes.
 
-- `GET /api/workspace`: Composite endpoint for the Graph View. Fetches all entities (unthrottled for correct scoring), calculates RICE scores on the full dataset, then applies ValueStream's saved parameters as hard filters via `applyValueStreamFilters()`. Accepts `?valueStreamId=X`. Post-filter threshold (413 if still too large) — the user controls this by tightening ValueStream parameters.
-- `GET /api/data/{collection}`: Granular endpoints (e.g., `/api/data/customers`, `/api/data/workItems`) for list and detail views. Query params are mapped to MongoDB queries via `buildMongoQuery()` — supports text filters (`customerFilter`, `teamFilter`), status filters (`releasedFilter`), and relational filters (`customerId`, `workItemId`, `teamId`). Each is protected by `fetchWithThreshold()`. The `workItems` endpoint internally joins with issues/customers to pre-calculate RICE scores.
+- `GET /api/workspace`: Composite endpoint for the Graph View. Accepts `?valueStreamId=X`. Uses pre-computed RICE scores on WorkItem documents to push ValueStream parameter filters (name, score, released) to the DB level via `buildWorkspaceQueries()`. Cross-entity filters (issue team membership, sprint range) and the post-filter threshold (413) are applied in-memory by `applyValueStreamFilters()`. Metrics (`maxScore`, `maxRoi`) are computed from the filtered set via `computeMetricsFromPrecomputed()`.
+- `POST /api/data/recomputeScores`: Migration endpoint — recomputes and persists `calculated_tcv`, `calculated_effort`, `calculated_score` on all WorkItem documents. Run once after deploying to backfill existing data.
+- `GET /api/data/{collection}`: Granular endpoints (e.g., `/api/data/customers`, `/api/data/workItems`) for list and detail views. Query params are mapped to MongoDB queries via `buildMongoQuery()` — supports text filters (`customerFilter`, `teamFilter`), status filters (`releasedFilter`), score filters (`minScoreFilter`), and relational filters (`customerId`, `workItemId`, `teamId`). Each is protected by `fetchWithThreshold()`. The `workItems` endpoint reads pre-computed scores directly from documents (no cross-collection join needed).
 - `GET /api/settings` & `POST /api/settings`: Retrieves or updates `settings.json`. Handles masking/unmasking of sensitive credentials.
 - `POST /api/entity/{collection}`: Upserts documents in MongoDB.
 - `DELETE /api/entity/{collection}/{id}`: Deletes a document and performs **cascade cleanup** — removes customer_targets from WorkItems, clears work_item_id/team_id from Issues. Returns `cascaded` counts.
@@ -60,13 +61,14 @@ Centralized in `backend/src/utils/businessLogic.ts`:
     - **Issue Distribution**: `calculateIssueEffortPerSprint()` distributes total effort across overlapping Sprints based on business days, respecting manual overrides.
 
 - **Value & Scoring (RICE/ROI)**:
-    - **TCV Calculation**: 
+    - **TCV Calculation**:
         - **Must-have**: 100% of Customer TCV.
         - **Should-have**: Shared portion (`Customer TCV / Count of all Should-have targets for this customer`).
         - **Nice-to-have**: 0%.
     - **ROI Score**: `Total Impact (TCV) / Effort (min 1 MD)`.
+    - **Pre-computed Scores**: `calculated_tcv`, `calculated_effort`, and `calculated_score` are stored directly on WorkItem documents. They are recomputed on every entity mutation (workItems, customers, issues) via `recomputeScoresForWorkItems()` in `metricsService.ts`. This enables DB-level filtering by score in the workspace endpoint.
 
-- **Global Scaling**: `maxScore` and `maxRoi` are calculated during `loadData` to normalize node sizes and edge thicknesses in the visualization.
+- **Global Scaling**: `maxScore` and `maxRoi` are computed from pre-computed score fields via `computeMetricsFromPrecomputed()` to normalize node sizes and edge thicknesses in the visualization.
 
 ### State Management
 - **Primary Hook**: `web-client/src/hooks/useValueStreamData.ts`.

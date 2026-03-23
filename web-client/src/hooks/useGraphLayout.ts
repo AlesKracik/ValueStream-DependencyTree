@@ -142,8 +142,8 @@ export function useGraphLayout(
 
                 if (!passRelease(!!f.released_in_sprint_id)) return false;
 
-                // Use pre-calculated score if available, otherwise fallback to 0
-                const score = f.score !== undefined ? f.score : 0;
+                // Use pre-computed RICE score for filtering
+                const score = f.calculated_score !== undefined ? f.calculated_score : 0;
                 return score >= combinedMinScore;
             }).map(f => f.id)
         );
@@ -446,10 +446,10 @@ export function useGraphLayout(
         // Use global metrics from server for consistent scaling across filters
         const maxScore = data.metrics?.maxScore || 1;
         const maxRoi = data.metrics?.maxRoi || 0.0001;
-        const sortedWorkItems = workItemsToProcess.sort((a, b) => (b.score || 0) - (a.score || 0)); // Descending by Score
+        const sortedWorkItems = workItemsToProcess.sort((a, b) => (b.calculated_score || 0) - (a.calculated_score || 0)); // Descending by RICE Score
 
         sortedWorkItems.forEach((workItem, index) => {
-            const score = workItem.score || 0;
+            const score = workItem.calculated_score || 0;
             const sizeRatio = maxScore > 0 ? score / maxScore : 0.5;
             const nodeSize = 100 * 0.6 + (100 * 0.8 * sizeRatio);
 

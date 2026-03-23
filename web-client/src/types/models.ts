@@ -58,6 +58,9 @@ export interface WorkItem {
     priority?: 'Must-have' | 'Should-have' | 'Nice-to-have';
     tcv_history_id?: string; // Reference to a historical Existing TCV value
   }[];
+  calculated_tcv?: number;     // Pre-computed TCV impact (set on save by recomputeScores)
+  calculated_effort?: number;  // Pre-computed effort in MDs (set on save by recomputeScores)
+  calculated_score?: number;   // Pre-computed RICE score = tcv / effort (set on save by recomputeScores)
   aha_reference?: {
     id: string;
     reference_num: string;

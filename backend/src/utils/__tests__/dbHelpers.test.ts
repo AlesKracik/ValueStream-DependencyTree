@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fetchWithThreshold, buildMongoQuery, applyValueStreamFilters, DATA_THRESHOLD } from '../dbHelpers';
+import { fetchWithThreshold, buildMongoQuery, applyValueStreamFilters, buildWorkspaceQueries, DATA_THRESHOLD } from '../dbHelpers';
 
 describe('dbHelpers', () => {
 
@@ -86,6 +86,16 @@ describe('dbHelpers', () => {
       expect(query).toEqual({});
     });
 
+    it('builds minScoreFilter for workItems using calculated_score', () => {
+      const query = buildMongoQuery({ minScoreFilter: '20' }, 'workItems');
+      expect(query.calculated_score).toEqual({ $gte: 20 });
+    });
+
+    it('ignores minScoreFilter of 0', () => {
+      const query = buildMongoQuery({ minScoreFilter: '0' }, 'workItems');
+      expect(query.calculated_score).toBeUndefined();
+    });
+
     it('does not map teamFilter to issues (requires name lookup)', () => {
       const query = buildMongoQuery({ teamFilter: 'Backend' }, 'issues');
       expect(query).toEqual({});
@@ -120,7 +130,85 @@ describe('dbHelpers', () => {
     });
   });
 
+  describe('buildWorkspaceQueries', () => {
+    it('returns empty queries when params are empty', () => {
+      const result = buildWorkspaceQueries({});
+      expect(result.customers).toEqual({});
+      expect(result.workItems).toEqual({});
+      expect(result.teams).toEqual({});
+      expect(result.issues).toEqual({});
+    });
+
+    it('builds customer name regex', () => {
+      const result = buildWorkspaceQueries({ customerFilter: 'Acme' });
+      expect(result.customers.name).toEqual({ $regex: 'Acme', $options: 'i' });
+    });
+
+    it('builds customer minTcv with $expr', () => {
+      const result = buildWorkspaceQueries({ minTcvFilter: '1000' });
+      expect(result.customers.$expr).toBeDefined();
+      expect(result.customers.$expr.$gte).toBeDefined();
+    });
+
+    it('ignores minTcvFilter of 0', () => {
+      const result = buildWorkspaceQueries({ minTcvFilter: '0' });
+      expect(result.customers.$expr).toBeUndefined();
+    });
+
+    it('builds workItem name regex', () => {
+      const result = buildWorkspaceQueries({ workItemFilter: 'Auth' });
+      expect(result.workItems.name).toEqual({ $regex: 'Auth', $options: 'i' });
+    });
+
+    it('builds minScore filter using calculated_score', () => {
+      const result = buildWorkspaceQueries({ minScoreFilter: '50' });
+      expect(result.workItems.calculated_score).toEqual({ $gte: 50 });
+    });
+
+    it('builds released filter for workItems', () => {
+      const released = buildWorkspaceQueries({ releasedFilter: 'released' });
+      expect(released.workItems.released_in_sprint_id).toEqual({ $exists: true, $ne: '' });
+
+      const unreleased = buildWorkspaceQueries({ releasedFilter: 'unreleased' });
+      expect(unreleased.workItems.$or).toHaveLength(2);
+    });
+
+    it('ignores releasedFilter=all', () => {
+      const result = buildWorkspaceQueries({ releasedFilter: 'all' });
+      expect(result.workItems.released_in_sprint_id).toBeUndefined();
+      expect(result.workItems.$or).toBeUndefined();
+    });
+
+    it('builds team name regex', () => {
+      const result = buildWorkspaceQueries({ teamFilter: 'Backend' });
+      expect(result.teams.name).toEqual({ $regex: 'Backend', $options: 'i' });
+    });
+
+    it('builds issue name regex', () => {
+      const result = buildWorkspaceQueries({ issueFilter: 'fix' });
+      expect(result.issues.name).toEqual({ $regex: 'fix', $options: 'i' });
+    });
+
+    it('combines multiple filters', () => {
+      const result = buildWorkspaceQueries({
+        customerFilter: 'Acme',
+        workItemFilter: 'Auth',
+        minScoreFilter: '20',
+        releasedFilter: 'released',
+        teamFilter: 'Backend',
+      });
+      expect(result.customers.name).toBeDefined();
+      expect(result.workItems.name).toBeDefined();
+      expect(result.workItems.calculated_score).toEqual({ $gte: 20 });
+      expect(result.workItems.released_in_sprint_id).toBeDefined();
+      expect(result.teams.name).toBeDefined();
+    });
+  });
+
   describe('applyValueStreamFilters', () => {
+    // applyValueStreamFilters now only handles cross-entity filters
+    // (issue team membership, sprint range) and the post-filter threshold.
+    // Name/score/released/minTcv filters are handled at DB level by buildWorkspaceQueries.
     const baseData = {
       customers: [
         { id: 'c1', name: 'Acme Corp', existing_tcv: 5000, potential_tcv: 1000 },
@@ -128,9 +216,9 @@ describe('dbHelpers', () => {
         { id: 'c3', name: 'Gamma LLC', existing_tcv: 0, potential_tcv: 100 },
       ],
       workItems: [
-        { id: 'w1', name: 'Auth Rewrite', score: 50, released_in_sprint_id: 's1' },
-        { id: 'w2', name: 'Dashboard', score: 10 },
-        { id: 'w3', name: 'API Gateway', score: 80 },
+        { id: 'w1', name: 'Auth Rewrite', calculated_score: 50, released_in_sprint_id: 's1' },
+        { id: 'w2', name: 'Dashboard', calculated_score: 10 },
+        { id: 'w3', name: 'API Gateway', calculated_score: 80 },
       ],
       teams: [
         { id: 't1', name: 'Backend Team' },
@@ -164,72 +252,22 @@ describe('dbHelpers', () => {
       expect(result.issues).toHaveLength(3);
     });
 
-    it('filters customers by name (case-insensitive)', () => {
-      const result = applyValueStreamFilters(baseData, { customerFilter: 'acme' });
-      expect(result.customers).toHaveLength(1);
-      expect(result.customers[0].id).toBe('c1');
-    });
-
-    it('filters customers by minTcv (existing + potential)', () => {
-      const result = applyValueStreamFilters(baseData, { minTcvFilter: '1000' });
-      expect(result.customers).toHaveLength(1);
-      expect(result.customers[0].id).toBe('c1'); // 5000+1000 = 6000 >= 1000
-    });
-
-    it('combines customerFilter and minTcvFilter', () => {
-      const result = applyValueStreamFilters(baseData, { customerFilter: 'a', minTcvFilter: '500' });
-      // 'a' matches Acme (6000) and Gamma (100). minTcv 500 excludes Gamma.
-      expect(result.customers).toHaveLength(1);
-      expect(result.customers[0].id).toBe('c1');
-    });
-
-    it('filters workItems by name', () => {
-      const result = applyValueStreamFilters(baseData, { workItemFilter: 'dash' });
-      expect(result.workItems).toHaveLength(1);
-      expect(result.workItems[0].id).toBe('w2');
-    });
-
-    it('filters workItems by released status', () => {
-      const released = applyValueStreamFilters(baseData, { releasedFilter: 'released' });
-      expect(released.workItems).toHaveLength(1);
-      expect(released.workItems[0].id).toBe('w1');
-
-      const unreleased = applyValueStreamFilters(baseData, { releasedFilter: 'unreleased' });
-      expect(unreleased.workItems).toHaveLength(2);
-      expect(unreleased.workItems.map((w: any) => w.id)).toEqual(['w2', 'w3']);
-    });
-
-    it('filters workItems by minScore', () => {
-      const result = applyValueStreamFilters(baseData, { minScoreFilter: '20' });
-      expect(result.workItems).toHaveLength(2);
-      expect(result.workItems.map((w: any) => w.id)).toEqual(['w1', 'w3']);
-    });
-
-    it('filters teams by name', () => {
-      const result = applyValueStreamFilters(baseData, { teamFilter: 'backend' });
-      expect(result.teams).toHaveLength(1);
-      expect(result.teams[0].id).toBe('t1');
-    });
-
     it('filters issues by team membership when teamFilter is set', () => {
-      const result = applyValueStreamFilters(baseData, { teamFilter: 'frontend' });
-      expect(result.teams).toHaveLength(1);
+      // teamFilter causes teams to be pre-filtered at DB level.
+      // Here we simulate that by providing only matching teams.
+      // applyValueStreamFilters then filters issues to only those in visible teams.
+      const dataWithFilteredTeams = {
+        ...baseData,
+        teams: [{ id: 't2', name: 'Frontend Team' }],
+      };
+      const result = applyValueStreamFilters(dataWithFilteredTeams, { teamFilter: 'frontend' });
       expect(result.issues).toHaveLength(1);
-      expect(result.issues[0].id).toBe('e2'); // team_id: 't2' (Frontend Team)
-    });
-
-    it('filters issues by name', () => {
-      const result = applyValueStreamFilters(baseData, { issueFilter: 'fix' });
-      expect(result.issues).toHaveLength(1);
-      expect(result.issues[0].id).toBe('e1');
+      expect(result.issues[0].id).toBe('e2'); // team_id: 't2'
     });
 
     it('filters issues by sprint range (startSprintId)', () => {
       const result = applyValueStreamFilters(baseData, { startSprintId: 's2' });
       // s2 starts 2026-02-01. Issues whose end >= 2026-02-01 pass.
-      // e1: ends 2026-01-14 < 2026-02-01 → excluded
-      // e2: ends 2026-02-14 >= 2026-02-01 → included
-      // e3: ends 2026-03-14 >= 2026-02-01 → included
       expect(result.issues).toHaveLength(2);
       expect(result.issues.map((e: any) => e.id)).toEqual(['e2', 'e3']);
     });
@@ -237,16 +275,12 @@ describe('dbHelpers', () => {
     it('filters issues by sprint range (endSprintId)', () => {
       const result = applyValueStreamFilters(baseData, { endSprintId: 's2' });
       // s2 ends 2026-02-14. Issues whose start <= 2026-02-14 pass.
-      // e1: starts 2026-01-01 <= 2026-02-14 → included
-      // e2: starts 2026-02-01 <= 2026-02-14 → included
-      // e3: starts 2026-03-01 > 2026-02-14 → excluded
       expect(result.issues).toHaveLength(2);
       expect(result.issues.map((e: any) => e.id)).toEqual(['e1', 'e2']);
     });
 
     it('filters issues by both startSprintId and endSprintId', () => {
       const result = applyValueStreamFilters(baseData, { startSprintId: 's2', endSprintId: 's2' });
-      // Only issues overlapping with s2 (2026-02-01 to 2026-02-14)
       expect(result.issues).toHaveLength(1);
       expect(result.issues[0].id).toBe('e2');
     });
@@ -256,20 +290,24 @@ describe('dbHelpers', () => {
         ...baseData,
         issues: [
           ...baseData.issues,
-          { id: 'e4', name: 'No dates', team_id: 't1' }, // no target_start/end
+          { id: 'e4', name: 'No dates', team_id: 't1' },
         ],
       };
       const result = applyValueStreamFilters(data, { startSprintId: 's1' });
       expect(result.issues.find((e: any) => e.id === 'e4')).toBeUndefined();
     });
 
-    it('combines multiple filters (AND logic)', () => {
-      const result = applyValueStreamFilters(baseData, {
+    it('combines team filter and sprint range (AND logic)', () => {
+      const dataWithFilteredTeams = {
+        ...baseData,
+        teams: [{ id: 't1', name: 'Backend Team' }],
+      };
+      const result = applyValueStreamFilters(dataWithFilteredTeams, {
         teamFilter: 'backend',
-        issueFilter: 'refactor',
+        startSprintId: 's2',
       });
-      // teamFilter: Backend Team → t1. issueFilter: 'refactor' → e3.
-      // e3 has team_id t1 and name contains 'refactor' → passes both.
+      // Team t1 issues: e1 (ends Jan 14) and e3 (ends Mar 14)
+      // Sprint range s2 start: Feb 1 — e1 excluded, e3 included
       expect(result.issues).toHaveLength(1);
       expect(result.issues[0].id).toBe('e3');
     });
@@ -278,7 +316,7 @@ describe('dbHelpers', () => {
       const largeData = {
         ...baseData,
         customers: Array.from({ length: 200 }, (_, i) => ({ id: `c${i}`, name: `Cust ${i}`, existing_tcv: 100, potential_tcv: 0 })),
-        workItems: Array.from({ length: 200 }, (_, i) => ({ id: `w${i}`, name: `Work ${i}`, score: 10 })),
+        workItems: Array.from({ length: 200 }, (_, i) => ({ id: `w${i}`, name: `Work ${i}`, calculated_score: 10 })),
         issues: Array.from({ length: 200 }, (_, i) => ({ id: `e${i}`, name: `Issue ${i}`, team_id: 't1' })),
       };
       // Total: 200 + 200 + 2 teams + 200 = 602 > 500
@@ -294,15 +332,20 @@ describe('dbHelpers', () => {
       }
     });
 
-    it('passes when filtering brings total below threshold', () => {
-      const largeData = {
-        ...baseData,
-        workItems: Array.from({ length: 400 }, (_, i) => ({ id: `w${i}`, name: `Work ${i}`, score: i })),
-      };
-      // Unfiltered: 3 + 400 + 2 + 3 = 408 (under 500, passes)
-      // But with minScore filter, it reduces further
-      const result = applyValueStreamFilters(largeData, { minScoreFilter: '350' });
-      expect(result.workItems).toHaveLength(50); // scores 350..399
+    it('does not filter customers/workItems/teams directly (handled at DB level)', () => {
+      // These filters are now applied via buildWorkspaceQueries at the DB level.
+      // applyValueStreamFilters should pass them through unchanged.
+      const result = applyValueStreamFilters(baseData, {
+        customerFilter: 'Acme',
+        workItemFilter: 'Auth',
+        minScoreFilter: '50',
+        releasedFilter: 'released',
+        minTcvFilter: '1000',
+      });
+      // All customers/workItems/teams pass through — only issue filtering applies
+      expect(result.customers).toHaveLength(3);
+      expect(result.workItems).toHaveLength(3);
+      expect(result.teams).toHaveLength(2);
     });
   });
 });

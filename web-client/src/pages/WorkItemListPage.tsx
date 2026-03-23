@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ValueStreamData, WorkItem } from '../types/models';
-import { calculateWorkItemEffort, calculateWorkItemTcv } from '../utils/businessLogic';
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption, ListColumn } from '../components/common/GenericListPage';
 
@@ -17,11 +16,11 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
 
     const sortOptions: SortOption<WorkItem>[] = useMemo(() => [
         { label: 'Name', key: 'name', getValue: (w) => w.name },
-        { label: 'Score', key: 'score', getValue: (w) => w.score || 0 },
+        { label: 'Score', key: 'score', getValue: (w) => w.calculated_score || 0 },
         { 
-            label: 'TCV', 
-            key: 'tcv', 
-            getValue: (w) => data ? calculateWorkItemTcv(w, data.customers, data.workItems) : 0 
+            label: 'TCV',
+            key: 'tcv',
+            getValue: (w) => w.calculated_tcv || 0
         },
         {
             label: 'Status',
@@ -29,9 +28,9 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
             getValue: (w) => STATUS_ORDER.indexOf(w.status || 'Backlog')
         },
         { 
-            label: 'Effort', 
-            key: 'effort', 
-            getValue: (w) => data ? calculateWorkItemEffort(w, data.issues) : 0 
+            label: 'Effort',
+            key: 'effort',
+            getValue: (w) => w.calculated_effort || 0
         },
         {
             label: 'Released',
@@ -44,19 +43,19 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
         { header: 'Name', render: (w) => w.name, flex: 2, sortKey: 'name' },
         { 
             header: 'Score', 
-            render: (w) => Math.round(w.score || 0).toLocaleString(),
+            render: (w) => Math.round(w.calculated_score || 0).toLocaleString(),
             flex: 1,
             sortKey: 'score'
         },
         { 
             header: 'Effort', 
-            render: (w) => data ? `${calculateWorkItemEffort(w, data.issues).toLocaleString()} MDs` : '0 MDs',
+            render: (w) => `${(w.calculated_effort || 0).toLocaleString()} MDs`,
             flex: 1,
             sortKey: 'effort'
         },
         { 
             header: 'TCV', 
-            render: (w) => data ? `$${calculateWorkItemTcv(w, data.customers, data.workItems).toLocaleString()}` : '$0',
+            render: (w) => `$${(w.calculated_tcv || 0).toLocaleString()}`,
             flex: 1,
             sortKey: 'tcv'
         },

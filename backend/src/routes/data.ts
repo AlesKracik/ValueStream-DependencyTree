@@ -3,9 +3,9 @@ import fs from 'fs';
 import { getSettingsPath } from './settings';
 import { maskSettings, augmentConfig, logQuery } from '../utils/configHelpers';
 import { getDb } from '../utils/mongoServer';
-import { enrichWorkItemsWithMetrics } from '../services/metricsService';
+import { computeMetricsFromPrecomputed, recomputeScoresForWorkItems } from '../services/metricsService';
 import { assignMissingQuarters } from '../services/sprintService';
-import { fetchWithThreshold, buildMongoQuery, applyValueStreamFilters } from '../utils/dbHelpers';
+import { fetchWithThreshold, buildMongoQuery, applyValueStreamFilters, buildWorkspaceQueries } from '../utils/dbHelpers';
 
 export const dataRoutes: FastifyPluginAsync = async (fastify) => {
 
@@ -110,21 +110,25 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/api/data/workItems', async (request, reply) => {
       try {
           const db = await getAppDb();
-          // WorkItems require ALL customers, workItems, and issues to calculate correct RICE scores
-          // (e.g. Should-have TCV count needs all workItems). Threshold protects each collection.
-          const [customers, workItems, issues] = await Promise.all([
-            fetchWithThreshold(db.collection('customers'), {}, 'customers'),
-            fetchWithThreshold(db.collection('workItems'), {}, 'workItems'),
-            fetchWithThreshold(db.collection('issues'), {}, 'issues')
-          ]);
+          // Scores are pre-computed on WorkItem documents — no need to join with customers/issues
+          const query = buildMongoQuery(request.query || {}, 'workItems');
+          const docs = await fetchWithThreshold(db.collection('workItems'), query, 'workItems');
+          const workItems = docs.map(({ _id, ...rest }) => rest);
+          const metrics = computeMetricsFromPrecomputed(workItems);
 
-          const { workItems: scoredItems, metrics } = enrichWorkItemsWithMetrics(
-              workItems.map(({ _id, ...rest }) => rest),
-              customers.map(({ _id, ...rest }) => rest),
-              issues.map(({ _id, ...rest }) => rest)
-          );
+          return reply.send({ workItems, metrics });
+      } catch (e: any) {
+          return handleError(e, reply);
+      }
+  });
 
-          return reply.send({ workItems: scoredItems, metrics });
+  // Migration: backfill pre-computed scores on existing WorkItem documents
+  fastify.post('/api/data/recomputeScores', async (request, reply) => {
+      try {
+          const db = await getAppDb();
+          await recomputeScoresForWorkItems(db);
+          const count = await db.collection('workItems').countDocuments({});
+          return reply.send({ success: true, workItemsUpdated: count });
       } catch (e: any) {
           return handleError(e, reply);
       }
@@ -154,41 +158,38 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
           const sprintsWithoutIdForWorkspace = rawSprintsForWorkspace.map(({ _id, ...rest }) => rest);
           dbData.sprints = await assignMissingQuarters(sprintsWithoutIdForWorkspace, db, settings.general?.fiscal_year_start_month || 1);
 
-          // Fetch ALL data for correct score computation (e.g. Should-have TCV needs all workItems).
-          // No per-collection threshold here — the post-filter threshold in applyValueStreamFilters
-          // is what protects the client. The user controls this via ValueStream parameters.
+          // Look up ValueStream parameters for DB-level query building
+          const vs = valueStreamId ? dbData.valueStreams.find((v: any) => v.id === valueStreamId) : null;
+          const params = vs?.parameters || {};
+
+          // Build per-collection MongoDB queries from ValueStream parameters.
+          // Scores are pre-computed on WorkItem docs, so score/released/name filters
+          // can now be pushed to the DB layer — no need to fetch everything.
+          const queries = buildWorkspaceQueries(params);
+
           const [customers, workItems, teams, issues] = await Promise.all([
-            logQuery('Customers', 'customers', 'find', db.collection('customers').find({}).toArray()),
-            logQuery('WorkItems', 'workItems', 'find', db.collection('workItems').find({}).toArray()),
-            logQuery('Teams', 'teams', 'find', db.collection('teams').find({}).toArray()),
-            logQuery('Issues', 'issues', 'find', db.collection('issues').find({}).toArray())
+            logQuery('Customers', 'customers', 'find', db.collection('customers').find(queries.customers).toArray()),
+            logQuery('WorkItems', 'workItems', 'find', db.collection('workItems').find(queries.workItems).toArray()),
+            logQuery('Teams', 'teams', 'find', db.collection('teams').find(queries.teams).toArray()),
+            logQuery('Issues', 'issues', 'find', db.collection('issues').find(queries.issues).toArray())
           ]);
 
           dbData.customers = customers.map(({ _id, ...rest }) => rest);
+          dbData.workItems = workItems.map(({ _id, ...rest }) => rest);
           dbData.teams = teams.map(({ _id, ...rest }) => rest);
           dbData.issues = issues.map(({ _id, ...rest }) => rest);
 
-          // Score workItems on the FULL dataset (before filtering)
-          const { workItems: scoredItems, metrics } = enrichWorkItemsWithMetrics(
-              workItems.map(({ _id, ...rest }) => rest),
-              dbData.customers,
-              dbData.issues
-          );
+          // Compute metrics from pre-computed score fields (no need for enrichWorkItemsWithMetrics)
+          dbData.metrics = computeMetricsFromPrecomputed(dbData.workItems);
 
-          dbData.workItems = scoredItems;
-          dbData.metrics = metrics;
-
-          // Apply ValueStream's saved (static) parameters as hard filters.
-          // Dynamic/transient filters entered by the user are applied client-side in useGraphLayout.
-          if (valueStreamId) {
-            const vs = dbData.valueStreams.find((v: any) => v.id === valueStreamId);
-            if (vs?.parameters) {
-              const filtered = applyValueStreamFilters(dbData, vs.parameters);
-              dbData.customers = filtered.customers;
-              dbData.workItems = filtered.workItems;
-              dbData.teams = filtered.teams;
-              dbData.issues = filtered.issues;
-            }
+          // Apply remaining in-memory filters that can't be expressed as simple MongoDB queries
+          // (cross-entity: issue team membership, sprint range, post-filter threshold)
+          if (valueStreamId && vs?.parameters) {
+            const filtered = applyValueStreamFilters(dbData, vs.parameters);
+            dbData.customers = filtered.customers;
+            dbData.workItems = filtered.workItems;
+            dbData.teams = filtered.teams;
+            dbData.issues = filtered.issues;
           }
 
         } catch (mongoErr: any) {

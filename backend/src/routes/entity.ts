@@ -3,8 +3,11 @@ import fs from 'fs';
 import { getSettingsPath } from './settings';
 import { getDb } from '../utils/mongoServer';
 import { augmentConfig } from '../utils/configHelpers';
+import { recomputeScoresForWorkItems } from '../services/metricsService';
 
 const ALLOWED_COLLECTIONS = ['customers', 'workItems', 'teams', 'issues', 'sprints', 'valueStreams'];
+// Collections whose mutations affect RICE scores and trigger recomputation
+const SCORE_AFFECTING_COLLECTIONS = ['workItems', 'customers', 'issues'];
 
 export const entityRoutes: FastifyPluginAsync = async (fastify) => {
   // Use a wildcard param to match /api/entity/:collection/:id
@@ -35,7 +38,14 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
       
       await db.collection(collection).createIndex({ id: 1 }, { unique: true });
       await db.collection(collection).replaceOne({ id: entityId }, data, { upsert: true });
-      
+
+      // Fire-and-forget: recompute RICE scores when score-affecting entities change
+      if (SCORE_AFFECTING_COLLECTIONS.includes(collection)) {
+        recomputeScoresForWorkItems(db).catch(err =>
+          console.error('Score recomputation failed:', err)
+        );
+      }
+
       return reply.send({ success: true });
     } catch (e: any) {
       return reply.code(500).send({ success: false, error: e.message });
@@ -64,7 +74,13 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
       
       await db.collection(collection).createIndex({ id: 1 }, { unique: true });
       await db.collection(collection).replaceOne({ id: entityId }, data, { upsert: true });
-      
+
+      if (SCORE_AFFECTING_COLLECTIONS.includes(collection)) {
+        recomputeScoresForWorkItems(db).catch(err =>
+          console.error('Score recomputation failed:', err)
+        );
+      }
+
       return reply.send({ success: true });
     } catch (e: any) {
       return reply.code(500).send({ success: false, error: e.message });
@@ -113,6 +129,12 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
           { $set: { team_id: '' } }
         );
         if (result.modifiedCount > 0) cascaded.issues = result.modifiedCount;
+      }
+
+      if (SCORE_AFFECTING_COLLECTIONS.includes(collection)) {
+        recomputeScoresForWorkItems(db).catch(err =>
+          console.error('Score recomputation failed:', err)
+        );
       }
 
       return reply.send({ success: true, cascaded });

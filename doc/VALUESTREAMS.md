@@ -31,13 +31,14 @@ The ValueStream employs a multi-layered filtering system that combines **Server-
 
 ### 1. The Hydration Phase (Server-Side)
 When a ValueStream is loaded, the client requests data using `GET /api/workspace?valueStreamId=X`. The Fastify backend:
-1. **Fetches all data** from MongoDB (unthrottled — scoring requires the complete dataset).
-2. **Scores Work Items** on the full dataset via `enrichWorkItemsWithMetrics()` to ensure correct Should-have TCV counts and RICE scores.
-3. **Applies Persistent Filters** via `applyValueStreamFilters()` using the ValueStream entity's saved `parameters` — text matches, released status, minTcv, minScore, team membership, sprint range.
-4. **Checks post-filter threshold** — returns `413` if the filtered total still exceeds the limit (default: 500 items), asking the user to tighten their ValueStream parameters.
+1. **Builds DB-level queries** from the ValueStream's saved parameters via `buildWorkspaceQueries()` — name text, released status, minScore (`calculated_score`), and minTcv (`$expr`) are pushed to MongoDB queries. RICE scores are pre-computed on WorkItem documents (via `recomputeScoresForWorkItems()` on every entity mutation), so score filtering happens at the DB level.
+2. **Fetches filtered data** from MongoDB using the per-collection queries — only matching entities are returned from the DB.
+3. **Applies cross-entity in-memory filters** via `applyValueStreamFilters()` — issue team membership and sprint range (which depend on multiple collections).
+4. **Checks post-filter threshold** — returns `413` if the total still exceeds the limit (default: 500 items).
+5. **Computes metrics** (`maxScore`, `maxRoi`) from the pre-computed score fields on the filtered set via `computeMetricsFromPrecomputed()`.
 - **User control:** The threshold is enforced *after* filtering, so the user can always resolve a 413 by making their ValueStream parameters more restrictive.
-- **Optimization:** Only the filtered subset is transmitted over the network.
-- **Global Metrics:** The server returns global max values (e.g., `maxScore`) so the UI remains consistently scaled.
+- **Optimization:** DB-level filtering means only matching entities are fetched and transmitted.
+- **Score pre-computation:** Scores are recomputed on every save/delete of workItems, customers, or issues. Run `POST /api/data/recomputeScores` once after deployment to backfill existing data.
 
 ### 2. The Interaction Phase (Client-Side)
 As users type in the filter bar, the `useGraphLayout` hook applies **Transient Filters** to the already-filtered dataset provided by the server:
@@ -48,18 +49,19 @@ As users type in the filter bar, the `useGraphLayout` hook applies **Transient F
 
 | Step | Enforcement | Logic |
 | :--- | :--- | :--- |
-| **Initial Load** | Backend (`/api/workspace`) | Scores on full data, then applies ValueStream Parameters via `applyValueStreamFilters()`. |
-| **Numeric Thresholds** | Server & Client | `Math.max(Transient, Persistent)` - stricter wins. |
-| **Text Searches** | Server & Client | Logical AND - must match persistent criteria AND transient search string. |
+| **Initial Load** | Backend (`/api/workspace`) | Builds DB queries from VS params via `buildWorkspaceQueries()` (name, score, released, minTcv). Cross-entity filters (team membership, sprint range) applied in-memory by `applyValueStreamFilters()`. |
+| **Numeric Thresholds** | Server & Client | `Math.max(Transient, Persistent)` - stricter wins. Score filtered at DB level using pre-computed `calculated_score`. |
+| **Text Searches** | Server & Client | Logical AND - must match persistent criteria (DB-level) AND transient search string (client-side). |
 | **Intersection** | Client | Hides items that don't form a complete path (Customer -> WorkItem -> Issue). |
 
 ```mermaid
 graph TD
-    DB[(MongoDB)] -->|Full Fetch + Score| API[API /workspace]
-    API -->|applyValueStreamFilters| Filtered[Filtered Subset]
-    Filtered -->|Metrics + Data Subset| UI[Web Client]
+    DB[(MongoDB)] -->|DB-level queries via buildWorkspaceQueries| API[API /workspace]
+    API -->|Cross-entity filters via applyValueStreamFilters| Filtered[Filtered Subset]
+    Filtered -->|Pre-computed Metrics + Data| UI[Web Client]
     UI -->|Transient Filters| Layout[useGraphLayout]
     Layout --> Render[Visible Graph]
+    Save[Entity Save/Delete] -->|recomputeScoresForWorkItems| DB
 ```
 
 ## Configuration
