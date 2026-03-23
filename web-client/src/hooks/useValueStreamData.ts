@@ -56,11 +56,14 @@ const persistSettings = async (settings: any, showAlert?: (title: string, messag
 };
 
 export function useValueStreamData(
-    valueStreamId?: string, 
-    filters?: Partial<ValueStreamParameters>, 
+    valueStreamId?: string,
+    filters?: Partial<ValueStreamParameters>,
     persistenceDebounceMs = 1000,
     showAlert?: (title: string, message: string) => Promise<void>,
-    requestedCollections: string[] = ['workspace'] // Default to full workspace for backward compatibility
+    requestedCollections: string[] = ['workspace'], // Default to full workspace for backward compatibility
+    // Per-collection query params for relational filtering on granular endpoints
+    // e.g. { workItems: { customerId: 'c1' }, issues: { workItemId: 'w1' } }
+    collectionQueryParams: Record<string, Record<string, string>> = {}
 ) {
     const [data, setData] = useState<ValueStreamData | null>(null);
     const [loading, setLoading] = useState<boolean>(true);
@@ -92,15 +95,10 @@ export function useValueStreamData(
     const fetchData = async () => {
         try {
             setLoading(true);
+            // Only send valueStreamId — the backend looks up the ValueStream's saved parameters
+            // and applies them as hard filters. Dynamic/transient filters are applied client-side.
             const params = new URLSearchParams();
             if (valueStreamId) params.append('valueStreamId', valueStreamId);
-            if (filters) {
-                Object.entries(filters).forEach(([key, value]) => {
-                    if (value !== undefined && value !== null && value !== '') {
-                        params.append(key, String(value));
-                    }
-                });
-            }
             const queryString = params.toString();
             
             let finalData: Partial<ValueStreamData> = {};
@@ -116,7 +114,13 @@ export function useValueStreamData(
             } else {
                 // Otherwise, fetch granular endpoints in parallel
                 const fetchPromises = requestedCollections.map(async (collection) => {
-                    const endpoint = collection === 'settings' ? '/api/settings' : `/api/data/${collection}`;
+                    let endpoint = collection === 'settings' ? '/api/settings' : `/api/data/${collection}`;
+                    // Append per-collection query params for relational filtering
+                    const qp = collectionQueryParams[collection];
+                    if (qp && Object.keys(qp).length > 0) {
+                        const qs = new URLSearchParams(qp).toString();
+                        endpoint += `?${qs}`;
+                    }
                     const res = await authorizedFetch(endpoint);
                     if (!res.ok) throw new Error(`Failed to fetch ${collection}`);
                     const json = await res.json();
@@ -165,8 +169,10 @@ export function useValueStreamData(
         fetchData();
      
      
+    // Re-fetch when valueStreamId changes (backend applies its static filters)
+    // or when requestedCollections change. Dynamic filters are applied client-side.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [valueStreamId, JSON.stringify(filters), JSON.stringify(requestedCollections)]);
+    }, [valueStreamId, JSON.stringify(requestedCollections), JSON.stringify(collectionQueryParams)]);
 
     const refreshData = () => {
         fetchData();
@@ -181,27 +187,17 @@ export function useValueStreamData(
     };
 
     const deleteCustomer = (id: string) => {
+        // Backend handles cascade: removes customer_targets referencing this customer from all workItems
+        persistEntity('customers', 'DELETE', { id }, showAlert);
         setData(prev => {
             if (!prev) return prev;
-            
-            const updatedWorkItems = (prev.workItems || []).map(f => ({
-                ...f,
-                customer_targets: f.customer_targets.filter(ct => ct.customer_id !== id)
-            }));
-            
-            persistEntity('customers', 'DELETE', { id }, showAlert);
-            
-            // Persist cascaded updates
-            (prev.workItems || []).forEach((oldW, i) => {
-                if (oldW.customer_targets.length !== updatedWorkItems[i].customer_targets.length) {
-                    persistEntity('workItems', 'POST', updatedWorkItems[i], showAlert);
-                }
-            });
-
             return {
                 ...prev,
                 customers: (prev.customers || []).filter(c => c.id !== id),
-                workItems: updatedWorkItems
+                workItems: (prev.workItems || []).map(f => ({
+                    ...f,
+                    customer_targets: f.customer_targets.filter(ct => ct.customer_id !== id)
+                }))
             };
         });
     };
@@ -235,23 +231,14 @@ export function useValueStreamData(
     };
 
     const deleteWorkItem = (id: string) => {
+        // Backend handles cascade: clears work_item_id from all issues referencing this workItem
+        persistEntity('workItems', 'DELETE', { id }, showAlert);
         setData(prev => {
             if (!prev) return prev;
-            
-            const updatedIssues = (prev.issues || []).map(e => e.work_item_id === id ? { ...e, work_item_id: undefined } : e);
-            
-            persistEntity('workItems', 'DELETE', { id }, showAlert);
-            
-            (prev.issues || []).forEach((oldE, i) => {
-                if (oldE.work_item_id === id) {
-                    persistEntity('issues', 'POST', updatedIssues[i], showAlert);
-                }
-            });
-
             return {
                 ...prev,
                 workItems: (prev.workItems || []).filter(f => f.id !== id),
-                issues: updatedIssues
+                issues: (prev.issues || []).map(e => e.work_item_id === id ? { ...e, work_item_id: undefined } : e)
             };
         });
     };
@@ -305,23 +292,14 @@ export function useValueStreamData(
     };
 
     const deleteTeam = (id: string) => {
+        // Backend handles cascade: clears team_id from all issues referencing this team
+        persistEntity('teams', 'DELETE', { id }, showAlert);
         setData(prev => {
             if (!prev) return prev;
-            
-            const updatedIssues = (prev.issues || []).map(e => e.team_id === id ? { ...e, team_id: '' } : e);
-            
-            persistEntity('teams', 'DELETE', { id }, showAlert);
-            
-            (prev.issues || []).forEach((oldE, i) => {
-                if (oldE.team_id === id) {
-                    persistEntity('issues', 'POST', updatedIssues[i], showAlert);
-                }
-            });
-
             return {
                 ...prev,
                 teams: (prev.teams || []).filter(t => t.id !== id),
-                issues: updatedIssues
+                issues: (prev.issues || []).map(e => e.team_id === id ? { ...e, team_id: '' } : e)
             };
         });
     };

@@ -31,7 +31,7 @@ Defined in: `web-client/src/types/models.ts`
 - **API Entry Point**: `backend/src/server.ts` (Fastify Node.js Application).
 - **API Routes**: Domain-specific logic is split into controllers in `backend/src/routes/` (e.g., `data.ts`, `jira.ts`, `auth.ts`).
 - **Database**: MongoDB (App data + External Customer data).
-- **Core Logic**: `backend/src/utils/mongoServer.ts` (Connections) and `backend/src/utils/businessLogic.ts` (RICE scoring, metrics).
+- **Core Logic**: `backend/src/utils/mongoServer.ts` (Connections), `backend/src/utils/businessLogic.ts` (RICE scoring, metrics), and `backend/src/utils/dbHelpers.ts` (threshold protection, query building, ValueStream filtering).
 
 ### Available APIs
 The backend is a standalone Fastify server running on port 4000. All endpoints require authorization via `ADMIN_SECRET` handled by a Fastify hook (`backend/src/plugins/auth.ts`). The Vite dev server proxies `/api` calls to this backend.
@@ -39,10 +39,11 @@ The backend is a standalone Fastify server running on port 4000. All endpoints r
 #### Core Data & Services
 The backend encapsulates complex business logic (RICE scoring, fiscal quarter mapping) within a dedicated `backend/src/services/` layer, separating it from the data fetching routes.
 
-- `GET /api/workspace`: Fetches the entire workspace state (used for heavy Graph visualizations). Calculates global scaling metrics (`maxScore`, `maxRoi`).
-- `GET /api/data/{collection}`: Granular endpoints (e.g., `/api/data/customers`, `/api/data/workItems`) allowing the frontend to lazily load only the required entities for specific list or detail views. The `workItems` endpoint internally joins with issues/customers to pre-calculate RICE scores before returning.
+- `GET /api/workspace`: Composite endpoint for the Graph View. Fetches all entities (unthrottled for correct scoring), calculates RICE scores on the full dataset, then applies ValueStream's saved parameters as hard filters via `applyValueStreamFilters()`. Accepts `?valueStreamId=X`. Post-filter threshold (413 if still too large) — the user controls this by tightening ValueStream parameters.
+- `GET /api/data/{collection}`: Granular endpoints (e.g., `/api/data/customers`, `/api/data/workItems`) for list and detail views. Query params are mapped to MongoDB queries via `buildMongoQuery()` — supports text filters (`customerFilter`, `teamFilter`), status filters (`releasedFilter`), and relational filters (`customerId`, `workItemId`, `teamId`). Each is protected by `fetchWithThreshold()`. The `workItems` endpoint internally joins with issues/customers to pre-calculate RICE scores.
 - `GET /api/settings` & `POST /api/settings`: Retrieves or updates `settings.json`. Handles masking/unmasking of sensitive credentials.
-- `POST /api/entity/{collection}/{id}`: Upserts or deletes documents in MongoDB.
+- `POST /api/entity/{collection}`: Upserts documents in MongoDB.
+- `DELETE /api/entity/{collection}/{id}`: Deletes a document and performs **cascade cleanup** — removes customer_targets from WorkItems, clears work_item_id/team_id from Issues. Returns `cascaded` counts.
 - `POST /api/mongo/query`: Executes JSON-based queries (find/aggregate) against the customer or app database.
 
 #### Integrations
@@ -70,7 +71,7 @@ Centralized in `backend/src/utils/businessLogic.ts`:
 ### State Management
 - **Primary Hook**: `web-client/src/hooks/useValueStreamData.ts`.
 - **Optimistic Updates**: UI updates immediately; persistence is debounced (1s) to prevent excessive writes.
-- **Cascading Updates**: Handles referential integrity (e.g., deleting a Customer removes its targets from all Work Items).
+- **Cascading Deletes**: Referential integrity is enforced **server-side** in the backend DELETE endpoint (e.g., deleting a Customer `$pull`s its targets from all Work Items; deleting a WorkItem `$unset`s `work_item_id` from Issues). The frontend mirrors cascades optimistically in local state for instant UI feedback.
 
 ### Visualization & Layout
 - **Engine**: `web-client/src/hooks/useGraphLayout.ts`.

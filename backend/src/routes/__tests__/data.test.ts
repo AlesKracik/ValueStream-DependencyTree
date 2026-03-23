@@ -170,6 +170,180 @@ describe('Data Routes', () => {
     expect(updatedQuarter).toBe('FY27Q1');
   });
 
+  it('should apply ValueStream static filters when valueStreamId is provided', async () => {
+    const createMockCollection = (data: any[]) => ({
+      find: vi.fn().mockReturnValue({
+        sort: vi.fn().mockReturnThis(),
+        toArray: vi.fn().mockResolvedValue(data)
+      }),
+      updateOne: vi.fn().mockResolvedValue(true)
+    });
+
+    mockDb.collection = vi.fn((colName: string) => {
+      switch (colName) {
+        case 'valueStreams': return createMockCollection([
+          { id: 'vs1', name: 'Filtered VS', parameters: { customerFilter: 'acme', minScoreFilter: '30' } },
+          { id: 'vs2', name: 'Unfiltered VS' }
+        ]);
+        case 'customers': return createMockCollection([
+          { id: 'c1', name: 'Acme Corp', existing_tcv: 5000, potential_tcv: 0 },
+          { id: 'c2', name: 'Beta Inc', existing_tcv: 1000, potential_tcv: 0 }
+        ]);
+        case 'workItems': return createMockCollection([
+          { id: 'w1', name: 'High Score Feature', total_effort_mds: 5, customer_targets: [{ customer_id: 'c1', tcv_type: 'existing' }] },
+          { id: 'w2', name: 'Low Score Bug', total_effort_mds: 100 }
+        ]);
+        case 'teams': return createMockCollection([{ id: 't1', name: 'Team A' }]);
+        case 'issues': return createMockCollection([{ id: 'e1', effort_md: 5, work_item_id: 'w1' }]);
+        case 'sprints': return createMockCollection([]);
+        default: return createMockCollection([]);
+      }
+    });
+
+    // With valueStreamId — static filters applied
+    const filtered = await app.inject({
+      method: 'GET',
+      url: '/api/workspace?valueStreamId=vs1'
+    });
+    expect(filtered.statusCode).toBe(200);
+    const filteredJson = JSON.parse(filtered.payload);
+
+    // customerFilter='acme' should keep only Acme Corp
+    expect(filteredJson.customers).toHaveLength(1);
+    expect(filteredJson.customers[0].id).toBe('c1');
+
+    // minScoreFilter='30' should filter low-score workItems
+    // w1 has customer_targets with c1 (existing_tcv=5000), effort=5 → high score
+    // w2 has no targets, effort=100 → score=0
+    expect(filteredJson.workItems.every((w: any) => (w.score || 0) >= 30)).toBe(true);
+
+    // Without valueStreamId — no static filters, all data returned
+    const unfiltered = await app.inject({
+      method: 'GET',
+      url: '/api/workspace'
+    });
+    const unfilteredJson = JSON.parse(unfiltered.payload);
+    expect(unfilteredJson.customers).toHaveLength(2);
+    expect(unfilteredJson.workItems).toHaveLength(2);
+  });
+
+  it('should return all data when valueStreamId has no parameters', async () => {
+    const createMockCollection = (data: any[]) => ({
+      find: vi.fn().mockReturnValue({
+        sort: vi.fn().mockReturnThis(),
+        toArray: vi.fn().mockResolvedValue(data)
+      }),
+      updateOne: vi.fn().mockResolvedValue(true)
+    });
+
+    mockDb.collection = vi.fn((colName: string) => {
+      switch (colName) {
+        case 'valueStreams': return createMockCollection([
+          { id: 'vs-no-params', name: 'No Params VS' }
+        ]);
+        case 'customers': return createMockCollection([
+          { id: 'c1', name: 'Acme', existing_tcv: 100 },
+          { id: 'c2', name: 'Beta', existing_tcv: 200 }
+        ]);
+        case 'workItems': return createMockCollection([
+          { id: 'w1', name: 'Feature A', total_effort_mds: 5 },
+          { id: 'w2', name: 'Feature B', total_effort_mds: 10 }
+        ]);
+        default: return createMockCollection([]);
+      }
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/workspace?valueStreamId=vs-no-params'
+    });
+    expect(response.statusCode).toBe(200);
+    const json = JSON.parse(response.payload);
+    expect(json.customers).toHaveLength(2);
+    expect(json.workItems).toHaveLength(2);
+  });
+
+  it('should return 413 when filtered workspace data exceeds threshold', async () => {
+    const createMockCollection = (data: any[]) => ({
+      find: vi.fn().mockReturnValue({
+        sort: vi.fn().mockReturnThis(),
+        toArray: vi.fn().mockResolvedValue(data)
+      }),
+      updateOne: vi.fn().mockResolvedValue(true)
+    });
+
+    // Generate large dataset that exceeds threshold even after filtering
+    const manyCustomers = Array.from({ length: 200 }, (_, i) => ({ id: `c${i}`, name: `Customer ${i}`, existing_tcv: 100, potential_tcv: 0 }));
+    const manyWorkItems = Array.from({ length: 200 }, (_, i) => ({ id: `w${i}`, name: `WorkItem ${i}`, total_effort_mds: 5 }));
+    const manyIssues = Array.from({ length: 200 }, (_, i) => ({ id: `e${i}`, name: `Issue ${i}`, team_id: 't1' }));
+
+    mockDb.collection = vi.fn((colName: string) => {
+      switch (colName) {
+        case 'valueStreams': return createMockCollection([
+          { id: 'vs-big', name: 'Big VS', parameters: {} } // empty params → no filtering → over threshold
+        ]);
+        case 'customers': return createMockCollection(manyCustomers);
+        case 'workItems': return createMockCollection(manyWorkItems);
+        case 'teams': return createMockCollection([{ id: 't1', name: 'Team A' }]);
+        case 'issues': return createMockCollection(manyIssues);
+        case 'sprints': return createMockCollection([]);
+        default: return createMockCollection([]);
+      }
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/workspace?valueStreamId=vs-big'
+    });
+    expect(response.statusCode).toBe(413);
+    const json = JSON.parse(response.payload);
+    expect(json.success).toBe(false);
+    expect(json.error).toContain('too large');
+  });
+
+  it('should return 413 from granular endpoint when collection exceeds threshold', async () => {
+    const bigData = Array.from({ length: 501 }, (_, i) => ({ id: `c${i}`, name: `Cust ${i}` }));
+    const createMockCollection = (data: any[]) => ({
+      find: vi.fn().mockReturnValue({
+        sort: vi.fn().mockReturnThis(),
+        toArray: vi.fn().mockResolvedValue(data)
+      }),
+    });
+
+    mockDb.collection = vi.fn(() => createMockCollection(bigData));
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/data/customers'
+    });
+    expect(response.statusCode).toBe(413);
+    const json = JSON.parse(response.payload);
+    expect(json.success).toBe(false);
+    expect(json.error).toContain('customers');
+  });
+
+  it('granular endpoint should apply buildMongoQuery filters', async () => {
+    const createMockCollection = (data: any[]) => ({
+      find: vi.fn().mockReturnValue({
+        sort: vi.fn().mockReturnThis(),
+        toArray: vi.fn().mockResolvedValue(data)
+      }),
+    });
+
+    const col = createMockCollection([{ id: 't1', name: 'Backend Team' }]);
+    mockDb.collection = vi.fn(() => col);
+
+    await app.inject({
+      method: 'GET',
+      url: '/api/data/teams?teamFilter=Backend'
+    });
+
+    // The find() call should have received the mongo query built from the teamFilter
+    expect(col.find).toHaveBeenCalledWith(
+      expect.objectContaining({ name: { $regex: 'Backend', $options: 'i' } })
+    );
+  });
+
   it('should handle unconfigured App database gracefully', async () => {
     // Override settings mock to simulate NO database configured
     vi.spyOn(fs, 'readFileSync').mockImplementation(() => {

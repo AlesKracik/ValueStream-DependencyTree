@@ -21,11 +21,12 @@ describe('Entity Routes', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    
+
     mockCollection = {
       createIndex: vi.fn().mockResolvedValue(true),
       replaceOne: vi.fn().mockResolvedValue({ acknowledged: true }),
       deleteOne: vi.fn().mockResolvedValue({ acknowledged: true }),
+      updateMany: vi.fn().mockResolvedValue({ modifiedCount: 0 }),
     };
 
     mockDb = {
@@ -125,5 +126,80 @@ describe('Entity Routes', () => {
 
     expect(mockDb.collection).toHaveBeenCalledWith('workItems');
     expect(mockCollection.deleteOne).toHaveBeenCalledWith({ id: 'wi-1' });
+  });
+
+  it('should cascade-remove customer_targets when deleting a customer', async () => {
+    mockCollection.updateMany.mockResolvedValue({ modifiedCount: 3 });
+
+    const response = await app.inject({
+      method: 'DELETE',
+      url: '/api/entity/customers/cust-1'
+    });
+
+    expect(response.statusCode).toBe(200);
+    const json = JSON.parse(response.payload);
+    expect(json.success).toBe(true);
+    expect(json.cascaded).toEqual({ workItems: 3 });
+
+    expect(mockDb.collection).toHaveBeenCalledWith('customers');
+    expect(mockCollection.deleteOne).toHaveBeenCalledWith({ id: 'cust-1' });
+    expect(mockDb.collection).toHaveBeenCalledWith('workItems');
+    expect(mockCollection.updateMany).toHaveBeenCalledWith(
+      { 'customer_targets.customer_id': 'cust-1' },
+      { $pull: { customer_targets: { customer_id: 'cust-1' } } }
+    );
+  });
+
+  it('should cascade-clear work_item_id when deleting a workItem', async () => {
+    mockCollection.updateMany.mockResolvedValue({ modifiedCount: 2 });
+
+    const response = await app.inject({
+      method: 'DELETE',
+      url: '/api/entity/workItems/wi-1'
+    });
+
+    expect(response.statusCode).toBe(200);
+    const json = JSON.parse(response.payload);
+    expect(json.success).toBe(true);
+    expect(json.cascaded).toEqual({ issues: 2 });
+
+    expect(mockDb.collection).toHaveBeenCalledWith('issues');
+    expect(mockCollection.updateMany).toHaveBeenCalledWith(
+      { work_item_id: 'wi-1' },
+      { $unset: { work_item_id: '' } }
+    );
+  });
+
+  it('should cascade-clear team_id when deleting a team', async () => {
+    mockCollection.updateMany.mockResolvedValue({ modifiedCount: 5 });
+
+    const response = await app.inject({
+      method: 'DELETE',
+      url: '/api/entity/teams/team-1'
+    });
+
+    expect(response.statusCode).toBe(200);
+    const json = JSON.parse(response.payload);
+    expect(json.success).toBe(true);
+    expect(json.cascaded).toEqual({ issues: 5 });
+
+    expect(mockDb.collection).toHaveBeenCalledWith('issues');
+    expect(mockCollection.updateMany).toHaveBeenCalledWith(
+      { team_id: 'team-1' },
+      { $set: { team_id: '' } }
+    );
+  });
+
+  it('should not include cascaded key when no related documents are modified', async () => {
+    mockCollection.updateMany.mockResolvedValue({ modifiedCount: 0 });
+
+    const response = await app.inject({
+      method: 'DELETE',
+      url: '/api/entity/customers/cust-orphan'
+    });
+
+    const json = JSON.parse(response.payload);
+    expect(json.success).toBe(true);
+    expect(json.cascaded).toEqual({});
   });
 });

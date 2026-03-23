@@ -131,7 +131,7 @@ export const gleanAuthStatus = async (gleanUrl: string): Promise<boolean> => {
     return !!resData.authenticated;
 };
 
-export const gleanChat = async (gleanUrl: string, prompt: string, onStream?: (text: string) => void): Promise<any> => {
+export const gleanChat = async (gleanUrl: string, prompt: string, onStream?: (text: string) => void): Promise<{ messages?: Array<{ author: string; fragments?: Array<{ text: string }> }> } & Record<string, unknown>> => {
     const response = await authorizedFetch("/api/glean/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

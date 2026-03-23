@@ -30,10 +30,14 @@ export interface ValueStreamParameters {
 The ValueStream employs a multi-layered filtering system that combines **Server-Side Enforcement** (for persistent and heavy filters) and **Client-Side Transient Filters** (for live feedback).
 
 ### 1. The Hydration Phase (Server-Side)
-When a ValueStream is loaded, the client requests data using the `ValueStreamId`. The backend (MongoDB or the Vite proxy) applies the **Persistent Filters** directly to the database query:
-- **Optimization:** Only the relevant subset of customers, work items, and issues is transmitted over the network.
-- **Scoring:** RICE scores are calculated on the full dataset before filtering to ensure accuracy.
-- **Global Metrics:** The server returns global max values (e.g., `maxScore`) so the UI remains consistently scaled even when only a few items are visible.
+When a ValueStream is loaded, the client requests data using `GET /api/workspace?valueStreamId=X`. The Fastify backend:
+1. **Fetches all data** from MongoDB (unthrottled — scoring requires the complete dataset).
+2. **Scores Work Items** on the full dataset via `enrichWorkItemsWithMetrics()` to ensure correct Should-have TCV counts and RICE scores.
+3. **Applies Persistent Filters** via `applyValueStreamFilters()` using the ValueStream entity's saved `parameters` — text matches, released status, minTcv, minScore, team membership, sprint range.
+4. **Checks post-filter threshold** — returns `413` if the filtered total still exceeds the limit (default: 500 items), asking the user to tighten their ValueStream parameters.
+- **User control:** The threshold is enforced *after* filtering, so the user can always resolve a 413 by making their ValueStream parameters more restrictive.
+- **Optimization:** Only the filtered subset is transmitted over the network.
+- **Global Metrics:** The server returns global max values (e.g., `maxScore`) so the UI remains consistently scaled.
 
 ### 2. The Interaction Phase (Client-Side)
 As users type in the filter bar, the `useGraphLayout` hook applies **Transient Filters** to the already-filtered dataset provided by the server:
@@ -44,16 +48,17 @@ As users type in the filter bar, the `useGraphLayout` hook applies **Transient F
 
 | Step | Enforcement | Logic |
 | :--- | :--- | :--- |
-| **Initial Load** | Database | Fetches items matching Persistent ValueStream Parameters. |
+| **Initial Load** | Backend (`/api/workspace`) | Scores on full data, then applies ValueStream Parameters via `applyValueStreamFilters()`. |
 | **Numeric Thresholds** | Server & Client | `Math.max(Transient, Persistent)` - stricter wins. |
 | **Text Searches** | Server & Client | Logical AND - must match persistent criteria AND transient search string. |
 | **Intersection** | Client | Hides items that don't form a complete path (Customer -> WorkItem -> Issue). |
 
 ```mermaid
 graph TD
-    DB[(MongoDB)] -->|Persistent Filters| API[API /loadData]
-    API -->|Metrics + Data Subset| UI[Web Client]
-    UI -->|Transient Filters| Layout[Layout Engine]
+    DB[(MongoDB)] -->|Full Fetch + Score| API[API /workspace]
+    API -->|applyValueStreamFilters| Filtered[Filtered Subset]
+    Filtered -->|Metrics + Data Subset| UI[Web Client]
+    UI -->|Transient Filters| Layout[useGraphLayout]
     Layout --> Render[Visible Graph]
 ```
 

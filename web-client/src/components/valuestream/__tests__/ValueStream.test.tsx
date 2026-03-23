@@ -240,7 +240,7 @@ describe('Value Stream', () => {
             setViewport: mockSetViewport,
             getNodes: vi.fn(() => []),
             getEdges: vi.fn(() => []),
-        } as unknown as any);
+        } as never);
 
         render(
             <NotificationProvider>
@@ -271,7 +271,7 @@ describe('Value Stream', () => {
             setViewport: mockSetViewport,
             getNodes: vi.fn(() => []),
             getEdges: vi.fn(() => []),
-        } as unknown as any);
+        } as never);
 
         render(
             <NotificationProvider>

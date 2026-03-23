@@ -35,6 +35,7 @@ graph TD
 ### 2. Backend API (Fastify)
 - **Framework:** A standalone Fastify Node.js application (`backend/` directory).
 - **Service Layer:** Isolates business logic into `services/` for calculating dynamic RICE scores, effort rollups, and evaluating Sprint capacities.
+- **Data Helpers:** `utils/dbHelpers.ts` provides `fetchWithThreshold()` (413 protection per collection), `buildMongoQuery()` (maps query params to MongoDB queries including relational filters), and `applyValueStreamFilters()` (post-scoring hard filters from ValueStream parameters).
 - **Schema Validation:** Draft-07 JSON schema at `web-client/public/schema.json` and Fastify JSON schemas for API payload validation.
 
 ### 3. Data & Persistence
@@ -123,7 +124,7 @@ The backend calculates derived data on the fly:
 ### 4. Mutations & Reactivity
 User actions trigger local state changes via mutation functions:
 - **Optimistic Updates:** Immediately execute a local update on the React state array for zero-latency UI feedback.
-- **Cascading Logic:** Deleting a Customer removes it from Work Item targets; deleting a Team clears associations from Issues.
+- **Cascading Deletes:** Referential integrity is enforced **server-side** in `entity.ts`: deleting a Customer `$pull`s targets from Work Items, deleting a Work Item `$unset`s references from Issues, deleting a Team clears `team_id` from Issues. The frontend mirrors these cascades optimistically for instant UI feedback.
 - **Debounced Persistence:** Update operations are debounced by 1000ms, bundling rapid changes into a single API call.
 
 ```mermaid
@@ -190,7 +191,8 @@ graph TD
     api --> api_src[src/]
     api_src --> routes[routes/ - API Endpoints]
     api_src --> plugins[plugins/ - Fastify Plugins]
-    api_src --> util[utils/ - Shared Logic]
+    api_src --> services[services/ - RICE Scoring, Sprint Quarters]
+    api_src --> util[utils/ - dbHelpers, businessLogic, etc.]
 
     web --> web_src[src/]
     web_src --> components[components/ - UI & React Flow]

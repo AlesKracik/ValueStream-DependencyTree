@@ -86,7 +86,6 @@ export interface ValueStreamProps {
 
 export const ValueStream: React.FC<ValueStreamProps> = ({
     data, loading, error,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     updateCustomer, updateWorkItem, updateTeam, currentValueStreamId,
      viewState, setViewState,
     onNavigateToCustomer,

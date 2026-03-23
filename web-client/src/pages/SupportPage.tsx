@@ -109,8 +109,8 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         }
         try {
             await gleanAuthLogin(data.settings.ai.glean_url);
-        } catch (err: any) {
-            showAlert(`Glean login failed: ${err.message}`, 'error');
+        } catch (err) {
+            showAlert(`Glean login failed: ${err instanceof Error ? err.message : String(err)}`, 'error');
         }
     };
 
@@ -198,7 +198,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                 const chatRes = await gleanChat(data.settings.ai.glean_url, prompt, (text) => {
                     setStreamingText(text);
                 });
-                const aiMessage = chatRes.messages?.reverse().find((m: any) => m.author === 'GLEAN_AI');
+                const aiMessage = chatRes.messages?.reverse().find((m: { author: string; fragments?: { text: string }[] }) => m.author === 'GLEAN_AI');
                 resultText = aiMessage?.fragments?.[0]?.text || JSON.stringify(chatRes);
             } else {
                 setSearchProgress(`Contacting ${data.settings.ai.provider} LLM...`);

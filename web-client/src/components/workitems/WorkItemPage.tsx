@@ -174,7 +174,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     id: newId,
                     name: newWorkItemDraft.name || 'New Work Item',
                     description: newWorkItemDraft.description || '',
-                    status: newWorkItemDraft.status as any || 'Backlog',
+                    status: (newWorkItemDraft.status as WorkItem['status']) || 'Backlog',
                     total_effort_mds: newWorkItemDraft.total_effort_mds || 0,
                     score: newWorkItemDraft.score || 0,
                     customer_targets: newWorkItemCustomers.map(c => ({
@@ -275,7 +275,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     <select
                         value={workItem?.status || 'Backlog'}
                         onChange={e => {
-                            const val = e.target.value as any;
+                            const val = e.target.value as WorkItem['status'];
                             if (isNew) setNewWorkItemDraft(prev => ({ ...prev, status: val }));
                             else updateWorkItem(workItemId, { status: val });
                         }}

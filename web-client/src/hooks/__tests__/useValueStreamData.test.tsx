@@ -77,44 +77,24 @@ describe('useValueStreamData', () => {
         expect(result.current.data?.customers).toHaveLength(1);
     });
 
-    it('passes ValueStreamId and filters to the API', async () => {
+    it('passes only valueStreamId to the API (static filters are resolved server-side)', async () => {
         const filters = { customerFilter: 'test', minTcvFilter: '100' };
         renderHook(() => useValueStreamData('dash123', filters, 0));
-        
-        await waitFor(() => {
-            expect(fetch).toHaveBeenCalledWith(
-                expect.stringContaining('/api/workspace?valueStreamId=dash123&customerFilter=test&minTcvFilter=100'),
-                expect.objectContaining({
-                    headers: expect.objectContaining({
-                        'Authorization': expect.stringContaining('Bearer')
-                    })
-                })
-            );
-        });
-    });
 
-    it('passes all possible filter parameters to the API', async () => {
-        const filters = { 
-            customerFilter: 'cust', 
-            workItemFilter: 'work', 
-            teamFilter: 'team', 
-            issueFilter: 'issue',
-            releasedFilter: 'released' as const,
-            minTcvFilter: '500',
-            minScoreFilter: '10'
-        };
-        renderHook(() => useValueStreamData('dash789', filters, 0));
-        
         await waitFor(() => {
-            const expectedUrl = '/api/workspace?valueStreamId=dash789&customerFilter=cust&workItemFilter=work&teamFilter=team&issueFilter=issue&releasedFilter=released&minTcvFilter=500&minScoreFilter=10';
             expect(fetch).toHaveBeenCalledWith(
-                expect.stringContaining(expectedUrl),
+                expect.stringContaining('/api/workspace?valueStreamId=dash123'),
                 expect.objectContaining({
                     headers: expect.objectContaining({
                         'Authorization': expect.stringContaining('Bearer')
                     })
                 })
             );
+            // Dynamic filters should NOT be in the URL — they are applied client-side
+            const calls = vi.mocked(fetch).mock.calls;
+            const workspaceCall = calls.find(c => (c[0] as string).includes('/api/workspace'));
+            expect(workspaceCall![0]).not.toContain('customerFilter');
+            expect(workspaceCall![0]).not.toContain('minTcvFilter');
         });
     });
 
@@ -212,7 +192,7 @@ describe('useValueStreamData', () => {
         expect(callHeaders).not.toHaveProperty('Content-Type');
     });
 
-    it('cascades deleteCustomer to workItem targets', async () => {
+    it('cascades deleteCustomer to workItem targets in local state (backend handles DB cascade)', async () => {
         const { result } = renderHook(() => useValueStreamData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -221,22 +201,22 @@ describe('useValueStreamData', () => {
         });
 
         expect(result.current.data?.customers).toHaveLength(0);
-        // f1 had c1 as target, it should be removed
+        // f1 had c1 as target — local state should reflect the removal
         const f1 = result.current.data?.workItems.find(w => w.id === 'f1');
         expect(f1?.customer_targets).toHaveLength(0);
+        // Only the DELETE call should be made — backend handles cascade persistence
         expect(fetch).toHaveBeenCalledWith(
+            '/api/entity/customers/c1',
+            expect.objectContaining({ method: 'DELETE' })
+        );
+        // Should NOT persist cascaded workItem updates from frontend
+        expect(fetch).not.toHaveBeenCalledWith(
             '/api/entity/workItems',
-            expect.objectContaining({ 
-                method: 'POST',
-                body: expect.stringContaining('"customer_targets":[]'),
-                headers: expect.objectContaining({
-                    'Authorization': expect.stringContaining('Bearer')
-                })
-            })
+            expect.objectContaining({ method: 'POST' })
         );
     });
 
-    it('cascades deleteWorkItem to issues', async () => {
+    it('cascades deleteWorkItem to issues in local state (backend handles DB cascade)', async () => {
         const dataWithIssue: ValueStreamData = {
             ...mockData,
             issues: [{ id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', effort_md: 5, name: 'Issue 1' }]
@@ -256,14 +236,15 @@ describe('useValueStreamData', () => {
         expect(result.current.data?.workItems).toHaveLength(0);
         const e1 = result.current.data?.issues.find(e => e.id === 'e1');
         expect(e1?.work_item_id).toBeUndefined();
+        // Only the DELETE call should be made — backend handles cascade persistence
         expect(fetch).toHaveBeenCalledWith(
+            '/api/entity/workItems/f1',
+            expect.objectContaining({ method: 'DELETE' })
+        );
+        // Should NOT persist cascaded issue updates from frontend
+        expect(fetch).not.toHaveBeenCalledWith(
             '/api/entity/issues',
-            expect.objectContaining({
-                method: 'POST',
-                headers: expect.objectContaining({
-                    'Authorization': expect.stringContaining('Bearer')
-                })
-            })
+            expect.objectContaining({ method: 'POST' })
         );
     });
 

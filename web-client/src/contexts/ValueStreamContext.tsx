@@ -101,11 +101,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
 export const ValueStreamProvider: React.FC<{
     children: React.ReactNode;
-    value: { 
-        data: ValueStreamData | null; 
-        updateIssue: (id: string, updates: Partial<Issue>, immediate?: boolean) => Promise<void>;
-        addIssue: (issue: Issue) => void;
-        deleteIssue: (id: string) => void;
+    value: {
+        data?: ValueStreamData | null;
+        updateIssue?: (id: string, updates: Partial<Issue>, immediate?: boolean) => Promise<void>;
+        addIssue?: (issue: Issue) => void;
+        deleteIssue?: (id: string) => void;
     };
 }> = ({ children, value }) => {
     const { showAlert, showConfirm } = useNotificationContext();
@@ -128,14 +128,19 @@ export const ValueStreamProvider: React.FC<{
         setUiState(prev => ({ ...prev, [key]: val }));
     }, []);
 
+    const noop = async () => {};
     const contextValue = useMemo(() => ({
-        ...value,
+        data: value.data ?? null,
+        updateIssue: value.updateIssue ?? noop,
+        addIssue: value.addIssue ?? (() => {}),
+        deleteIssue: value.deleteIssue ?? (() => {}),
         showAlert,
         showConfirm,
         uiState,
         updateUiState,
         viewState,
         setViewState
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }), [value, showAlert, showConfirm, uiState, updateUiState, viewState]);
 
     return (

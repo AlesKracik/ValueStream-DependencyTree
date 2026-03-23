@@ -5,9 +5,10 @@ import { maskSettings, augmentConfig, logQuery } from '../utils/configHelpers';
 import { getDb } from '../utils/mongoServer';
 import { enrichWorkItemsWithMetrics } from '../services/metricsService';
 import { assignMissingQuarters } from '../services/sprintService';
+import { fetchWithThreshold, buildMongoQuery, applyValueStreamFilters } from '../utils/dbHelpers';
 
 export const dataRoutes: FastifyPluginAsync = async (fastify) => {
-  
+
   // Helper to safely get the App DB
   const getAppDb = async () => {
     const settingsPath = getSettingsPath();
@@ -29,53 +30,61 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
       return {};
   }
 
+  const handleError = (e: any, reply: any) => {
+      const statusCode = e.statusCode || 500;
+      return reply.code(statusCode).send({ success: false, error: e.message });
+  };
+
   // 1. Granular Endpoints
   fastify.get('/api/settings', async (request, reply) => {
       try {
           const settings = getSettings();
           return reply.send({ success: true, settings: maskSettings(settings) });
       } catch (e: any) {
-          return reply.code(500).send({ success: false, error: e.message });
+          return handleError(e, reply);
       }
   });
 
   fastify.get('/api/data/customers', async (request, reply) => {
       try {
           const db = await getAppDb();
-          const docs = await logQuery('Customers', 'customers', 'find', db.collection('customers').find({}).toArray());
+          const query = buildMongoQuery(request.query || {}, 'customers');
+          const docs = await fetchWithThreshold(db.collection('customers'), query, 'customers');
           return reply.send(docs.map(({ _id, ...rest }) => rest));
       } catch (e: any) {
-          return reply.code(500).send({ success: false, error: e.message });
+          return handleError(e, reply);
       }
   });
 
   fastify.get('/api/data/teams', async (request, reply) => {
       try {
           const db = await getAppDb();
-          const docs = await logQuery('Teams', 'teams', 'find', db.collection('teams').find({}).toArray());
+          const query = buildMongoQuery(request.query || {}, 'teams');
+          const docs = await fetchWithThreshold(db.collection('teams'), query, 'teams');
           return reply.send(docs.map(({ _id, ...rest }) => rest));
       } catch (e: any) {
-          return reply.code(500).send({ success: false, error: e.message });
+          return handleError(e, reply);
       }
   });
 
   fastify.get('/api/data/issues', async (request, reply) => {
       try {
           const db = await getAppDb();
-          const docs = await logQuery('Issues', 'issues', 'find', db.collection('issues').find({}).toArray());
+          const query = buildMongoQuery(request.query || {}, 'issues');
+          const docs = await fetchWithThreshold(db.collection('issues'), query, 'issues');
           return reply.send(docs.map(({ _id, ...rest }) => rest));
       } catch (e: any) {
-          return reply.code(500).send({ success: false, error: e.message });
+          return handleError(e, reply);
       }
   });
 
   fastify.get('/api/data/valueStreams', async (request, reply) => {
       try {
           const db = await getAppDb();
-          const docs = await logQuery('ValueStreams', 'valueStreams', 'find', db.collection('valueStreams').find({}).toArray());
+          const docs = await fetchWithThreshold(db.collection('valueStreams'), {}, 'valueStreams');
           return reply.send(docs.map(({ _id, ...rest }) => rest));
       } catch (e: any) {
-          return reply.code(500).send({ success: false, error: e.message });
+          return handleError(e, reply);
       }
   });
 
@@ -84,37 +93,40 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
           const db = await getAppDb();
           const settings = getSettings();
           const startMonth = settings.general?.fiscal_year_start_month || 1;
-          
-          const rawSprints = await logQuery('Sprints', 'sprints', 'find', db.collection('sprints').find({ is_archived: { $ne: true } }).sort({ start_date: 1 }).toArray());
-          const sprintsWithoutId = rawSprints.map(({ _id, ...rest }) => rest);
-          
+
+          const rawSprints = await fetchWithThreshold(db.collection('sprints'), { is_archived: { $ne: true } }, 'sprints');
+          const sprintsWithoutId = rawSprints
+              .sort((a: any, b: any) => (a.start_date || '').localeCompare(b.start_date || ''))
+              .map(({ _id, ...rest }) => rest);
+
           const docsWithQuarters = await assignMissingQuarters(sprintsWithoutId, db, startMonth);
-          
+
           return reply.send(docsWithQuarters);
       } catch (e: any) {
-          return reply.code(500).send({ success: false, error: e.message });
+          return handleError(e, reply);
       }
   });
 
   fastify.get('/api/data/workItems', async (request, reply) => {
       try {
           const db = await getAppDb();
-          // WorkItems require customers and issues to calculate RICE scores
+          // WorkItems require ALL customers, workItems, and issues to calculate correct RICE scores
+          // (e.g. Should-have TCV count needs all workItems). Threshold protects each collection.
           const [customers, workItems, issues] = await Promise.all([
-            db.collection('customers').find({}).toArray(),
-            db.collection('workItems').find({}).toArray(),
-            db.collection('issues').find({}).toArray()
+            fetchWithThreshold(db.collection('customers'), {}, 'customers'),
+            fetchWithThreshold(db.collection('workItems'), {}, 'workItems'),
+            fetchWithThreshold(db.collection('issues'), {}, 'issues')
           ]);
 
           const { workItems: scoredItems, metrics } = enrichWorkItemsWithMetrics(
-              workItems.map(({ _id, ...rest }) => rest), 
-              customers.map(({ _id, ...rest }) => rest), 
+              workItems.map(({ _id, ...rest }) => rest),
+              customers.map(({ _id, ...rest }) => rest),
               issues.map(({ _id, ...rest }) => rest)
           );
 
           return reply.send({ workItems: scoredItems, metrics });
       } catch (e: any) {
-          return reply.code(500).send({ success: false, error: e.message });
+          return handleError(e, reply);
       }
   });
 
@@ -123,7 +135,8 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       const settings = getSettings();
       const hasAppDb = !!settings.persistence?.mongo?.app?.uri;
-      
+      const { valueStreamId } = (request.query || {}) as any;
+
       const dbData: any = {
         settings: maskSettings(settings),
         customers: [], workItems: [], teams: [], issues: [], sprints: [], valueStreams: [],
@@ -133,14 +146,17 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
       if (hasAppDb) {
         try {
           const db = await getAppDb();
-          
-          const ValueStreams = await logQuery('ValueStreams', 'valueStreams', 'find', db.collection('valueStreams').find({}).toArray());
-          dbData.valueStreams = ValueStreams.map(({ _id, ...rest }) => rest);
-          
+
+          const valueStreamDocs = await logQuery('ValueStreams', 'valueStreams', 'find', db.collection('valueStreams').find({}).toArray());
+          dbData.valueStreams = valueStreamDocs.map(({ _id, ...rest }) => rest);
+
           const rawSprintsForWorkspace = await logQuery('Sprints', 'sprints', 'find', db.collection('sprints').find({ is_archived: { $ne: true } }).sort({ start_date: 1 }).toArray());
           const sprintsWithoutIdForWorkspace = rawSprintsForWorkspace.map(({ _id, ...rest }) => rest);
           dbData.sprints = await assignMissingQuarters(sprintsWithoutIdForWorkspace, db, settings.general?.fiscal_year_start_month || 1);
 
+          // Fetch ALL data for correct score computation (e.g. Should-have TCV needs all workItems).
+          // No per-collection threshold here — the post-filter threshold in applyValueStreamFilters
+          // is what protects the client. The user controls this via ValueStream parameters.
           const [customers, workItems, teams, issues] = await Promise.all([
             logQuery('Customers', 'customers', 'find', db.collection('customers').find({}).toArray()),
             logQuery('WorkItems', 'workItems', 'find', db.collection('workItems').find({}).toArray()),
@@ -152,23 +168,38 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
           dbData.teams = teams.map(({ _id, ...rest }) => rest);
           dbData.issues = issues.map(({ _id, ...rest }) => rest);
 
+          // Score workItems on the FULL dataset (before filtering)
           const { workItems: scoredItems, metrics } = enrichWorkItemsWithMetrics(
-              workItems.map(({ _id, ...rest }) => rest), 
-              dbData.customers, 
+              workItems.map(({ _id, ...rest }) => rest),
+              dbData.customers,
               dbData.issues
           );
-          
+
           dbData.workItems = scoredItems;
           dbData.metrics = metrics;
-          
-        } catch (mongoErr) { 
-          console.error('MongoDB load error:', mongoErr); 
+
+          // Apply ValueStream's saved (static) parameters as hard filters.
+          // Dynamic/transient filters entered by the user are applied client-side in useGraphLayout.
+          if (valueStreamId) {
+            const vs = dbData.valueStreams.find((v: any) => v.id === valueStreamId);
+            if (vs?.parameters) {
+              const filtered = applyValueStreamFilters(dbData, vs.parameters);
+              dbData.customers = filtered.customers;
+              dbData.workItems = filtered.workItems;
+              dbData.teams = filtered.teams;
+              dbData.issues = filtered.issues;
+            }
+          }
+
+        } catch (mongoErr: any) {
+          if (mongoErr.statusCode === 413) throw mongoErr;
+          console.error('MongoDB load error:', mongoErr);
         }
       }
 
       return reply.send(dbData);
     } catch (e: any) {
-      return reply.code(500).send({ success: false, error: e.message });
+      return handleError(e, reply);
     }
   });
 };

@@ -6,23 +6,34 @@ The application uses a dual-mode persistence strategy to balance ease of local d
 ## Data Storage
 - **MongoDB:** Primary storage for production-like environments. Entities are stored in collections named after their logical types: `customers`, `workItems`, `teams`, `issues`, `sprints`, and `valueStreams`.
 
-## The Vite Backend Plugin
-The "backend" logic resides in `web-client/vite.config.ts`. It provides a comprehensive set of REST endpoints for data management, integration, and security.
+## The Fastify Backend
+The backend is a standalone Fastify Node.js application in `backend/`. It provides REST endpoints for data management, integration, and security.
 
 ### Core Data Endpoints
 
-#### 1. `GET /api/loadData`
-The primary hydration endpoint. It fetches all entities, applies migrations, calculates RICE scores, and aggregates global metrics.
-- **Parameters:** Supports `ValueStreamId` and various filters (`customerFilter`, `minTcv`, etc.).
-- **Logic:** Performs complex joins (e.g., Issue effort summed into Work Items) and ROI calculations.
+#### 1. `GET /api/workspace`
+The composite hydration endpoint for the Graph View. Fetches all entities, calculates RICE scores on the full dataset, and aggregates global metrics.
+- **Parameters:** Accepts `valueStreamId` — if provided, the backend looks up the ValueStream entity's saved `parameters` and applies them as hard post-scoring filters via `applyValueStreamFilters()`.
+- **Threshold Protection:** The full dataset is fetched unthrottled for correct scoring. After scoring and filtering, `applyValueStreamFilters()` checks the total entity count — returns `413` if it exceeds the threshold (default: 500), asking the user to tighten ValueStream parameters.
+- **Logic:** Performs complex joins (e.g., Issue effort summed into Work Items) and ROI calculations via `metricsService`.
 
-#### 2. `POST /api/entity/{collection}`
+#### 2. `GET /api/data/{collection}`
+Granular endpoints (e.g., `/api/data/customers`, `/api/data/workItems`) allowing the frontend to lazily load only the required entities for specific list or detail views.
+- **Query Filtering:** Accepts query parameters mapped to MongoDB queries via `buildMongoQuery()`. Supports text filters (`customerFilter`, `teamFilter`), status filters (`releasedFilter`), and relational filters (`customerId`, `workItemId`, `teamId`).
+- **Threshold Protection:** Each endpoint is guarded by `fetchWithThreshold()`.
+- **Special Case:** The `/api/data/workItems` endpoint internally joins with customers and issues to pre-calculate RICE scores before returning.
+
+#### 3. `POST /api/entity/{collection}`
 Upserts a single document into one of the allowed collections (`customers`, `workItems`, etc.).
 - **Debouncing:** Frontend calls are debounced by 1000ms.
 - **Validation:** Ensures a unique index on the `id` field.
 
-#### 3. `DELETE /api/entity/{collection}/{id}`
-Removes a specific document by its unique ID.
+#### 4. `DELETE /api/entity/{collection}/{id}`
+Removes a specific document by its unique ID and performs **cascade cleanup** on related collections:
+- **Deleting a Customer:** Removes `customer_targets` entries referencing the customer from all WorkItems (`$pull`).
+- **Deleting a WorkItem:** Clears `work_item_id` from all Issues referencing the WorkItem (`$unset`).
+- **Deleting a Team:** Clears `team_id` from all Issues referencing the Team (`$set: ""`).
+- Returns a `cascaded` object indicating how many related documents were modified.
 
 #### 4. `POST /api/settings`
 Updates the `settings.json` file. It automatically masks/unmasks sensitive fields (API tokens, URIs) recursively within the nested structure during the round-trip to the UI.

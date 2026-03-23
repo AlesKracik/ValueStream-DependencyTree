@@ -218,14 +218,14 @@ export const calculateIssueEffortPerSprint = (issue: Issue, allSprints: Sprint[]
  * Deeply merges two objects, preferring source values but preserving target keys and structure.
  * Only merges keys that exist in the target (template-based merge).
  */
-export function deepMerge<T extends object>(target: T, source: any): T {
+export function deepMerge<T extends object>(target: T, source: Record<string, unknown> | unknown): T {
   if (!source || typeof source !== 'object') return target;
 
   // Create a new object to avoid mutating the target
-  const result = { ...target } as any;
+  const result = { ...target } as Record<string, unknown>;
 
-  Object.keys(source).forEach(key => {
-    const sourceValue = source[key];
+  Object.keys(source as Record<string, unknown>).forEach(key => {
+    const sourceValue = (source as Record<string, unknown>)[key];
     const targetValue = result[key];
 
     if (sourceValue !== undefined && sourceValue !== null) {

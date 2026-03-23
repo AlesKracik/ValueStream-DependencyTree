@@ -284,7 +284,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     if (!localFormData.ai?.glean_url) return;
     try {
       await gleanAuthLogin(localFormData.ai.glean_url);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Glean login failed:', err);
     }
   };
