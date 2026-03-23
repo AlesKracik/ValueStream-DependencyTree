@@ -1,10 +1,12 @@
-import { calculateWorkItemScore } from '../utils/businessLogic';
+import { calculateWorkItemScore, calculateWorkItemTcv, calculateWorkItemEffort } from '../utils/businessLogic';
 
 export function enrichWorkItemsWithMetrics(workItems: any[], customers: any[], issues: any[]) {
     // Recompute all scores and TCVs based on weighted rules
     const enrichedWorkItems = workItems.map((wi: any) => ({
         ...wi,
-        score: calculateWorkItemScore(wi, customers, workItems, issues)
+        score: calculateWorkItemScore(wi, customers, workItems, issues),
+        calculated_tcv: calculateWorkItemTcv(wi, customers, workItems),
+        calculated_effort: calculateWorkItemEffort(wi, issues)
     }));
 
     const metrics = { maxScore: 1, maxRoi: 1 };
