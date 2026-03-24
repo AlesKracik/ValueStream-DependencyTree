@@ -35,7 +35,7 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
         {
             label: 'Released',
             key: 'released',
-            getValue: (w) => data?.sprints.find(s => s.id === w.released_in_sprint_id)?.name || 'Not Released'
+            getValue: (w) => data?.sprints?.find(s => s.id === w.released_in_sprint_id)?.name || 'Not Released'
         }
     ], [data]);
 
@@ -67,7 +67,7 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
         },
         { 
             header: 'Released', 
-            render: (w) => data?.sprints.find(s => s.id === w.released_in_sprint_id)?.name || 'Not Released',
+            render: (w) => data?.sprints?.find(s => s.id === w.released_in_sprint_id)?.name || 'Not Released',
             flex: 1.5,
             sortKey: 'released'
         }

@@ -140,6 +140,52 @@ describe('WorkItemListPage', () => {
 
         expect(screen.getByText('No work items found.')).toBeDefined();
     });
+
+    it('displays correct sprint name in Released column for each work item', () => {
+        const { container } = renderWithProviders(
+            <WorkItemListPage data={mockData} loading={false} />
+        );
+
+        const items = container.querySelectorAll('[class*="listItem"]');
+        // Default sort is by name ascending: Alpha (s3), Beta (s2), Gamma (s1)
+        expect(items[0].textContent).toContain('Sprint 3');
+        expect(items[1].textContent).toContain('Sprint 2');
+        expect(items[2].textContent).toContain('Sprint 1');
+    });
+
+    it('shows "Not Released" when work item has no released_in_sprint_id', () => {
+        const dataWithUnreleased = {
+            ...mockData,
+            workItems: [
+                { ...mockData.workItems[0], released_in_sprint_id: undefined },
+                mockData.workItems[1]
+            ]
+        };
+
+        const { container } = renderWithProviders(
+            <WorkItemListPage data={dataWithUnreleased} loading={false} />
+        );
+
+        const items = container.querySelectorAll('[class*="listItem"]');
+        // Alpha (no sprint) then Gamma (s1)
+        expect(items[0].textContent).toContain('Not Released');
+        expect(items[1].textContent).toContain('Sprint 1');
+    });
+
+    it('shows "Not Released" when sprints array is missing from data', () => {
+        const dataWithoutSprints = {
+            ...mockData,
+            sprints: undefined as any
+        };
+
+        renderWithProviders(
+            <WorkItemListPage data={dataWithoutSprints} loading={false} />
+        );
+
+        // All items should show "Not Released" since sprints can't be resolved
+        const notReleasedElements = screen.getAllByText('Not Released');
+        expect(notReleasedElements.length).toBe(3);
+    });
 });
 
 

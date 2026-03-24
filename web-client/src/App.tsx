@@ -156,7 +156,8 @@ function SprintListRouteWrapper() {
 function WorkItemListRouteWrapper() {
   const { showAlert } = useNotificationContext();
   // WorkItems list needs cross-entity scoring (customers + issues for TCV/effort)
-  const state = useValueStreamData(undefined, undefined, 1000, showAlert, ['workItems']);
+  // Also fetch sprints so the "Released" column can resolve sprint names
+  const state = useValueStreamData(undefined, undefined, 1000, showAlert, ['workItems', 'sprints']);
   return <WorkItemListPage data={state.data} loading={state.loading} />;
 }
 
