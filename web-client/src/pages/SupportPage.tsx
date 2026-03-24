@@ -576,41 +576,43 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                                                             </div>
                                                         )}
                                                         
-                                                        {match && (
-                                                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                                                <button 
-                                                                    className="btn-danger" 
-                                                                    style={{ fontSize: '11px', padding: '4px 8px' }}
-                                                                    onClick={() => removeProcessedIssue(lc.customerId, issue.summary)}
-                                                                >
-                                                                    Dismiss
-                                                                </button>
-                                                                <button 
-                                                                    className="btn-primary" 
-                                                                    style={{ fontSize: '11px', padding: '4px 8px' }}
-                                                                    onClick={() => handleCreateSupportItem(match, issue, lc.customerId)}
-                                                                >
-                                                                    Create New
-                                                                </button>
-                                                                
-                                                                {match.support_issues && match.support_issues.length > 0 && (
-                                                                    <select 
+                                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                            <button
+                                                                className="btn-danger"
+                                                                style={{ fontSize: '11px', padding: '4px 8px' }}
+                                                                onClick={() => removeProcessedIssue(lc.customerId, issue.summary)}
+                                                            >
+                                                                Dismiss
+                                                            </button>
+                                                            {match && (
+                                                                <>
+                                                                    <button
+                                                                        className="btn-primary"
                                                                         style={{ fontSize: '11px', padding: '4px 8px' }}
-                                                                        onChange={(e) => {
-                                                                            if (e.target.value) {
-                                                                                handleUpdateSupportItem(match, e.target.value, issue, lc.customerId);
-                                                                                e.target.value = '';
-                                                                            }
-                                                                        }}
+                                                                        onClick={() => handleCreateSupportItem(match, issue, lc.customerId)}
                                                                     >
-                                                                        <option value="">Update existing...</option>
-                                                                        {match.support_issues.map(si => (
-                                                                            <option key={si.id} value={si.id}>{si.description.substring(0, 40)}...</option>
-                                                                        ))}
-                                                                    </select>
-                                                                )}
-                                                            </div>
-                                                        )}
+                                                                        Create New
+                                                                    </button>
+
+                                                                    {match.support_issues && match.support_issues.length > 0 && (
+                                                                        <select
+                                                                            style={{ fontSize: '11px', padding: '4px 8px' }}
+                                                                            onChange={(e) => {
+                                                                                if (e.target.value) {
+                                                                                    handleUpdateSupportItem(match, e.target.value, issue, lc.customerId);
+                                                                                    e.target.value = '';
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <option value="">Update existing...</option>
+                                                                            {match.support_issues.map(si => (
+                                                                                <option key={si.id} value={si.id}>{si.description.substring(0, 40)}...</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    )}
+                                                                </>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 ))}
                                             </div>

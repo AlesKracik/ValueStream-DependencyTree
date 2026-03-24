@@ -578,4 +578,61 @@ describe('SupportPage', () => {
         });
         expect(screen.getByText('AI Found Issue 3')).toBeDefined();
     });
+
+    it('shows dismiss button on "no match" AI results and removes them when clicked', async () => {
+        const { llmGenerate } = await import('../../utils/api');
+        const mockedLlmGenerate = vi.mocked(llmGenerate);
+
+        const aiResponse = {
+            customers: [
+                {
+                    name: 'Unknown Customer',
+                    customerId: 'non-existent',
+                    issues: [
+                        {
+                            summary: 'No Match Issue',
+                            impact: 'Low',
+                            rootCause: 'Config',
+                            jiraTickets: []
+                        }
+                    ]
+                }
+            ]
+        };
+
+        mockedLlmGenerate.mockResolvedValue(JSON.stringify(aiResponse));
+
+        const dataWithAi: ValueStreamData = {
+            ...mockData,
+            settings: {
+                ...mockData.settings,
+                ai: { provider: 'openai', support: { prompt: 'Test prompt' } }
+            }
+        };
+
+        renderWithProviders(
+            <SupportPage data={dataWithAi} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        const aiSearchBtn = screen.getByText('AI Support Search');
+        fireEvent.click(aiSearchBtn);
+
+        await waitFor(() => {
+            expect(screen.getByText('AI Search Results')).toBeDefined();
+        });
+
+        // Verify "NO MATCH" badge is shown
+        expect(screen.getByText('NO MATCH')).toBeDefined();
+        expect(screen.getByText('No Match Issue')).toBeDefined();
+
+        // Verify dismiss button is present even for "no match" items
+        const dismissBtn = screen.getByText('Dismiss');
+        expect(dismissBtn).toBeDefined();
+
+        // Click dismiss and verify the issue is removed
+        fireEvent.click(dismissBtn);
+        await waitFor(() => {
+            expect(screen.queryByText('No Match Issue')).toBeNull();
+        });
+    });
 });
