@@ -332,8 +332,8 @@ describe('SettingsPage', () => {
         }));
     });
 
-    it('shows Manual SSO Configuration when profile is empty', async () => {
-        const ssoManualSettings = {
+    it('shows SSO Configuration fields and disables login button when profile is empty', async () => {
+        const ssoSettings = {
             ...mockSettings,
             persistence: {
                 ...mockSettings.persistence,
@@ -354,8 +354,8 @@ describe('SettingsPage', () => {
 
         render(
             <MemoryRouter initialEntries={['/settings?tab=persistence&subtab=mongo&subsubtab=application']}>
-                <SettingsPage 
-                    settings={ssoManualSettings} 
+                <SettingsPage
+                    settings={ssoSettings}
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
                     updateIssue={updateIssue}
@@ -364,9 +364,13 @@ describe('SettingsPage', () => {
             </MemoryRouter>
         );
 
-        expect(screen.getByText(/Manual SSO Configuration \(No Profile\):/i)).toBeDefined();
+        expect(screen.getByText(/SSO Configuration/i)).toBeDefined();
         expect(screen.getByLabelText(/SSO Start URL:/i)).toBeDefined();
         expect(screen.getByLabelText(/SSO Region:/i)).toBeDefined();
+
+        const loginBtn = screen.getByText('Login via AWS SSO');
+        expect(loginBtn).toBeDefined();
+        expect((loginBtn as HTMLButtonElement).disabled).toBe(true);
     });
 
     it('renders correctly with empty settings using defaults', () => {
@@ -536,7 +540,7 @@ describe('SettingsPage', () => {
                         auth: {
                             method: 'aws' as const,
                             aws_auth_type: 'sso' as const,
-                            aws_profile: '',
+                            aws_profile: 'vst-app',
                             aws_sso_start_url: 'https://test.aws'
                         }
                     }

@@ -174,6 +174,19 @@ describe('mongoServer utility', () => {
     }));
   });
 
+  it('throws for SSO auth without profile', async () => {
+    const config = {
+        uri: 'mongodb://host',
+        auth: {
+            method: 'aws',
+            aws_auth_type: 'sso',
+            aws_profile: ''
+        }
+    };
+
+    await expect(getDb(config as any, 'app')).rejects.toThrow('AWS Profile is required for SSO authentication');
+  });
+
   it('throws for static AWS auth without access key', async () => {
     const config = {
         uri: 'mongodb://host',

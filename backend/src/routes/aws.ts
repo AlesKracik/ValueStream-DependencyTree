@@ -24,16 +24,21 @@ export const awsRoutes: FastifyPluginAsync = async (fastify) => {
       const sso_account_id = auth.aws_sso_account_id;
       const sso_role_name = auth.aws_sso_role_name;
 
+      if (!profile) {
+        return reply.code(400).send({ success: false, error: 'AWS Profile name is required for SSO login.' });
+      }
+
       const envVars = { ...process.env };
-      const profileName = profile || 'temp-sso-profile';
-      
-      if (!profile && sso_start_url) {
+
+      // If manual SSO config is provided, create a temp AWS config file
+      // so `aws sso login` works even if the profile isn't in ~/.aws/config
+      if (sso_start_url) {
         const tempConfigPath = path.join(os.tmpdir(), `aws_config_${crypto.randomBytes(4).toString('hex')}`);
-        fs.writeFileSync(tempConfigPath, `[profile ${profileName}]\nsso_start_url = ${sso_start_url}\nsso_region = ${sso_region}\nsso_account_id = ${sso_account_id}\nsso_role_name = ${sso_role_name}\nregion = ${sso_region}\n`);
+        fs.writeFileSync(tempConfigPath, `[profile ${profile}]\nsso_start_url = ${sso_start_url}\nsso_region = ${sso_region}\nsso_account_id = ${sso_account_id}\nsso_role_name = ${sso_role_name}\nregion = ${sso_region}\n`);
         envVars.AWS_CONFIG_FILE = tempConfigPath;
       }
       
-      const child = spawn(`aws sso login --profile ${profileName} --use-device-code`, { shell: true, env: envVars });
+      const child = spawn(`aws sso login --profile ${profile} --use-device-code`, { shell: true, env: envVars });
       
       let capturedOutput = '';
       const outputPromise = new Promise<string>((resolve) => {

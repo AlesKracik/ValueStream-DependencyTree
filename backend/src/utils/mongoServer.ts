@@ -193,18 +193,18 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
     if (awsAuthType === 'sso') {
       // SSO: use fromSSO() which auto-refreshes credentials via the cached SSO session
       const profile = config.auth?.aws_profile;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const ssoOptions: any = {};
-
-      if (profile) {
-        ssoOptions.profile = profile;
-      } else {
-        // Manual SSO config (no named profile)
-        if (config.auth?.aws_sso_start_url) ssoOptions.ssoStartUrl = config.auth.aws_sso_start_url;
-        if (config.auth?.aws_sso_region) ssoOptions.ssoRegion = config.auth.aws_sso_region;
-        if (config.auth?.aws_sso_account_id) ssoOptions.ssoAccountId = config.auth.aws_sso_account_id;
-        if (config.auth?.aws_sso_role_name) ssoOptions.ssoRoleName = config.auth.aws_sso_role_name;
+      if (!profile) {
+        throw new Error(`AWS Profile is required for SSO authentication on ${type} DB.`);
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ssoOptions: any = { profile };
+
+      // If manual SSO config is provided, pass it directly so fromSSO()
+      // works even if the profile isn't in ~/.aws/config
+      if (config.auth?.aws_sso_start_url) ssoOptions.ssoStartUrl = config.auth.aws_sso_start_url;
+      if (config.auth?.aws_sso_region) ssoOptions.ssoRegion = config.auth.aws_sso_region;
+      if (config.auth?.aws_sso_account_id) ssoOptions.ssoAccountId = config.auth.aws_sso_account_id;
+      if (config.auth?.aws_sso_role_name) ssoOptions.ssoRoleName = config.auth.aws_sso_role_name;
 
       options.authMechanismProperties = {
         AWS_CREDENTIAL_PROVIDER: fromSSO(ssoOptions)
