@@ -1,5 +1,5 @@
 import { MongoClient, ServerApiVersion } from 'mongodb';
-import { fromNodeProviderChain } from '@aws-sdk/credential-providers';
+import { fromNodeProviderChain, fromSSO } from '@aws-sdk/credential-providers';
 import dns from 'node:dns';
 import { promisify } from 'node:util';
 
@@ -83,7 +83,7 @@ export interface MongoConfig {
   tunnel_name?: string;
   auth?: {
     method?: 'scram' | 'aws' | 'oidc';
-    aws_auth_type?: 'static' | 'env' | 'sso';
+    aws_auth_type?: 'static' | 'role' | 'sso';
     aws_access_key?: string;
     aws_secret_key?: string;
     aws_session_token?: string;
@@ -116,7 +116,7 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
   const tunnelName = config.tunnel_name;
 
   // Create a cache key for this specific connection
-  const cacheKey = `${type}:${uri}:${dbName}:${authMethod}:${useProxy}:${tunnelName || ''}:${config.auth?.aws_access_key || ''}`;
+  const cacheKey = `${type}:${uri}:${dbName}:${authMethod}:${config.auth?.aws_auth_type || ''}:${useProxy}:${tunnelName || ''}:${config.auth?.aws_access_key || ''}:${config.auth?.aws_profile || ''}`;
   
   const cached = mongoClients.get(cacheKey);
   if (cached) {
@@ -173,46 +173,65 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
   }
 
   if (authMethod === 'aws') {
-    const ak = config.auth?.aws_access_key;
-    const sk = config.auth?.aws_secret_key;
-    const st = config.auth?.aws_session_token;
-    
-    if (!ak || !sk) {
-      throw new Error(`AWS Access Key and Secret Key are required for AWS IAM authentication on ${type} DB.`);
-    }
+    const awsAuthType = config.auth?.aws_auth_type || 'static';
 
-    // Set environment variables for AWS SDK to pick up
-    process.env.AWS_ACCESS_KEY_ID = ak;
-    process.env.AWS_SECRET_ACCESS_KEY = sk;
-    if (st) {
-      process.env.AWS_SESSION_TOKEN = st;
-    } else {
-      delete process.env.AWS_SESSION_TOKEN;
-    }
+    // Common AWS auth options
+    options.authMechanism = 'MONGODB-AWS';
+    options.authSource = '$external';
+    options.auth = { username: '', password: '' };
 
     // Ensure STS calls bypass the SOCKS proxy to avoid bastion restrictions.
     if (useProxy) {
-      // Use both specific and suffix-based endpoints for broad compatibility
       const awsEndpoints = ['sts.amazonaws.com', 'amazonaws.com', '.amazonaws.com'];
       const currentNoProxy = process.env.NO_PROXY ? process.env.NO_PROXY.split(',') : [];
       const newEndpoints = awsEndpoints.filter(ep => !currentNoProxy.includes(ep));
-      
       if (newEndpoints.length > 0) {
         process.env.NO_PROXY = currentNoProxy.concat(newEndpoints).join(',');
       }
     }
 
-    options.authMechanism = 'MONGODB-AWS';
-    options.authSource = '$external';
-    options.auth = { username: '', password: '' };
+    if (awsAuthType === 'sso') {
+      // SSO: use fromSSO() which auto-refreshes credentials via the cached SSO session
+      const profile = config.auth?.aws_profile;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ssoOptions: any = {};
 
-    // Use the official AWS SDK provider chain. This supports:
-    // 1. Environment variables (set from UI above)
-    // 2. IAM Roles (EC2/ECS/EKS)
-    // 3. AWS Config files / SSO
-    options.authMechanismProperties = {
-      AWS_CREDENTIAL_PROVIDER: fromNodeProviderChain()
-    };
+      if (profile) {
+        ssoOptions.profile = profile;
+      } else {
+        // Manual SSO config (no named profile)
+        if (config.auth?.aws_sso_start_url) ssoOptions.ssoStartUrl = config.auth.aws_sso_start_url;
+        if (config.auth?.aws_sso_region) ssoOptions.ssoRegion = config.auth.aws_sso_region;
+        if (config.auth?.aws_sso_account_id) ssoOptions.ssoAccountId = config.auth.aws_sso_account_id;
+        if (config.auth?.aws_sso_role_name) ssoOptions.ssoRoleName = config.auth.aws_sso_role_name;
+      }
+
+      options.authMechanismProperties = {
+        AWS_CREDENTIAL_PROVIDER: fromSSO(ssoOptions)
+      };
+    } else {
+      // Static or Role: user-provided access key / secret key / session token
+      const ak = config.auth?.aws_access_key;
+      const sk = config.auth?.aws_secret_key;
+      const st = config.auth?.aws_session_token;
+
+      if (!ak || !sk) {
+        throw new Error(`AWS Access Key and Secret Key are required for AWS IAM authentication on ${type} DB.`);
+      }
+
+      // Set environment variables for AWS SDK to pick up
+      process.env.AWS_ACCESS_KEY_ID = ak;
+      process.env.AWS_SECRET_ACCESS_KEY = sk;
+      if (st) {
+        process.env.AWS_SESSION_TOKEN = st;
+      } else {
+        delete process.env.AWS_SESSION_TOKEN;
+      }
+
+      options.authMechanismProperties = {
+        AWS_CREDENTIAL_PROVIDER: fromNodeProviderChain()
+      };
+    }
   } else if (authMethod === 'oidc') {
     const token = config.auth?.oidc_token;
     if (!token) {

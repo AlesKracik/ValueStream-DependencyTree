@@ -183,74 +183,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
   };
 
-  const handleFetchSSOCredentials = async (role: 'app' | 'customer') => {
-    const mongo = localFormData.persistence.mongo[role];
-    const { auth } = mongo;
-    setIsSSOLoginLoading(true);
-    setSSOMessage(null);
-    try {
-        const res = await authorizedFetch('/api/aws/sso/credentials', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                role,
-                persistence: {
-                    mongo: {
-                        [role]: {
-                            auth: {
-                                aws_profile: auth.aws_profile,
-                                aws_sso_start_url: auth.aws_sso_start_url,
-                                aws_sso_region: auth.aws_sso_region,
-                                aws_sso_account_id: auth.aws_sso_account_id,
-                                aws_sso_role_name: auth.aws_sso_role_name
-                            }
-                        }
-                    }
-                }
-            })
-        });
-        const data = await res.json();
-        if (data.success) {
-            const authUpdates = {
-                ...auth,
-                aws_access_key: data.accessKey,
-                aws_secret_key: data.secretKey,
-                aws_session_token: data.sessionToken
-            };
-            
-            setFormData(prev => {
-                const newData = { ...prev };
-                newData.persistence.mongo[role] = {
-                    ...newData.persistence.mongo[role],
-                    auth: authUpdates
-                };
-                return newData;
-            });
-
-            onUpdateSettings({
-                persistence: {
-                    ...localFormData.persistence,
-                    mongo: {
-                        ...localFormData.persistence.mongo,
-                        [role]: {
-                            ...localFormData.persistence.mongo[role],
-                            auth: authUpdates
-                        }
-                    }
-                }
-            });
-            setSSOMessage({ success: true, message: 'Temporary credentials fetched and applied!' });
-        } else {
-            setSSOMessage({ success: false, message: data.error });
-        }
-    } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Failed to fetch credentials';
-        setSSOMessage({ success: false, message: msg });
-    } finally {
-        setIsSSOLoginLoading(false);
-    }
-  };
-
   useEffect(() => {
     const checkGleanStatus = async () => {
       if (localFormData.ai?.provider === 'glean' && localFormData.ai?.glean_url) {
@@ -867,159 +799,140 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               }}
                             >
                               <option value="static">Static Credentials</option>
+                              <option value="sso">SSO (Auto-refresh)</option>
                               <option value="role">Assume Role</option>
                             </select>
                           </label>
 
-                          {localFormData.persistence.mongo.app.auth.aws_auth_type === 'static' ? (
-                            <>
-                              <div style={{ padding: '12px', border: '1px solid var(--border-primary)', borderRadius: '4px', backgroundColor: 'rgba(0,0,0,0.1)' }}>
-                                <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem", marginBottom: '8px' }}>
-                                    AWS Profile (Optional for SSO):
-                                    <input
-                                        type="text"
-                                        placeholder="default"
-                                        value={localFormData.persistence.mongo.app.auth.aws_profile || ""}
-                                        onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_profile', e.target.value)}
-                                        onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_profile: localFormData.persistence.mongo.app.auth.aws_profile } } } } })}
-                                    />
-                                </label>
-
-                                {!localFormData.persistence.mongo.app.auth.aws_profile && (
-                                    <div style={{ marginBottom: '16px', padding: '12px', border: '1px dashed var(--border-secondary)', borderRadius: '4px' }}>
-                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>Manual SSO Configuration (No Profile):</div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
-                                                SSO Start URL:
-                                                <input
-                                                    type="text"
-                                                    placeholder="https://..."
-                                                    value={localFormData.persistence.mongo.app.auth.aws_sso_start_url || ""}
-                                                    onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_sso_start_url', e.target.value)}
-                                                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_sso_start_url: localFormData.persistence.mongo.app.auth.aws_sso_start_url } } } } })}
-                                                />
-                                            </label>
-                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
-                                                SSO Region:
-                                                <input
-                                                    type="text"
-                                                    placeholder="us-east-1"
-                                                    value={localFormData.persistence.mongo.app.auth.aws_sso_region || ""}
-                                                    onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_sso_region', e.target.value)}
-                                                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_sso_region: localFormData.persistence.mongo.app.auth.aws_sso_region } } } } })}
-                                                />
-                                            </label>
-                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
-                                                SSO Account ID:
-                                                <input
-                                                    type="text"
-                                                    placeholder="123456789012"
-                                                    value={localFormData.persistence.mongo.app.auth.aws_sso_account_id || ""}
-                                                    onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_sso_account_id', e.target.value)}
-                                                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_sso_account_id: localFormData.persistence.mongo.app.auth.aws_sso_account_id } } } } })}
-                                                />
-                                            </label>
-                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
-                                                SSO Role Name:
-                                                <input
-                                                    type="text"
-                                                    placeholder="AWSReadOnlyAccess"
-                                                    value={localFormData.persistence.mongo.app.auth.aws_sso_role_name || ""}
-                                                    onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_sso_role_name', e.target.value)}
-                                                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_sso_role_name: localFormData.persistence.mongo.app.auth.aws_sso_role_name } } } } })}
-                                                />
-                                            </label>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    <button
-                                        type="button"
-                                        className="btn-primary"
-                                        onClick={() => handleAWSSSOLOGIN('app')}
-                                        disabled={isSSOLoginLoading}
-                                        style={{ fontSize: '12px', padding: '6px 10px' }}
-                                    >
-                                        Login via AWS SSO
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="btn-primary"
-                                        onClick={() => handleFetchSSOCredentials('app')}
-                                        disabled={isSSOLoginLoading}
-                                        style={{ fontSize: '12px', padding: '6px 10px' }}
-                                    >
-                                        Fetch SSO Credentials
-                                    </button>
-                                </div>
-                                {ssoMessage && (
-                                    <div style={{ 
-                                        fontSize: '12px', 
-                                        marginTop: '8px', 
-                                        color: ssoMessage.success ? 'var(--status-success)' : 'var(--status-danger-text)',
-                                        whiteSpace: 'pre-wrap',
-                                        wordBreak: 'break-all',
-                                        backgroundColor: 'rgba(0,0,0,0.2)',
-                                        padding: '8px',
-                                        borderRadius: '4px',
-                                        border: `1px solid ${ssoMessage.success ? 'var(--status-success-bg)' : 'var(--status-danger-bg)'}`
-                                    }}>
-                                        {(() => {
-                                            const codeMatch = ssoMessage.message.match(/([A-Z0-9]{4}-[A-Z0-9]{4})/);
-                                            const code = codeMatch ? codeMatch[1] : null;
-                                            
-                                            // Split message by URLs to linkify them
-                                            const parts = ssoMessage.message.split(/(https?:\/\/[^\s]+)/g);
-                                            
-                                            return parts.map((part, i) => {
-                                                if (part.startsWith('http')) {
-                                                    const url = part.replace(/[.,]$/, '');
-                                                    // Handle appending user_code for any official AWS SSO URL pattern
-                                                    let finalUrl = url;
-                                                    const isAWSSSOUrl = url.includes('device.sso') || url.includes('awsapps.com/start') || url.includes('.app.aws');
-                                                    if (code && isAWSSSOUrl && !url.includes('user_code=')) {
-                                                        const separator = url.includes('?') ? '&' : '?';
-                                                        finalUrl = `${url}${separator}user_code=${code}`;
-                                                    }
-                                                        
-                                                    return (
-                                                        <div key={i} style={{ margin: '8px 0' }}>
-                                                            <div style={{ color: 'var(--text-muted)', marginBottom: '4px' }}>Authorization URL:</div>
-                                                            <a href={finalUrl} target="_blank" rel="noopener noreferrer" style={{ 
-                                                                color: 'var(--accent-text)', 
-                                                                textDecoration: 'underline', 
-                                                                fontWeight: 'bold',
-                                                                display: 'block',
-                                                                padding: '8px',
-                                                                backgroundColor: 'rgba(96, 165, 250, 0.1)',
-                                                                borderRadius: '4px',
-                                                                border: '1px solid rgba(96, 165, 250, 0.2)'
-                                                            }}>
-                                                                {finalUrl}
-                                                            </a>
-                                                        </div>
-                                                    );
-                                                }
-                                                
-                                                // If we found the code in this text part, highlight it but don't repeat the whole "Then enter the code" if it's already in the URL
-                                                if (code && part.includes(code)) {
-                                                    const subParts = part.split(code);
-                                                    return (
-                                                        <React.Fragment key={i}>
-                                                            {subParts[0]}
-                                                            <span style={{ color: 'var(--status-warning)', fontWeight: 'bold', padding: '0 4px', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '2px' }}>{code}</span>
-                                                            {subParts[1]}
-                                                        </React.Fragment>
-                                                    );
-                                                }
-                                                return part;
-                                            });
-                                        })()}
-                                    </div>
-                                )}
+                          {localFormData.persistence.mongo.app.auth.aws_auth_type === 'sso' ? (
+                            <div style={{ padding: '12px', border: '1px solid var(--border-primary)', borderRadius: '4px', backgroundColor: 'rgba(0,0,0,0.1)' }}>
+                              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                                Credentials are resolved automatically from the cached SSO session. Run "Login via AWS SSO" once, then the backend refreshes credentials transparently until the SSO session expires.
                               </div>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem", marginBottom: '8px' }}>
+                                  AWS Profile:
+                                  <input
+                                      type="text"
+                                      placeholder="default"
+                                      value={localFormData.persistence.mongo.app.auth.aws_profile || ""}
+                                      onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_profile', e.target.value)}
+                                      onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_profile: localFormData.persistence.mongo.app.auth.aws_profile } } } } })}
+                                  />
+                              </label>
 
+                              {!localFormData.persistence.mongo.app.auth.aws_profile && (
+                                  <div style={{ marginBottom: '16px', padding: '12px', border: '1px dashed var(--border-secondary)', borderRadius: '4px' }}>
+                                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>Manual SSO Configuration (No Profile):</div>
+                                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                          <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
+                                              SSO Start URL:
+                                              <input
+                                                  type="text"
+                                                  placeholder="https://..."
+                                                  value={localFormData.persistence.mongo.app.auth.aws_sso_start_url || ""}
+                                                  onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_sso_start_url', e.target.value)}
+                                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_sso_start_url: localFormData.persistence.mongo.app.auth.aws_sso_start_url } } } } })}
+                                              />
+                                          </label>
+                                          <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
+                                              SSO Region:
+                                              <input
+                                                  type="text"
+                                                  placeholder="us-east-1"
+                                                  value={localFormData.persistence.mongo.app.auth.aws_sso_region || ""}
+                                                  onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_sso_region', e.target.value)}
+                                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_sso_region: localFormData.persistence.mongo.app.auth.aws_sso_region } } } } })}
+                                              />
+                                          </label>
+                                          <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
+                                              SSO Account ID:
+                                              <input
+                                                  type="text"
+                                                  placeholder="123456789012"
+                                                  value={localFormData.persistence.mongo.app.auth.aws_sso_account_id || ""}
+                                                  onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_sso_account_id', e.target.value)}
+                                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_sso_account_id: localFormData.persistence.mongo.app.auth.aws_sso_account_id } } } } })}
+                                              />
+                                          </label>
+                                          <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
+                                              SSO Role Name:
+                                              <input
+                                                  type="text"
+                                                  placeholder="AWSReadOnlyAccess"
+                                                  value={localFormData.persistence.mongo.app.auth.aws_sso_role_name || ""}
+                                                  onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_sso_role_name', e.target.value)}
+                                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_sso_role_name: localFormData.persistence.mongo.app.auth.aws_sso_role_name } } } } })}
+                                              />
+                                          </label>
+                                      </div>
+                                  </div>
+                              )}
+
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                  <button
+                                      type="button"
+                                      className="btn-primary"
+                                      onClick={() => handleAWSSSOLOGIN('app')}
+                                      disabled={isSSOLoginLoading}
+                                      style={{ fontSize: '12px', padding: '6px 10px' }}
+                                  >
+                                      Login via AWS SSO
+                                  </button>
+                              </div>
+                              {ssoMessage && (
+                                  <div style={{
+                                      fontSize: '12px',
+                                      marginTop: '8px',
+                                      color: ssoMessage.success ? 'var(--status-success)' : 'var(--status-danger-text)',
+                                      whiteSpace: 'pre-wrap',
+                                      wordBreak: 'break-all',
+                                      backgroundColor: 'rgba(0,0,0,0.2)',
+                                      padding: '8px',
+                                      borderRadius: '4px',
+                                      border: `1px solid ${ssoMessage.success ? 'var(--status-success-bg)' : 'var(--status-danger-bg)'}`
+                                  }}>
+                                      {(() => {
+                                          const codeMatch = ssoMessage.message.match(/([A-Z0-9]{4}-[A-Z0-9]{4})/);
+                                          const code = codeMatch ? codeMatch[1] : null;
+                                          const parts = ssoMessage.message.split(/(https?:\/\/[^\s]+)/g);
+                                          return parts.map((part, i) => {
+                                              if (part.startsWith('http')) {
+                                                  const url = part.replace(/[.,]$/, '');
+                                                  let finalUrl = url;
+                                                  const isAWSSSOUrl = url.includes('device.sso') || url.includes('awsapps.com/start') || url.includes('.app.aws');
+                                                  if (code && isAWSSSOUrl && !url.includes('user_code=')) {
+                                                      const separator = url.includes('?') ? '&' : '?';
+                                                      finalUrl = `${url}${separator}user_code=${code}`;
+                                                  }
+                                                  return (
+                                                      <div key={i} style={{ margin: '8px 0' }}>
+                                                          <div style={{ color: 'var(--text-muted)', marginBottom: '4px' }}>Authorization URL:</div>
+                                                          <a href={finalUrl} target="_blank" rel="noopener noreferrer" style={{
+                                                              color: 'var(--accent-text)', textDecoration: 'underline', fontWeight: 'bold',
+                                                              display: 'block', padding: '8px', backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                                                              borderRadius: '4px', border: '1px solid rgba(96, 165, 250, 0.2)'
+                                                          }}>{finalUrl}</a>
+                                                      </div>
+                                                  );
+                                              }
+                                              if (code && part.includes(code)) {
+                                                  const subParts = part.split(code);
+                                                  return (
+                                                      <React.Fragment key={i}>
+                                                          {subParts[0]}
+                                                          <span style={{ color: 'var(--status-warning)', fontWeight: 'bold', padding: '0 4px', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '2px' }}>{code}</span>
+                                                          {subParts[1]}
+                                                      </React.Fragment>
+                                                  );
+                                              }
+                                              return part;
+                                          });
+                                      })()}
+                                  </div>
+                              )}
+                            </div>
+                          ) : localFormData.persistence.mongo.app.auth.aws_auth_type === 'static' || !localFormData.persistence.mongo.app.auth.aws_auth_type ? (
+                            <>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                                 Access Key ID:
                                 <input
@@ -1308,159 +1221,140 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               }}
                             >
                               <option value="static">Static Credentials</option>
+                              <option value="sso">SSO (Auto-refresh)</option>
                               <option value="role">Assume Role</option>
                             </select>
                           </label>
 
-                          {localFormData.persistence.mongo.customer.auth.aws_auth_type === 'static' ? (
-                            <>
-                              <div style={{ padding: '12px', border: '1px solid var(--border-primary)', borderRadius: '4px', backgroundColor: 'rgba(0,0,0,0.1)' }}>
-                                <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem", marginBottom: '8px' }}>
-                                    AWS Profile (Optional for SSO):
-                                    <input
-                                        type="text"
-                                        placeholder="default"
-                                        value={localFormData.persistence.mongo.customer.auth.aws_profile || ""}
-                                        onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_profile', e.target.value)}
-                                        onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_profile: localFormData.persistence.mongo.customer.auth.aws_profile } } } } })}
-                                    />
-                                </label>
-
-                                {!localFormData.persistence.mongo.customer.auth.aws_profile && (
-                                    <div style={{ marginBottom: '16px', padding: '12px', border: '1px dashed var(--border-secondary)', borderRadius: '4px' }}>
-                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>Manual SSO Configuration (No Profile):</div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
-                                                SSO Start URL:
-                                                <input
-                                                    type="text"
-                                                    placeholder="https://..."
-                                                    value={localFormData.persistence.mongo.customer.auth.aws_sso_start_url || ""}
-                                                    onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_sso_start_url', e.target.value)}
-                                                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_sso_start_url: localFormData.persistence.mongo.customer.auth.aws_sso_start_url } } } } })}
-                                                />
-                                            </label>
-                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
-                                                SSO Region:
-                                                <input
-                                                    type="text"
-                                                    placeholder="us-east-1"
-                                                    value={localFormData.persistence.mongo.customer.auth.aws_sso_region || ""}
-                                                    onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_sso_region', e.target.value)}
-                                                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_sso_region: localFormData.persistence.mongo.customer.auth.aws_sso_region } } } } })}
-                                                />
-                                            </label>
-                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
-                                                SSO Account ID:
-                                                <input
-                                                    type="text"
-                                                    placeholder="123456789012"
-                                                    value={localFormData.persistence.mongo.customer.auth.aws_sso_account_id || ""}
-                                                    onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_sso_account_id', e.target.value)}
-                                                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_sso_account_id: localFormData.persistence.mongo.customer.auth.aws_sso_account_id } } } } })}
-                                                />
-                                            </label>
-                                            <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
-                                                SSO Role Name:
-                                                <input
-                                                    type="text"
-                                                    placeholder="AWSReadOnlyAccess"
-                                                    value={localFormData.persistence.mongo.customer.auth.aws_sso_role_name || ""}
-                                                    onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_sso_role_name', e.target.value)}
-                                                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_sso_role_name: localFormData.persistence.mongo.customer.auth.aws_sso_role_name } } } } })}
-                                                />
-                                            </label>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    <button
-                                        type="button"
-                                        className="btn-primary"
-                                        onClick={() => handleAWSSSOLOGIN('customer')}
-                                        disabled={isSSOLoginLoading}
-                                        style={{ fontSize: '12px', padding: '6px 10px' }}
-                                    >
-                                        Login via AWS SSO
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="btn-primary"
-                                        onClick={() => handleFetchSSOCredentials('customer')}
-                                        disabled={isSSOLoginLoading}
-                                        style={{ fontSize: '12px', padding: '6px 10px' }}
-                                    >
-                                        Fetch SSO Credentials
-                                    </button>
-                                </div>
-                                {ssoMessage && (
-                                    <div style={{ 
-                                        fontSize: '12px', 
-                                        marginTop: '8px', 
-                                        color: ssoMessage.success ? 'var(--status-success)' : 'var(--status-danger-text)',
-                                        whiteSpace: 'pre-wrap',
-                                        wordBreak: 'break-all',
-                                        backgroundColor: 'rgba(0,0,0,0.2)',
-                                        padding: '8px',
-                                        borderRadius: '4px',
-                                        border: `1px solid ${ssoMessage.success ? 'var(--status-success-bg)' : 'var(--status-danger-bg)'}`
-                                    }}>
-                                        {(() => {
-                                            const codeMatch = ssoMessage.message.match(/([A-Z0-9]{4}-[A-Z0-9]{4})/);
-                                            const code = codeMatch ? codeMatch[1] : null;
-                                            
-                                            // Split message by URLs to linkify them
-                                            const parts = ssoMessage.message.split(/(https?:\/\/[^\s]+)/g);
-                                            
-                                            return parts.map((part, i) => {
-                                                if (part.startsWith('http')) {
-                                                    const url = part.replace(/[.,]$/, '');
-                                                    // Handle appending user_code for any official AWS SSO URL pattern
-                                                    let finalUrl = url;
-                                                    const isAWSSSOUrl = url.includes('device.sso') || url.includes('awsapps.com/start') || url.includes('.app.aws');
-                                                    if (code && isAWSSSOUrl && !url.includes('user_code=')) {
-                                                        const separator = url.includes('?') ? '&' : '?';
-                                                        finalUrl = `${url}${separator}user_code=${code}`;
-                                                    }
-                                                        
-                                                    return (
-                                                        <div key={i} style={{ margin: '8px 0' }}>
-                                                            <div style={{ color: 'var(--text-muted)', marginBottom: '4px' }}>Authorization URL:</div>
-                                                            <a href={finalUrl} target="_blank" rel="noopener noreferrer" style={{ 
-                                                                color: 'var(--accent-text)', 
-                                                                textDecoration: 'underline', 
-                                                                fontWeight: 'bold',
-                                                                display: 'block',
-                                                                padding: '8px',
-                                                                backgroundColor: 'rgba(96, 165, 250, 0.1)',
-                                                                borderRadius: '4px',
-                                                                border: '1px solid rgba(96, 165, 250, 0.2)'
-                                                            }}>
-                                                                {finalUrl}
-                                                            </a>
-                                                        </div>
-                                                    );
-                                                }
-                                                
-                                                // If we found the code in this text part, highlight it but don't repeat the whole "Then enter the code" if it's already in the URL
-                                                if (code && part.includes(code)) {
-                                                    const subParts = part.split(code);
-                                                    return (
-                                                        <React.Fragment key={i}>
-                                                            {subParts[0]}
-                                                            <span style={{ color: 'var(--status-warning)', fontWeight: 'bold', padding: '0 4px', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '2px' }}>{code}</span>
-                                                            {subParts[1]}
-                                                        </React.Fragment>
-                                                    );
-                                                }
-                                                return part;
-                                            });
-                                        })()}
-                                    </div>
-                                )}
+                          {localFormData.persistence.mongo.customer.auth.aws_auth_type === 'sso' ? (
+                            <div style={{ padding: '12px', border: '1px solid var(--border-primary)', borderRadius: '4px', backgroundColor: 'rgba(0,0,0,0.1)' }}>
+                              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                                Credentials are resolved automatically from the cached SSO session. Run "Login via AWS SSO" once, then the backend refreshes credentials transparently until the SSO session expires.
                               </div>
+                              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem", marginBottom: '8px' }}>
+                                  AWS Profile:
+                                  <input
+                                      type="text"
+                                      placeholder="default"
+                                      value={localFormData.persistence.mongo.customer.auth.aws_profile || ""}
+                                      onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_profile', e.target.value)}
+                                      onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_profile: localFormData.persistence.mongo.customer.auth.aws_profile } } } } })}
+                                  />
+                              </label>
 
+                              {!localFormData.persistence.mongo.customer.auth.aws_profile && (
+                                  <div style={{ marginBottom: '16px', padding: '12px', border: '1px dashed var(--border-secondary)', borderRadius: '4px' }}>
+                                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>Manual SSO Configuration (No Profile):</div>
+                                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                          <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
+                                              SSO Start URL:
+                                              <input
+                                                  type="text"
+                                                  placeholder="https://..."
+                                                  value={localFormData.persistence.mongo.customer.auth.aws_sso_start_url || ""}
+                                                  onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_sso_start_url', e.target.value)}
+                                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_sso_start_url: localFormData.persistence.mongo.customer.auth.aws_sso_start_url } } } } })}
+                                              />
+                                          </label>
+                                          <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
+                                              SSO Region:
+                                              <input
+                                                  type="text"
+                                                  placeholder="us-east-1"
+                                                  value={localFormData.persistence.mongo.customer.auth.aws_sso_region || ""}
+                                                  onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_sso_region', e.target.value)}
+                                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_sso_region: localFormData.persistence.mongo.customer.auth.aws_sso_region } } } } })}
+                                              />
+                                          </label>
+                                          <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
+                                              SSO Account ID:
+                                              <input
+                                                  type="text"
+                                                  placeholder="123456789012"
+                                                  value={localFormData.persistence.mongo.customer.auth.aws_sso_account_id || ""}
+                                                  onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_sso_account_id', e.target.value)}
+                                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_sso_account_id: localFormData.persistence.mongo.customer.auth.aws_sso_account_id } } } } })}
+                                              />
+                                          </label>
+                                          <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
+                                              SSO Role Name:
+                                              <input
+                                                  type="text"
+                                                  placeholder="AWSReadOnlyAccess"
+                                                  value={localFormData.persistence.mongo.customer.auth.aws_sso_role_name || ""}
+                                                  onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_sso_role_name', e.target.value)}
+                                                  onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_sso_role_name: localFormData.persistence.mongo.customer.auth.aws_sso_role_name } } } } })}
+                                              />
+                                          </label>
+                                      </div>
+                                  </div>
+                              )}
+
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                  <button
+                                      type="button"
+                                      className="btn-primary"
+                                      onClick={() => handleAWSSSOLOGIN('customer')}
+                                      disabled={isSSOLoginLoading}
+                                      style={{ fontSize: '12px', padding: '6px 10px' }}
+                                  >
+                                      Login via AWS SSO
+                                  </button>
+                              </div>
+                              {ssoMessage && (
+                                  <div style={{
+                                      fontSize: '12px',
+                                      marginTop: '8px',
+                                      color: ssoMessage.success ? 'var(--status-success)' : 'var(--status-danger-text)',
+                                      whiteSpace: 'pre-wrap',
+                                      wordBreak: 'break-all',
+                                      backgroundColor: 'rgba(0,0,0,0.2)',
+                                      padding: '8px',
+                                      borderRadius: '4px',
+                                      border: `1px solid ${ssoMessage.success ? 'var(--status-success-bg)' : 'var(--status-danger-bg)'}`
+                                  }}>
+                                      {(() => {
+                                          const codeMatch = ssoMessage.message.match(/([A-Z0-9]{4}-[A-Z0-9]{4})/);
+                                          const code = codeMatch ? codeMatch[1] : null;
+                                          const parts = ssoMessage.message.split(/(https?:\/\/[^\s]+)/g);
+                                          return parts.map((part, i) => {
+                                              if (part.startsWith('http')) {
+                                                  const url = part.replace(/[.,]$/, '');
+                                                  let finalUrl = url;
+                                                  const isAWSSSOUrl = url.includes('device.sso') || url.includes('awsapps.com/start') || url.includes('.app.aws');
+                                                  if (code && isAWSSSOUrl && !url.includes('user_code=')) {
+                                                      const separator = url.includes('?') ? '&' : '?';
+                                                      finalUrl = `${url}${separator}user_code=${code}`;
+                                                  }
+                                                  return (
+                                                      <div key={i} style={{ margin: '8px 0' }}>
+                                                          <div style={{ color: 'var(--text-muted)', marginBottom: '4px' }}>Authorization URL:</div>
+                                                          <a href={finalUrl} target="_blank" rel="noopener noreferrer" style={{
+                                                              color: 'var(--accent-text)', textDecoration: 'underline', fontWeight: 'bold',
+                                                              display: 'block', padding: '8px', backgroundColor: 'rgba(96, 165, 250, 0.1)',
+                                                              borderRadius: '4px', border: '1px solid rgba(96, 165, 250, 0.2)'
+                                                          }}>{finalUrl}</a>
+                                                      </div>
+                                                  );
+                                              }
+                                              if (code && part.includes(code)) {
+                                                  const subParts = part.split(code);
+                                                  return (
+                                                      <React.Fragment key={i}>
+                                                          {subParts[0]}
+                                                          <span style={{ color: 'var(--status-warning)', fontWeight: 'bold', padding: '0 4px', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '2px' }}>{code}</span>
+                                                          {subParts[1]}
+                                                      </React.Fragment>
+                                                  );
+                                              }
+                                              return part;
+                                          });
+                                      })()}
+                                  </div>
+                              )}
+                            </div>
+                          ) : localFormData.persistence.mongo.customer.auth.aws_auth_type === 'static' || !localFormData.persistence.mongo.customer.auth.aws_auth_type ? (
+                            <>
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                                 Access Key ID:
                                 <input

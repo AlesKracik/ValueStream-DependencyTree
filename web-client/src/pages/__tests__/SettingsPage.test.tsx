@@ -341,9 +341,9 @@ describe('SettingsPage', () => {
                     ...mockSettings.persistence.mongo,
                     app: {
                         ...mockSettings.persistence.mongo.app,
-                        auth: { 
-                            method: 'aws' as const, 
-                            aws_auth_type: 'static' as const,
+                        auth: {
+                            method: 'aws' as const,
+                            aws_auth_type: 'sso' as const,
                             aws_profile: '',
                             aws_sso_start_url: ''
                         }
@@ -533,9 +533,9 @@ describe('SettingsPage', () => {
                     ...mockSettings.persistence.mongo,
                     app: {
                         ...mockSettings.persistence.mongo.app,
-                        auth: { 
-                            method: 'aws' as const, 
-                            aws_auth_type: 'static' as const, 
+                        auth: {
+                            method: 'aws' as const,
+                            aws_auth_type: 'sso' as const,
                             aws_profile: '',
                             aws_sso_start_url: 'https://test.aws'
                         }

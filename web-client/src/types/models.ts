@@ -143,7 +143,7 @@ export interface AhaSettings {
 
 export interface MongoAuthSettings {
   method: 'scram' | 'aws' | 'oidc';
-  aws_auth_type?: 'static' | 'role';
+  aws_auth_type?: 'static' | 'role' | 'sso';
   aws_access_key?: string;
   aws_secret_key?: string;
   aws_session_token?: string;

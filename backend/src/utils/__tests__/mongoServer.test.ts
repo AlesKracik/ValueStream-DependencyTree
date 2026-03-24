@@ -2,6 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MongoClient } from 'mongodb';
 import { getDb, clearMongoCache, getMongoClientCount, startMongoCleanup, stopMongoCleanup } from '../mongoServer';
 
+// Mock AWS credential providers
+vi.mock('@aws-sdk/credential-providers', () => ({
+  fromNodeProviderChain: vi.fn().mockReturnValue(() => Promise.resolve({})),
+  fromSSO: vi.fn().mockReturnValue(() => Promise.resolve({}))
+}));
+
 // Mock MongoClient
 vi.mock('mongodb', () => {
   const mockConnect = vi.fn().mockResolvedValue({});
@@ -144,6 +150,42 @@ describe('mongoServer utility', () => {
           AWS_CREDENTIAL_PROVIDER: expect.any(Function)
         })
     }));
+  });
+
+  it('uses fromSSO provider for SSO authentication type', async () => {
+    const config = {
+        uri: 'mongodb://host',
+        auth: {
+            method: 'aws',
+            aws_auth_type: 'sso',
+            aws_profile: 'my-sso-profile'
+        }
+    };
+
+    await getDb(config as any, 'app');
+
+    expect(MongoClient).toHaveBeenCalledWith('mongodb://host', expect.objectContaining({
+        authMechanism: 'MONGODB-AWS',
+        authSource: '$external',
+        auth: { username: '', password: '' },
+        authMechanismProperties: expect.objectContaining({
+            AWS_CREDENTIAL_PROVIDER: expect.any(Function)
+        })
+    }));
+  });
+
+  it('throws for static AWS auth without access key', async () => {
+    const config = {
+        uri: 'mongodb://host',
+        auth: {
+            method: 'aws',
+            aws_auth_type: 'static',
+            aws_access_key: '',
+            aws_secret_key: ''
+        }
+    };
+
+    await expect(getDb(config as any, 'app')).rejects.toThrow('AWS Access Key and Secret Key are required');
   });
 
   describe('isSafeUrl', () => {
