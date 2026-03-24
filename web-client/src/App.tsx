@@ -106,7 +106,7 @@ function SprintPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueS
 
 function SettingsPageRouteWrapper() {
   const { showAlert } = useNotificationContext();
-  const state = useValueStreamData(undefined, undefined, 1000, showAlert, ['settings', 'issues']);
+  const state = useValueStreamData(undefined, undefined, 1000, showAlert, ['settings']);
   const mergedSettings = deepMerge(DEFAULT_SETTINGS, state.data?.settings || {});
 
   return (

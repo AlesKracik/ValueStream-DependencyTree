@@ -520,7 +520,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
   const handleSyncAllFromJira = async () => {
     if (!data) return;
-    const issuesWithKeys = data.issues.filter(e => e.jira_key && e.jira_key !== "TBD");
+    const issuesWithKeys = (data.issues || []).filter(e => e.jira_key && e.jira_key !== "TBD");
     if (issuesWithKeys.length === 0) {
       setImportSyncResult({ success: true, message: "No issues with Jira keys found to sync." });
       return;
@@ -608,7 +608,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         
         const updates = parseJiraIssue(issue, data.teams);
 
-        const existingIssue = data.issues.find((e) => e.jira_key === jiraKey);
+        const existingIssue = (data.issues || []).find((e) => e.jira_key === jiraKey);
         try {
           if (existingIssue) {
             await updateIssue(existingIssue.id, updates, true);
