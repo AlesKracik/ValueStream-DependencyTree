@@ -230,6 +230,42 @@ describe('useGraphLayout Math Engine', () => {
         expect((capNode?.data as any).totalCapacityMds).toBe(9);
     });
 
+    it('sorts Gantt lanes by related work item score (highest score on top)', () => {
+        const SCORE_DATA: ValueStreamData = {
+            ...MOCK_DATA,
+            workItems: [
+                { id: 'f1', name: 'Low Score', total_effort_mds: 10, score: 5, calculated_score: 5, customer_targets: [] },
+                { id: 'f2', name: 'High Score', total_effort_mds: 5, score: 50, calculated_score: 50, customer_targets: [] },
+                { id: 'f3', name: 'No Work Item Score', total_effort_mds: 5, score: 0, calculated_score: 0, customer_targets: [] },
+            ],
+            issues: [
+                // All overlapping in time (same team) so they need separate lanes
+                { id: 'e1', jira_key: 'J-1', work_item_id: 'f1', team_id: 't1', effort_md: 5, target_start: '2026-02-12', target_end: '2026-02-26' },
+                { id: 'e2', jira_key: 'J-2', work_item_id: 'f2', team_id: 't1', effort_md: 5, target_start: '2026-02-12', target_end: '2026-02-26' },
+                { id: 'e3', jira_key: 'J-3', work_item_id: 'f3', team_id: 't1', effort_md: 3, target_start: '2026-02-12', target_end: '2026-02-26' },
+                // Issue with no work item
+                { id: 'e4', jira_key: 'J-4', team_id: 't1', effort_md: 2, target_start: '2026-02-12', target_end: '2026-02-26' },
+            ]
+        };
+
+        const { result } = renderHook(() => useGraphLayout(SCORE_DATA));
+
+        const ganttE1 = result.current.nodes.find(n => n.id === 'gantt-e1');
+        const ganttE2 = result.current.nodes.find(n => n.id === 'gantt-e2');
+        const ganttE3 = result.current.nodes.find(n => n.id === 'gantt-e3');
+        const ganttE4 = result.current.nodes.find(n => n.id === 'gantt-e4');
+
+        expect(ganttE1).toBeDefined();
+        expect(ganttE2).toBeDefined();
+        expect(ganttE3).toBeDefined();
+        expect(ganttE4).toBeDefined();
+
+        // Higher score = lower Y position (top lane)
+        // e2 (score 50) should be above e1 (score 5), which should be above e3 (score 0) and e4 (no workitem = 0)
+        expect(ganttE2!.position.y).toBeLessThan(ganttE1!.position.y);
+        expect(ganttE1!.position.y).toBeLessThan(ganttE3!.position.y);
+    });
+
     it('does not reserve lanes for issues completely outside the visible sprint window', () => {
         const DATA_WITH_OFFSCREEN: ValueStreamData = {
             ...MOCK_DATA,

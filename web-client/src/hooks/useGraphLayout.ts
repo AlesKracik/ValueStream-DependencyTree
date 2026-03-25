@@ -558,12 +558,22 @@ export function useGraphLayout(
         const visibleIssueIds = new Set(visibleIssues);
         const allIssuesToShow = (data.issues || []).filter(e => visibleIssueIds.has(e.id));
         
-        // Sort issues: first those with dates (by start date), then those without.
+        // Build work item score lookup for Gantt lane ordering
+        const workItemScoreMap: Record<string, number> = {};
+        (data.workItems || []).forEach(wi => {
+            workItemScoreMap[wi.id] = wi.calculated_score || 0;
+        });
+
+        // Sort issues: by related work item score (descending) so highest-scored items get top lanes,
+        // then by start date as tiebreaker. Issues without dates go last.
         const sortedIssues = [...allIssuesToShow].sort((a, b) => {
             const hasDateA = !!(a.target_start && a.target_end);
             const hasDateB = !!(b.target_start && b.target_end);
-            
+
             if (hasDateA && hasDateB) {
+                const scoreA = workItemScoreMap[a.work_item_id || ''] || 0;
+                const scoreB = workItemScoreMap[b.work_item_id || ''] || 0;
+                if (scoreA !== scoreB) return scoreB - scoreA; // Higher score = top lane
                 return parseISO(a.target_start!).getTime() - parseISO(b.target_start!).getTime();
             }
             if (hasDateA) return -1;
