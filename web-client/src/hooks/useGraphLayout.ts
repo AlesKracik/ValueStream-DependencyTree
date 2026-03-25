@@ -583,7 +583,10 @@ export function useGraphLayout(
             if (issue.target_start && issue.target_end) {
                 const start = parseISO(issue.target_start);
                 const end = parseISO(issue.target_end);
-                
+
+                // Skip issues completely outside the visible window so they don't occupy lanes
+                if (end < windowStartDate || start > windowEndDate) return;
+
                 while (laneIdx < lanes.length && start <= lanes[laneIdx]) {
                     laneIdx++;
                 }

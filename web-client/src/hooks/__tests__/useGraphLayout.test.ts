@@ -230,6 +230,61 @@ describe('useGraphLayout Math Engine', () => {
         expect((capNode?.data as any).totalCapacityMds).toBe(9);
     });
 
+    it('does not reserve lanes for issues completely outside the visible sprint window', () => {
+        const DATA_WITH_OFFSCREEN: ValueStreamData = {
+            ...MOCK_DATA,
+            sprints: [
+                { id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14' },
+                { id: 's2', name: 'Sprint 2', start_date: '2026-01-15', end_date: '2026-01-28' },
+                { id: 's3', name: 'Sprint 3', start_date: '2026-01-29', end_date: '2026-02-11' },
+                { id: 's4', name: 'Sprint 4', start_date: '2026-02-12', end_date: '2026-02-25' },
+                { id: 's5', name: 'Sprint 5', start_date: '2026-02-26', end_date: '2026-03-11' },
+                { id: 's6', name: 'Sprint 6', start_date: '2026-03-12', end_date: '2026-03-25' },
+                // Off-screen sprints
+                { id: 's7', name: 'Sprint 7', start_date: '2026-03-26', end_date: '2026-04-08' },
+                { id: 's8', name: 'Sprint 8', start_date: '2026-04-09', end_date: '2026-04-22' },
+            ],
+            issues: [
+                // Visible: in s1
+                { id: 'e1', jira_key: 'J-1', work_item_id: 'f1', team_id: 't1', effort_md: 5, target_start: '2026-01-01', target_end: '2026-01-10' },
+                // Completely off-screen: in s7-s8 (sprintOffset=0 shows s1-s6)
+                { id: 'e2', jira_key: 'J-2', work_item_id: 'f2', team_id: 't1', effort_md: 5, target_start: '2026-03-26', target_end: '2026-04-22' },
+                // Another off-screen issue that would overlap e2 and create a new lane
+                { id: 'e3', jira_key: 'J-3', work_item_id: 'f1', team_id: 't1', effort_md: 3, target_start: '2026-04-01', target_end: '2026-04-15' },
+            ]
+        };
+
+        // sprintOffset=0 -> visible window is s1-s6 (Jan 1 - Mar 25)
+        const { result } = renderHook(() => useGraphLayout(DATA_WITH_OFFSCREEN, null, 0));
+
+        // Only e1 should have a Gantt bar rendered
+        expect(result.current.nodes.find(n => n.id === 'gantt-e1')).toBeDefined();
+        expect(result.current.nodes.find(n => n.id === 'gantt-e2')).toBeUndefined();
+        expect(result.current.nodes.find(n => n.id === 'gantt-e3')).toBeUndefined();
+
+        // Team height should only account for 1 lane (e1), not 2 (e2+e3 overlap)
+        const teamNode = result.current.nodes.find(n => n.id === 'team-t1');
+        expect(teamNode).toBeDefined();
+        // With 1 lane: height = max(180, 1*45+100) = 180 -> baseY = startY - 90 + 90 = startY
+        // With 2 lanes: height = max(180, 2*45+100) = 190 -> baseY would be different
+        // The team node Y should reflect only 1 lane of height
+        const teamY = teamNode!.position.y;
+
+        // Now shift to see off-screen sprints
+        const { result: resultShifted } = renderHook(() => useGraphLayout(DATA_WITH_OFFSCREEN, null, 2));
+
+        // With offset 2, visible sprints are s3-s8 which includes both e2 and e3
+        // These overlap, requiring 2 lanes -> taller team
+        const teamNodeShifted = resultShifted.current.nodes.find(n => n.id === 'team-t1');
+        expect(teamNodeShifted).toBeDefined();
+        const teamYShifted = teamNodeShifted!.position.y;
+
+        // If off-screen issues were incorrectly reserving lanes, both Y values would be the same
+        // With the fix, the first view (1 visible lane) should have a smaller or equal team area
+        // than the shifted view (2 visible lanes that overlap)
+        expect(teamYShifted).not.toBe(teamY);
+    });
+
     it('highlights the Issue (Gantt) when hovering the WorkItem even if IDs have dashes', () => {
         const DASH_DATA: ValueStreamData = {
             ...MOCK_DATA,
