@@ -24,7 +24,8 @@ export const SENSITIVE_FIELDS = [
   'access_token',
   'refresh_token',
   'client_secret',
-  'registration_access_token'
+  'registration_access_token',
+  'bind_password'
 ];
 
 const MASK = '********';

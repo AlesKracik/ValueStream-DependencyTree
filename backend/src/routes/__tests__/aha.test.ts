@@ -8,6 +8,8 @@ describe('Aha! Routes', () => {
   let app: any;
 
   beforeEach(async () => {
+    delete process.env.ADMIN_SECRET;
+    delete process.env.VITE_ADMIN_SECRET;
     app = await buildApp();
     vi.clearAllMocks();
     (fs.existsSync as any).mockReturnValue(true);

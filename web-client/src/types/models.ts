@@ -141,6 +141,16 @@ export interface AhaSettings {
   api_key?: string;
 }
 
+export interface LdapSettings {
+  url: string;
+  bind_dn: string;
+  bind_password?: string;
+  team: {
+    base_dn: string;
+    search_filter: string;
+  };
+}
+
 export interface MongoAuthSettings {
   method: 'scram' | 'aws' | 'oidc';
   aws_auth_type?: 'static' | 'role' | 'sso';
@@ -210,6 +220,7 @@ export interface Settings {
   jira: JiraSettings;
   aha: AhaSettings;
   ai: AISettings;
+  ldap: LdapSettings;
 }
 
 export type AppSettings = Settings;

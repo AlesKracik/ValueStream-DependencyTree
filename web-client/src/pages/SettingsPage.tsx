@@ -66,7 +66,8 @@ export const DEFAULT_SETTINGS: Settings = {
   },
   jira: { base_url: '', api_version: '3', api_token: '', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
   aha: { subdomain: '', api_key: '' },
-  ai: { provider: 'openai', api_key: '', model: '', glean_url: '', support: { prompt: '' } }
+  ai: { provider: 'openai', api_key: '', model: '', glean_url: '', support: { prompt: '' } },
+  ldap: { url: '', bind_dn: '', bind_password: '', team: { base_dn: '', search_filter: '' } }
 };
 
 interface MongoTestResult {
@@ -90,8 +91,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   addIssue,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = (searchParams.get("tab") as "general" | "persistence" | "jira" | "aha" | "ai") || "general";
-  const activeSubTab = searchParams.get("subtab") || (activeTab === "persistence" ? "mongo" : activeTab === "jira" ? "common" : activeTab === "ai" ? "general" : "");
+  const activeTab = (searchParams.get("tab") as "general" | "persistence" | "jira" | "aha" | "ai" | "ldap") || "general";
+  const activeSubTab = searchParams.get("subtab") || (activeTab === "persistence" ? "mongo" : activeTab === "jira" ? "common" : activeTab === "ai" ? "general" : activeTab === "ldap" ? "general" : "");
   const activeSubSubTab = searchParams.get("subsubtab") || (activeTab === "persistence" && activeSubTab === "mongo" ? "application" : "");
 
   const { showConfirm } = useValueStreamContext();
@@ -620,6 +621,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               className={`${styles.tabButton} ${activeTab === "ai" ? styles.activeTab : ''}`}
             >
               AI & LLM
+            </button>
+            <button
+              onClick={() => setTab("ldap")}
+              className={`${styles.tabButton} ${activeTab === "ldap" ? styles.activeTab : ''}`}
+            >
+              LDAP
             </button>
           </nav>
 
@@ -1500,7 +1507,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   onClick={() => setSubTab("common")}
                   className={`${styles.tabButton} ${activeSubTab === "common" ? styles.activeTab : ''}`}
                 >
-                  Common
+                  General
                 </button>
                 <button
                   onClick={() => setSubTab("issues")}
@@ -1964,6 +1971,93 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                         onBlur={() => onUpdateSettings({ ai: { ...localFormData.ai, support: { ...localFormData.ai?.support, prompt: localFormData.ai?.support?.prompt || '' } } })}
                         rows={15}
                         style={{ fontFamily: 'monospace', fontSize: '13px', resize: 'vertical' }}
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "ldap" && (
+            <div className={styles.tabContainer}>
+              <nav className={styles.tabHeader}>
+                <button
+                  onClick={() => setSubTab("general")}
+                  className={`${styles.tabButton} ${activeSubTab === "general" ? styles.activeTab : ''}`}
+                >
+                  General
+                </button>
+                <button
+                  onClick={() => setSubTab("team")}
+                  className={`${styles.tabButton} ${activeSubTab === "team" ? styles.activeTab : ''}`}
+                >
+                  Team
+                </button>
+              </nav>
+
+              <div className={styles.tabContent}>
+                {activeSubTab === "general" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                      LDAP URL:
+                      <input
+                        type="url"
+                        placeholder="ldap://localhost:389"
+                        value={localFormData.ldap?.url || ""}
+                        onChange={(e) => updateFormData('ldap.url', e.target.value)}
+                        onBlur={() => onUpdateSettings({ ldap: { ...localFormData.ldap, url: localFormData.ldap?.url } })}
+                      />
+                    </label>
+
+                    <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                      Bind DN:
+                      <input
+                        type="text"
+                        placeholder="cn=admin,dc=example,dc=com"
+                        value={localFormData.ldap?.bind_dn || ""}
+                        onChange={(e) => updateFormData('ldap.bind_dn', e.target.value)}
+                        onBlur={() => onUpdateSettings({ ldap: { ...localFormData.ldap, bind_dn: localFormData.ldap?.bind_dn } })}
+                      />
+                    </label>
+
+                    <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                      Bind Password:
+                      <input
+                        type="password"
+                        placeholder="Bind password"
+                        value={localFormData.ldap?.bind_password || ""}
+                        onChange={(e) => updateFormData('ldap.bind_password', e.target.value)}
+                        onBlur={() => onUpdateSettings({ ldap: { ...localFormData.ldap, bind_password: localFormData.ldap?.bind_password } })}
+                      />
+                    </label>
+                  </div>
+                )}
+
+                {activeSubTab === "team" && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                      Base DN:
+                      <input
+                        type="text"
+                        placeholder="ou=teams,dc=example,dc=com"
+                        value={localFormData.ldap?.team?.base_dn || ""}
+                        onChange={(e) => updateFormData('ldap.team.base_dn', e.target.value)}
+                        onBlur={() => onUpdateSettings({ ldap: { ...localFormData.ldap, team: { ...localFormData.ldap?.team, base_dn: localFormData.ldap?.team?.base_dn } } })}
+                      />
+                    </label>
+
+                    <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                      Search Filter:
+                      <p style={{ color: "var(--text-muted)", fontSize: "13px", margin: "0" }}>
+                        Use <code>{"{{LDAP_TEAM_NAME}}"}</code> as a placeholder for the team name.
+                      </p>
+                      <input
+                        type="text"
+                        placeholder="(&(objectClass=group)(cn={{LDAP_TEAM_NAME}}))"
+                        value={localFormData.ldap?.team?.search_filter || ""}
+                        onChange={(e) => updateFormData('ldap.team.search_filter', e.target.value)}
+                        onBlur={() => onUpdateSettings({ ldap: { ...localFormData.ldap, team: { ...localFormData.ldap?.team, search_filter: localFormData.ldap?.team?.search_filter } } })}
                       />
                     </label>
                   </div>

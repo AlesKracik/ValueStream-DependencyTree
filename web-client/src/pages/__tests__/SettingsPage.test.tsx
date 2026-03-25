@@ -80,7 +80,8 @@ const mockSettings: Settings = {
         api_key: '',
         support: { prompt: '' }
     },
-    aha: { subdomain: '', api_key: '' }
+    aha: { subdomain: '', api_key: '' },
+    ldap: { url: '', bind_dn: '', bind_password: '', team: { base_dn: '', search_filter: '' } }
 };
 
 const mockData: ValueStreamData = {
@@ -699,5 +700,60 @@ describe('SettingsPage', () => {
         expect(onUpdateSettings).toHaveBeenCalledWith(expect.objectContaining({
             general: expect.objectContaining({ theme: 'filips' })
         }));
+    });
+
+    it('renders LDAP General subtab with connection fields', () => {
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=ldap&subtab=general']}>
+                <SettingsPage
+                    settings={mockSettings}
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
+                />
+            </MemoryRouter>
+        );
+
+        expect(screen.getByLabelText(/LDAP URL:/i)).toBeDefined();
+        expect(screen.getByLabelText(/Bind DN:/i)).toBeDefined();
+        expect(screen.getByLabelText(/Bind Password:/i)).toBeDefined();
+    });
+
+    it('renders LDAP Team subtab with search fields', () => {
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=ldap&subtab=team']}>
+                <SettingsPage
+                    settings={mockSettings}
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
+                />
+            </MemoryRouter>
+        );
+
+        expect(screen.getByLabelText(/Base DN:/i)).toBeDefined();
+        expect(screen.getByLabelText(/Search Filter:/i)).toBeDefined();
+        expect(screen.getByText(/LDAP_TEAM_NAME/)).toBeDefined();
+    });
+
+    it('renders LDAP tab without crashing when settings prop is an empty object', () => {
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=ldap&subtab=general']}>
+                <SettingsPage
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    settings={{} as any}
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
+                />
+            </MemoryRouter>
+        );
+
+        expect(screen.getByLabelText(/LDAP URL:/i)).toBeDefined();
+        const input = screen.getByLabelText(/LDAP URL:/i) as HTMLInputElement;
+        expect(input.value).toBe('');
     });
 });
