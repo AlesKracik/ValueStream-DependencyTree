@@ -4,16 +4,15 @@ import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
 import { spawn } from 'child_process';
-import { getSettingsPath } from './settings';
 import { unmaskSettings } from '../utils/configHelpers';
+import { getFullSettings } from '../services/secretManager';
 
 export const awsRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post('/api/aws/sso/login', async (request, reply) => {
     try {
       const rawConfig = request.body as any;
-      const settingsPath = getSettingsPath();
-      const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+      const existing = getFullSettings();
       const config = unmaskSettings(rawConfig, existing);
       
       const role = config.role || 'app';

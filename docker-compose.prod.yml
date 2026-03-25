@@ -30,6 +30,9 @@ services:
       - .env
     volumes:
       - ~/.aws:/root/.aws
+      # Persist settings and encrypted secrets across container rebuilds
+      - ./backend/settings.json:/app/backend/settings.json
+      - ./backend/settings.secrets.enc:/app/backend/settings.secrets.enc
     networks:
       - app-network
     extra_hosts:

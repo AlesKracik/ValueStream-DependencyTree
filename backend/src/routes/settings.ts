@@ -1,31 +1,25 @@
 import { FastifyPluginAsync } from 'fastify';
-import fs from 'fs';
-import path from 'path';
 import { unmaskSettings } from '../utils/configHelpers';
+import { getFullSettings, saveFullSettings } from '../services/secretManager';
 
-// Helper to reliably find the settings.json file in the backend directory
-export const getSettingsPath = () => path.resolve(__dirname, '../../settings.json');
+import { getSettingsPath } from '../utils/configHelpers';
+// Re-export for backward compatibility with existing imports across routes
+export { getSettingsPath };
 
 export const settingsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/api/settings', async (request, reply) => {
     try {
       const newData = request.body as any;
-      const settingsPath = getSettingsPath();
-      
-      const existingSettings = fs.existsSync(settingsPath) 
-        ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) 
-        : {};
-        
-      const unmasked = unmaskSettings(newData, existingSettings);
-      
-      // Ensure directory exists if for some reason it doesn't
-      const dir = path.dirname(settingsPath);
-      if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
-      }
 
-      fs.writeFileSync(settingsPath, JSON.stringify(unmasked, null, 2));
-      
+      // Read current full settings (config + secrets) for unmask
+      const existingSettings = getFullSettings();
+
+      // Unmask: restore ******** values from existing secrets
+      const unmasked = unmaskSettings(newData, existingSettings);
+
+      // Split write: secrets → SecretManager, config → settings.json
+      saveFullSettings(unmasked);
+
       return reply.send({ success: true });
     } catch (e: any) {
       return reply.code(500).send({ success: false, error: e.message });

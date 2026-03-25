@@ -1,18 +1,25 @@
-const SENSITIVE_FIELDS = [
-  'api_token', 
-  'uri', 
-  'aws_access_key', 
-  'aws_secret_key', 
-  'aws_session_token', 
-  'aws_role_arn',
-  'aws_external_id',
-  'aws_role_session_name',
-  'aws_profile',
-  'aws_sso_start_url',
-  'aws_sso_region',
-  'aws_sso_account_id',
-  'aws_sso_role_name',
-  'oidc_token', 
+import fs from 'fs';
+import path from 'path';
+
+/** Resolve the path to settings.json in the backend directory */
+export const getSettingsPath = () => path.resolve(__dirname, '../../settings.json');
+
+/** Read raw settings.json from disk (config only after migration, full settings in legacy mode) */
+export function readSettingsFile(): any {
+  const settingsPath = getSettingsPath();
+  if (fs.existsSync(settingsPath)) {
+    return JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+  }
+  return {};
+}
+
+export const SENSITIVE_FIELDS = [
+  'api_token',
+  'uri',
+  'aws_access_key',
+  'aws_secret_key',
+  'aws_session_token',
+  'oidc_token',
   'api_key',
   'access_token',
   'refresh_token',
@@ -62,6 +69,66 @@ export function unmaskSettings(newData: any, existingSettings: any): any {
   });
 
   return unmasked;
+}
+
+// --- Secret extraction / stripping / merging helpers ---
+
+/**
+ * Extract sensitive values from a nested settings object into a flat dot-path map.
+ * E.g., { persistence: { mongo: { app: { uri: "x" } } } } → { "persistence.mongo.app.uri": "x" }
+ */
+export function extractSecrets(settings: any, prefix: string = ''): Record<string, string> {
+  const secrets: Record<string, string> = {};
+  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) return secrets;
+
+  for (const [key, value] of Object.entries(settings)) {
+    const fullPath = prefix ? `${prefix}.${key}` : key;
+    if (SENSITIVE_FIELDS.includes(key) && typeof value === 'string' && value && value !== MASK) {
+      secrets[fullPath] = value;
+    } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      Object.assign(secrets, extractSecrets(value, fullPath));
+    }
+  }
+  return secrets;
+}
+
+/**
+ * Remove sensitive field values from a settings object (deletes the keys).
+ * Returns a deep copy with secrets removed.
+ */
+export function stripSecrets(settings: any): any {
+  if (!settings || typeof settings !== 'object') return settings;
+  const stripped = Array.isArray(settings) ? [...settings] : { ...settings };
+
+  for (const key of Object.keys(stripped)) {
+    if (SENSITIVE_FIELDS.includes(key) && typeof stripped[key] === 'string') {
+      delete stripped[key];
+    } else if (typeof stripped[key] === 'object' && stripped[key] !== null) {
+      stripped[key] = stripSecrets(stripped[key]);
+    }
+  }
+  return stripped;
+}
+
+/**
+ * Merge a flat secret map back into a nested settings object.
+ * E.g., mergeSecrets({}, { "persistence.mongo.app.uri": "x" })
+ *   → { persistence: { mongo: { app: { uri: "x" } } } }
+ */
+export function mergeSecrets(settings: any, secrets: Record<string, string>): any {
+  const merged = JSON.parse(JSON.stringify(settings)); // deep clone
+  for (const [dotPath, value] of Object.entries(secrets)) {
+    const parts = dotPath.split('.');
+    let current = merged;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!current[parts[i]] || typeof current[parts[i]] !== 'object') {
+        current[parts[i]] = {};
+      }
+      current = current[parts[i]];
+    }
+    current[parts[parts.length - 1]] = value;
+  }
+  return merged;
 }
 
 export const augmentConfig = (config: any, role: 'app' | 'customer' = 'app') => {

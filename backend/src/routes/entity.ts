@@ -1,8 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
-import fs from 'fs';
-import { getSettingsPath } from './settings';
-import { getDb } from '../utils/mongoServer';
 import { augmentConfig } from '../utils/configHelpers';
+import { getFullSettings } from '../services/secretManager';
+import { getDb } from '../utils/mongoServer';
 import { recomputeScoresForWorkItems } from '../services/metricsService';
 
 const ALLOWED_COLLECTIONS = ['customers', 'workItems', 'teams', 'issues', 'sprints', 'valueStreams'];
@@ -27,8 +26,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
 
       const entityId = String(data.id);
 
-      const settingsPath = getSettingsPath();
-      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+      const settings = getFullSettings();
       
       if (!settings.persistence?.mongo?.app?.uri) {
         throw new Error("App MongoDB not configured");
@@ -63,8 +61,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
       const data = request.body as any || {};
       const entityId = String(data.id || id);
       
-      const settingsPath = getSettingsPath();
-      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+      const settings = getFullSettings();
       
       if (!settings.persistence?.mongo?.app?.uri) {
         throw new Error("App MongoDB not configured");
@@ -95,8 +92,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.code(403).send({ success: false, error: 'Forbidden collection' });
       }
 
-      const settingsPath = getSettingsPath();
-      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+      const settings = getFullSettings();
 
       if (!settings.persistence?.mongo?.app?.uri) {
         throw new Error("App MongoDB not configured");

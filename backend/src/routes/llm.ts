@@ -1,9 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
-import fs from 'fs';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { getSettingsPath } from './settings';
 import { unmaskSettings } from '../utils/configHelpers';
+import { getFullSettings } from '../services/secretManager';
 import { getGleanSettings, refreshGleanToken, gleanChatRequest } from '../utils/gleanHelpers';
 
 const execPromise = promisify(exec);
@@ -13,8 +12,7 @@ export const llmRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/api/llm/generate', async (request, reply) => {
     try {
       const { prompt, config: rawConfig } = request.body as any;
-      const settingsPath = getSettingsPath();
-      const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+      const existing = getFullSettings();
       const config = unmaskSettings(rawConfig || {}, existing);
       
       const provider = config.ai?.provider || 'openai';

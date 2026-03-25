@@ -20,6 +20,7 @@ import { ahaRoutes } from './routes/aha';
 import { llmRoutes } from './routes/llm';
 import { awsRoutes } from './routes/aws';
 import { gleanRoutes } from './routes/glean';
+import { migrateSecretsFromSettingsFile } from './services/secretManager';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -54,6 +55,16 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(llmRoutes);
   await app.register(awsRoutes);
   await app.register(gleanRoutes);
+
+  // Auto-migrate secrets from plain-text settings.json to encrypted storage
+  try {
+    const { migrated } = migrateSecretsFromSettingsFile();
+    if (migrated > 0) {
+      app.log.info(`SecretManager: migrated ${migrated} secrets to encrypted storage`);
+    }
+  } catch (e: any) {
+    app.log.warn(`SecretManager migration skipped: ${e.message}`);
+  }
 
   return app;
 }

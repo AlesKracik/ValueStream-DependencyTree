@@ -31,6 +31,13 @@ spec:
             secretKeyRef:
               name: valuestream-secrets
               key: ADMIN_SECRET
+        # SecretManager env-var overrides (optional — uncomment to use EnvProvider)
+        # When set, secrets are read from env vars instead of the encrypted file.
+        # - name: VSDT_SECRET_PERSISTENCE_MONGO_APP_URI
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: valuestream-secrets
+        #       key: VSDT_SECRET_PERSISTENCE_MONGO_APP_URI
         # Add proxy configuration environments if SOCKS proxy is used in K8s
 ---
 apiVersion: v1

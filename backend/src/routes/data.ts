@@ -1,7 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
-import fs from 'fs';
-import { getSettingsPath } from './settings';
 import { maskSettings, augmentConfig, logQuery } from '../utils/configHelpers';
+import { getFullSettings } from '../services/secretManager';
 import { getDb } from '../utils/mongoServer';
 import { computeMetricsFromPrecomputed, recomputeScoresForWorkItems } from '../services/metricsService';
 import { assignMissingQuarters } from '../services/sprintService';
@@ -11,11 +10,7 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
 
   // Helper to safely get the App DB
   const getAppDb = async () => {
-    const settingsPath = getSettingsPath();
-    let settings: any = {};
-    if (fs.existsSync(settingsPath)) {
-        settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-    }
+    const settings = getFullSettings();
     if (!settings.persistence?.mongo?.app?.uri) {
         throw new Error('App database is not configured in settings.');
     }
@@ -23,11 +18,7 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
   };
 
   const getSettings = () => {
-      const settingsPath = getSettingsPath();
-      if (fs.existsSync(settingsPath)) {
-          return JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-      }
-      return {};
+      return getFullSettings();
   }
 
   const handleError = (e: any, reply: any) => {

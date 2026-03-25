@@ -28,3 +28,4 @@ package-lock.json
 # Environment secrets
 .env
 settings.json
+settings.secrets.enc

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { maskSettings, unmaskSettings, calculateQuarter } from '../configHelpers';
+import { maskSettings, unmaskSettings, calculateQuarter, extractSecrets, stripSecrets, mergeSecrets } from '../configHelpers';
 
 describe('configHelpers', () => {
   describe('maskSettings', () => {
@@ -69,6 +69,93 @@ describe('configHelpers', () => {
       // Kept new value
       expect(unmasked.uri).toBe('mongodb://newuser:newpass@newhost');
       expect(unmasked.general.name).toBe('New App Name');
+    });
+  });
+
+  describe('extractSecrets', () => {
+    it('should extract all sensitive fields as flat dot-path map', () => {
+      const settings = {
+        general: { theme: 'dark' },
+        jira: { base_url: 'https://jira.com', api_token: 'secret-token' },
+        persistence: {
+          mongo: {
+            app: { uri: 'mongodb://secret', db: 'mydb', auth: { aws_access_key: 'AKIA123' } }
+          }
+        }
+      };
+
+      const secrets = extractSecrets(settings);
+      expect(secrets).toEqual({
+        'jira.api_token': 'secret-token',
+        'persistence.mongo.app.uri': 'mongodb://secret',
+        'persistence.mongo.app.auth.aws_access_key': 'AKIA123'
+      });
+    });
+
+    it('should skip masked values (********)', () => {
+      const settings = { jira: { api_token: '********' } };
+      expect(extractSecrets(settings)).toEqual({});
+    });
+
+    it('should skip empty strings', () => {
+      const settings = { jira: { api_token: '' } };
+      expect(extractSecrets(settings)).toEqual({});
+    });
+
+    it('should handle null/undefined input', () => {
+      expect(extractSecrets(null)).toEqual({});
+      expect(extractSecrets(undefined)).toEqual({});
+    });
+  });
+
+  describe('stripSecrets', () => {
+    it('should remove sensitive field values from nested object', () => {
+      const settings = {
+        general: { theme: 'dark' },
+        jira: { base_url: 'https://jira.com', api_token: 'secret' },
+        persistence: { mongo: { app: { uri: 'mongodb://secret', db: 'mydb' } } }
+      };
+
+      const stripped = stripSecrets(settings);
+      expect(stripped.general.theme).toBe('dark');
+      expect(stripped.jira.base_url).toBe('https://jira.com');
+      expect(stripped.jira.api_token).toBeUndefined();
+      expect(stripped.persistence.mongo.app.uri).toBeUndefined();
+      expect(stripped.persistence.mongo.app.db).toBe('mydb');
+    });
+
+    it('should not mutate original object', () => {
+      const settings = { jira: { api_token: 'secret' } };
+      stripSecrets(settings);
+      expect(settings.jira.api_token).toBe('secret');
+    });
+  });
+
+  describe('mergeSecrets', () => {
+    it('should inject flat secrets into correct nested positions', () => {
+      const config = { general: { theme: 'dark' }, jira: { base_url: 'https://jira.com' } };
+      const secrets = {
+        'jira.api_token': 'secret-token',
+        'persistence.mongo.app.uri': 'mongodb://secret'
+      };
+
+      const merged = mergeSecrets(config, secrets);
+      expect(merged.jira.api_token).toBe('secret-token');
+      expect(merged.jira.base_url).toBe('https://jira.com');
+      expect(merged.persistence.mongo.app.uri).toBe('mongodb://secret');
+      expect(merged.general.theme).toBe('dark');
+    });
+
+    it('should not mutate original config', () => {
+      const config = { jira: { base_url: 'x' } };
+      mergeSecrets(config, { 'jira.api_token': 'y' });
+      expect((config.jira as any).api_token).toBeUndefined();
+    });
+
+    it('should handle empty secrets', () => {
+      const config = { general: { theme: 'dark' } };
+      const merged = mergeSecrets(config, {});
+      expect(merged).toEqual(config);
     });
   });
 

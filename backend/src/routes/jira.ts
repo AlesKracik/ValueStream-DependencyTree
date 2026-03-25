@@ -1,15 +1,13 @@
 import { FastifyPluginAsync } from 'fastify';
-import fs from 'fs';
-import { getSettingsPath } from './settings';
 import { unmaskSettings } from '../utils/configHelpers';
+import { getFullSettings } from '../services/secretManager';
 
 export const jiraRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post('/api/jira/test', async (request, reply) => {
     try {
       const rawConfig = request.body as any;
-      const settingsPath = getSettingsPath();
-      const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+      const existing = getFullSettings();
       
       const config = unmaskSettings(rawConfig, existing);
       const jira = config.jira || {};
@@ -36,8 +34,7 @@ export const jiraRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/api/jira/issue', async (request, reply) => {
     try {
       const rawConfig = request.body as any;
-      const settingsPath = getSettingsPath();
-      const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+      const existing = getFullSettings();
       
       const config = unmaskSettings(rawConfig, existing);
       const jira = config.jira || {};
@@ -63,8 +60,7 @@ export const jiraRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/api/jira/search', async (request, reply) => {
     try {
       const rawConfig = request.body as any;
-      const settingsPath = getSettingsPath();
-      const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+      const existing = getFullSettings();
       
       const config = unmaskSettings(rawConfig, existing);
       const jira = config.jira || {};

@@ -1,15 +1,13 @@
 import { FastifyPluginAsync } from 'fastify';
-import fs from 'fs';
-import { getSettingsPath } from './settings';
 import { unmaskSettings } from '../utils/configHelpers';
+import { getFullSettings } from '../services/secretManager';
 
 export const ahaRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post('/api/aha/test', async (request, reply) => {
     try {
       const rawConfig = request.body as any;
-      const settingsPath = getSettingsPath();
-      const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+      const existing = getFullSettings();
       
       const config = unmaskSettings(rawConfig, existing);
       const aha = config.aha || {};
@@ -40,8 +38,7 @@ export const ahaRoutes: FastifyPluginAsync = async (fastify) => {
       const { reference_num } = request.body as any;
       if (!reference_num) throw new Error('Aha! Reference Number is required.');
 
-      const settingsPath = getSettingsPath();
-      const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
+      const existing = getFullSettings();
       
       const aha = existing.aha || {};
       const subdomain = aha.subdomain;

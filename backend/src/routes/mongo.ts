@@ -1,8 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
-import fs from 'fs';
-import { getSettingsPath } from './settings';
-import { getDb } from '../utils/mongoServer';
 import { augmentConfig, unmaskSettings, maskSettings } from '../utils/configHelpers';
+import { getFullSettings } from '../services/secretManager';
+import { getDb } from '../utils/mongoServer';
 
 const ALLOWED_COLLECTIONS = ['customers', 'workItems', 'teams', 'issues', 'sprints', 'valueStreams'];
 
@@ -11,9 +10,8 @@ export const mongoRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/api/mongo/databases', async (request, reply) => {
     try {
       const rawConfig = request.body as any;
-      const settingsPath = getSettingsPath();
-      const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
-      
+      const existing = getFullSettings();
+
       const config = unmaskSettings(rawConfig, existing);
       const role = config.connection_type || 'app';
       
@@ -29,9 +27,8 @@ export const mongoRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/api/mongo/test', async (request, reply) => {
     try {
       const rawConfig = request.body as any;
-      const settingsPath = getSettingsPath();
-      const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
-      
+      const existing = getFullSettings();
+
       const config = unmaskSettings(rawConfig, existing);
       const role = config.connection_type || 'app';
       const targetDb = config.persistence?.mongo?.[role]?.db || 'valueStream';
@@ -49,9 +46,8 @@ export const mongoRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/api/mongo/query', async (request, reply) => {
     try {
       const rawConfig = request.body as any;
-      const settingsPath = getSettingsPath();
-      const existing = fs.existsSync(settingsPath) ? JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) : {};
-      
+      const existing = getFullSettings();
+
       const role = rawConfig.connection_type || 'customer';
       const mongo = existing.persistence?.mongo?.[role] || {};
       const targetCollection = mongo.collection || (role === 'customer' ? 'Customers' : 'customers');
@@ -70,10 +66,9 @@ export const mongoRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post('/api/mongo/export', async (request, reply) => {
     try {
-      const settingsPath = getSettingsPath();
-      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+      const settings = getFullSettings();
       const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
-      
+
       const data: any = { settings: maskSettings(settings) };
       for (const col of ALLOWED_COLLECTIONS) {
         const docs = await db.collection(col).find({}).toArray();
@@ -89,8 +84,7 @@ export const mongoRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/api/mongo/import', async (request, reply) => {
     try {
       const { data: importData } = request.body as any;
-      const settingsPath = getSettingsPath();
-      const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+      const settings = getFullSettings();
       const db = await getDb(augmentConfig(settings, 'app'), 'app', false);
       
       for (const col of ALLOWED_COLLECTIONS) {

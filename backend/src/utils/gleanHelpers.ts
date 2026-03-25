@@ -1,5 +1,4 @@
-import fs from 'fs';
-import { getSettingsPath } from '../routes/settings';
+import { getFullSettings, saveFullSettings } from '../services/secretManager';
 
 export interface GleanTokenResponse {
   access_token: string;
@@ -10,29 +9,23 @@ export interface GleanTokenResponse {
 }
 
 export function getGleanSettings() {
-  const settingsPath = getSettingsPath();
-  if (fs.existsSync(settingsPath)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-      return data.ai?.glean_state || { tokens: {}, clients: {} };
-    } catch (e) {
-      console.error('Error reading settings for Glean state', e);
-    }
+  try {
+    const data = getFullSettings();
+    return data.ai?.glean_state || { tokens: {}, clients: {} };
+  } catch (e) {
+    console.error('Error reading settings for Glean state', e);
+    return { tokens: {}, clients: {} };
   }
-  return { tokens: {}, clients: {} };
 }
 
 export function saveGleanSettings(state: any) {
-  const settingsPath = getSettingsPath();
   let data: any = {};
-  if (fs.existsSync(settingsPath)) {
-    try {
-      data = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-    } catch (e) {}
-  }
+  try {
+    data = getFullSettings();
+  } catch (e) {}
   if (!data.ai) data.ai = {};
   data.ai.glean_state = state;
-  fs.writeFileSync(settingsPath, JSON.stringify(data, null, 2));
+  saveFullSettings(data);
 }
 
 export async function refreshGleanToken(normalizedUrl: string, token: any, gleanState: any) {
