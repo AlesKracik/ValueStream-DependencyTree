@@ -98,6 +98,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
     const { setViewport } = useReactFlow();
     const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
     const [editingNode, setEditingNode] = useState<Node | null>(null);
+    const [flowReady, setFlowReady] = useState(false);
 
     const currentValueStream = useMemo(() => 
         data?.valueStreams.find(d => d.id === currentValueStreamId),
@@ -181,67 +182,14 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         }
     }, [data, nodes, setViewState, setViewport]);
 
-    // Initial sprint offset and viewport calculation
+    // On initial load (or browser refresh), call reset view once flow and data are ready
     useEffect(() => {
-        if (!data || !data.sprints || data.sprints.length === 0 || viewState.isInitialOffsetSet || nodes.length === 0) return;
+        if (!flowReady || !data || nodes.length === 0 || viewState.isInitialOffsetSet) return;
 
-        const today = new Date();
-        let currentSprintIdx = -1;
-
-        // Find current sprint
-        for (let i = 0; i < data.sprints.length; i++) {
-            const start = parseISO(data.sprints[i].start_date);
-            const end = parseISO(data.sprints[i].end_date);
-            if (today >= start && today <= end) {
-                currentSprintIdx = i;
-                break;
-            }
-        }
-
-        // If no current sprint found, but today is before first sprint, idx=0
-        if (currentSprintIdx === -1 && today < parseISO(data.sprints[0].start_date)) {
-            currentSprintIdx = 0;
-        }
-
-        if (currentSprintIdx !== -1) {
-            const currentSprintStart = parseISO(data.sprints[currentSprintIdx].start_date);
-            const daysSinceStart = differenceInDays(today, currentSprintStart);
-
-            // If starting sprint (up to two days after start), show previous sprint
-            const targetOffset = daysSinceStart <= 2 ? Math.max(0, currentSprintIdx - 1) : currentSprintIdx;
-            
-            // If the offset in viewState is not yet the targetOffset, update it first.
-            // This will cause a re-render and nodes will be updated with the correct layout.
-            if (viewState.sprintOffset !== targetOffset) {
-                setViewState(s => ({ ...s, sprintOffset: targetOffset }));
-                return; 
-            }
-
-            // Now offset is correct and nodes are stable.
-            // Calculate and set viewport.
-            const nodesToFit = nodes.filter(n => 
-                ['customerNode', 'workItemNode', 'teamNode', 'headerNode', 'sprintCapacityNode'].includes(n.type || '')
-            );
-
-            if (nodesToFit.length > 0) {
-                const minX = Math.min(...nodesToFit.map(n => n.position.x));
-                const maxX = Math.max(...nodesToFit.map(n => n.position.x + (n.measured?.width || 220)));
-                const contentWidth = maxX - minX;
-
-                const containerWidth = document.querySelector(`.${styles.flowWrapper}`)?.clientWidth || window.innerWidth;
-                let targetZoom = (containerWidth * 0.9) / contentWidth;
-                targetZoom = Math.min(Math.max(targetZoom, 0.3), 0.8);
-
-                const contentCenterX = minX + (contentWidth / 2);
-                const targetX = (containerWidth / 2) - (contentCenterX * targetZoom);
-                const targetY = 20;
-
-                // Set immediately without duration for initial load
-                setViewport({ x: targetX, y: targetY, zoom: targetZoom });
-                setViewState(s => ({ ...s, isInitialOffsetSet: true }));
-            }
-        }
-    }, [data, setViewState, viewState.isInitialOffsetSet, nodes, setViewport, viewState.sprintOffset]);
+        setViewState(s => ({ ...s, isInitialOffsetSet: true }));
+        // Small delay to ensure ReactFlow has rendered the nodes before calculating viewport
+        setTimeout(() => handleFitView(), 50);
+    }, [flowReady, data, nodes, viewState.isInitialOffsetSet, setViewState, handleFitView]);
 
     const hoverTimeoutRef = useRef<number | null>(null);
 
@@ -517,6 +465,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                     nodes={nodes}
                     edges={edges}
                     nodeTypes={nodeTypes}
+                    onInit={() => setFlowReady(true)}
                     onNodeMouseEnter={onNodeMouseEnter}
                     onNodeMouseLeave={onNodeMouseLeave}
                     onNodeContextMenu={onNodeContextMenu}
