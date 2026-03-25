@@ -82,6 +82,12 @@ export interface WorkItem {
   };
 }
 
+export interface TeamMember {
+  name: string;
+  username: string;
+  capacity_percentage: number;
+}
+
 export interface Team {
   id: string;
   name: string;
@@ -89,6 +95,8 @@ export interface Team {
   country?: string;
   jira_team_id?: string;
   sprint_capacity_overrides?: Record<string, number>;
+  ldap_team_name?: string;
+  members?: TeamMember[];
 }
 
 export interface IssueDependency {

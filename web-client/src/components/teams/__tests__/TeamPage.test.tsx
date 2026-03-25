@@ -5,6 +5,12 @@ import { ValueStreamProvider, NotificationProvider, useValueStreamContext } from
 import type { ValueStreamData } from '../../../types/models';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
+const mockAuthorizedFetch = vi.fn();
+vi.mock('../../../utils/api', () => ({
+    authorizedFetch: (...args: any[]) => mockAuthorizedFetch(...args),
+    debounce: (fn: any) => fn
+}));
+
 vi.mock('../../../contexts/ValueStreamContext', async (importOriginal) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const actual = await importOriginal() as any;
@@ -25,7 +31,8 @@ const mockData: ValueStreamData = {
         },
         jira: { base_url: '', api_version: '3', api_token: '', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
         aha: { subdomain: '', api_key: '' },
-        ai: { provider: 'openai', support: { prompt: '' } }
+        ai: { provider: 'openai', support: { prompt: '' } },
+        ldap: { url: '', bind_dn: '', team: { base_dn: '', search_filter: '' } }
     },    customers: [],
     workItems: [],
     teams: [
@@ -246,6 +253,360 @@ describe('TeamPage', () => {
         // Both s1 and s2 will have placeholder 20 initially (10 days * 20/10 capacity proportion? No, proportion is based on total MDs / 10 standard days)
         // Wait, standard working days are 10. Total capacity is 20 MDs. Effective capacity is (20/10) * 10 = 20 MDs.
         expect(screen.getAllByPlaceholderText('20').length).toBeGreaterThan(0);
+    });
+
+    it('renders Members tab with add form', () => {
+        renderTeamPage();
+
+        const membersTab = screen.getByText('Members');
+        fireEvent.click(membersTab);
+
+        expect(screen.getByLabelText(/New member name/i)).toBeDefined();
+        expect(screen.getByLabelText(/New member username/i)).toBeDefined();
+        expect(screen.getByLabelText(/New member capacity/i)).toBeDefined();
+        expect(screen.getByText('Add')).toBeDefined();
+    });
+
+    it('adds a new member', () => {
+        renderTeamPage();
+
+        fireEvent.click(screen.getByText('Members'));
+
+        fireEvent.change(screen.getByLabelText(/New member name/i), { target: { value: 'John Doe' } });
+        fireEvent.change(screen.getByLabelText(/New member username/i), { target: { value: 'jdoe' } });
+        fireEvent.change(screen.getByLabelText(/New member capacity/i), { target: { value: '80' } });
+        fireEvent.click(screen.getByText('Add'));
+
+        expect(updateTeamSpy).toHaveBeenCalledWith('t1', {
+            members: [{ name: 'John Doe', username: 'jdoe', capacity_percentage: 80 }]
+        });
+    });
+
+    it('renders existing members and allows editing', () => {
+        const dataWithMembers = {
+            ...mockData,
+            teams: [{
+                ...mockData.teams[0],
+                members: [{ name: 'Alice', username: 'alice', capacity_percentage: 100 }]
+            }]
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            data: dataWithMembers,
+            updateIssue: vi.fn()
+        });
+
+        renderTeamPage({ ...defaultProps, data: dataWithMembers });
+
+        fireEvent.click(screen.getByText('Members'));
+
+        expect(screen.getByText('Alice')).toBeDefined();
+        expect(screen.getByText('alice')).toBeDefined();
+        expect(screen.getByText('100%')).toBeDefined();
+
+        fireEvent.click(screen.getByText('Edit'));
+
+        expect(screen.getByLabelText(/Edit member name/i)).toBeDefined();
+        expect(screen.getByText('Save')).toBeDefined();
+        expect(screen.getByText('Cancel')).toBeDefined();
+    });
+
+    it('shows LDAP Team Name field when LDAP is configured', () => {
+        const dataWithLdap = {
+            ...mockData,
+            settings: {
+                ...mockData.settings,
+                ldap: { url: 'ldap://localhost', bind_dn: 'cn=admin', team: { base_dn: 'ou=teams', search_filter: '(cn={{LDAP_TEAM_NAME}})' } }
+            }
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            data: dataWithLdap,
+            updateIssue: vi.fn()
+        });
+
+        renderTeamPage({ ...defaultProps, data: dataWithLdap });
+
+        fireEvent.click(screen.getByText('Members'));
+
+        expect(screen.getByLabelText(/LDAP Team Name/i)).toBeDefined();
+    });
+
+    it('hides LDAP Team Name field when LDAP is not configured', () => {
+        renderTeamPage();
+
+        fireEvent.click(screen.getByText('Members'));
+
+        expect(screen.queryByLabelText(/LDAP Team Name/i)).toBeNull();
+    });
+
+    it('hides LDAP Team Name field when settings are missing entirely', () => {
+        const dataWithoutSettings = {
+            ...mockData,
+            settings: undefined as any
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            data: dataWithoutSettings,
+            updateIssue: vi.fn()
+        });
+
+        renderTeamPage({ ...defaultProps, data: dataWithoutSettings });
+
+        fireEvent.click(screen.getByText('Members'));
+
+        expect(screen.queryByLabelText(/LDAP Team Name/i)).toBeNull();
+    });
+
+    it('saves edited member on Save click', () => {
+        const dataWithMembers = {
+            ...mockData,
+            teams: [{
+                ...mockData.teams[0],
+                members: [{ name: 'Alice', username: 'alice', capacity_percentage: 100 }]
+            }]
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            data: dataWithMembers,
+            updateIssue: vi.fn()
+        });
+
+        renderTeamPage({ ...defaultProps, data: dataWithMembers });
+
+        fireEvent.click(screen.getByText('Members'));
+        fireEvent.click(screen.getByText('Edit'));
+
+        fireEvent.change(screen.getByLabelText(/Edit member name/i), { target: { value: 'Alice Updated' } });
+        fireEvent.change(screen.getByLabelText(/Edit member username/i), { target: { value: 'alice2' } });
+        fireEvent.change(screen.getByLabelText(/Edit member capacity/i), { target: { value: '75' } });
+        fireEvent.click(screen.getByText('Save'));
+
+        expect(updateTeamSpy).toHaveBeenCalledWith('t1', {
+            members: [{ name: 'Alice Updated', username: 'alice2', capacity_percentage: 75 }]
+        });
+    });
+
+    it('cancels editing and restores add row', () => {
+        const dataWithMembers = {
+            ...mockData,
+            teams: [{
+                ...mockData.teams[0],
+                members: [{ name: 'Bob', username: 'bob', capacity_percentage: 50 }]
+            }]
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            data: dataWithMembers,
+            updateIssue: vi.fn()
+        });
+
+        renderTeamPage({ ...defaultProps, data: dataWithMembers });
+
+        fireEvent.click(screen.getByText('Members'));
+        fireEvent.click(screen.getByText('Edit'));
+
+        // Add row should be hidden during edit
+        expect(screen.queryByLabelText(/New member name/i)).toBeNull();
+
+        fireEvent.click(screen.getByText('Cancel'));
+
+        // Add row should reappear after cancel
+        expect(screen.getByLabelText(/New member name/i)).toBeDefined();
+    });
+
+    it('removes a member after confirmation', async () => {
+        const dataWithMembers = {
+            ...mockData,
+            teams: [{
+                ...mockData.teams[0],
+                members: [
+                    { name: 'Alice', username: 'alice', capacity_percentage: 100 },
+                    { name: 'Bob', username: 'bob', capacity_percentage: 50 }
+                ]
+            }]
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            data: dataWithMembers,
+            updateIssue: vi.fn()
+        });
+
+        renderTeamPage({ ...defaultProps, data: dataWithMembers });
+
+        fireEvent.click(screen.getByText('Members'));
+
+        const removeButtons = screen.getAllByText('Remove');
+        fireEvent.click(removeButtons[0]);
+
+        expect(mockShowConfirm).toHaveBeenCalledWith('Remove Member', expect.stringContaining('Alice'));
+
+        await waitFor(() => {
+            expect(updateTeamSpy).toHaveBeenCalledWith('t1', {
+                members: [{ name: 'Bob', username: 'bob', capacity_percentage: 50 }]
+            });
+        });
+    });
+
+    it('updates ldap_team_name field', () => {
+        const dataWithLdap = {
+            ...mockData,
+            settings: {
+                ...mockData.settings,
+                ldap: { url: 'ldap://localhost', bind_dn: 'cn=admin', team: { base_dn: 'ou=teams', search_filter: '(cn={{LDAP_TEAM_NAME}})' } }
+            }
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            data: dataWithLdap,
+            updateIssue: vi.fn()
+        });
+
+        renderTeamPage({ ...defaultProps, data: dataWithLdap });
+
+        fireEvent.click(screen.getByText('Members'));
+
+        const ldapInput = screen.getByLabelText(/LDAP Team Name/i);
+        fireEvent.change(ldapInput, { target: { value: 'engineering' } });
+
+        expect(updateTeamSpy).toHaveBeenCalledWith('t1', { ldap_team_name: 'engineering' });
+    });
+
+    it('does not add member with empty name', () => {
+        renderTeamPage();
+
+        fireEvent.click(screen.getByText('Members'));
+
+        fireEvent.change(screen.getByLabelText(/New member username/i), { target: { value: 'jdoe' } });
+        fireEvent.click(screen.getByText('Add'));
+
+        expect(updateTeamSpy).not.toHaveBeenCalled();
+    });
+
+    it('syncs members from LDAP, merging with existing', async () => {
+        const dataWithLdapAndMembers = {
+            ...mockData,
+            settings: {
+                ...mockData.settings,
+                ldap: { url: 'ldap://localhost', bind_dn: 'cn=admin', team: { base_dn: 'ou=teams', search_filter: '(cn={{LDAP_TEAM_NAME}})' } }
+            },
+            teams: [{
+                ...mockData.teams[0],
+                ldap_team_name: 'engineering',
+                members: [
+                    { name: 'Alice', username: 'alice', capacity_percentage: 80 },
+                    { name: 'Old Member', username: 'old', capacity_percentage: 50 }
+                ]
+            }]
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            data: dataWithLdapAndMembers,
+            updateIssue: vi.fn()
+        });
+
+        mockAuthorizedFetch.mockResolvedValueOnce({
+            json: () => Promise.resolve({
+                success: true,
+                members: [
+                    { name: 'Alice Smith', username: 'alice' },
+                    { name: 'Bob Jones', username: 'bob' }
+                ]
+            })
+        });
+
+        renderTeamPage({ ...defaultProps, data: dataWithLdapAndMembers });
+
+        fireEvent.click(screen.getByText('Members'));
+        fireEvent.click(screen.getByText('Sync from LDAP'));
+
+        await waitFor(() => {
+            expect(updateTeamSpy).toHaveBeenCalledWith('t1', {
+                members: [
+                    { name: 'Alice Smith', username: 'alice', capacity_percentage: 80 },
+                    { name: 'Bob Jones', username: 'bob', capacity_percentage: 100 }
+                ]
+            });
+        });
+
+        expect(screen.getByText(/1 kept, 1 added, 1 removed/)).toBeDefined();
+    });
+
+    it('shows error message when LDAP sync fails', async () => {
+        const dataWithLdap = {
+            ...mockData,
+            settings: {
+                ...mockData.settings,
+                ldap: { url: 'ldap://localhost', bind_dn: 'cn=admin', team: { base_dn: 'ou=teams', search_filter: '(cn={{LDAP_TEAM_NAME}})' } }
+            },
+            teams: [{
+                ...mockData.teams[0],
+                ldap_team_name: 'bad-team'
+            }]
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            data: dataWithLdap,
+            updateIssue: vi.fn()
+        });
+
+        mockAuthorizedFetch.mockResolvedValueOnce({
+            json: () => Promise.resolve({
+                success: false,
+                error: 'No LDAP group found'
+            })
+        });
+
+        renderTeamPage({ ...defaultProps, data: dataWithLdap });
+
+        fireEvent.click(screen.getByText('Members'));
+        fireEvent.click(screen.getByText('Sync from LDAP'));
+
+        await waitFor(() => {
+            expect(screen.getByText(/No LDAP group found/)).toBeDefined();
+        });
+    });
+
+    it('disables Sync button when ldap_team_name is empty', () => {
+        const dataWithLdap = {
+            ...mockData,
+            settings: {
+                ...mockData.settings,
+                ldap: { url: 'ldap://localhost', bind_dn: 'cn=admin', team: { base_dn: 'ou=teams', search_filter: '(cn={{LDAP_TEAM_NAME}})' } }
+            }
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (useValueStreamContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            data: dataWithLdap,
+            updateIssue: vi.fn()
+        });
+
+        renderTeamPage({ ...defaultProps, data: dataWithLdap });
+
+        fireEvent.click(screen.getByText('Members'));
+
+        const syncBtn = screen.getByText('Sync from LDAP') as HTMLButtonElement;
+        expect(syncBtn.disabled).toBe(true);
     });
 });
 

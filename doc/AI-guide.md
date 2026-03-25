@@ -12,7 +12,7 @@ Defined in: `web-client/src/types/models.ts`
 - **Customer**: Root nodes. Have TCV (Total Contract Value), TCV History, and Support Issues.
 - **WorkItem**: Strategy nodes. Linked to multiple Customers via `customer_targets` or a global `all_customers_target`.
 - **Issue**: Execution nodes. Linked to ONE WorkItem and ONE Team. Contains Effort (man-days) and Dependencies (FS/FF).
-- **Team**: Capacity nodes. Have total capacity and per-sprint overrides.
+- **Team**: Capacity nodes. Have total capacity, per-sprint overrides, and optional team members with capacity percentages. Can sync members from LDAP.
 - **Sprint**: Time nodes. Define the Gantt scale and release targets.
 
 ### Reports
@@ -53,6 +53,7 @@ The backend encapsulates complex business logic (RICE scoring, fiscal quarter ma
 - `POST /api/jira/search`: Executes a JQL search.
 - `POST /api/llm/generate`: Generates text using OpenAI, Gemini, Augment, or Glean.
 - `POST /api/aws/sso/*`: Manages AWS SSO authentication for secure MongoDB tunneling via device-code flow.
+- `POST /api/ldap/sync-members`: Queries an LDAP server for group members. Accepts `{ ldap_team_name }`, reads LDAP connection settings from `settings.json`/SecretManager, resolves member DNs to `{ name, username }` pairs. Used by the Team Members tab for LDAP sync.
 
 ### Business Logic & Metrics
 Centralized in `backend/src/utils/businessLogic.ts`:

@@ -88,7 +88,7 @@ function IssuePageRouteWrapper() {
 
 function TeamPageRouteWrapper() {
   const { showAlert } = useNotificationContext();
-  const state = useValueStreamData(undefined, undefined, 1000, showAlert, ['teams', 'sprints']);
+  const state = useValueStreamData(undefined, undefined, 1000, showAlert, ['teams', 'sprints', 'settings']);
   return <TeamPage data={state.data} loading={state.loading} updateTeam={state.updateTeam} addTeam={state.addTeam as never} deleteTeam={state.deleteTeam} />;
 }
 

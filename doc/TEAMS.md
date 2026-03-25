@@ -5,12 +5,20 @@ Teams represent the engineering resources available to execute on strategic init
 
 ## Data Model
 ```typescript
+export interface TeamMember {
+  name: string;
+  username: string;
+  capacity_percentage: number;
+}
+
 export interface Team {
   id: string;
   name: string;
   total_capacity_mds: number; // Base man-days per sprint
   country?: string;           // For holiday calculation (ISO code)
   sprint_capacity_overrides?: Record<string, number>;
+  ldap_team_name?: string;    // LDAP group name for member sync
+  members?: TeamMember[];     // Team members with capacity allocation
 }
 ```
 
@@ -41,6 +49,30 @@ graph TD
     Issue2[Issue B] --> Lane
     Capacity[Sprint Capacity Marker] -->|Status| Lane
 ```
+
+## Member Management
+The **Members** tab on the Team Detail page provides inline CRUD for team members.
+
+### Fields
+| Field | Description |
+|-------|-------------|
+| Name | Display name of the team member |
+| Username | Unique identifier (used as merge key for LDAP sync) |
+| Capacity % | Percentage of capacity this member contributes (default: 100) |
+
+### LDAP Sync
+When LDAP is configured in Settings (LDAP tab → General & Team subtabs), an additional **LDAP Team Name** field appears at the top of the Members tab.
+
+**Workflow:**
+1. Enter the LDAP group name (e.g., `engineering`).
+2. Click **Sync from LDAP** to query the configured LDAP server.
+3. The system resolves group members by reading the `member` attribute DNs and looking up `displayName`/`cn` and `sAMAccountName`/`uid` for each.
+4. Returned members are **merged** with existing members using `username` as the key:
+   - Existing members retain their `capacity_percentage`.
+   - New members are added with `capacity_percentage: 100`.
+   - Members no longer in the LDAP group are removed.
+
+**Backend endpoint:** `POST /api/ldap/sync-members` (see `backend/src/routes/ldap.ts`).
 
 ## Logic
 - **Utilization:** The capacity marker (above the Gantt lane) turns red if the sum of effort from all Issues assigned to that team in a given sprint exceeds the calculated available capacity.

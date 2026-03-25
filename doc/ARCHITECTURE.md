@@ -13,11 +13,13 @@ graph TD
     Mongo[(MongoDB)]
     Jira[Atlassian Jira API]
     AI[AI Providers - OpenAI, Gemini, Anthropic, Augment]
+    LDAP[LDAP Server]
 
     Client -->|API Requests| Backend
     Backend -->|Persistence & Aggregation| Mongo
     Backend -->|Integration| Jira
     Backend -->|AI Generation| AI
+    Backend -->|Member Sync| LDAP
     
     subgraph "Networking Infrastructure"
         Proxy[SOCKS5 Proxy / SSH Tunnel]
@@ -44,6 +46,7 @@ graph TD
 
 ### 4. External Integrations
 - **Atlassian Jira:** Bidirectional synchronization for Issues, pulling effort, status, and dates.
+- **LDAP:** Team member synchronization from LDAP groups. Configured via Settings (LDAP tab). Uses the `ldapts` library to bind, search for groups, and resolve member DNs to name/username pairs.
 - **AI Integration:** Multi-provider support for LLMs including OpenAI, Gemini, Anthropic, and localized execution via the Augment (`auggie`) CLI.
 
 ## Data Model
@@ -76,6 +79,8 @@ erDiagram
         string id
         string name
         number total_capacity_mds
+        string ldap_team_name
+        TeamMember[] members
     }
     SPRINT {
         string id

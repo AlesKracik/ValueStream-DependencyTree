@@ -21,6 +21,7 @@
     "dotenv": "^17.3.1",
     "fastify": "^5.8.2",
     "fastify-plugin": "^5.1.0",
+    "ldapts": "^8.1.7",
     "mongodb": "^7.1.0",
     "socks": "^2.8.7"
   },

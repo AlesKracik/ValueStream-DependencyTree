@@ -180,6 +180,32 @@ Engineering teams are the delivery engines, each with a defined velocity.
 *   **Baseline Capacity:** Set the default MDs per sprint.
 *   **Dynamic Overrides:** Click any sprint in the capacity list to set a manual override (e.g., for holidays). Overridden values are marked with a 🔒 icon.
 
+#### Team Members
+
+The **Members** tab on the Team Detail page allows you to manage individual team members and their capacity allocation.
+
+**Member Fields:**
+*   **Name:** Display name of the team member.
+*   **Username:** Unique identifier (also used as the merge key for LDAP sync).
+*   **Capacity %:** The percentage of sprint capacity this member contributes (default: 100%).
+
+**Actions:**
+*   **Add Member:** Click "Add Member" to create a new entry inline.
+*   **Edit / Delete:** Use the row action buttons to modify or remove members.
+
+#### LDAP Member Sync
+
+When LDAP is configured in **Settings > LDAP** (General & Team subtabs), an additional **LDAP Team Name** field appears at the top of the Members tab.
+
+**Sync Workflow:**
+1.  Enter the LDAP group name that corresponds to this team (e.g., `engineering`).
+2.  Click **"Sync from LDAP"** to query the configured LDAP server for group members.
+3.  The system automatically **merges** LDAP results with existing members using username as the key:
+    *   **Existing members** retain their current Capacity %.
+    *   **New members** (found in LDAP but not yet listed) are added with 100% capacity.
+    *   **Removed members** (listed locally but no longer in the LDAP group) are removed.
+4.  A result banner shows the sync outcome (e.g., "3 kept, 1 added, 2 removed").
+
 ---
 
 ### 📅 Sprints
@@ -306,10 +332,13 @@ A bird's-eye view of account stability across the customer base.
     2.  Use **"Login via AWS SSO"** to get a device code.
     3.  Authorize in your browser.
     4.  Click **"Fetch SSO Credentials"** to populate temporary access tokens.
-*   **Jira Integration:** 
-    *   **Common:** Base URL and API Token (PAT).
+*   **Jira Integration:**
+    *   **General:** Base URL and API Token (PAT).
     *   **Issues:** Import entire projects or components via JQL.
     *   **Customer:** Define JQL templates (using `{{CUSTOMER_ID}}`) to drive the Support Health dashboard.
+*   **LDAP Integration:** Connect to an LDAP/Active Directory server for team member synchronization.
+    *   **General:** LDAP Server URL, Bind DN, and Bind Password (encrypted via SecretManager).
+    *   **Team:** Base DN for group searches and a Search Filter template. Use the `{{LDAP_TEAM_NAME}}` placeholder in the filter — it is replaced at runtime with the team's configured LDAP group name (e.g., `(cn={{LDAP_TEAM_NAME}})`).
 *   **General:**
     *   **Theme:** Switch between **Dark mode** and **Filips mode** (high-contrast pastel).
     *   **Fiscal Year:** Align quarter groupings to your organization's calendar.

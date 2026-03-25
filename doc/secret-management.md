@@ -56,7 +56,7 @@ Decrypted content is a flat key-value map using dot-path keys:
 
 Defined in `backend/src/utils/configHelpers.ts` as `SENSITIVE_FIELDS`:
 
-`api_token`, `uri`, `aws_access_key`, `aws_secret_key`, `aws_session_token`, `oidc_token`, `api_key`, `access_token`, `refresh_token`, `client_secret`, `registration_access_token`
+`api_token`, `uri`, `aws_access_key`, `aws_secret_key`, `aws_session_token`, `oidc_token`, `api_key`, `access_token`, `refresh_token`, `client_secret`, `registration_access_token`, `bind_password`
 
 Non-secret AWS config fields (`aws_profile`, `aws_role_arn`, `aws_sso_start_url`, `aws_sso_region`, `aws_sso_account_id`, `aws_sso_role_name`, `aws_external_id`, `aws_role_session_name`) remain in plain-text `settings.json`.
 

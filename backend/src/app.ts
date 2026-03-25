@@ -20,6 +20,7 @@ import { ahaRoutes } from './routes/aha';
 import { llmRoutes } from './routes/llm';
 import { awsRoutes } from './routes/aws';
 import { gleanRoutes } from './routes/glean';
+import { ldapRoutes } from './routes/ldap';
 import { migrateSecretsFromSettingsFile } from './services/secretManager';
 
 export async function buildApp(): Promise<FastifyInstance> {
@@ -55,6 +56,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(llmRoutes);
   await app.register(awsRoutes);
   await app.register(gleanRoutes);
+  await app.register(ldapRoutes);
 
   // Auto-migrate secrets from plain-text settings.json to encrypted storage
   try {
