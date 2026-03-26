@@ -37,6 +37,7 @@ interface GenericListPageProps<T> {
     };
     additionalControls?: React.ReactNode;
     renderBelowControls?: () => React.ReactNode;
+    renderAboveList?: () => React.ReactNode;
     loadingMessage?: string;
     emptyMessage?: string;
 }
@@ -59,6 +60,7 @@ export function GenericListPage<T extends { id: string }>({
     actionButton,
     additionalControls,
     renderBelowControls,
+    renderAboveList,
     loadingMessage = "Loading...",
     emptyMessage = "No items found."
 }: GenericListPageProps<T>) {
@@ -314,6 +316,7 @@ export function GenericListPage<T extends { id: string }>({
                     </div>
                 )}
 
+                {renderAboveList && renderAboveList()}
                 {filteredAndSortedItems.map(item => (
                     <div 
                         key={item.id} 

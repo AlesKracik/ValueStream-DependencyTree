@@ -579,6 +579,124 @@ describe('SupportPage', () => {
         expect(screen.getByText('AI Found Issue 3')).toBeDefined();
     });
 
+    it('renders the Create Issue button', () => {
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        expect(screen.getByText('+ Create Issue')).toBeDefined();
+    });
+
+    it('opens the inline create form when clicking the Create Issue button', () => {
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        fireEvent.click(screen.getByText('+ Create Issue'));
+        expect(screen.getByPlaceholderText('Describe the support issue...')).toBeDefined();
+        expect(screen.getByRole('button', { name: 'Save' })).toBeDefined();
+        expect(screen.getByRole('button', { name: 'Cancel' })).toBeDefined();
+    });
+
+    it('creates a support issue via the inline form', async () => {
+        mockUpdateCustomer.mockResolvedValue(undefined);
+
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        fireEvent.click(screen.getByText('+ Create Issue'));
+
+        // Fill in description
+        const textarea = screen.getByPlaceholderText('Describe the support issue...');
+        fireEvent.change(textarea, { target: { value: 'New test issue' } });
+
+        // Click Save
+        const saveBtn = screen.getByRole('button', { name: 'Save' });
+        expect((saveBtn as HTMLButtonElement).disabled).toBe(false);
+
+        await act(async () => {
+            fireEvent.click(saveBtn);
+        });
+
+        await waitFor(() => {
+            expect(mockUpdateCustomer).toHaveBeenCalledWith(
+                'c1',
+                expect.objectContaining({
+                    support_issues: expect.arrayContaining([
+                        expect.objectContaining({
+                            description: 'New test issue',
+                            status: 'to do'
+                        })
+                    ])
+                }),
+                true
+            );
+        });
+
+        // Form should be closed
+        expect(screen.queryByPlaceholderText('Describe the support issue...')).toBeNull();
+    });
+
+    it('disables Save button when description is empty', () => {
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        fireEvent.click(screen.getByText('+ Create Issue'));
+
+        const saveBtn = screen.getByRole('button', { name: 'Save' });
+        expect((saveBtn as HTMLButtonElement).disabled).toBe(true);
+    });
+
+    it('creates a support issue with selected status', async () => {
+        mockUpdateCustomer.mockResolvedValue(undefined);
+
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        fireEvent.click(screen.getByText('+ Create Issue'));
+
+        const textarea = screen.getByPlaceholderText('Describe the support issue...');
+        fireEvent.change(textarea, { target: { value: 'WIP issue' } });
+
+        // Change status to "work in progress"
+        const statusSelect = screen.getByDisplayValue('To Do');
+        fireEvent.change(statusSelect, { target: { value: 'work in progress' } });
+
+        await act(async () => {
+            fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        });
+
+        await waitFor(() => {
+            expect(mockUpdateCustomer).toHaveBeenCalledWith(
+                'c1',
+                expect.objectContaining({
+                    support_issues: expect.arrayContaining([
+                        expect.objectContaining({
+                            description: 'WIP issue',
+                            status: 'work in progress'
+                        })
+                    ])
+                }),
+                true
+            );
+        });
+    });
+
+    it('closes the inline create form when clicking Cancel', () => {
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        fireEvent.click(screen.getByText('+ Create Issue'));
+        expect(screen.getByPlaceholderText('Describe the support issue...')).toBeDefined();
+
+        fireEvent.click(screen.getByText('Cancel'));
+        expect(screen.queryByPlaceholderText('Describe the support issue...')).toBeNull();
+    });
+
     it('shows dismiss button on "no match" AI results and removes them when clicked', async () => {
         const { llmGenerate } = await import('../../utils/api');
         const mockedLlmGenerate = vi.mocked(llmGenerate);

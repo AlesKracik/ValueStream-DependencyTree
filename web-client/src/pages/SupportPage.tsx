@@ -76,6 +76,10 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
     const [aiResults, setAiResults] = useState<LLMResults | null>(null);
     const [showAIResults, setShowAIResults] = useState(false);
     const [isGleanAuthenticated, setIsGleanAuthenticated] = useState(false);
+    const [showCreateForm, setShowCreateForm] = useState(false);
+    const [newIssueCustomerId, setNewIssueCustomerId] = useState('');
+    const [newIssueDescription, setNewIssueDescription] = useState('');
+    const [newIssueStatus, setNewIssueStatus] = useState<SupportIssue['status']>('to do');
 
     // Check Glean status on mount and when query params change
     useEffect(() => {
@@ -112,6 +116,39 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         } catch (err) {
             showAlert(`Glean login failed: ${err instanceof Error ? err.message : String(err)}`, 'error');
         }
+    };
+
+    const sortedCustomers = useMemo(() => {
+        if (!data) return [];
+        return [...data.customers].sort((a, b) => a.name.localeCompare(b.name));
+    }, [data]);
+
+    const handleOpenCreateForm = () => {
+        setNewIssueCustomerId(sortedCustomers[0]?.id || '');
+        setNewIssueDescription('');
+        setNewIssueStatus('to do');
+        setShowCreateForm(true);
+    };
+
+    const handleCreateIssue = async () => {
+        if (!newIssueCustomerId || !newIssueDescription.trim() || !data) return;
+        const customer = data.customers.find(c => c.id === newIssueCustomerId);
+        if (!customer) return;
+
+        const now = new Date().toISOString();
+        const newIssue: SupportIssue = {
+            id: generateId('si'),
+            description: newIssueDescription,
+            status: newIssueStatus,
+            related_jiras: [],
+            created_at: now,
+            updated_at: now
+        };
+
+        const currentIssues = customer.support_issues || [];
+        await updateCustomer(customer.id, { support_issues: [newIssue, ...currentIssues] }, true);
+        setShowCreateForm(false);
+        showAlert(`Created support issue for ${customer.name}`, 'success');
     };
 
     // Automatic cleanup of expired issues
@@ -627,6 +664,78 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         );
     };
 
+    const renderCreateForm = () => {
+        if (!showCreateForm) return null;
+        return (
+            <div style={{
+                backgroundColor: 'var(--bg-secondary)',
+                border: '2px solid var(--accent-primary)',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '8px',
+                display: 'flex',
+                gap: '12px',
+                alignItems: 'flex-start'
+            }}>
+                <div style={{ minWidth: '180px' }}>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Customer</label>
+                    <select
+                        value={newIssueCustomerId}
+                        onChange={e => setNewIssueCustomerId(e.target.value)}
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: '4px', border: '1px solid var(--border-hover)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
+                    >
+                        {sortedCustomers.map(c => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                    </select>
+                </div>
+                <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Description</label>
+                    <textarea
+                        value={newIssueDescription}
+                        onChange={e => setNewIssueDescription(e.target.value)}
+                        rows={2}
+                        placeholder="Describe the support issue..."
+                        autoFocus
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: '4px', border: '1px solid var(--border-hover)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', resize: 'vertical', fontFamily: 'inherit', fontSize: '13px' }}
+                    />
+                </div>
+                <div style={{ minWidth: '160px' }}>
+                    <label style={{ display: 'block', marginBottom: '4px', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Status</label>
+                    <select
+                        value={newIssueStatus}
+                        onChange={e => setNewIssueStatus(e.target.value as SupportIssue['status'])}
+                        style={{ width: '100%', padding: '6px 8px', borderRadius: '4px', border: '1px solid var(--border-hover)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
+                    >
+                        <option value="to do">To Do</option>
+                        <option value="work in progress">Work in Progress</option>
+                        <option value="noop">No-op</option>
+                        <option value="waiting for customer">Waiting for Customer</option>
+                        <option value="waiting for other party">Waiting for Other Party</option>
+                        <option value="done">Done</option>
+                    </select>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignSelf: 'flex-end', paddingBottom: '2px' }}>
+                    <button
+                        className="btn-primary"
+                        onClick={handleCreateIssue}
+                        disabled={!newIssueCustomerId || !newIssueDescription.trim()}
+                        style={{ padding: '6px 14px', fontSize: '13px' }}
+                    >
+                        Save
+                    </button>
+                    <button
+                        className="btn-secondary"
+                        onClick={() => setShowCreateForm(false)}
+                        style={{ padding: '6px 14px', fontSize: '13px' }}
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <GenericListPage<SupportIssueWithCustomer>
             pageId="support"
@@ -634,8 +743,8 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             items={allIssues}
             loading={loading}
             filterPlaceholder="Filter issues by description or customer..."
-            filterPredicate={(d, query) => 
-                d.description.toLowerCase().includes(query.toLowerCase()) || 
+            filterPredicate={(d, query) =>
+                d.description.toLowerCase().includes(query.toLowerCase()) ||
                 d.customerName.toLowerCase().includes(query.toLowerCase()) ||
                 (d.priority || '').toLowerCase().includes(query.toLowerCase()) ||
                 (d.status || '').toLowerCase().includes(query.toLowerCase())
@@ -650,29 +759,39 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             }}
             columns={columns}
             additionalControls={
-                data?.settings?.ai?.provider && data?.settings?.ai?.support?.prompt ? (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        {data.settings.ai.provider === 'glean' && !isGleanAuthenticated && (
-                            <button 
-                                className="btn-primary" 
-                                onClick={handleGleanLogin}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                        className="btn-primary"
+                        onClick={handleOpenCreateForm}
+                        style={{ minWidth: '130px' }}
+                    >
+                        + Create Issue
+                    </button>
+                    {data?.settings?.ai?.provider && data?.settings?.ai?.support?.prompt && (
+                        <>
+                            {data.settings.ai.provider === 'glean' && !isGleanAuthenticated && (
+                                <button
+                                    className="btn-primary"
+                                    onClick={handleGleanLogin}
+                                    style={{ minWidth: '160px' }}
+                                >
+                                    Connect Glean
+                                </button>
+                            )}
+                            <button
+                                className="btn-primary"
+                                onClick={handleAISearch}
+                                disabled={isAISearching || (data.settings.ai.provider === 'glean' && !isGleanAuthenticated)}
                                 style={{ minWidth: '160px' }}
                             >
-                                Connect Glean
+                                {isAISearching ? (searchProgress || 'AI Searching...') : 'AI Support Search'}
                             </button>
-                        )}
-                        <button 
-                            className="btn-primary" 
-                            onClick={handleAISearch} 
-                            disabled={isAISearching || (data.settings.ai.provider === 'glean' && !isGleanAuthenticated)}
-                            style={{ minWidth: '160px' }}
-                        >
-                            {isAISearching ? (searchProgress || 'AI Searching...') : 'AI Support Search'}
-                        </button>
-                    </div>
-                ) : null
+                        </>
+                    )}
+                </div>
             }
             renderBelowControls={renderAIResults}
+            renderAboveList={renderCreateForm}
             emptyMessage="No support issues tracked."
             loadingMessage="Loading support issues..."
         />
