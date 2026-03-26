@@ -74,16 +74,48 @@ export function unmaskSettings(newData: any, existingSettings: any): any {
 
 // --- Secret extraction / stripping / merging helpers ---
 
+// Dot-path encoding: dots within key names are escaped as \. so they are not
+// confused with the path separator.  E.g., the key "https://a.b.com" becomes
+// "https://a\.b\.com" in the dot-path.
+function escapeKey(key: string): string {
+  return key.replace(/\\/g, '\\\\').replace(/\./g, '\\.');
+}
+
+/**
+ * Split a dot-path into its constituent key segments, respecting escaped dots.
+ * E.g., "a.b\\.c.d" → ["a", "b.c", "d"]
+ */
+export function splitDotPath(dotPath: string): string[] {
+  const parts: string[] = [];
+  let current = '';
+  for (let i = 0; i < dotPath.length; i++) {
+    if (dotPath[i] === '\\' && i + 1 < dotPath.length) {
+      // Escaped character — take the next char literally
+      current += dotPath[i + 1];
+      i++;
+    } else if (dotPath[i] === '.') {
+      parts.push(current);
+      current = '';
+    } else {
+      current += dotPath[i];
+    }
+  }
+  parts.push(current);
+  return parts;
+}
+
 /**
  * Extract sensitive values from a nested settings object into a flat dot-path map.
  * E.g., { persistence: { mongo: { app: { uri: "x" } } } } → { "persistence.mongo.app.uri": "x" }
+ * Keys containing dots are escaped (e.g., "https://a.b.com" → "https://a\\.b\\.com").
  */
 export function extractSecrets(settings: any, prefix: string = ''): Record<string, string> {
   const secrets: Record<string, string> = {};
   if (!settings || typeof settings !== 'object' || Array.isArray(settings)) return secrets;
 
   for (const [key, value] of Object.entries(settings)) {
-    const fullPath = prefix ? `${prefix}.${key}` : key;
+    const escapedKey = escapeKey(key);
+    const fullPath = prefix ? `${prefix}.${escapedKey}` : escapedKey;
     if (SENSITIVE_FIELDS.includes(key) && typeof value === 'string' && value && value !== MASK) {
       secrets[fullPath] = value;
     } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
@@ -119,7 +151,7 @@ export function stripSecrets(settings: any): any {
 export function mergeSecrets(settings: any, secrets: Record<string, string>): any {
   const merged = JSON.parse(JSON.stringify(settings)); // deep clone
   for (const [dotPath, value] of Object.entries(secrets)) {
-    const parts = dotPath.split('.');
+    const parts = splitDotPath(dotPath);
     let current = merged;
     for (let i = 0; i < parts.length - 1; i++) {
       if (!current[parts[i]] || typeof current[parts[i]] !== 'object') {

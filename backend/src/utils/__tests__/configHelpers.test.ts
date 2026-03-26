@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { maskSettings, unmaskSettings, calculateQuarter, extractSecrets, stripSecrets, mergeSecrets } from '../configHelpers';
+import { maskSettings, unmaskSettings, calculateQuarter, extractSecrets, stripSecrets, mergeSecrets, splitDotPath } from '../configHelpers';
 
 describe('configHelpers', () => {
   describe('maskSettings', () => {
@@ -72,6 +72,25 @@ describe('configHelpers', () => {
     });
   });
 
+  describe('splitDotPath', () => {
+    it('should split simple dot paths', () => {
+      expect(splitDotPath('a.b.c')).toEqual(['a', 'b', 'c']);
+    });
+
+    it('should handle escaped dots within keys', () => {
+      expect(splitDotPath('a.https://purestorage-be\\.glean\\.com.access_token'))
+        .toEqual(['a', 'https://purestorage-be.glean.com', 'access_token']);
+    });
+
+    it('should handle escaped backslashes', () => {
+      expect(splitDotPath('a.b\\\\c.d')).toEqual(['a', 'b\\c', 'd']);
+    });
+
+    it('should handle single key with no dots', () => {
+      expect(splitDotPath('key')).toEqual(['key']);
+    });
+  });
+
   describe('extractSecrets', () => {
     it('should extract all sensitive fields as flat dot-path map', () => {
       const settings = {
@@ -105,6 +124,27 @@ describe('configHelpers', () => {
     it('should handle null/undefined input', () => {
       expect(extractSecrets(null)).toEqual({});
       expect(extractSecrets(undefined)).toEqual({});
+    });
+
+    it('should escape dots in keys (e.g., URLs used as keys)', () => {
+      const settings = {
+        glean_state: {
+          tokens: {
+            'https://purestorage-be.glean.com': {
+              access_token: 'abc',
+              refresh_token: 'xyz',
+              expires_at: 1774463546015,
+              client_id: 'zzz',
+              token_endpoint: 'https://purestorage-be.glean.com/oauth/token'
+            }
+          }
+        }
+      };
+
+      const secrets = extractSecrets(settings);
+      // Keys with dots should be escaped in the dot-path
+      expect(secrets['glean_state.tokens.https://purestorage-be\\.glean\\.com.access_token']).toBe('abc');
+      expect(secrets['glean_state.tokens.https://purestorage-be\\.glean\\.com.refresh_token']).toBe('xyz');
     });
   });
 
@@ -156,6 +196,52 @@ describe('configHelpers', () => {
       const config = { general: { theme: 'dark' } };
       const merged = mergeSecrets(config, {});
       expect(merged).toEqual(config);
+    });
+
+    it('should correctly reconstruct keys containing dots (URL keys)', () => {
+      const config = {
+        glean_state: {
+          tokens: {
+            'https://purestorage-be.glean.com': {
+              expires_at: 1774463546015,
+              client_id: 'zzz',
+              token_endpoint: 'https://purestorage-be.glean.com/oauth/token'
+            }
+          }
+        }
+      };
+      const secrets = {
+        'glean_state.tokens.https://purestorage-be\\.glean\\.com.access_token': 'abc',
+        'glean_state.tokens.https://purestorage-be\\.glean\\.com.refresh_token': 'xyz'
+      };
+
+      const merged = mergeSecrets(config, secrets);
+      const tokenEntry = merged.glean_state.tokens['https://purestorage-be.glean.com'];
+      expect(tokenEntry.access_token).toBe('abc');
+      expect(tokenEntry.refresh_token).toBe('xyz');
+      expect(tokenEntry.expires_at).toBe(1774463546015);
+      expect(tokenEntry.client_id).toBe('zzz');
+    });
+
+    it('should round-trip extract+strip+merge with dotted keys', () => {
+      const original = {
+        general: { theme: 'dark' },
+        glean_state: {
+          tokens: {
+            'https://purestorage-be.glean.com': {
+              access_token: 'abc',
+              refresh_token: 'xyz',
+              expires_at: 1774463546015
+            }
+          }
+        }
+      };
+
+      const secrets = extractSecrets(original);
+      const stripped = stripSecrets(original);
+      const restored = mergeSecrets(stripped, secrets);
+
+      expect(restored).toEqual(original);
     });
   });
 
