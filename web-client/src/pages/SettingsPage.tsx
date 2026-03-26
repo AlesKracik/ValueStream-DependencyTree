@@ -127,8 +127,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [importJql, setImportJql] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<string>("");
-  const [isSSOLoginLoading, setIsSSOLoginLoading] = useState(false);
-  const [ssoMessage, setSSOMessage] = useState<SSOMessage | null>(null);
+  const [isSSOLoginLoading, setIsSSOLoginLoading] = useState<Record<string, boolean>>({ app: false, customer: false });
+  const [ssoMessage, setSSOMessage] = useState<Record<string, SSOMessage | null>>({ app: null, customer: null });
   const [isGleanAuthenticated, setIsGleanAuthenticated] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -151,13 +151,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const handleAWSSSOLOGIN = async (role: 'app' | 'customer') => {
     const mongo = localFormData.persistence.mongo[role];
     const { auth } = mongo;
-    setIsSSOLoginLoading(true);
-    setSSOMessage(null);
+    setIsSSOLoginLoading(prev => ({ ...prev, [role]: true }));
+    setSSOMessage(prev => ({ ...prev, [role]: null }));
     try {
         const res = await authorizedFetch('/api/aws/sso/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
                 role,
                 persistence: {
                     mongo: {
@@ -175,12 +175,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             })
         });
         const data = await res.json();
-        setSSOMessage({ success: data.success, message: data.message || data.error });
+        setSSOMessage(prev => ({ ...prev, [role]: { success: data.success, message: data.message || data.error } }));
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to initiate SSO login';
-        setSSOMessage({ success: false, message: msg });
+        setSSOMessage(prev => ({ ...prev, [role]: { success: false, message: msg } }));
     } finally {
-        setIsSSOLoginLoading(false);
+        setIsSSOLoginLoading(prev => ({ ...prev, [role]: false }));
     }
   };
 
@@ -878,28 +878,28 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                       type="button"
                                       className="btn-primary"
                                       onClick={() => handleAWSSSOLOGIN('app')}
-                                      disabled={isSSOLoginLoading || !localFormData.persistence.mongo.app.auth.aws_profile}
+                                      disabled={isSSOLoginLoading.app || !localFormData.persistence.mongo.app.auth.aws_profile}
                                       style={{ fontSize: '12px', padding: '6px 10px' }}
                                   >
                                       Login via AWS SSO
                                   </button>
                               </div>
-                              {ssoMessage && (
+                              {ssoMessage.app && (
                                   <div style={{
                                       fontSize: '12px',
                                       marginTop: '8px',
-                                      color: ssoMessage.success ? 'var(--status-success)' : 'var(--status-danger-text)',
+                                      color: ssoMessage.app.success ? 'var(--status-success)' : 'var(--status-danger-text)',
                                       whiteSpace: 'pre-wrap',
                                       wordBreak: 'break-all',
                                       backgroundColor: 'rgba(0,0,0,0.2)',
                                       padding: '8px',
                                       borderRadius: '4px',
-                                      border: `1px solid ${ssoMessage.success ? 'var(--status-success-bg)' : 'var(--status-danger-bg)'}`
+                                      border: `1px solid ${ssoMessage.app.success ? 'var(--status-success-bg)' : 'var(--status-danger-bg)'}`
                                   }}>
                                       {(() => {
-                                          const codeMatch = ssoMessage.message.match(/([A-Z0-9]{4}-[A-Z0-9]{4})/);
+                                          const codeMatch = ssoMessage.app.message.match(/([A-Z0-9]{4}-[A-Z0-9]{4})/);
                                           const code = codeMatch ? codeMatch[1] : null;
-                                          const parts = ssoMessage.message.split(/(https?:\/\/[^\s]+)/g);
+                                          const parts = ssoMessage.app.message.split(/(https?:\/\/[^\s]+)/g);
                                           return parts.map((part, i) => {
                                               if (part.startsWith('http')) {
                                                   const url = part.replace(/[.,]$/, '');
@@ -1298,28 +1298,28 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                       type="button"
                                       className="btn-primary"
                                       onClick={() => handleAWSSSOLOGIN('customer')}
-                                      disabled={isSSOLoginLoading || !localFormData.persistence.mongo.customer.auth.aws_profile}
+                                      disabled={isSSOLoginLoading.customer || !localFormData.persistence.mongo.customer.auth.aws_profile}
                                       style={{ fontSize: '12px', padding: '6px 10px' }}
                                   >
                                       Login via AWS SSO
                                   </button>
                               </div>
-                              {ssoMessage && (
+                              {ssoMessage.customer && (
                                   <div style={{
                                       fontSize: '12px',
                                       marginTop: '8px',
-                                      color: ssoMessage.success ? 'var(--status-success)' : 'var(--status-danger-text)',
+                                      color: ssoMessage.customer.success ? 'var(--status-success)' : 'var(--status-danger-text)',
                                       whiteSpace: 'pre-wrap',
                                       wordBreak: 'break-all',
                                       backgroundColor: 'rgba(0,0,0,0.2)',
                                       padding: '8px',
                                       borderRadius: '4px',
-                                      border: `1px solid ${ssoMessage.success ? 'var(--status-success-bg)' : 'var(--status-danger-bg)'}`
+                                      border: `1px solid ${ssoMessage.customer.success ? 'var(--status-success-bg)' : 'var(--status-danger-bg)'}`
                                   }}>
                                       {(() => {
-                                          const codeMatch = ssoMessage.message.match(/([A-Z0-9]{4}-[A-Z0-9]{4})/);
+                                          const codeMatch = ssoMessage.customer.message.match(/([A-Z0-9]{4}-[A-Z0-9]{4})/);
                                           const code = codeMatch ? codeMatch[1] : null;
-                                          const parts = ssoMessage.message.split(/(https?:\/\/[^\s]+)/g);
+                                          const parts = ssoMessage.customer.message.split(/(https?:\/\/[^\s]+)/g);
                                           return parts.map((part, i) => {
                                               if (part.startsWith('http')) {
                                                   const url = part.replace(/[.,]$/, '');

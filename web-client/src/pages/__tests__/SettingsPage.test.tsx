@@ -583,6 +583,77 @@ describe('SettingsPage', () => {
         });
     });
 
+    it('isolates SSO login messages between app and customer contexts', async () => {
+        const awsSettings = {
+            ...mockSettings,
+            persistence: {
+                ...mockSettings.persistence,
+                mongo: {
+                    ...mockSettings.persistence.mongo,
+                    app: {
+                        ...mockSettings.persistence.mongo.app,
+                        auth: {
+                            method: 'aws' as const,
+                            aws_auth_type: 'sso' as const,
+                            aws_profile: 'vst-app',
+                            aws_sso_start_url: 'https://test.aws'
+                        }
+                    },
+                    customer: {
+                        ...mockSettings.persistence.mongo.customer,
+                        auth: {
+                            method: 'aws' as const,
+                            aws_auth_type: 'sso' as const,
+                            aws_profile: 'vst-customer',
+                            aws_sso_start_url: 'https://test-customer.aws'
+                        }
+                    }
+                }
+            }
+        };
+
+        vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => {
+            if (url === '/api/aws/sso/login') {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({
+                        success: true,
+                        message: 'Go to https://device.sso.aws and enter code WXYZ-5678'
+                    })
+                });
+            }
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true }) });
+        }));
+
+        render(
+            <MemoryRouter initialEntries={['/settings?tab=persistence&subtab=mongo&subsubtab=application']}>
+                <SettingsPage
+                    settings={awsSettings}
+                    onUpdateSettings={onUpdateSettings}
+                    data={mockData}
+                    updateIssue={updateIssue}
+                    addIssue={addIssue}
+                />
+            </MemoryRouter>
+        );
+
+        // Click login on app tab
+        const loginBtn = screen.getByText('Login via AWS SSO');
+        fireEvent.click(loginBtn);
+
+        await waitFor(() => {
+            expect(screen.getByText('WXYZ-5678')).toBeDefined();
+        });
+
+        // Navigate to customer tab - SSO message should not carry over
+        const customerTab = screen.getByText('Customer');
+        fireEvent.click(customerTab);
+
+        await waitFor(() => {
+            expect(screen.queryByText('WXYZ-5678')).toBeNull();
+        });
+    });
+
     it('correctly displays nested settings data from props in the UI', async () => {
         const customSettings: Settings = {
             ...mockSettings,
