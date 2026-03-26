@@ -30,7 +30,10 @@ services:
       - .env
     volumes:
       - ~/.aws:/root/.aws
-      # Persist settings and encrypted secrets across container rebuilds
+      # Persist settings and encrypted secrets across container rebuilds.
+      # IMPORTANT: Both files must exist on the host before starting the container.
+      # Docker creates directories for missing bind-mount targets.
+      # Run: touch backend/settings.secrets.enc   (if it doesn't exist yet)
       - ./backend/settings.json:/app/backend/settings.json
       - ./backend/settings.secrets.enc:/app/backend/settings.secrets.enc
     networks:

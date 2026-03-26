@@ -111,6 +111,14 @@ volumes:
   - ./backend/settings.secrets.enc:/app/backend/settings.secrets.enc
 ```
 
+**Important:** If `settings.secrets.enc` does not exist on the host before starting the container, Docker will create it as a **directory** instead of a file. Pre-create it with:
+
+```bash
+touch backend/settings.secrets.enc
+```
+
+The app handles this gracefully (auto-replaces the directory with a proper file), but pre-creating avoids the issue entirely.
+
 ### Kubernetes
 
 **Option A: Encrypted file (default)**

@@ -103,6 +103,26 @@ describe('EncryptedFileProvider', () => {
     expect(() => provider.getAll()).toThrow(/Failed to decrypt/);
   });
 
+  it('should handle encPath being a directory (Docker bind mount edge case)', () => {
+    // Docker creates a directory when the host file doesn't exist on bind mount
+    fs.mkdirSync(encPath, { recursive: true });
+    expect(fs.statSync(encPath).isDirectory()).toBe(true);
+
+    const provider = new EncryptedFileProvider(encPath, masterKey);
+
+    // readFile should treat a directory as "no file" and return empty
+    expect(provider.getAll()).toEqual({});
+
+    // writeFile should replace the directory with a proper file
+    provider.set('key', 'value');
+    expect(fs.statSync(encPath).isFile()).toBe(true);
+    expect(provider.get('key')).toBe('value');
+
+    // Verify a fresh provider can read it back
+    const provider2 = new EncryptedFileProvider(encPath, masterKey);
+    expect(provider2.get('key')).toBe('value');
+  });
+
   it('should use cached data on subsequent reads', () => {
     const provider = new EncryptedFileProvider(encPath, masterKey);
     provider.setAll({ 'key': 'value' });

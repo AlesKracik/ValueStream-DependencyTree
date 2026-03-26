@@ -86,7 +86,8 @@ export class EncryptedFileProvider implements SecretProvider {
   private readFile(): Record<string, string> {
     if (this.cache !== null) return this.cache;
 
-    if (!fs.existsSync(this.filePath)) {
+    if (!fs.existsSync(this.filePath) ||
+        fs.statSync(this.filePath).isDirectory()) {
       this.cache = {};
       return this.cache;
     }
@@ -118,6 +119,13 @@ export class EncryptedFileProvider implements SecretProvider {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
+
+    // Docker bind mounts create a directory when the host file doesn't exist.
+    // Detect and remove the spurious directory so the write can proceed.
+    if (fs.existsSync(this.filePath) && fs.statSync(this.filePath).isDirectory()) {
+      fs.rmSync(this.filePath, { recursive: true });
+    }
+
     fs.writeFileSync(tmpPath, JSON.stringify(encrypted, null, 2));
     fs.renameSync(tmpPath, this.filePath);
 
