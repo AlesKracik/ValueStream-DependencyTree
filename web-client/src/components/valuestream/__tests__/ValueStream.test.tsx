@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ValueStream } from '../ValueStream';
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import { ValueStreamProvider, NotificationProvider } from '../../../contexts/ValueStreamContext';
-import type { ValueStreamData, ValueStreamViewState } from '../../../types/models';
+import type { ValueStreamData, ValueStreamViewState } from '@valuestream/shared-types';
 
 // Mock ResizeObserver which is needed by React Flow
 vi.stubGlobal('ResizeObserver', class {
@@ -65,10 +65,11 @@ const mockData: ValueStreamData = {
         },
         jira: { base_url: '', api_version: '3', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
         aha: { subdomain: "", api_key: "" },
-        ai: { provider: 'openai', support: { prompt: '' } }
+        ai: { provider: 'openai', support: { prompt: '' } },
+        ldap: { url: '', bind_dn: '', team: { base_dn: '', search_filter: '' } }
     },
     customers: [{ id: 'c1', name: 'Customer 1', existing_tcv: 100, potential_tcv: 50 }],
-    workItems: [{ id: 'w1', name: 'Work Item 1', total_effort_mds: 10, score: 0, customer_targets: [] }],
+    workItems: [{ id: 'w1', name: 'Work Item 1', total_effort_mds: 10, score: 0, status: 'Backlog', customer_targets: [] }],
     teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 100 }],
     issues: [{ id: 'e1', jira_key: 'E1', work_item_id: 'w1', team_id: 't1', effort_md: 5, target_start: '2026-01-01', target_end: '2026-01-14' }],
     sprints: [{ id: 's1', name: 'Sprint 1', start_date: '2026-01-01', end_date: '2026-01-14', quarter: 'FY2026 Q1' }],

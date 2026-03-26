@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useCustomerCustomFields } from '../useCustomerCustomFields';
 import { authorizedFetch } from '../../utils/api';
-import type { Settings } from '../../types/models';
+import type { Settings } from '@valuestream/shared-types';
 
 vi.mock('../../utils/api', () => ({
     authorizedFetch: vi.fn()
@@ -42,7 +42,8 @@ const mockSettings: Settings = {
         provider: 'openai',
         api_key: '',
         support: { prompt: '' }
-    }
+    },
+    ldap: { url: '', bind_dn: '', team: { base_dn: '', search_filter: '' } }
 };
 
 describe('useCustomerCustomFields', () => {

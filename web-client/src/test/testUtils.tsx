@@ -3,7 +3,7 @@ import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ValueStreamProvider, NotificationProvider } from '../contexts/ValueStreamContext';
 import { vi } from 'vitest';
-import type { ValueStreamData, Issue } from '../types/models';
+import type { ValueStreamData, Issue } from '@valuestream/shared-types';
 
 interface RenderOptions {
     route?: string;

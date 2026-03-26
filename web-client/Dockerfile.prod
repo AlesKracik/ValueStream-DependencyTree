@@ -1,17 +1,27 @@
 # Stage 1: Build the Vite application
 FROM node:22-alpine as build
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
+
+# Copy and build shared types first
+COPY shared/types/package*.json shared/types/
+RUN cd shared/types && npm install
+COPY shared/types/ shared/types/
+RUN cd shared/types && npm run build
+
+# Copy web-client package.json and install dependencies
+COPY web-client/package*.json web-client/
+RUN cd web-client && npm install
+
+# Copy the rest of the web-client code and build
+COPY web-client/ web-client/
+RUN cd web-client && npm run build
 
 # Stage 2: Serve the application with Nginx
 FROM nginx:alpine
 # Copy the built assets from the previous stage
-COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/web-client/dist /usr/share/nginx/html
 # Overwrite the default Nginx configuration with our proxy setup
-COPY nginx.conf /etc/nginx/templates/default.conf.template
+COPY web-client/nginx.conf /etc/nginx/templates/default.conf.template
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

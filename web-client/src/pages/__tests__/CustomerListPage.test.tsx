@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent } from '@testing-library/react';
 import { CustomerListPage } from '../CustomerListPage';
 import { renderWithProviders } from '../../test/testUtils';
-import type { ValueStreamData } from '../../types/models';
+import type { ValueStreamData } from '@valuestream/shared-types';
 
 const mockedNavigate = vi.fn();
 
@@ -25,7 +25,8 @@ const mockData: ValueStreamData = {
         },
         jira: { base_url: '', api_version: '3', api_token: '', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
         aha: { subdomain: '', api_key: '' },
-        ai: { provider: 'openai', support: { prompt: '' } }
+        ai: { provider: 'openai', support: { prompt: '' } },
+        ldap: { url: '', bind_dn: '', team: { base_dn: '', search_filter: '' } }
     },    customers: [
         { id: 'c1', name: 'Alpha Cust', existing_tcv: 5000, potential_tcv: 1000 },
         { id: 'c2', name: 'Gamma Cust', existing_tcv: 1000, potential_tcv: 10000 },

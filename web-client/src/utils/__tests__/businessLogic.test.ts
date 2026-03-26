@@ -7,7 +7,7 @@ import {
     calculateIssueIntensityRatio, 
     parseJiraIssue 
 } from '../businessLogic';
-import type { WorkItem, Issue, Customer, Sprint, Team } from '../../types/models';
+import type { WorkItem, Issue, Customer, Sprint, Team } from '@valuestream/shared-types';
 
 describe('businessLogic', () => {
     // ... parseJiraIssue tests remain the same ...
@@ -132,6 +132,7 @@ describe('businessLogic', () => {
             name: 'Test Feature',
             total_effort_mds: 10,
             score: 0,
+            status: 'Backlog',
             customer_targets: []
         };
 
@@ -185,6 +186,7 @@ describe('businessLogic', () => {
                 name: 'F1',
                 total_effort_mds: 0,
                 score: 0,
+                status: 'Backlog',
                 customer_targets: [
                     { customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }
                 ]
@@ -198,6 +200,7 @@ describe('businessLogic', () => {
                 name: 'F1',
                 total_effort_mds: 0,
                 score: 0,
+                status: 'Backlog',
                 customer_targets: [
                     { customer_id: 'c1', tcv_type: 'existing', priority: 'Should-have' }
                 ]
@@ -207,6 +210,7 @@ describe('businessLogic', () => {
                 name: 'F2',
                 total_effort_mds: 0,
                 score: 0,
+                status: 'Backlog',
                 customer_targets: [
                     { customer_id: 'c1', tcv_type: 'existing', priority: 'Should-have' }
                 ]
@@ -224,6 +228,7 @@ describe('businessLogic', () => {
                 name: 'F1',
                 total_effort_mds: 0,
                 score: 0,
+                status: 'Backlog',
                 customer_targets: [
                     { customer_id: 'c1', tcv_type: 'existing', priority: 'Nice-to-have' }
                 ]
@@ -237,6 +242,7 @@ describe('businessLogic', () => {
                 name: 'F1',
                 total_effort_mds: 0,
                 score: 0,
+                status: 'Backlog',
                 customer_targets: [
                     { customer_id: 'c1', tcv_type: 'existing', tcv_history_id: 'h1', priority: 'Must-have' }
                 ]
@@ -250,6 +256,7 @@ describe('businessLogic', () => {
                 name: 'F1',
                 total_effort_mds: 0,
                 score: 0,
+                status: 'Backlog',
                 customer_targets: [
                     { customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }, // 100
                     { customer_id: 'c2', tcv_type: 'existing', priority: 'Should-have' } // 200 / 1 = 200
@@ -264,6 +271,7 @@ describe('businessLogic', () => {
                 name: 'F1',
                 total_effort_mds: 0,
                 score: 0,
+                status: 'Backlog',
                 customer_targets: [],
                 all_customers_target: { tcv_type: 'existing', priority: 'Must-have' }
             };
@@ -277,6 +285,7 @@ describe('businessLogic', () => {
                 name: 'F1',
                 total_effort_mds: 0,
                 score: 0,
+                status: 'Backlog',
                 customer_targets: [],
                 all_customers_target: { tcv_type: 'existing', priority: 'Should-have' }
             };
@@ -285,6 +294,7 @@ describe('businessLogic', () => {
                 name: 'F2',
                 total_effort_mds: 0,
                 score: 0,
+                status: 'Backlog',
                 customer_targets: [
                     { customer_id: 'c1', tcv_type: 'existing', priority: 'Should-have' }
                 ]
@@ -309,6 +319,7 @@ describe('businessLogic', () => {
                 name: 'F1',
                 total_effort_mds: 10,
                 score: 0,
+                status: 'Backlog',
                 customer_targets: [
                     { customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }
                 ]
@@ -323,6 +334,7 @@ describe('businessLogic', () => {
                 name: 'F1',
                 total_effort_mds: 0,
                 score: 0,
+                status: 'Backlog',
                 customer_targets: [
                     { customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }
                 ]

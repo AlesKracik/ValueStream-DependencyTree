@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { Customer, Settings, JiraIssue } from '../types/models';
+import type { Customer, Settings, JiraIssue } from '@valuestream/shared-types';
 import { authorizedFetch } from '../utils/api';
 
 export interface CustomerHealthData {

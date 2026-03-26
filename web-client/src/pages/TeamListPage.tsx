@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { ValueStreamData, Team } from '../types/models';
+import type { ValueStreamData, Team } from '@valuestream/shared-types';
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption, ListColumn } from '../components/common/GenericListPage';
 

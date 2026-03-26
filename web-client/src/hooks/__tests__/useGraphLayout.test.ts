@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { useGraphLayout } from '../useGraphLayout';
-import type { ValueStreamData } from '../../types/models';
+import type { ValueStreamData } from '@valuestream/shared-types';
 
 const MOCK_DATA: ValueStreamData = {
     valueStreams: [],
@@ -15,7 +15,8 @@ const MOCK_DATA: ValueStreamData = {
         },
         jira: { base_url: '', api_version: '3', api_token: '', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
         aha: { subdomain: '', api_key: '' },
-        ai: { provider: 'openai', support: { prompt: '' } }
+        ai: { provider: 'openai', support: { prompt: '' } },
+        ldap: { url: '', bind_dn: '', team: { base_dn: '', search_filter: '' } }
     },
     customers: [
         { id: 'c1', name: 'Cust 1', existing_tcv: 100, existing_tcv_valid_from: '2026-01-01', potential_tcv: 0 },
@@ -25,13 +26,13 @@ const MOCK_DATA: ValueStreamData = {
         {
             id: 'f1',
             name: 'Low RICE Feat',
-            total_effort_mds: 10, score: 5, calculated_score: 5,
+            total_effort_mds: 10, score: 5, calculated_score: 5, status: 'Backlog',
             customer_targets: [{ customer_id: 'c1', tcv_type: 'existing', priority: 'Nice-to-have' }]
         },
         {
             id: 'f2',
             name: 'High RICE Feat',
-            total_effort_mds: 5, score: 50, calculated_score: 50,
+            total_effort_mds: 5, score: 50, calculated_score: 50, status: 'Backlog',
             customer_targets: [{ customer_id: 'c2', tcv_type: 'existing', priority: 'Must-have' }]
         }
     ],
@@ -157,9 +158,9 @@ describe('useGraphLayout Math Engine', () => {
         const TEST_DATA: ValueStreamData = {
             ...MOCK_DATA,
             workItems: [
-                { id: 'f1', name: 'Estimated Feat', total_effort_mds: 10, score: 50, calculated_score: 50, customer_targets: [] },
-                { id: 'f2', name: 'Unestimated Feat (0 MDs)', total_effort_mds: 0, score: 50, calculated_score: 50, customer_targets: [] },
-                { id: 'f3', name: 'Feat with Unestimated Issue', total_effort_mds: 10, score: 50, calculated_score: 50, customer_targets: [] },
+                { id: 'f1', name: 'Estimated Feat', total_effort_mds: 10, score: 50, calculated_score: 50, status: 'Backlog', customer_targets: [] },
+                { id: 'f2', name: 'Unestimated Feat (0 MDs)', total_effort_mds: 0, score: 50, calculated_score: 50, status: 'Backlog', customer_targets: [] },
+                { id: 'f3', name: 'Feat with Unestimated Issue', total_effort_mds: 10, score: 50, calculated_score: 50, status: 'Backlog', customer_targets: [] },
             ],
             issues: [
                 { id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', effort_md: 5 },
@@ -234,9 +235,9 @@ describe('useGraphLayout Math Engine', () => {
         const SCORE_DATA: ValueStreamData = {
             ...MOCK_DATA,
             workItems: [
-                { id: 'f1', name: 'Low Score', total_effort_mds: 10, score: 5, calculated_score: 5, customer_targets: [] },
-                { id: 'f2', name: 'High Score', total_effort_mds: 5, score: 50, calculated_score: 50, customer_targets: [] },
-                { id: 'f3', name: 'No Work Item Score', total_effort_mds: 5, score: 0, calculated_score: 0, customer_targets: [] },
+                { id: 'f1', name: 'Low Score', total_effort_mds: 10, score: 5, calculated_score: 5, status: 'Backlog', customer_targets: [] },
+                { id: 'f2', name: 'High Score', total_effort_mds: 5, score: 50, calculated_score: 50, status: 'Backlog', customer_targets: [] },
+                { id: 'f3', name: 'No Work Item Score', total_effort_mds: 5, score: 0, calculated_score: 0, status: 'Backlog', customer_targets: [] },
             ],
             issues: [
                 // All overlapping in time (same team) so they need separate lanes
@@ -328,7 +329,7 @@ describe('useGraphLayout Math Engine', () => {
             workItems: [{
                 id: 'wi-1',
                 name: 'Work Item 1',
-                total_effort_mds: 10, score: 5, calculated_score: 5,
+                total_effort_mds: 10, score: 5, calculated_score: 5, status: 'Backlog',
                 customer_targets: [{ customer_id: 'c-1', tcv_type: 'existing', priority: 'Must-have' }]
             }],
             teams: [{ id: 't-1', name: 'Team Alpha', total_capacity_mds: 10 }],

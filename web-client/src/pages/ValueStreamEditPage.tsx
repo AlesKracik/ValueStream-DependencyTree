@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { ValueStreamData, ValueStreamEntity } from '../types/models';
+import type { ValueStreamData, ValueStreamEntity } from '@valuestream/shared-types';
 import { useValueStreamContext } from '../contexts/ValueStreamContext';
 import styles from '../components/customers/CustomerPage.module.css';
 import { generateId } from '../utils/security';

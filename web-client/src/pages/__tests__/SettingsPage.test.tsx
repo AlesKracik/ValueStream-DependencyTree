@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { SettingsPage, DEFAULT_SETTINGS } from '../SettingsPage';
-import type { ValueStreamData, Settings } from '../../types/models';
+import type { ValueStreamData, Settings } from '@valuestream/shared-types';
 import { MemoryRouter } from 'react-router-dom';
 
 // Mock ValueStreamContext

@@ -7,7 +7,7 @@ import {
     calculateIssueIntensityRatio, 
     parseJiraIssue 
 } from '../businessLogic';
-import type { WorkItem, Issue, Customer, Sprint, Team } from '../../types/models';
+import type { WorkItem, Issue, Customer, Sprint, Team } from '@valuestream/shared-types';
 
 describe('businessLogic', () => {
     // ... parseJiraIssue tests remain the same ...

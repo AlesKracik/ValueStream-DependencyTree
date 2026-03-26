@@ -26,7 +26,7 @@ import { useValueStreamData } from './hooks/useValueStreamData';
 import { ValueStreamProvider, NotificationProvider, useNotificationContext, useValueStreamContext } from './contexts/ValueStreamContext';
 import { getAdminSecret } from './utils/api';
 import { deepMerge } from './utils/businessLogic';
-import type { ValueStreamDataState } from './types/models';
+import type { ValueStreamDataState } from '@valuestream/shared-types';
 import './App.css';
 
 function ValueStreamRouteWrapper() {
@@ -74,7 +74,11 @@ function WorkItemPageRouteWrapper() {
   const navigate = useNavigate();
   const { showAlert } = useNotificationContext();
   // Filter issues to only those linked to this workItem
-  const queryParams = useMemo(() => id ? { issues: { workItemId: id } } : {}, [id]);
+  const queryParams = useMemo(() => {
+    const params: Record<string, Record<string, string>> = {};
+    if (id) params.issues = { workItemId: id };
+    return params;
+  }, [id]);
   const state = useValueStreamData(undefined, undefined, 1000, showAlert,
     ['workItems', 'customers', 'teams', 'sprints', 'issues', 'settings'], queryParams);
   return <WorkItemPage workItemId={id!} onBack={() => navigate(-1)} {...state} />;

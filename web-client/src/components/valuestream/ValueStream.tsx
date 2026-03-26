@@ -5,7 +5,7 @@ import { parseISO, differenceInDays } from 'date-fns';
 import '@xyflow/react/dist/style.css';
 
 import { useGraphLayout } from '../../hooks/useGraphLayout';
-import type { ValueStreamData, Customer, WorkItem, Team, ValueStreamViewState, ValueStreamParameters, Issue } from '../../types/models';
+import type { ValueStreamData, Customer, WorkItem, Team, ValueStreamViewState, ValueStreamParameters, Issue } from '@valuestream/shared-types';
 import { CustomerNode } from '../nodes/CustomerNode';
 import { WorkItemNode } from '../nodes/WorkItemNode';
 import { TeamNode } from '../nodes/TeamNode';

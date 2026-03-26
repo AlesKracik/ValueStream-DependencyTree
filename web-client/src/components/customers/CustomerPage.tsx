@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import type { ValueStreamData, Customer, WorkItem, TcvHistoryEntry, SupportIssue, JiraIssue } from '../../types/models';
+import type { ValueStreamData, Customer, WorkItem, TcvHistoryEntry, SupportIssue, JiraIssue } from '@valuestream/shared-types';
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import { generateId } from '../../utils/security';

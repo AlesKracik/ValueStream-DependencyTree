@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Node } from '@xyflow/react';
-import type { ValueStreamData, Customer, WorkItem, Team } from '../../types/models';
+import type { ValueStreamData, Customer, WorkItem, Team } from '@valuestream/shared-types';
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import { calculateWorkItemEffort } from '../../utils/businessLogic';
 

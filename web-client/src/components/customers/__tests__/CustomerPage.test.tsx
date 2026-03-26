@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor, act, within, cleanup } from '@testi
 import { MemoryRouter } from 'react-router-dom';
 import { CustomerPage } from '../CustomerPage';
 import { useValueStreamContext } from '../../../contexts/ValueStreamContext';
-import type { ValueStreamData, SupportIssue } from '../../../types/models';
+import type { ValueStreamData, SupportIssue } from '@valuestream/shared-types';
 import * as api from '../../../utils/api';
 
 // Mock the context
@@ -36,7 +36,8 @@ const mockData: ValueStreamData = {
             }
         },
         ai: { provider: 'openai', support: { prompt: '' } },
-        aha: { subdomain: "", api_key: "" }
+        aha: { subdomain: "", api_key: "" },
+        ldap: { url: '', bind_dn: '', team: { base_dn: '', search_filter: '' } }
     },
     customers: [
         { 
@@ -53,7 +54,7 @@ const mockData: ValueStreamData = {
         }
     ],
     workItems: [
-        { id: 'f1', name: 'Feature 1', total_effort_mds: 10, score: 0, customer_targets: [{ customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }] }
+        { id: 'f1', name: 'Feature 1', total_effort_mds: 10, score: 0, status: 'Backlog', customer_targets: [{ customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }] }
     ],
     teams: [],
     issues: [],
@@ -238,6 +239,7 @@ describe('CustomerPage', () => {
                     name: 'Feature 1',
                     total_effort_mds: 10,
                     score: 0,
+                    status: 'Backlog',
                     customer_targets: [{ customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }]
                 }
             ]

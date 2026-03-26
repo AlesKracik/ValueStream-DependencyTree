@@ -7,20 +7,25 @@ RUN apk add --no-cache git aws-cli
 # Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json (if available)
-COPY package*.json ./
+# Copy and build shared types first
+COPY shared/types/package*.json shared/types/
+RUN cd shared/types && npm install
+COPY shared/types/ shared/types/
+RUN cd shared/types && npm run build
 
-# Install dependencies
-RUN npm install
+# Copy backend package.json and install dependencies
+COPY backend/package*.json backend/
+RUN cd backend && npm install
 
-# Copy the rest of the application code
-COPY . .
+# Copy the rest of the backend code
+COPY backend/ backend/
 
 # Build the TypeScript code
-RUN npm run build
+RUN cd backend && npm run build
 
 # Expose the Fastify port
 EXPOSE 4000
 
 # Start the Fastify server
+WORKDIR /app/backend
 CMD ["npm", "start"]

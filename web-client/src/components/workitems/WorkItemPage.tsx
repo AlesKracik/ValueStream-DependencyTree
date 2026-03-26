@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { ValueStreamData, WorkItem, Issue } from '../../types/models';
+import type { ValueStreamData, WorkItem, Issue } from '@valuestream/shared-types';
 import { syncJiraIssue, syncAhaFeature } from "../../utils/api";
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';

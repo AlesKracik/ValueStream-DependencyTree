@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { EditNodeModal } from '../EditNodeModal';
-import type { ValueStreamData } from '../../../types/models';
+import type { ValueStreamData } from '@valuestream/shared-types';
 import type { Node } from '@xyflow/react';
 
 const mockData: ValueStreamData = {
@@ -16,7 +16,8 @@ const mockData: ValueStreamData = {
         },
         jira: { base_url: "https://jira", api_version: "3" },
         aha: { subdomain: "", api_key: "" },
-        ai: { provider: 'openai', support: { prompt: '' } }
+        ai: { provider: 'openai', support: { prompt: '' } },
+        ldap: { url: '', bind_dn: '', team: { base_dn: '', search_filter: '' } }
     },
     customers: [],
     workItems: [],
@@ -100,7 +101,7 @@ describe('EditNodeModal', () => {
     it('edits workItemNode and handles global target toggle', () => {
         const dataWithWorkItem: ValueStreamData = {
             ...mockData,
-            workItems: [{ id: 'w1', name: 'Work 1', total_effort_mds: 10, score: 0, customer_targets: [] }]
+            workItems: [{ id: 'w1', name: 'Work 1', total_effort_mds: 10, score: 0, status: 'Backlog', customer_targets: [] }]
         };
         const node: Node = { id: 'workitem-w1', type: 'workItemNode', position: { x: 0, y: 0 }, data: {} };
 
@@ -132,7 +133,7 @@ describe('EditNodeModal', () => {
             ],
             workItems: [
                 {
-                    id: 'w1', name: 'Work 1', total_effort_mds: 10, score: 0,
+                    id: 'w1', name: 'Work 1', total_effort_mds: 10, score: 0, status: 'Backlog',
                     customer_targets: [{ customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }]
                 }            ]
         };

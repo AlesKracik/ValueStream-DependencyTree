@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { useGraphLayout } from '../useGraphLayout';
-import type { ValueStreamData } from '../../types/models';
+import type { ValueStreamData } from '@valuestream/shared-types';
 
 const MOCK_DATA: ValueStreamData = {
     valueStreams: [],
@@ -15,7 +15,8 @@ const MOCK_DATA: ValueStreamData = {
         },
         jira: { base_url: "https://jira", api_version: "3", api_token: '', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
         aha: { subdomain: '', api_key: '' },
-        ai: { provider: 'openai', support: { prompt: '' } }
+        ai: { provider: 'openai', support: { prompt: '' } },
+        ldap: { url: '', bind_dn: '', team: { base_dn: '', search_filter: '' } }
     },
     customers: [
         { id: 'c1', name: 'Cust 1', existing_tcv: 100, potential_tcv: 0 }
@@ -24,7 +25,7 @@ const MOCK_DATA: ValueStreamData = {
         {
             id: 'f1',
             name: 'Spanning Feature',
-            total_effort_mds: 10, score: 50,
+            total_effort_mds: 10, score: 50, status: 'Backlog',
             customer_targets: [{ customer_id: 'c1', tcv_type: 'existing' }]
         }
     ],
@@ -73,7 +74,7 @@ describe('reproduce_issue_bug', () => {
                 {
                     id: 'f2',
                     name: 'Global Feature',
-                    total_effort_mds: 10, score: 50,
+                    total_effort_mds: 10, score: 50, status: 'Backlog',
                     all_customers_target: { tcv_type: 'existing' },
                     customer_targets: []
                 }

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ValueStreamEditPage } from '../ValueStreamEditPage';
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';
-import type { ValueStreamData } from '../../types/models';
+import type { ValueStreamData } from '@valuestream/shared-types';
 import { MemoryRouter } from 'react-router-dom';
 
 vi.mock('../../contexts/ValueStreamContext', async (importOriginal) => {
@@ -25,7 +25,8 @@ const mockData: ValueStreamData = {
         },
         jira: { base_url: '', api_version: '3', api_token: '', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
         aha: { subdomain: '', api_key: '' },
-        ai: { provider: 'openai', support: { prompt: '' } }
+        ai: { provider: 'openai', support: { prompt: '' } },
+        ldap: { url: '', bind_dn: '', team: { base_dn: '', search_filter: '' } }
     },    customers: [],
     workItems: [],
     teams: [],

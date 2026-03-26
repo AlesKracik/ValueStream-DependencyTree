@@ -2,7 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useCustomerHealth } from '../useCustomerHealth';
 import * as api from '../../utils/api';
-import type { Customer, Settings } from '../../types/models';
+import type { Customer, Settings } from '@valuestream/shared-types';
 
 vi.mock('../../utils/api', () => ({
     authorizedFetch: vi.fn()
@@ -35,7 +35,8 @@ const mockSettings: Settings = {
         }
     },
     aha: { subdomain: '', api_key: '' },
-    ai: { provider: 'openai', support: { prompt: '' } }
+    ai: { provider: 'openai', support: { prompt: '' } },
+    ldap: { url: '', bind_dn: '', team: { base_dn: '', search_filter: '' } }
 };
 
 describe('useCustomerHealth', () => {

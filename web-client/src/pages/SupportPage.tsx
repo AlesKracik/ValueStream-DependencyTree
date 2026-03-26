@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useState } from 'react';
-import type { ValueStreamData, Customer, SupportIssue } from '../types/models';
+import type { ValueStreamData, Customer, SupportIssue } from '@valuestream/shared-types';
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption, ListColumn } from '../components/common/GenericListPage';
 import { useNavigate, useLocation } from 'react-router-dom';

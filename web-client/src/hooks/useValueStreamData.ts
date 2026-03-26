@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import type { ValueStreamData, Customer, WorkItem, Team, Issue, Settings, Sprint, ValueStreamEntity, ValueStreamParameters } from '../types/models';
+import type { ValueStreamData, Customer, WorkItem, Team, Issue, Settings, Sprint, ValueStreamEntity, ValueStreamParameters } from '@valuestream/shared-types';
 import { authorizedFetch, debounce } from '../utils/api';
 import { calculateQuarter } from '../utils/dateHelpers';
 
@@ -57,7 +57,7 @@ const persistSettings = async (settings: any, showAlert?: (title: string, messag
 
 export function useValueStreamData(
     valueStreamId?: string,
-    filters?: Partial<ValueStreamParameters>,
+    _filters?: Partial<ValueStreamParameters>,
     persistenceDebounceMs = 1000,
     showAlert?: (title: string, message: string) => Promise<void>,
     requestedCollections: string[] = ['workspace'], // Default to full workspace for backward compatibility

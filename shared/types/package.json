@@ -1,0 +1,14 @@
+{
+  "name": "@valuestream/shared-types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript type definitions",
+  "private": true,
+  "types": "./dist/models.d.ts",
+  "main": "./dist/models.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.3"
+  }
+}

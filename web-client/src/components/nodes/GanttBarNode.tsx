@@ -4,7 +4,7 @@ import { addDays, format, parseISO } from 'date-fns';
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import { sanitizeUrl } from '../../utils/security';
 import { calculateIssueEffortPerSprint } from '../../utils/businessLogic';
-import type { Issue } from '../../types/models';
+import type { Issue } from '@valuestream/shared-types';
 
 export interface GanttBarNodeData {
     label: string;

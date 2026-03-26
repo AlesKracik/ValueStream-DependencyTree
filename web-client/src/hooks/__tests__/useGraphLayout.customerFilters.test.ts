@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { useGraphLayout } from '../useGraphLayout';
-import type { ValueStreamData } from '../../types/models';
+import type { ValueStreamData } from '@valuestream/shared-types';
 import { describe, it, expect } from 'vitest';
 const MOCK_DATA: ValueStreamData = {
     valueStreams: [],
@@ -14,7 +14,8 @@ const MOCK_DATA: ValueStreamData = {
         },
         jira: { base_url: '', api_version: '3', api_token: '', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
         aha: { subdomain: '', api_key: '' },
-        ai: { provider: 'openai', support: { prompt: '' } }
+        ai: { provider: 'openai', support: { prompt: '' } },
+        ldap: { url: '', bind_dn: '', team: { base_dn: '', search_filter: '' } }
     },
     customers: [
         { id: 'c1', name: 'Matched Customer', existing_tcv: 50, existing_tcv_valid_from: '2026-01-01', potential_tcv: 500 },
@@ -24,7 +25,7 @@ const MOCK_DATA: ValueStreamData = {
         {
             id: 'f1',
             name: 'Work Item 1',
-            total_effort_mds: 1, score: 10,
+            total_effort_mds: 1, score: 10, status: 'Backlog',
             customer_targets: [
                 { customer_id: 'c1', tcv_type: 'potential', priority: 'Must-have' }
             ]

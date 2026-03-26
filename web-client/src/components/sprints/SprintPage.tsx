@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { parseISO, addDays, format } from 'date-fns';
-import type { ValueStreamData, Sprint } from '../../types/models';
+import type { ValueStreamData, Sprint } from '@valuestream/shared-types';
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import styles from '../../pages/List.module.css';
 import { generateId } from '../../utils/security';

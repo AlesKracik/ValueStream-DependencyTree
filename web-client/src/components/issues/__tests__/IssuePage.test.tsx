@@ -2,7 +2,7 @@ import { render, screen, fireEvent, act, waitFor, within } from '@testing-librar
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { IssuePage } from '../IssuePage';
 import { ValueStreamProvider, NotificationProvider, useValueStreamContext } from '../../../contexts/ValueStreamContext';
-import type { ValueStreamData } from '../../../types/models';
+import type { ValueStreamData } from '@valuestream/shared-types';
 import * as api from '../../../utils/api';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
@@ -46,7 +46,8 @@ const mockData: ValueStreamData = {
         },
         jira: { base_url: '', api_version: '3', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
         ai: { provider: 'openai', support: { prompt: '' } },
-        aha: { subdomain: "", api_key: "" }
+        aha: { subdomain: "", api_key: "" },
+        ldap: { url: '', bind_dn: '', team: { base_dn: '', search_filter: '' } }
     },
     customers: [],
     workItems: [],
@@ -277,8 +278,8 @@ describe('IssuePage', () => {
         const dataWithWorkItems: ValueStreamData = {
             ...mockData,
             workItems: [
-                { id: 'wi1', name: 'Work Item 1', total_effort_mds: 10, score: 50, customer_targets: [] },
-                { id: 'wi2', name: 'Work Item 2', total_effort_mds: 20, score: 30, customer_targets: [] }
+                { id: 'wi1', name: 'Work Item 1', total_effort_mds: 10, score: 50, status: 'Backlog', customer_targets: [] },
+                { id: 'wi2', name: 'Work Item 2', total_effort_mds: 20, score: 30, status: 'Backlog', customer_targets: [] }
             ],
             issues: [
                 {

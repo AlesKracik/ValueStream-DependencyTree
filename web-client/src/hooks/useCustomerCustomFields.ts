@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { authorizedFetch } from '../utils/api';
-import type { Settings, Customer } from '../types/models';
+import type { Settings, Customer } from '@valuestream/shared-types';
 
 export function useCustomerCustomFields(customerOrCustomers: Customer | Customer[] | null | undefined, settings: Settings | null | undefined) {
     const [data, setData] = useState<Record<string, unknown>[]>([]);

@@ -36,7 +36,7 @@ describe('frontend api utils', () => {
       });
 
       const result = await gleanChat('https://test.glean.com', 'hi');
-      expect(result.messages[0].fragments[0].text).toBe('hello');
+      expect(result.messages![0].fragments![0].text).toBe('hello');
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/glean/chat',
         expect.objectContaining({

@@ -1,8 +1,8 @@
 services:
   web-client:
     build:
-      context: ./web-client
-      dockerfile: Dockerfile.prod
+      context: .
+      dockerfile: web-client/Dockerfile.prod
     ports:
       - "80:80"
     depends_on:
@@ -14,8 +14,8 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     ports:
       - "${PORT:-4000}:${PORT:-4000}"
     depends_on:

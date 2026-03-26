@@ -1,7 +1,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useValueStreamData } from '../useValueStreamData';
-import type { ValueStreamData, Settings } from '../../types/models';
+import type { ValueStreamData, Settings } from '@valuestream/shared-types';
 
 const mockSettings: Settings = {
     general: {
@@ -33,7 +33,8 @@ const mockSettings: Settings = {
     ai: {
         provider: 'openai',
         api_key: ''
-    }
+    },
+    ldap: { url: '', bind_dn: '', team: { base_dn: '', search_filter: '' } }
 };
 
 const mockData: ValueStreamData = {
@@ -43,7 +44,7 @@ const mockData: ValueStreamData = {
         { id: 'c1', name: 'Cust 1', existing_tcv: 100, potential_tcv: 0 }
     ],
     workItems: [
-        { id: 'f1', name: 'Feat 1', total_effort_mds: 10, score: 0, customer_targets: [{ customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }] }
+        { id: 'f1', name: 'Feat 1', total_effort_mds: 10, score: 0, status: 'Backlog', customer_targets: [{ customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }] }
     ],
     teams: [],
     issues: [],
@@ -358,7 +359,7 @@ describe('useValueStreamData', () => {
         ));
 
         act(() => {
-            result.current.addWorkItem({ id: 'f1', name: 'Collision Item', total_effort_mds: 10, score: 0, customer_targets: [] });
+            result.current.addWorkItem({ id: 'f1', name: 'Collision Item', total_effort_mds: 10, score: 0, status: 'Backlog', customer_targets: [] });
         });
 
         await waitFor(() => {

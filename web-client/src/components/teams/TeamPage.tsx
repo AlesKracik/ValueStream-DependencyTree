@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Team, TeamMember, ValueStreamData } from '../../types/models';
+import type { Team, TeamMember, ValueStreamData } from '@valuestream/shared-types';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import { authorizedFetch } from '../../utils/api';

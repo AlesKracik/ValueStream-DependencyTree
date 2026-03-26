@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Issue, ValueStreamData } from '../../types/models';
+import type { Issue, ValueStreamData } from '@valuestream/shared-types';
 import { useNavigate, useParams } from 'react-router-dom';
 import { calculateIssueEffortPerSprint, parseJiraIssue } from '../../utils/businessLogic';
 import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers';

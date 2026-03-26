@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { useGraphLayout } from '../useGraphLayout';
-import type { ValueStreamData, ValueStreamParameters } from '../../types/models';
+import type { ValueStreamData, ValueStreamParameters } from '@valuestream/shared-types';
 
 const MOCK_DATA: ValueStreamData = {
     valueStreams: [],
@@ -15,14 +15,15 @@ const MOCK_DATA: ValueStreamData = {
         },
         jira: { base_url: '', api_version: '3', api_token: '', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
         aha: { subdomain: '', api_key: '' },
-        ai: { provider: 'openai', support: { prompt: '' } }
+        ai: { provider: 'openai', support: { prompt: '' } },
+        ldap: { url: '', bind_dn: '', team: { base_dn: '', search_filter: '' } }
     },    customers: [
         { id: 'c1', name: 'Alpha Customer', existing_tcv: 100, potential_tcv: 0 },
         { id: 'c2', name: 'Beta Customer', existing_tcv: 100, potential_tcv: 0 }
     ],
     workItems: [
-        { id: 'f1', name: 'Alpha WorkItem', total_effort_mds: 10, score: 50, customer_targets: [{ customer_id: 'c1', tcv_type: 'existing' }] },
-        { id: 'f2', name: 'Beta WorkItem', total_effort_mds: 10, score: 50, customer_targets: [{ customer_id: 'c2', tcv_type: 'existing' }] }
+        { id: 'f1', name: 'Alpha WorkItem', total_effort_mds: 10, score: 50, status: 'Backlog', customer_targets: [{ customer_id: 'c1', tcv_type: 'existing' }] },
+        { id: 'f2', name: 'Beta WorkItem', total_effort_mds: 10, score: 50, status: 'Backlog', customer_targets: [{ customer_id: 'c2', tcv_type: 'existing' }] }
     ],
     teams: [
         { id: 't1', name: 'Team Alpha', total_capacity_mds: 10 },
@@ -89,8 +90,8 @@ describe('useGraphLayout - Filter Consolidation (Base vs Transient)', () => {
         const releasedData: ValueStreamData = {
             ...MOCK_DATA,
             workItems: [
-                { id: 'f1', name: 'Released', released_in_sprint_id: 's1', customer_targets: [], score: 10, total_effort_mds: 5 },
-                { id: 'f2', name: 'Unreleased', released_in_sprint_id: undefined, customer_targets: [], score: 10, total_effort_mds: 5 }
+                { id: 'f1', name: 'Released', released_in_sprint_id: 's1', customer_targets: [], score: 10, total_effort_mds: 5, status: 'Backlog' },
+                { id: 'f2', name: 'Unreleased', released_in_sprint_id: undefined, customer_targets: [], score: 10, total_effort_mds: 5, status: 'Backlog' }
             ]
         };
 

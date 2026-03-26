@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { TeamPage } from '../TeamPage';
 import { ValueStreamProvider, NotificationProvider, useValueStreamContext } from '../../../contexts/ValueStreamContext';
-import type { ValueStreamData } from '../../../types/models';
+import type { ValueStreamData } from '@valuestream/shared-types';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
 const mockAuthorizedFetch = vi.fn();

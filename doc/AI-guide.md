@@ -101,6 +101,6 @@ Centralized in `backend/src/utils/businessLogic.ts`:
 
 ## 5. Key Constants & Locations
 - **Layout X-Coordinates**: `COL_CUSTOMER_X`, `COL_WORKITEM_X`, etc., in `useGraphLayout.ts`.
-- **Types**: `web-client/src/types/models.ts` and `backend/src/types/models.ts`.
+- **Types**: `shared/types/src/models.ts` (single source of truth, imported as `@valuestream/shared-types`).
 - **API Utilities**: `web-client/src/utils/api.ts`.
 - **Test Utils**: `web-client/src/test/testUtils.tsx`.

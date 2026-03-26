@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useMemo } from 'react';
-import type { ValueStreamData, Issue, ValueStreamViewState } from '../types/models';
+import type { ValueStreamData, Issue, ValueStreamViewState } from '@valuestream/shared-types';
 import { NotificationModal } from '../components/common/NotificationModal';
 
 interface NotificationConfig {

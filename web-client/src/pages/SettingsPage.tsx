@@ -2,7 +2,7 @@
 import * as React from "react";
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import type { Settings, ValueStreamData, Issue } from "../types/models";
+import type { Settings, ValueStreamData, Issue } from '@valuestream/shared-types';
 import styles from './List.module.css';
 import { authorizedFetch, syncJiraIssue, gleanAuthStatus, gleanAuthLogin } from "../utils/api";
 import { generateId } from '../utils/security';

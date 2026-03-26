@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { differenceInDays, parseISO, min, max, format, isWeekend } from 'date-fns';
 import type { Node, Edge } from '@xyflow/react';
-import type { ValueStreamData, ValueStreamParameters } from '../types/models';
+import type { ValueStreamData, ValueStreamParameters } from '@valuestream/shared-types';
 import Holidays from 'date-holidays';
 import { calculateWorkItemEffort, calculateIssueEffortPerSprint, calculateIssueIntensityRatio } from '../utils/businessLogic';
 
