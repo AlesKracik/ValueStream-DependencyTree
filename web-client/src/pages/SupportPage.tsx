@@ -715,19 +715,17 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                         <option value="done">Done</option>
                     </select>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', alignSelf: 'flex-end', paddingBottom: '2px' }}>
+                <div style={{ display: 'flex', gap: '8px', paddingTop: '18px' }}>
                     <button
                         className="btn-primary"
                         onClick={handleCreateIssue}
                         disabled={!newIssueCustomerId || !newIssueDescription.trim()}
-                        style={{ padding: '6px 14px', fontSize: '13px' }}
                     >
                         Save
                     </button>
                     <button
                         className="btn-secondary"
                         onClick={() => setShowCreateForm(false)}
-                        style={{ padding: '6px 14px', fontSize: '13px' }}
                     >
                         Cancel
                     </button>
