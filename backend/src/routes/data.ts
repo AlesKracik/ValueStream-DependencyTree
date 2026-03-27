@@ -1,6 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
 import { maskSettings, augmentConfig, logQuery } from '../utils/configHelpers';
-import { getFullSettings } from '../services/secretManager';
 import { getDb } from '../utils/mongoServer';
 import { computeMetricsFromPrecomputed, recomputeScoresForWorkItems } from '../services/metricsService';
 import { assignMissingQuarters } from '../services/sprintService';
@@ -10,16 +9,12 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
 
   // Helper to safely get the App DB
   const getAppDb = async () => {
-    const settings = getFullSettings();
+    const settings = await fastify.getSettings();
     if (!settings.persistence?.mongo?.app?.uri) {
         throw new Error('App database is not configured in settings.');
     }
     return getDb(augmentConfig(settings, 'app'), 'app', true);
   };
-
-  const getSettings = () => {
-      return getFullSettings();
-  }
 
   const handleError = (e: any, reply: any) => {
       const statusCode = e.statusCode || 500;
@@ -29,7 +24,7 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
   // 1. Granular Endpoints
   fastify.get('/api/settings', async (request, reply) => {
       try {
-          const settings = getSettings();
+          const settings = await fastify.getSettings();
           return reply.send({ success: true, settings: maskSettings(settings) });
       } catch (e: any) {
           return handleError(e, reply);
@@ -82,7 +77,7 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/api/data/sprints', async (request, reply) => {
       try {
           const db = await getAppDb();
-          const settings = getSettings();
+          const settings = await fastify.getSettings();
           const startMonth = settings.general?.fiscal_year_start_month || 1;
 
           const rawSprints = await fetchWithThreshold(db.collection('sprints'), { is_archived: { $ne: true } }, 'sprints');
@@ -128,7 +123,7 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
   // 2. Composite Workspace Endpoint (replaces old loadData, used for full hydration on Graph View)
   fastify.get('/api/workspace', async (request, reply) => {
     try {
-      const settings = getSettings();
+      const settings = await fastify.getSettings();
       const hasAppDb = !!settings.persistence?.mongo?.app?.uri;
       const { valueStreamId } = (request.query || {}) as any;
 

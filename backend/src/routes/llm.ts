@@ -2,7 +2,6 @@ import { FastifyPluginAsync } from 'fastify';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { unmaskSettings } from '../utils/configHelpers';
-import { getFullSettings } from '../services/secretManager';
 import { getGleanSettings, refreshGleanToken, gleanChatRequest } from '../utils/gleanHelpers';
 
 const execPromise = promisify(exec);
@@ -12,7 +11,7 @@ export const llmRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/api/llm/generate', async (request, reply) => {
     try {
       const { prompt, config: rawConfig } = request.body as any;
-      const existing = getFullSettings();
+      const existing = await fastify.getSettings();
       const config = unmaskSettings(rawConfig || {}, existing);
       
       const provider = config.ai?.provider || 'openai';
@@ -48,7 +47,7 @@ export const llmRoutes: FastifyPluginAsync = async (fastify) => {
         if (!gleanUrl) throw new Error('Glean URL missing');
         
         const normalizedUrl = gleanUrl.replace(/\/$/, '');
-        const gleanState = getGleanSettings();
+        const gleanState = await getGleanSettings();
         let token = gleanState.tokens[normalizedUrl];
 
         if (!token) {

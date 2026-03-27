@@ -9,6 +9,7 @@ dotenv.config({ path: resolve(__dirname, '../.env') });
 
 import mongoPlugin from './plugins/mongo';
 import authPlugin from './plugins/auth';
+import settingsPlugin from './plugins/settings';
 
 import { authRoutes } from './routes/auth';
 import { settingsRoutes } from './routes/settings';
@@ -42,6 +43,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   // Register core plugins
+  await app.register(settingsPlugin);
   await app.register(mongoPlugin);
   await app.register(authPlugin);
 

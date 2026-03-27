@@ -102,7 +102,7 @@ export async function gleanRoutes(app: FastifyInstance) {
       }
 
       // Dynamic Client Registration (DCR)
-      const gleanState = getGleanSettings();
+      const gleanState = await getGleanSettings();
       let client = gleanState.clients[normalizedUrl];
       if (!client) {
         const redirectBase = process.env.GLEAN_REDIRECT_BASE_URL || 'http://localhost:4000';
@@ -137,7 +137,7 @@ export async function gleanRoutes(app: FastifyInstance) {
           authorization_endpoint: discoveryData.authorization_endpoint
         };
         gleanState.clients[normalizedUrl] = client;
-        saveGleanSettings(gleanState);
+        await saveGleanSettings(gleanState);
       }
 
       // PKCE
@@ -179,7 +179,7 @@ export async function gleanRoutes(app: FastifyInstance) {
     }
     delete pkceStore[state];
 
-    const gleanState = getGleanSettings();
+    const gleanState = await getGleanSettings();
     const client = gleanState.clients[pkce.gleanUrl];
     if (!client) {
       return reply.redirect(`${frontendBase}/support?glean_error=client_missing`);
@@ -222,7 +222,7 @@ export async function gleanRoutes(app: FastifyInstance) {
         client_secret: client.client_secret,
         token_endpoint: client.token_endpoint
       };
-      saveGleanSettings(gleanState);
+      await saveGleanSettings(gleanState);
 
       // Redirect back to support page - the frontend will check status
       return reply.redirect(`${frontendBase}/support?glean_auth=success`);
@@ -238,7 +238,7 @@ export async function gleanRoutes(app: FastifyInstance) {
     if (!gleanUrl) return { authenticated: false };
 
     const normalizedUrl = gleanUrl.replace(/\/$/, '');
-    const gleanState = getGleanSettings();
+    const gleanState = await getGleanSettings();
     const token = gleanState.tokens[normalizedUrl];
     
     if (!token) return { authenticated: false };
@@ -246,7 +246,7 @@ export async function gleanRoutes(app: FastifyInstance) {
     // If expired but has refresh token, we'll refresh on next chat attempt or here
     if (Date.now() > token.expires_at && !token.refresh_token) {
       delete gleanState.tokens[normalizedUrl];
-      saveGleanSettings(gleanState);
+      await saveGleanSettings(gleanState);
       return { authenticated: false };
     }
 
@@ -259,7 +259,7 @@ export async function gleanRoutes(app: FastifyInstance) {
     if (!gleanUrl) return reply.status(400).send({ error: 'gleanUrl is required' });
 
     const normalizedUrl = gleanUrl.replace(/\/$/, '');
-    const gleanState = getGleanSettings();
+    const gleanState = await getGleanSettings();
     let token = gleanState.tokens[normalizedUrl];
 
     if (!token) {

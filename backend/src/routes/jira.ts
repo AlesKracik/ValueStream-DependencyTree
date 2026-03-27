@@ -1,13 +1,12 @@
 import { FastifyPluginAsync } from 'fastify';
 import { unmaskSettings } from '../utils/configHelpers';
-import { getFullSettings } from '../services/secretManager';
 
 export const jiraRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post('/api/jira/test', async (request, reply) => {
     try {
       const rawConfig = request.body as any;
-      const existing = getFullSettings();
+      const existing = await fastify.getSettings();
       
       const config = unmaskSettings(rawConfig, existing);
       const jira = config.jira || {};
@@ -34,7 +33,7 @@ export const jiraRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/api/jira/issue', async (request, reply) => {
     try {
       const rawConfig = request.body as any;
-      const existing = getFullSettings();
+      const existing = await fastify.getSettings();
       
       const config = unmaskSettings(rawConfig, existing);
       const jira = config.jira || {};
@@ -60,7 +59,7 @@ export const jiraRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/api/jira/search', async (request, reply) => {
     try {
       const rawConfig = request.body as any;
-      const existing = getFullSettings();
+      const existing = await fastify.getSettings();
       
       const config = unmaskSettings(rawConfig, existing);
       const jira = config.jira || {};

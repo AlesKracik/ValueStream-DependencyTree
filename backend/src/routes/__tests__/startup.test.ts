@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi, beforeEach } from 'vitest';
 import { FastifyInstance } from 'fastify';
 import { buildApp } from '../../app';
-import fs from 'fs';
+import { invalidateSettingsCache } from '../../services/secretManager';
 
 describe('Startup (No Settings File)', () => {
   let app: FastifyInstance;
@@ -19,11 +19,12 @@ describe('Startup (No Settings File)', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    invalidateSettingsCache();
   });
 
   it('GET /api/settings should return success:true and empty settings when file is missing', async () => {
-    vi.spyOn(fs, 'existsSync').mockReturnValue(false);
-    
+    app.getSettings = vi.fn().mockResolvedValue({});
+
     const response = await app.inject({
       method: 'GET',
       url: '/api/settings'
@@ -36,8 +37,8 @@ describe('Startup (No Settings File)', () => {
   });
 
   it('GET /api/workspace should return default structure when file is missing', async () => {
-    vi.spyOn(fs, 'existsSync').mockReturnValue(false);
-    
+    app.getSettings = vi.fn().mockResolvedValue({});
+
     const response = await app.inject({
       method: 'GET',
       url: '/api/workspace'
@@ -45,7 +46,7 @@ describe('Startup (No Settings File)', () => {
 
     expect(response.statusCode).toBe(200);
     const json = JSON.parse(response.payload);
-    
+
     expect(json.settings).toEqual({});
     expect(json.customers).toEqual([]);
     expect(json.workItems).toEqual([]);
@@ -57,9 +58,9 @@ describe('Startup (No Settings File)', () => {
   });
 
   it('POST /api/settings should create the settings file when it is missing', async () => {
-    vi.spyOn(fs, 'existsSync').mockReturnValue(false);
-    const writeFileSyncSpy = vi.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
-    vi.spyOn(fs, 'mkdirSync').mockImplementation(() => undefined);
+    app.getSettings = vi.fn().mockResolvedValue({});
+    const saveSpy = vi.fn();
+    app.saveSettings = saveSpy;
 
     const newSettings = {
         general: { fiscal_year_start_month: 3 }
@@ -72,8 +73,8 @@ describe('Startup (No Settings File)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(writeFileSyncSpy).toHaveBeenCalled();
-    const writtenData = JSON.parse(writeFileSyncSpy.mock.calls[0][1] as string);
-    expect(writtenData.general.fiscal_year_start_month).toBe(3);
+    expect(saveSpy).toHaveBeenCalled();
+    const savedData = saveSpy.mock.calls[0][0];
+    expect(savedData.general.fiscal_year_start_month).toBe(3);
   });
 });

@@ -64,25 +64,30 @@ Non-secret AWS config fields (`aws_profile`, `aws_role_arn`, `aws_sso_start_url`
 
 ### Read (GET /api/settings)
 
+Routes use the Fastify decorator `fastify.getSettings()` (async, cached):
+
 ```
-getFullSettings()
-  ├── readSettingsFile()       → settings.json (non-secrets)
+fastify.getSettings()  →  getFullSettingsAsync()
+  ├── readSettingsFileAsync()  → settings.json (non-secrets, async fs.promises)
   ├── SecretManager.getAll()   → decrypted secrets
-  └── mergeSecrets()           → complete settings object
+  └── mergeSecrets()           → complete settings object (cached until save)
        └── maskSettings()      → replace secrets with ********
             └── send to UI
 ```
 
 ### Write (POST /api/settings)
 
+Routes use `fastify.saveSettings()` (async, invalidates cache):
+
 ```
 UI sends settings (with ******** for unchanged secrets)
-  └── unmaskSettings(newData, getFullSettings())  → restore unchanged secrets
-       └── saveFullSettings(unmasked)
+  └── unmaskSettings(newData, await fastify.getSettings())  → restore unchanged secrets
+       └── fastify.saveSettings(unmasked)  →  saveFullSettingsAsync()
             ├── extractSecrets()   → flat secret map
             ├── stripSecrets()     → config without secrets
-            ├── write settings.json (config only)
-            └── SecretManager.setAll(secrets) → encrypt and write .enc file
+            ├── write settings.json (config only, async fs.promises)
+            ├── SecretManager.setAll(secrets) → encrypt and write .enc file
+            └── invalidate settings cache
 ```
 
 ## Migration
@@ -145,7 +150,8 @@ Example: `persistence.mongo.app.uri` → `VSDT_SECRET_PERSISTENCE_MONGO_APP_URI`
 
 | File | Purpose |
 |------|---------|
-| `backend/src/services/secretManager.ts` | SecretManager service, providers, getFullSettings(), saveFullSettings(), migration |
+| `backend/src/services/secretManager.ts` | SecretManager service, providers, async/sync settings R/W, migration |
+| `backend/src/plugins/settings.ts` | Fastify decorator: `fastify.getSettings()`, `fastify.saveSettings()` |
 | `backend/src/utils/configHelpers.ts` | SENSITIVE_FIELDS, mask/unmask, extractSecrets, stripSecrets, mergeSecrets |
 | `backend/settings.secrets.enc` | Encrypted secrets file (gitignored) |
 | `backend/settings.json` | Non-secret configuration (gitignored) |

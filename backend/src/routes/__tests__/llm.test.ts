@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { FastifyInstance } from 'fastify';
 import { llmRoutes } from '../llm';
 import fastify from 'fastify';
-import fs from 'fs';
 
 // Mock everything from gleanHelpers
 vi.mock('../../utils/gleanHelpers', () => ({
@@ -17,28 +16,24 @@ vi.mock('child_process', () => ({
   exec: vi.fn()
 }));
 
-vi.mock('fs', () => ({
-  default: {
-    existsSync: vi.fn(),
-    readFileSync: vi.fn(),
-  }
-}));
-
 describe('llmRoutes', () => {
   let app: FastifyInstance;
 
   beforeEach(async () => {
     app = fastify();
+    // Decorate with getSettings since llmRoutes now uses fastify.getSettings()
+    app.decorate('getSettings', vi.fn().mockResolvedValue({
+      ai: { provider: 'glean', glean_url: 'https://test.glean.com' }
+    }));
     await app.register(llmRoutes);
     vi.clearAllMocks();
   });
 
   it('calls glean API when glean provider is selected', async () => {
-    (fs.existsSync as any).mockReturnValue(true);
-    (fs.readFileSync as any).mockReturnValue(JSON.stringify({
+    app.getSettings = vi.fn().mockResolvedValue({
       ai: { provider: 'glean', glean_url: 'https://test.glean.com' }
-    }));
-    
+    });
+
     (getGleanSettings as any).mockReturnValue({
       tokens: {
         'https://test.glean.com': {

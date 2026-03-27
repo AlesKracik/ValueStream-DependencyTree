@@ -1,16 +1,29 @@
 import fs from 'fs';
+import fsPromises from 'fs/promises';
 import path from 'path';
 
 /** Resolve the path to settings.json in the backend directory */
 export const getSettingsPath = () => path.resolve(__dirname, '../../settings.json');
 
-/** Read raw settings.json from disk (config only after migration, full settings in legacy mode) */
+/** Read raw settings.json from disk synchronously (used only at startup / migration) */
 export function readSettingsFile(): any {
   const settingsPath = getSettingsPath();
   if (fs.existsSync(settingsPath)) {
     return JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
   }
   return {};
+}
+
+/** Async version of readSettingsFile — uses fs.promises to avoid blocking the event loop */
+export async function readSettingsFileAsync(): Promise<any> {
+  const settingsPath = getSettingsPath();
+  try {
+    const content = await fsPromises.readFile(settingsPath, 'utf-8');
+    return JSON.parse(content);
+  } catch (e: any) {
+    if (e.code === 'ENOENT') return {};
+    throw e;
+  }
 }
 
 export const SENSITIVE_FIELDS = [

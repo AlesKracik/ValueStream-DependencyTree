@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { getSettingsPath, readSettingsFile, extractSecrets, stripSecrets, mergeSecrets } from '../utils/configHelpers';
+import { getSettingsPath, readSettingsFile, readSettingsFileAsync, extractSecrets, stripSecrets, mergeSecrets } from '../utils/configHelpers';
 
 // --- Provider Interface ---
 
@@ -319,6 +319,75 @@ export function saveFullSettings(settings: any): void {
   if (Object.keys(secrets).length > 0) {
     sm.setAll(secrets);
   }
+}
+
+// --- Async Full Settings with Caching ---
+
+let settingsCache: any = null;
+
+/**
+ * Async version of getFullSettings — reads config with fs.promises and caches the result.
+ * Cache is invalidated by saveFullSettingsAsync().
+ */
+export async function getFullSettingsAsync(): Promise<any> {
+  if (settingsCache !== null) return settingsCache;
+
+  const config = await readSettingsFileAsync();
+  const sm = getSecretManager();
+
+  // Legacy fallback: if SecretManager has no secrets AND settings.json still has secrets,
+  // return config as-is (pre-migration state)
+  if (!sm.hasSecrets()) {
+    const extracted = extractSecrets(config);
+    if (Object.keys(extracted).length > 0) {
+      settingsCache = config;
+      return settingsCache;
+    }
+  }
+
+  // Normal mode: merge secrets from SecretManager into config
+  const secrets = sm.getAll();
+  settingsCache = mergeSecrets(config, secrets);
+  return settingsCache;
+}
+
+/**
+ * Async version of saveFullSettings — writes with fs.promises and invalidates the cache.
+ */
+export async function saveFullSettingsAsync(settings: any): Promise<void> {
+  const sm = getSecretManager();
+  const fsPromises = await import('fs/promises');
+
+  const settingsPath = getSettingsPath();
+  const dir = path.dirname(settingsPath);
+  try {
+    await fsPromises.access(dir);
+  } catch {
+    await fsPromises.mkdir(dir, { recursive: true });
+  }
+
+  // If NoOpProvider is active (no ADMIN_SECRET), keep legacy behavior
+  if (sm instanceof NoOpProvider) {
+    await fsPromises.writeFile(settingsPath, JSON.stringify(settings, null, 2));
+    settingsCache = null;
+    return;
+  }
+
+  const secrets = extractSecrets(settings);
+  const configOnly = stripSecrets(settings);
+
+  await fsPromises.writeFile(settingsPath, JSON.stringify(configOnly, null, 2));
+
+  if (Object.keys(secrets).length > 0) {
+    sm.setAll(secrets);
+  }
+
+  settingsCache = null;
+}
+
+/** Invalidate the settings cache (e.g., after external changes) */
+export function invalidateSettingsCache(): void {
+  settingsCache = null;
 }
 
 // --- Migration ---

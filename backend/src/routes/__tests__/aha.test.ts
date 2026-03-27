@@ -1,8 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { buildApp } from '../../app';
 import fs from 'fs';
+import { invalidateSettingsCache } from '../../services/secretManager';
 
 vi.mock('fs');
+
+const mockAhaSettings = {
+  aha: {
+    subdomain: 'test-subdomain',
+    api_key: 'test-key'
+  }
+};
 
 describe('Aha! Routes', () => {
   let app: any;
@@ -12,13 +20,10 @@ describe('Aha! Routes', () => {
     delete process.env.VITE_ADMIN_SECRET;
     app = await buildApp();
     vi.clearAllMocks();
+    invalidateSettingsCache();
+    app.getSettings = vi.fn().mockResolvedValue(mockAhaSettings);
     (fs.existsSync as any).mockReturnValue(true);
-    (fs.readFileSync as any).mockReturnValue(JSON.stringify({
-      aha: {
-        subdomain: 'test-subdomain',
-        api_key: 'test-key'
-      }
-    }));
+    (fs.readFileSync as any).mockReturnValue(JSON.stringify(mockAhaSettings));
   });
 
   it('POST /api/aha/test should return success when connected', async () => {

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { buildApp } from '../../app';
 import fs from 'fs';
+import { invalidateSettingsCache } from '../../services/secretManager';
 
 vi.mock('fs');
 
@@ -18,8 +19,19 @@ vi.mock('ldapts', () => {
     };
 });
 
+const mockLdapSettings = {
+    ldap: {
+        url: 'ldap://localhost:389',
+        bind_dn: 'cn=admin,dc=example,dc=com',
+        bind_password: 'secret',
+        team: {
+            base_dn: 'ou=groups,dc=example,dc=com',
+            search_filter: '(cn={{LDAP_TEAM_NAME}})'
+        }
+    }
+};
+
 describe('LDAP Routes', () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let app: any;
 
     beforeEach(async () => {
@@ -27,20 +39,10 @@ describe('LDAP Routes', () => {
         delete process.env.VITE_ADMIN_SECRET;
         app = await buildApp();
         vi.clearAllMocks();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        invalidateSettingsCache();
+        app.getSettings = vi.fn().mockResolvedValue(mockLdapSettings);
         (fs.existsSync as any).mockReturnValue(true);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (fs.readFileSync as any).mockReturnValue(JSON.stringify({
-            ldap: {
-                url: 'ldap://localhost:389',
-                bind_dn: 'cn=admin,dc=example,dc=com',
-                bind_password: 'secret',
-                team: {
-                    base_dn: 'ou=groups,dc=example,dc=com',
-                    search_filter: '(cn={{LDAP_TEAM_NAME}})'
-                }
-            }
-        }));
+        (fs.readFileSync as any).mockReturnValue(JSON.stringify(mockLdapSettings));
     });
 
     it('POST /api/ldap/sync-members should return members from LDAP group', async () => {

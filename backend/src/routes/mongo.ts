@@ -1,6 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
 import { augmentConfig, unmaskSettings, maskSettings } from '../utils/configHelpers';
-import { getFullSettings } from '../services/secretManager';
 import { getDb } from '../utils/mongoServer';
 
 const ALLOWED_COLLECTIONS = ['customers', 'workItems', 'teams', 'issues', 'sprints', 'valueStreams'];
@@ -10,7 +9,7 @@ export const mongoRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/api/mongo/databases', async (request, reply) => {
     try {
       const rawConfig = request.body as any;
-      const existing = getFullSettings();
+      const existing = await fastify.getSettings();
 
       const config = unmaskSettings(rawConfig, existing);
       const role = config.connection_type || 'app';
@@ -27,7 +26,7 @@ export const mongoRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/api/mongo/test', async (request, reply) => {
     try {
       const rawConfig = request.body as any;
-      const existing = getFullSettings();
+      const existing = await fastify.getSettings();
 
       const config = unmaskSettings(rawConfig, existing);
       const role = config.connection_type || 'app';
@@ -46,7 +45,7 @@ export const mongoRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/api/mongo/query', async (request, reply) => {
     try {
       const rawConfig = request.body as any;
-      const existing = getFullSettings();
+      const existing = await fastify.getSettings();
 
       const role = rawConfig.connection_type || 'customer';
       const mongo = existing.persistence?.mongo?.[role] || {};
@@ -66,7 +65,7 @@ export const mongoRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post('/api/mongo/export', async (request, reply) => {
     try {
-      const settings = getFullSettings();
+      const settings = await fastify.getSettings();
       const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
 
       const data: any = { settings: maskSettings(settings) };
@@ -84,7 +83,7 @@ export const mongoRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/api/mongo/import', async (request, reply) => {
     try {
       const { data: importData } = request.body as any;
-      const settings = getFullSettings();
+      const settings = await fastify.getSettings();
       const db = await getDb(augmentConfig(settings, 'app'), 'app', false);
       
       for (const col of ALLOWED_COLLECTIONS) {

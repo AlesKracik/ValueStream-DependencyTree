@@ -1,4 +1,4 @@
-import { getFullSettings, saveFullSettings } from '../services/secretManager';
+import { getFullSettingsAsync, saveFullSettingsAsync } from '../services/secretManager';
 
 export interface GleanTokenResponse {
   access_token: string;
@@ -8,9 +8,9 @@ export interface GleanTokenResponse {
   scope?: string;
 }
 
-export function getGleanSettings() {
+export async function getGleanSettings() {
   try {
-    const data = getFullSettings();
+    const data = await getFullSettingsAsync();
     return data.ai?.glean_state || { tokens: {}, clients: {} };
   } catch (e) {
     console.error('Error reading settings for Glean state', e);
@@ -18,14 +18,14 @@ export function getGleanSettings() {
   }
 }
 
-export function saveGleanSettings(state: any) {
+export async function saveGleanSettings(state: any) {
   let data: any = {};
   try {
-    data = getFullSettings();
+    data = await getFullSettingsAsync();
   } catch (e) {}
   if (!data.ai) data.ai = {};
   data.ai.glean_state = state;
-  saveFullSettings(data);
+  await saveFullSettingsAsync(data);
 }
 
 export async function refreshGleanToken(normalizedUrl: string, token: any, gleanState: any) {
@@ -47,7 +47,7 @@ export async function refreshGleanToken(normalizedUrl: string, token: any, glean
   if (!refreshRes.ok) {
     const err = await refreshRes.text().catch(() => 'unknown error');
     delete gleanState.tokens[normalizedUrl];
-    saveGleanSettings(gleanState);
+    await saveGleanSettings(gleanState);
     throw new Error(`Failed to refresh Glean token: ${refreshRes.status} ${refreshRes.statusText} - ${err}`);
   }
 

@@ -1,6 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Client } from 'ldapts';
-import { getFullSettings } from '../services/secretManager';
 
 export const ldapRoutes: FastifyPluginAsync = async (fastify) => {
 
@@ -9,7 +8,7 @@ export const ldapRoutes: FastifyPluginAsync = async (fastify) => {
       const { ldap_team_name } = request.body as { ldap_team_name: string };
       if (!ldap_team_name) throw new Error('LDAP team name is required.');
 
-      const settings = getFullSettings();
+      const settings = await fastify.getSettings();
       const ldap = settings.ldap;
 
       if (!ldap?.url) throw new Error('LDAP URL is not configured.');

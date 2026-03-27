@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi, beforeEach } from 'vitest';
 import { FastifyInstance } from 'fastify';
 import { buildApp } from '../../app';
-import fs from 'fs';
-import path from 'path';
+import { invalidateSettingsCache } from '../../services/secretManager';
 
 describe('Settings Routes', () => {
   let app: FastifyInstance;
@@ -19,26 +18,13 @@ describe('Settings Routes', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    invalidateSettingsCache();
   });
 
   it('should successfully save and mask new settings', async () => {
-    const originalExistsSync = fs.existsSync;
-    vi.spyOn(fs, 'existsSync').mockImplementation((p: any) => {
-      if (typeof p === 'string' && p.endsWith('settings.json')) return true;
-      if (typeof p === 'string' && p.endsWith('backend')) return true;
-      return originalExistsSync(p);
-    });
-
-    const originalReadFileSync = fs.readFileSync;
-    vi.spyOn(fs, 'readFileSync').mockImplementation((p: any, options: any) => {
-      if (typeof p === 'string' && p.endsWith('settings.json')) {
-        return JSON.stringify({ jira: { api_token: 'old-token' } });
-      }
-      return originalReadFileSync(p, options);
-    });
-    
-    const writeFileSyncSpy = vi.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
-    vi.spyOn(fs, 'mkdirSync').mockImplementation(() => undefined);
+    app.getSettings = vi.fn().mockResolvedValue({ jira: { api_token: 'old-token' } });
+    const saveSpy = vi.fn();
+    app.saveSettings = saveSpy;
 
     const response = await app.inject({
       method: 'POST',
@@ -55,14 +41,9 @@ describe('Settings Routes', () => {
     const json = JSON.parse(response.payload);
     expect(json.success).toBe(true);
 
-    expect(writeFileSyncSpy).toHaveBeenCalled();
-    const writeCall = writeFileSyncSpy.mock.calls[0];
-    
-    // Assert it wrote to a settings.json file
-    expect(writeCall[0] as string).toMatch(/settings\.json$/);
-    
-    const writtenData = JSON.parse(writeCall[1] as string);
-    expect(writtenData.jira.base_url).toBe('https://newjira.com');
-    expect(writtenData.jira.api_token).toBe('old-token'); // Unmasked correctly!
+    expect(saveSpy).toHaveBeenCalled();
+    const savedData = saveSpy.mock.calls[0][0];
+    expect(savedData.jira.base_url).toBe('https://newjira.com');
+    expect(savedData.jira.api_token).toBe('old-token'); // Unmasked correctly!
   });
 });

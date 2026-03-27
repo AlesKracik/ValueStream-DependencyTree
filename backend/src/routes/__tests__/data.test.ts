@@ -2,7 +2,9 @@ import { describe, it, expect, beforeAll, afterAll, vi, beforeEach } from 'vites
 import { FastifyInstance } from 'fastify';
 import { buildApp } from '../../app';
 import * as mongoServer from '../../utils/mongoServer';
-import fs from 'fs';
+import { invalidateSettingsCache } from '../../services/secretManager';
+
+const mockSettings = { persistence: { mongo: { app: { uri: 'mongodb://mock' } } } };
 
 describe('Data Routes', () => {
   let app: FastifyInstance;
@@ -20,6 +22,8 @@ describe('Data Routes', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    invalidateSettingsCache();
+    app.getSettings = vi.fn().mockResolvedValue(mockSettings);
 
     const createMockCollection = (data: any[]) => ({
       find: vi.fn().mockReturnValue({
@@ -47,23 +51,6 @@ describe('Data Routes', () => {
     };
 
     vi.spyOn(mongoServer, 'getDb').mockResolvedValue(mockDb);
-
-    const originalExistsSync = fs.existsSync;
-    vi.spyOn(fs, 'existsSync').mockImplementation((p: any) => {
-      if (typeof p === 'string' && (p.endsWith('settings.json') || p.endsWith('backend'))) return true;
-      return originalExistsSync(p);
-    });
-
-    const originalReadFileSync = fs.readFileSync;
-    vi.spyOn(fs, 'readFileSync').mockImplementation((p: any, options: any) => {
-      if (typeof p === 'string' && p.endsWith('settings.json')) {
-        return JSON.stringify({ persistence: { mongo: { app: { uri: 'mongodb://mock' } } } });
-      }
-      return originalReadFileSync(p, options);
-    });
-
-    vi.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
-    vi.spyOn(fs, 'mkdirSync').mockImplementation(() => undefined);
   });
 
   it('should load data with pre-computed scores and metrics', async () => {
@@ -345,9 +332,7 @@ describe('Data Routes', () => {
   });
 
   it('should handle unconfigured App database gracefully', async () => {
-    vi.spyOn(fs, 'readFileSync').mockImplementation(() => {
-        return JSON.stringify({ persistence: { mongo: { app: { uri: '' } } } });
-    });
+    app.getSettings = vi.fn().mockResolvedValue({ persistence: { mongo: { app: { uri: '' } } } });
 
     const response = await app.inject({
       method: 'GET',

@@ -5,14 +5,13 @@ import os from 'os';
 import crypto from 'crypto';
 import { spawn } from 'child_process';
 import { unmaskSettings } from '../utils/configHelpers';
-import { getFullSettings } from '../services/secretManager';
 
 export const awsRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post('/api/aws/sso/login', async (request, reply) => {
     try {
       const rawConfig = request.body as any;
-      const existing = getFullSettings();
+      const existing = await fastify.getSettings();
       const config = unmaskSettings(rawConfig, existing);
       
       const role = config.role || 'app';

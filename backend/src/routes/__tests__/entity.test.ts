@@ -3,7 +3,7 @@ import { FastifyInstance } from 'fastify';
 import { buildApp } from '../../app';
 import * as mongoServer from '../../utils/mongoServer';
 import * as metricsService from '../../services/metricsService';
-import fs from 'fs';
+import { invalidateSettingsCache } from '../../services/secretManager';
 
 describe('Entity Routes', () => {
   let app: FastifyInstance;
@@ -22,6 +22,8 @@ describe('Entity Routes', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    invalidateSettingsCache();
+    app.getSettings = vi.fn().mockResolvedValue({ persistence: { mongo: { app: { uri: 'mongodb://mock' } } } });
 
     mockCollection = {
       createIndex: vi.fn().mockResolvedValue(true),
@@ -37,20 +39,6 @@ describe('Entity Routes', () => {
     };
 
     vi.spyOn(mongoServer, 'getDb').mockResolvedValue(mockDb);
-    
-    const originalReadFileSync = fs.readFileSync;
-    vi.spyOn(fs, 'readFileSync').mockImplementation((p: any, options: any) => {
-      if (typeof p === 'string' && p.endsWith('settings.json')) {
-        return JSON.stringify({ persistence: { mongo: { app: { uri: 'mongodb://mock' } } } });
-      }
-      return originalReadFileSync(p, options);
-    });
-
-    const originalExistsSync = fs.existsSync;
-    vi.spyOn(fs, 'existsSync').mockImplementation((p: any) => {
-      if (typeof p === 'string' && p.endsWith('settings.json')) return true;
-      return originalExistsSync(p);
-    });
   });
 
   it('should upsert an allowed entity', async () => {
