@@ -6,15 +6,16 @@ import crypto from 'crypto';
 import { spawn } from 'child_process';
 import { unmaskSettings } from '../utils/configHelpers';
 import { evictSsoClients } from '../utils/mongoServer';
+import { AwsSsoLoginBody, AwsSsoLoginBodyType } from './schemas';
 
 export const awsRoutes: FastifyPluginAsync = async (fastify) => {
 
-  fastify.post('/api/aws/sso/login', async (request, reply) => {
+  fastify.post<{ Body: AwsSsoLoginBodyType }>('/api/aws/sso/login', { schema: { body: AwsSsoLoginBody } }, async (request, reply) => {
     try {
-      const rawConfig = request.body as any;
+      const rawConfig = request.body;
       const existing = await fastify.getSettings();
       const config = unmaskSettings(rawConfig, existing);
-      
+
       const role = config.role || 'app';
       const auth = config.persistence?.mongo?.[role]?.auth || {};
       const profile = auth.aws_profile;
@@ -36,13 +37,13 @@ export const awsRoutes: FastifyPluginAsync = async (fastify) => {
         fs.writeFileSync(tempConfigPath, `[profile ${profile}]\nsso_start_url = ${sso_start_url}\nsso_region = ${sso_region}\nsso_account_id = ${sso_account_id}\nsso_role_name = ${sso_role_name}\nregion = ${sso_region}\n`);
         envVars.AWS_CONFIG_FILE = tempConfigPath;
       }
-      
+
       const child = spawn(`aws sso login --profile ${profile} --use-device-code`, { shell: true, env: envVars });
-      
+
       let capturedOutput = '';
       const outputPromise = new Promise<string>((resolve) => {
         const timeout = setTimeout(() => resolve(capturedOutput || 'Login initiated (check logs if no URL appears)'), 4000);
-        
+
         const handleData = (data: any) => {
           const str = data.toString();
           capturedOutput += str;
@@ -51,7 +52,7 @@ export const awsRoutes: FastifyPluginAsync = async (fastify) => {
             setTimeout(() => resolve(capturedOutput), 500);
           }
         };
-        
+
         child.stdout.on('data', handleData);
         child.stderr.on('data', handleData);
       });

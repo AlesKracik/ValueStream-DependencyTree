@@ -1,12 +1,16 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import crypto from 'crypto';
-import { 
-  getGleanSettings, 
-  saveGleanSettings, 
-  refreshGleanToken, 
-  gleanChatRequest, 
-  GleanTokenResponse 
+import {
+  getGleanSettings,
+  saveGleanSettings,
+  refreshGleanToken,
+  gleanChatRequest,
+  GleanTokenResponse
 } from '../utils/gleanHelpers';
+import {
+  GleanAuthInitBody, GleanAuthInitBodyType,
+  GleanChatBody, GleanChatBodyType
+} from './schemas';
 
 interface GleanClientCredentials {
   client_id: string;
@@ -21,7 +25,7 @@ const pkceStore: Record<string, { verifier: string; gleanUrl: string }> = {};
 export async function gleanRoutes(app: FastifyInstance) {
   
   // 1. Start OAuth Flow
-  app.post('/api/glean/auth/init', async (req: FastifyRequest<{ Body: { gleanUrl: string } }>, reply) => {
+  app.post<{ Body: GleanAuthInitBodyType }>('/api/glean/auth/init', { schema: { body: GleanAuthInitBody } }, async (req, reply) => {
     const { gleanUrl } = req.body;
     if (!gleanUrl) {
       return reply.status(400).send({ error: 'gleanUrl is required' });
@@ -254,7 +258,7 @@ export async function gleanRoutes(app: FastifyInstance) {
   });
 
   // 4. Chat Proxy
-  app.post('/api/glean/chat', async (req: FastifyRequest<{ Body: { gleanUrl: string; messages: any[]; stream?: boolean } }>, reply) => {
+  app.post<{ Body: GleanChatBodyType }>('/api/glean/chat', { schema: { body: GleanChatBody } }, async (req, reply) => {
     const { gleanUrl, messages, stream } = req.body;
     if (!gleanUrl) return reply.status(400).send({ error: 'gleanUrl is required' });
 

@@ -29,7 +29,7 @@ Defined in: `web-client/src/types/models.ts`
 
 ### Backend & Persistence
 - **API Entry Point**: `backend/src/server.ts` (Fastify Node.js Application).
-- **API Routes**: Domain-specific logic is split into controllers in `backend/src/routes/` (e.g., `data.ts`, `jira.ts`, `auth.ts`).
+- **API Routes**: Domain-specific logic is split into controllers in `backend/src/routes/` (e.g., `data.ts`, `jira.ts`, `auth.ts`). Route request bodies are validated using `@sinclair/typebox` JSON schemas defined in `backend/src/routes/schemas.ts`, providing both runtime validation (Fastify rejects invalid payloads with 400) and compile-time type safety via `FastifyRequest<{ Body: T }>` generics.
 - **Database**: MongoDB (App data + External Customer data).
 - **Core Logic**: `backend/src/utils/mongoServer.ts` (Connections), `backend/src/utils/businessLogic.ts` (RICE scoring, metrics), `backend/src/utils/dbHelpers.ts` (threshold protection, query building, ValueStream filtering), and `backend/src/services/metricsService.ts` (score pre-computation via `recomputeScoresForWorkItems`, metrics computation).
 - **Secret Management**: `backend/src/services/secretManager.ts` — encrypts sensitive settings (API tokens, DB URIs, AWS credentials) in `settings.secrets.enc` using AES-256-GCM. Provider auto-detection: `EnvProvider` (K8s), `EncryptedFileProvider` (default), `NoOpProvider` (dev fallback). See `doc/secret-management.md`.

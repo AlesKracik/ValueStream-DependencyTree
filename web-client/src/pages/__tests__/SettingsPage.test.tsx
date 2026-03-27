@@ -346,7 +346,7 @@ describe('SettingsPage', () => {
                             method: 'aws' as const,
                             aws_auth_type: 'sso' as const,
                             aws_profile: '',
-                            aws_sso_start_url: ''
+                            aws_sso_start_url: 'https://test.awsapps.com/start'
                         }
                     }
                 }
@@ -365,7 +365,8 @@ describe('SettingsPage', () => {
             </MemoryRouter>
         );
 
-        expect(screen.getByText(/SSO Configuration/i)).toBeDefined();
+        // Manual SSO mode shows the SSO parameter fields
+        expect(screen.getByText(/Configure SSO manually/i)).toBeDefined();
         expect(screen.getByLabelText(/SSO Start URL:/i)).toBeDefined();
         expect(screen.getByLabelText(/SSO Region:/i)).toBeDefined();
 

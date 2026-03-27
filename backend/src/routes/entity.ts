@@ -2,6 +2,12 @@ import { FastifyPluginAsync } from 'fastify';
 import { augmentConfig } from '../utils/configHelpers';
 import { getDb } from '../utils/mongoServer';
 import { recomputeScoresForWorkItems } from '../services/metricsService';
+import {
+  EntityBody, EntityBodyType,
+  EntityOptionalIdBody, EntityOptionalIdBodyType,
+  CollectionParams, CollectionParamsType,
+  CollectionIdParams, CollectionIdParamsType
+} from './schemas';
 
 const ALLOWED_COLLECTIONS = ['customers', 'workItems', 'teams', 'issues', 'sprints', 'valueStreams'];
 // Collections whose mutations affect RICE scores and trigger recomputation
@@ -9,16 +15,16 @@ const SCORE_AFFECTING_COLLECTIONS = ['workItems', 'customers', 'issues'];
 
 export const entityRoutes: FastifyPluginAsync = async (fastify) => {
   // Use a wildcard param to match /api/entity/:collection/:id
-  fastify.post('/api/entity/:collection', async (request, reply) => {
+  fastify.post<{ Params: CollectionParamsType; Body: EntityBodyType }>('/api/entity/:collection', { schema: { params: CollectionParams, body: EntityBody } }, async (request, reply) => {
     try {
-      const { collection } = request.params as { collection: string };
-      
+      const { collection } = request.params;
+
       if (!ALLOWED_COLLECTIONS.includes(collection)) {
         return reply.code(403).send({ success: false, error: 'Forbidden collection' });
       }
 
-      const data = request.body as any || {};
-      
+      const data = request.body;
+
       if (!data.id) {
         return reply.code(400).send({ success: false, error: 'Entity ID is required in body' });
       }
@@ -26,13 +32,13 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
       const entityId = String(data.id);
 
       const settings = await fastify.getSettings();
-      
+
       if (!settings.persistence?.mongo?.app?.uri) {
         throw new Error("App MongoDB not configured");
       }
-      
+
       const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
-      
+
       await db.collection(collection).createIndex({ id: 1 }, { unique: true });
       await db.collection(collection).replaceOne({ id: entityId }, data, { upsert: true });
 
@@ -49,25 +55,25 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  fastify.post('/api/entity/:collection/:id', async (request, reply) => {
+  fastify.post<{ Params: CollectionIdParamsType; Body: EntityOptionalIdBodyType }>('/api/entity/:collection/:id', { schema: { params: CollectionIdParams, body: EntityOptionalIdBody } }, async (request, reply) => {
     try {
-      const { collection, id } = request.params as { collection: string, id: string };
-      
+      const { collection, id } = request.params;
+
       if (!ALLOWED_COLLECTIONS.includes(collection)) {
         return reply.code(403).send({ success: false, error: 'Forbidden collection' });
       }
 
-      const data = request.body as any || {};
+      const data = request.body;
       const entityId = String(data.id || id);
-      
+
       const settings = await fastify.getSettings();
-      
+
       if (!settings.persistence?.mongo?.app?.uri) {
         throw new Error("App MongoDB not configured");
       }
-      
+
       const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
-      
+
       await db.collection(collection).createIndex({ id: 1 }, { unique: true });
       await db.collection(collection).replaceOne({ id: entityId }, data, { upsert: true });
 
@@ -83,9 +89,9 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  fastify.delete('/api/entity/:collection/:id', async (request, reply) => {
+  fastify.delete<{ Params: CollectionIdParamsType }>('/api/entity/:collection/:id', { schema: { params: CollectionIdParams } }, async (request, reply) => {
     try {
-      const { collection, id } = request.params as { collection: string, id: string };
+      const { collection, id } = request.params;
 
       if (!ALLOWED_COLLECTIONS.includes(collection)) {
         return reply.code(403).send({ success: false, error: 'Forbidden collection' });

@@ -88,8 +88,8 @@ describe('Entity Routes', () => {
 
     expect(response.statusCode).toBe(400);
     const json = JSON.parse(response.payload);
-    expect(json.success).toBe(false);
-    expect(json.error).toBe('Entity ID is required in body');
+    // Schema validation now catches missing 'id' before the handler runs
+    expect(json.message).toContain("required property 'id'");
   });
 
   it('should reject an forbidden collection', async () => {

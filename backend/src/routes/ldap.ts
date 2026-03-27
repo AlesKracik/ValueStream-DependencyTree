@@ -1,11 +1,12 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Client } from 'ldapts';
+import { LdapSyncBody, LdapSyncBodyType } from './schemas';
 
 export const ldapRoutes: FastifyPluginAsync = async (fastify) => {
 
-  fastify.post('/api/ldap/sync-members', async (request, reply) => {
+  fastify.post<{ Body: LdapSyncBodyType }>('/api/ldap/sync-members', { schema: { body: LdapSyncBody } }, async (request, reply) => {
     try {
-      const { ldap_team_name } = request.body as { ldap_team_name: string };
+      const { ldap_team_name } = request.body;
       if (!ldap_team_name) throw new Error('LDAP team name is required.');
 
       const settings = await fastify.getSettings();

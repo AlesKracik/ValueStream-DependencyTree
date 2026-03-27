@@ -1,11 +1,12 @@
 import { FastifyPluginAsync } from 'fastify';
+import { LoginBody, LoginBodyType } from './schemas';
 
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
-  fastify.post('/api/auth/login', async (request, reply) => {
+  fastify.post<{ Body: LoginBodyType }>('/api/auth/login', { schema: { body: LoginBody } }, async (request, reply) => {
     try {
-      const { password } = request.body as any;
+      const { password } = request.body;
       const ADMIN_SECRET = process.env.ADMIN_SECRET || process.env.VITE_ADMIN_SECRET;
-      
+
       if (password === ADMIN_SECRET) {
         return reply.send({ success: true });
       } else {
