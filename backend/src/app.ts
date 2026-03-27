@@ -22,7 +22,7 @@ import { llmRoutes } from './routes/llm';
 import { awsRoutes } from './routes/aws';
 import { gleanRoutes } from './routes/glean';
 import { ldapRoutes } from './routes/ldap';
-import { migrateSecretsFromSettingsFile } from './services/secretManager';
+import { migrateSecretsFromSettingsFile, getSecretManager } from './services/secretManager';
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -68,6 +68,19 @@ export async function buildApp(): Promise<FastifyInstance> {
     }
   } catch (e: any) {
     app.log.warn(`SecretManager migration skipped: ${e.message}`);
+  }
+
+  // Startup health check: log whether secrets are accessible
+  try {
+    const sm = getSecretManager();
+    const providerName = sm.constructor.name;
+    const secretCount = Object.keys(sm.getAll()).length;
+    app.log.info(`[Startup] SecretManager provider: ${providerName}, secrets loaded: ${secretCount}`);
+    if (secretCount === 0 && providerName !== 'NoOpProvider') {
+      app.log.warn(`[Startup] WARNING: ${providerName} is active but no secrets were found — encrypted settings will be empty`);
+    }
+  } catch (e: any) {
+    app.log.error(`[Startup] SecretManager health check failed: ${e.message}`);
   }
 
   return app;

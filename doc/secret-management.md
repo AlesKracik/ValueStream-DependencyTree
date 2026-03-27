@@ -156,6 +156,15 @@ Example: `persistence.mongo.app.uri` → `VSDT_SECRET_PERSISTENCE_MONGO_APP_URI`
 | `backend/settings.secrets.enc` | Encrypted secrets file (gitignored) |
 | `backend/settings.json` | Non-secret configuration (gitignored) |
 
+## Resilience
+
+The SecretManager includes several protections against secret loss:
+
+- **No-cache on empty secrets**: If no secrets are found in either the encrypted store or `settings.json`, the result is not cached. The next request retries, allowing recovery after transient file-lock issues.
+- **Self-healing provider**: If `NoOpProvider` was selected because `ADMIN_SECRET` was temporarily unavailable (e.g., `.env` briefly locked on Windows), but `ADMIN_SECRET` becomes available later, the provider is automatically re-created as `EncryptedFileProvider`.
+- **Merge-on-save**: When saving settings, new secrets are merged with existing ones rather than replacing them. This prevents accidental data loss if the frontend sends empty sensitive fields (e.g., after a failed load).
+- **Startup health check**: On boot, the app logs which provider is active and how many secrets were loaded, making it easy to diagnose issues.
+
 ## Changing ADMIN_SECRET
 
 If `ADMIN_SECRET` changes, the existing `settings.secrets.enc` cannot be decrypted. To handle this:

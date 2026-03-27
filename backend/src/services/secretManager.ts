@@ -280,7 +280,15 @@ export function setSecretManager(provider: SecretProvider): void {
  */
 export function getFullSettings(): any {
   const config = readSettingsFile();
-  const sm = getSecretManager();
+  let sm = getSecretManager();
+
+  // Self-heal: if NoOpProvider was created because ADMIN_SECRET wasn't available
+  // at singleton creation time, but is now available, re-create the provider.
+  if (sm instanceof NoOpProvider && process.env.ADMIN_SECRET) {
+    console.warn('[SecretManager] NoOpProvider was active but ADMIN_SECRET is now available — re-creating provider');
+    resetSecretManager();
+    sm = getSecretManager();
+  }
 
   // Legacy fallback: if SecretManager has no secrets AND settings.json still has secrets,
   // return config as-is (pre-migration state)
@@ -289,6 +297,7 @@ export function getFullSettings(): any {
     if (Object.keys(extracted).length > 0) {
       return config;
     }
+    console.warn('[Settings] No secrets found in SecretManager or settings.json — returning config without secrets');
   }
 
   // Normal mode: merge secrets from SecretManager into config
@@ -317,15 +326,22 @@ export function saveFullSettings(settings: any): void {
     return;
   }
 
-  const secrets = extractSecrets(settings);
+  const newSecrets = extractSecrets(settings);
   const configOnly = stripSecrets(settings);
 
   // Write non-secrets to settings.json
   fs.writeFileSync(settingsPath, JSON.stringify(configOnly, null, 2));
 
-  // Write secrets to SecretManager
-  if (Object.keys(secrets).length > 0) {
-    sm.setAll(secrets);
+  // Merge new secrets with existing ones to prevent data loss.
+  // If the caller sends empty/missing sensitive fields (e.g., FE loaded without
+  // secrets and sent empty strings), existing secrets are preserved.
+  // extractSecrets only returns non-empty, non-mask values, so an empty field
+  // simply won't appear in newSecrets — the existing value stays.
+  const existingSecrets = sm.getAll();
+  const mergedSecrets = { ...existingSecrets, ...newSecrets };
+
+  if (Object.keys(mergedSecrets).length > 0) {
+    sm.setAll(mergedSecrets);
   }
 }
 
@@ -341,7 +357,16 @@ export async function getFullSettingsAsync(): Promise<any> {
   if (settingsCache !== null) return settingsCache;
 
   const config = await readSettingsFileAsync();
-  const sm = getSecretManager();
+  let sm = getSecretManager();
+
+  // Self-heal: if NoOpProvider was created because ADMIN_SECRET wasn't available
+  // at singleton creation time (e.g., dotenv file briefly locked on Windows),
+  // but ADMIN_SECRET is now available, re-create the provider.
+  if (sm instanceof NoOpProvider && process.env.ADMIN_SECRET) {
+    console.warn('[SecretManager] NoOpProvider was active but ADMIN_SECRET is now available — re-creating provider');
+    resetSecretManager();
+    sm = getSecretManager();
+  }
 
   // Legacy fallback: if SecretManager has no secrets AND settings.json still has secrets,
   // return config as-is (pre-migration state)
@@ -351,6 +376,10 @@ export async function getFullSettingsAsync(): Promise<any> {
       settingsCache = config;
       return settingsCache;
     }
+    // No secrets in either store — do NOT cache so the next request retries
+    // (secrets may become available after migration or file unlock)
+    console.warn('[Settings] No secrets found in SecretManager or settings.json — returning config without secrets (not caching)');
+    return mergeSecrets(config, {});
   }
 
   // Normal mode: merge secrets from SecretManager into config
@@ -381,13 +410,19 @@ export async function saveFullSettingsAsync(settings: any): Promise<void> {
     return;
   }
 
-  const secrets = extractSecrets(settings);
+  const newSecrets = extractSecrets(settings);
   const configOnly = stripSecrets(settings);
 
   await fsPromises.writeFile(settingsPath, JSON.stringify(configOnly, null, 2));
 
-  if (Object.keys(secrets).length > 0) {
-    sm.setAll(secrets);
+  // Merge new secrets with existing ones to prevent data loss.
+  // If the caller sends empty/missing sensitive fields (e.g., FE loaded without
+  // secrets and sent empty strings), existing secrets are preserved.
+  const existingSecrets = sm.getAll();
+  const mergedSecrets = { ...existingSecrets, ...newSecrets };
+
+  if (Object.keys(mergedSecrets).length > 0) {
+    sm.setAll(mergedSecrets);
   }
 
   settingsCache = null;

@@ -9,7 +9,12 @@ import {
   getSecretManager,
   resetSecretManager,
   setSecretManager,
-  migrateSecretsFromSettingsFile
+  migrateSecretsFromSettingsFile,
+  getFullSettings,
+  getFullSettingsAsync,
+  saveFullSettings,
+  saveFullSettingsAsync,
+  invalidateSettingsCache
 } from '../secretManager';
 import * as configHelpers from '../../utils/configHelpers';
 
@@ -346,5 +351,182 @@ describe('migrateSecretsFromSettingsFile', () => {
     expect(result.migrated).toBe(0);
 
     vi.restoreAllMocks();
+  });
+});
+
+describe('getFullSettings — self-healing NoOpProvider', () => {
+  const originalEnv = { ...process.env };
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'selfheal-test-'));
+    resetSecretManager();
+    invalidateSettingsCache();
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    resetSecretManager();
+    invalidateSettingsCache();
+    process.env.ADMIN_SECRET = originalEnv.ADMIN_SECRET;
+    vi.restoreAllMocks();
+  });
+
+  it('should self-heal from NoOpProvider when ADMIN_SECRET becomes available', () => {
+    // Simulate: NoOpProvider was created because ADMIN_SECRET was missing
+    delete process.env.ADMIN_SECRET;
+    const sm = getSecretManager();
+    expect(sm).toBeInstanceOf(NoOpProvider);
+
+    // Now ADMIN_SECRET becomes available (e.g., dotenv loaded late)
+    process.env.ADMIN_SECRET = 'test-secret';
+
+    // Mock paths so the new EncryptedFileProvider uses temp dir (no real .secrets.enc)
+    vi.spyOn(configHelpers, 'getSettingsPath').mockReturnValue(path.join(tmpDir, 'settings.json'));
+    vi.spyOn(configHelpers, 'readSettingsFile').mockReturnValue({ general: { theme: 'dark' } });
+
+    // getFullSettings should re-create the provider
+    const settings = getFullSettings();
+    expect(settings).toBeDefined();
+    expect(settings.general.theme).toBe('dark');
+
+    // Verify it's no longer NoOpProvider
+    const newSm = getSecretManager();
+    expect(newSm).toBeInstanceOf(EncryptedFileProvider);
+  });
+});
+
+describe('getFullSettingsAsync — no-cache on empty secrets', () => {
+  const originalEnv = { ...process.env };
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nocache-test-'));
+    resetSecretManager();
+    invalidateSettingsCache();
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    resetSecretManager();
+    invalidateSettingsCache();
+    process.env.ADMIN_SECRET = originalEnv.ADMIN_SECRET;
+    vi.restoreAllMocks();
+  });
+
+  it('should NOT cache result when no secrets are found anywhere', async () => {
+    // Set up: EncryptedFileProvider pointing to temp dir (no secrets file)
+    process.env.ADMIN_SECRET = 'test-secret';
+    vi.spyOn(configHelpers, 'getSettingsPath').mockReturnValue(path.join(tmpDir, 'settings.json'));
+
+    const readAsyncSpy = vi.spyOn(configHelpers, 'readSettingsFileAsync')
+      .mockResolvedValue({ general: { theme: 'dark' } });
+
+    // First call — no secrets anywhere
+    const settings1 = await getFullSettingsAsync();
+    expect(settings1.general.theme).toBe('dark');
+
+    // Second call — should NOT use cache (re-reads)
+    readAsyncSpy.mockResolvedValue({
+      general: { theme: 'light' }  // Different value to prove no cache
+    });
+
+    const settings2 = await getFullSettingsAsync();
+    expect(settings2.general.theme).toBe('light');
+  });
+});
+
+describe('saveFullSettings — secret preservation', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'save-test-'));
+    resetSecretManager();
+    invalidateSettingsCache();
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    resetSecretManager();
+    invalidateSettingsCache();
+    vi.restoreAllMocks();
+  });
+
+  it('should preserve existing secrets when new settings have empty sensitive fields', () => {
+    const encPath = path.join(tmpDir, 'settings.secrets.enc');
+    const settingsJsonPath = path.join(tmpDir, 'settings.json');
+    const provider = new EncryptedFileProvider(encPath, 'test-key');
+    setSecretManager(provider);
+
+    // Pre-populate secrets
+    provider.setAll({
+      'persistence.mongo.app.uri': 'mongodb://real-uri',
+      'jira.api_token': 'real-token'
+    });
+
+    vi.spyOn(configHelpers, 'getSettingsPath').mockReturnValue(settingsJsonPath);
+
+    // Save settings with empty sensitive fields (simulating FE data loss scenario)
+    saveFullSettings({
+      general: { theme: 'dark' },
+      persistence: { mongo: { app: { uri: '', db: 'mydb' } } },
+      jira: { base_url: 'https://jira.example.com', api_token: '' }
+    });
+
+    // Existing secrets should be preserved (not overwritten by empty strings)
+    expect(provider.get('persistence.mongo.app.uri')).toBe('mongodb://real-uri');
+    expect(provider.get('jira.api_token')).toBe('real-token');
+
+    // Non-secret config should be saved
+    const config = JSON.parse(fs.readFileSync(settingsJsonPath, 'utf-8'));
+    expect(config.general.theme).toBe('dark');
+    expect(config.persistence.mongo.app.db).toBe('mydb');
+  });
+
+  it('should update secrets when new non-empty values are provided', () => {
+    const encPath = path.join(tmpDir, 'settings.secrets.enc');
+    const settingsJsonPath = path.join(tmpDir, 'settings.json');
+    const provider = new EncryptedFileProvider(encPath, 'test-key');
+    setSecretManager(provider);
+
+    // Pre-populate secrets
+    provider.setAll({
+      'persistence.mongo.app.uri': 'mongodb://old-uri',
+      'jira.api_token': 'old-token'
+    });
+
+    vi.spyOn(configHelpers, 'getSettingsPath').mockReturnValue(settingsJsonPath);
+
+    // Save with new actual values
+    saveFullSettings({
+      persistence: { mongo: { app: { uri: 'mongodb://new-uri', db: 'mydb' } } },
+      jira: { base_url: 'https://jira.example.com', api_token: 'new-token' }
+    });
+
+    // Secrets should be updated
+    expect(provider.get('persistence.mongo.app.uri')).toBe('mongodb://new-uri');
+    expect(provider.get('jira.api_token')).toBe('new-token');
+  });
+
+  it('should preserve secrets even when saving completely unrelated settings', () => {
+    const encPath = path.join(tmpDir, 'settings.secrets.enc');
+    const settingsJsonPath = path.join(tmpDir, 'settings.json');
+    const provider = new EncryptedFileProvider(encPath, 'test-key');
+    setSecretManager(provider);
+
+    // Pre-populate secrets
+    provider.setAll({
+      'persistence.mongo.app.uri': 'mongodb://real-uri'
+    });
+
+    vi.spyOn(configHelpers, 'getSettingsPath').mockReturnValue(settingsJsonPath);
+
+    // Save settings that don't mention any sensitive fields at all
+    saveFullSettings({
+      general: { theme: 'light', fiscal_year_start_month: 4 }
+    });
+
+    // Existing secrets should still be there
+    expect(provider.get('persistence.mongo.app.uri')).toBe('mongodb://real-uri');
   });
 });
