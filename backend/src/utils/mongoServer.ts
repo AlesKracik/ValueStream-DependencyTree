@@ -76,6 +76,24 @@ export function getMongoClientCount() {
   return mongoClients.size;
 }
 
+/** Evict cached MongoClients whose cache key matches a given AWS SSO profile.
+ *  Called after SSO re-login so the next getDb() creates a fresh client
+ *  with a new fromSSO() credential provider that picks up the refreshed session. */
+export function evictSsoClients(profile: string): number {
+  let evicted = 0;
+  for (const [key, item] of mongoClients.entries()) {
+    // Cache key format: type:uri:db:authMethod:awsAuthType:proxy:tunnel:accessKey:profile
+    // SSO entries have "aws" as authMethod, "sso" as awsAuthType, and profile at the end
+    if (key.includes(':aws:sso:') && key.endsWith(`:${profile}`)) {
+      item.client.close().catch(() => {});
+      mongoClients.delete(key);
+      evicted++;
+      console.log(`[MONGO] Evicted cached SSO client for profile "${profile}"`);
+    }
+  }
+  return evicted;
+}
+
 export interface MongoConfig {
   uri: string;
   db?: string;

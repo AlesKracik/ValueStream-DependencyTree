@@ -5,6 +5,7 @@ import os from 'os';
 import crypto from 'crypto';
 import { spawn } from 'child_process';
 import { unmaskSettings } from '../utils/configHelpers';
+import { evictSsoClients } from '../utils/mongoServer';
 
 export const awsRoutes: FastifyPluginAsync = async (fastify) => {
 
@@ -56,7 +57,11 @@ export const awsRoutes: FastifyPluginAsync = async (fastify) => {
       });
 
       const message = await outputPromise;
-      
+
+      // Evict cached MongoClients for this SSO profile so the next DB request
+      // creates a fresh connection with refreshed credentials
+      evictSsoClients(profile);
+
       return reply.send({ success: true, message });
     } catch (e: any) {
       return reply.code(500).send({ success: false, error: e.message });

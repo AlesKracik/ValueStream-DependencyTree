@@ -126,8 +126,16 @@ export class EncryptedFileProvider implements SecretProvider {
       fs.rmSync(this.filePath, { recursive: true });
     }
 
-    fs.writeFileSync(tmpPath, JSON.stringify(encrypted, null, 2));
-    fs.renameSync(tmpPath, this.filePath);
+    const content = JSON.stringify(encrypted, null, 2);
+    fs.writeFileSync(tmpPath, content);
+    try {
+      fs.renameSync(tmpPath, this.filePath);
+    } catch {
+      // Docker bind mounts on macOS don't support atomic rename over the mount.
+      // Fall back to direct write + cleanup.
+      fs.writeFileSync(this.filePath, content);
+      try { fs.unlinkSync(tmpPath); } catch { /* best-effort cleanup */ }
+    }
 
     this.cache = secrets;
   }

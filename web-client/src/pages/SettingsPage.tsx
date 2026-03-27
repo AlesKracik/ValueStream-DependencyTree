@@ -816,6 +816,28 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>
                                 Credentials are resolved automatically from the cached SSO session. Run "Login via AWS SSO" once, then the backend refreshes credentials transparently until the SSO session expires.
                               </div>
+
+                              <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                  <input type="radio" name="app_sso_mode" checked={!localFormData.persistence.mongo.app.auth.aws_sso_start_url} onChange={() => {
+                                    updateFormData('persistence.mongo.app.auth.aws_sso_start_url', '');
+                                    updateFormData('persistence.mongo.app.auth.aws_sso_region', '');
+                                    updateFormData('persistence.mongo.app.auth.aws_sso_account_id', '');
+                                    updateFormData('persistence.mongo.app.auth.aws_sso_role_name', '');
+                                    onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_sso_start_url: '', aws_sso_region: '', aws_sso_account_id: '', aws_sso_role_name: '' } } } } });
+                                  }} />
+                                  Use existing AWS CLI profile
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                  <input type="radio" name="app_sso_mode" checked={!!localFormData.persistence.mongo.app.auth.aws_sso_start_url} onChange={() => {
+                                    if (!localFormData.persistence.mongo.app.auth.aws_sso_start_url) {
+                                      updateFormData('persistence.mongo.app.auth.aws_sso_start_url', ' ');
+                                    }
+                                  }} />
+                                  Configure SSO manually
+                                </label>
+                              </div>
+
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem", marginBottom: '8px' }}>
                                   AWS Profile:
                                   <input
@@ -826,16 +848,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                       onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_profile: localFormData.persistence.mongo.app.auth.aws_profile } } } } })}
                                   />
                               </label>
-
+                              {!localFormData.persistence.mongo.app.auth.aws_sso_start_url ? (
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                                  Profile must already exist in ~/.aws/config with SSO session configured.
+                                </div>
+                              ) : (
                               <div style={{ marginBottom: '16px', padding: '12px', border: '1px dashed var(--border-secondary)', borderRadius: '4px' }}>
-                                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>SSO Configuration (used to create profile if it doesn't exist in ~/.aws/config):</div>
+                                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>SSO parameters (creates a temporary profile for login &amp; credential resolution):</div>
                                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                                       <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
                                           SSO Start URL:
                                           <input
                                               type="text"
                                               placeholder="https://..."
-                                              value={localFormData.persistence.mongo.app.auth.aws_sso_start_url || ""}
+                                              value={(localFormData.persistence.mongo.app.auth.aws_sso_start_url || "").trim()}
                                               onChange={(e) => updateFormData('persistence.mongo.app.auth.aws_sso_start_url', e.target.value)}
                                               onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, app: { ...localFormData.persistence.mongo.app, auth: { ...localFormData.persistence.mongo.app.auth, aws_sso_start_url: localFormData.persistence.mongo.app.auth.aws_sso_start_url } } } } })}
                                           />
@@ -872,6 +898,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                       </label>
                                   </div>
                               </div>
+                              )}
 
                               <div style={{ display: 'flex', gap: '8px' }}>
                                   <button
@@ -1236,6 +1263,28 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>
                                 Credentials are resolved automatically from the cached SSO session. Run "Login via AWS SSO" once, then the backend refreshes credentials transparently until the SSO session expires.
                               </div>
+
+                              <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                  <input type="radio" name="customer_sso_mode" checked={!localFormData.persistence.mongo.customer.auth.aws_sso_start_url} onChange={() => {
+                                    updateFormData('persistence.mongo.customer.auth.aws_sso_start_url', '');
+                                    updateFormData('persistence.mongo.customer.auth.aws_sso_region', '');
+                                    updateFormData('persistence.mongo.customer.auth.aws_sso_account_id', '');
+                                    updateFormData('persistence.mongo.customer.auth.aws_sso_role_name', '');
+                                    onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_sso_start_url: '', aws_sso_region: '', aws_sso_account_id: '', aws_sso_role_name: '' } } } } });
+                                  }} />
+                                  Use existing AWS CLI profile
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                  <input type="radio" name="customer_sso_mode" checked={!!localFormData.persistence.mongo.customer.auth.aws_sso_start_url} onChange={() => {
+                                    if (!localFormData.persistence.mongo.customer.auth.aws_sso_start_url) {
+                                      updateFormData('persistence.mongo.customer.auth.aws_sso_start_url', ' ');
+                                    }
+                                  }} />
+                                  Configure SSO manually
+                                </label>
+                              </div>
+
                               <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem", marginBottom: '8px' }}>
                                   AWS Profile:
                                   <input
@@ -1246,16 +1295,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                       onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_profile: localFormData.persistence.mongo.customer.auth.aws_profile } } } } })}
                                   />
                               </label>
-
+                              {!localFormData.persistence.mongo.customer.auth.aws_sso_start_url ? (
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                                  Profile must already exist in ~/.aws/config with SSO session configured.
+                                </div>
+                              ) : (
                               <div style={{ marginBottom: '16px', padding: '12px', border: '1px dashed var(--border-secondary)', borderRadius: '4px' }}>
-                                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>SSO Configuration (used to create profile if it doesn't exist in ~/.aws/config):</div>
+                                  <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>SSO parameters (creates a temporary profile for login &amp; credential resolution):</div>
                                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                                       <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
                                           SSO Start URL:
                                           <input
                                               type="text"
                                               placeholder="https://..."
-                                              value={localFormData.persistence.mongo.customer.auth.aws_sso_start_url || ""}
+                                              value={(localFormData.persistence.mongo.customer.auth.aws_sso_start_url || "").trim()}
                                               onChange={(e) => updateFormData('persistence.mongo.customer.auth.aws_sso_start_url', e.target.value)}
                                               onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, customer: { ...localFormData.persistence.mongo.customer, auth: { ...localFormData.persistence.mongo.customer.auth, aws_sso_start_url: localFormData.persistence.mongo.customer.auth.aws_sso_start_url } } } } })}
                                           />
@@ -1292,6 +1345,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                       </label>
                                   </div>
                               </div>
+                              )}
 
                               <div style={{ display: 'flex', gap: '8px' }}>
                                   <button

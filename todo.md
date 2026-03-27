@@ -7,7 +7,6 @@
   * TCV History Logic Enhancement: Currently, when a Customer's Actual TCV is updated (archived to history), Work Items linked to "Latest Actual" remain linked to the new "Latest Actual". Consider if some Work Items should be automatically re-linked to the archived historical entry to preserve their context.
 * code readability, organization, DRY and overall architecture
   *Tier 1 — Foundational (do first, unblocks everything else)
-  ~~2	Async loadSettings() + Fastify decorator	Consolidates 7 copy-pasted settings-loading patterns into one. Make it async (fs.promises) from the start to fix the sync I/O blocking issue.~~ DONE
   3	Typed request bodies	Add Fastify schema validation + FastifyRequest<{ Body: T }> generics. Turns runtime crashes into compile-time errors.
   Tier 2 — High-value cleanup
   #	Item	Why

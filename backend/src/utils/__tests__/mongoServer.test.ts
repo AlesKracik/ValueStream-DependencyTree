@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MongoClient } from 'mongodb';
-import { getDb, clearMongoCache, getMongoClientCount, startMongoCleanup, stopMongoCleanup } from '../mongoServer';
+import { getDb, clearMongoCache, getMongoClientCount, startMongoCleanup, stopMongoCleanup, evictSsoClients } from '../mongoServer';
 
 // Mock AWS credential providers
 vi.mock('@aws-sdk/credential-providers', () => ({
@@ -214,6 +214,57 @@ describe('mongoServer utility', () => {
       const { isSafeUrl } = await import('../mongoServer');
       // 169.254.x.x is the AWS/GCP/Azure metadata service
       expect(await isSafeUrl('http://169.254.169.254')).toBe(false);
+    });
+  });
+
+  describe('evictSsoClients', () => {
+    it('evicts cached SSO clients matching a given profile', async () => {
+      // Create two SSO connections with different profiles
+      const ssoConfig1 = {
+        uri: 'mongodb://host1',
+        auth: { method: 'aws', aws_auth_type: 'sso', aws_profile: 'profile-a' }
+      };
+      const ssoConfig2 = {
+        uri: 'mongodb://host2',
+        auth: { method: 'aws', aws_auth_type: 'sso', aws_profile: 'profile-b' }
+      };
+
+      await getDb(ssoConfig1 as any, 'app');
+      await getDb(ssoConfig2 as any, 'app');
+      expect(getMongoClientCount()).toBe(2);
+
+      // Evict only profile-a
+      const evicted = evictSsoClients('profile-a');
+      expect(evicted).toBe(1);
+      expect(getMongoClientCount()).toBe(1);
+
+      // Evict profile-b
+      const evicted2 = evictSsoClients('profile-b');
+      expect(evicted2).toBe(1);
+      expect(getMongoClientCount()).toBe(0);
+    });
+
+    it('does not evict non-SSO clients', async () => {
+      // Create a SCRAM connection (no SSO)
+      const scramConfig = { uri: 'mongodb://host-scram' };
+      await getDb(scramConfig, 'app');
+      expect(getMongoClientCount()).toBe(1);
+
+      const evicted = evictSsoClients('any-profile');
+      expect(evicted).toBe(0);
+      expect(getMongoClientCount()).toBe(1);
+    });
+
+    it('returns 0 when no matching profile exists', async () => {
+      const ssoConfig = {
+        uri: 'mongodb://host',
+        auth: { method: 'aws', aws_auth_type: 'sso', aws_profile: 'real-profile' }
+      };
+      await getDb(ssoConfig as any, 'app');
+
+      const evicted = evictSsoClients('nonexistent-profile');
+      expect(evicted).toBe(0);
+      expect(getMongoClientCount()).toBe(1);
     });
   });
 

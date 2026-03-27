@@ -123,6 +123,35 @@ describe('EncryptedFileProvider', () => {
     expect(provider2.get('key')).toBe('value');
   });
 
+  it('should fall back to direct write when rename fails (Docker/macOS)', () => {
+    const provider = new EncryptedFileProvider(encPath, masterKey);
+
+    // Spy on fs to make renameSync fail (simulates Docker bind mount on macOS)
+    const renameSpy = vi.spyOn(fs, 'renameSync').mockImplementation(() => {
+      throw new Error('EXDEV: cross-device link not permitted');
+    });
+    const writeFileSpy = vi.spyOn(fs, 'writeFileSync');
+    const unlinkSpy = vi.spyOn(fs, 'unlinkSync');
+
+    provider.set('key', 'value');
+
+    // renameSync was called and failed
+    expect(renameSpy).toHaveBeenCalled();
+    // Fallback: writeFileSync should have been called for the actual file (not just .tmp)
+    const writeCallPaths = writeFileSpy.mock.calls.map(c => c[0]);
+    expect(writeCallPaths).toContain(encPath);
+    // Cleanup: unlinkSync should have been called for the .tmp file
+    expect(unlinkSpy).toHaveBeenCalledWith(encPath + '.tmp');
+
+    // Verify data is readable
+    renameSpy.mockRestore();
+    writeFileSpy.mockRestore();
+    unlinkSpy.mockRestore();
+
+    const provider2 = new EncryptedFileProvider(encPath, masterKey);
+    expect(provider2.get('key')).toBe('value');
+  });
+
   it('should use cached data on subsequent reads', () => {
     const provider = new EncryptedFileProvider(encPath, masterKey);
     provider.setAll({ 'key': 'value' });
