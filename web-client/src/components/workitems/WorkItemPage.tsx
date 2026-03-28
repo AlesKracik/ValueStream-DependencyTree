@@ -130,34 +130,40 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     }}
                     min={0}
                 />
-                <FormSelectField
-                    label="Status:"
-                    value={workItem?.status || 'Backlog'}
-                    onChange={v => {
-                        const val = v as WorkItem['status'];
-                        if (isNew) setNewWorkItemDraft(prev => ({ ...prev, status: val }));
-                        else updateWorkItem(workItemId, { status: val });
-                    }}
-                    options={[
-                        { value: 'Backlog', label: 'Backlog' },
-                        { value: 'Planning', label: 'Planning' },
-                        { value: 'Development', label: 'Development' },
-                        { value: 'Done', label: 'Done' },
-                    ]}
-                />
-                <label>
-                    Released in Sprint:
-                    <SearchableDropdown
-                        options={data?.sprints.map(s => ({ id: s.id, label: s.name })) || []}
-                        onSelect={(sprintId) => {
-                            if (isNew) setNewWorkItemDraft(prev => ({ ...prev, released_in_sprint_id: sprintId }));
-                            else updateWorkItem(workItemId, { released_in_sprint_id: sprintId });
-                        }}
-                        placeholder="Select release sprint..."
-                        initialValue={data?.sprints.find(s => s.id === (workItem?.released_in_sprint_id))?.name || ''}
-                        clearOnSelect={false}
-                    />
-                </label>
+                <div style={{ display: 'flex', gap: '16px' }}>
+                    <div style={{ flex: 1 }}>
+                        <FormSelectField
+                            label="Status:"
+                            value={workItem?.status || 'Backlog'}
+                            onChange={v => {
+                                const val = v as WorkItem['status'];
+                                if (isNew) setNewWorkItemDraft(prev => ({ ...prev, status: val }));
+                                else updateWorkItem(workItemId, { status: val });
+                            }}
+                            options={[
+                                { value: 'Backlog', label: 'Backlog' },
+                                { value: 'Planning', label: 'Planning' },
+                                { value: 'Development', label: 'Development' },
+                                { value: 'Done', label: 'Done' },
+                            ]}
+                        />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                        <label>
+                            Released in Sprint:
+                            <SearchableDropdown
+                                options={data?.sprints.map(s => ({ id: s.id, label: s.name })) || []}
+                                onSelect={(sprintId) => {
+                                    if (isNew) setNewWorkItemDraft(prev => ({ ...prev, released_in_sprint_id: sprintId }));
+                                    else updateWorkItem(workItemId, { released_in_sprint_id: sprintId });
+                                }}
+                                placeholder="Select release sprint..."
+                                initialValue={data?.sprints.find(s => s.id === (workItem?.released_in_sprint_id))?.name || ''}
+                                clearOnSelect={false}
+                            />
+                        </label>
+                    </div>
+                </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 }}>
                 <FormTextArea
