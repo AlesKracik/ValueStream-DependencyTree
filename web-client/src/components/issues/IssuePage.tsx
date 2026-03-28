@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { calculateIssueEffortPerSprint, parseJiraIssue } from '../../utils/businessLogic';
 import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers';
 import { useNotificationContext } from '../../contexts/NotificationContext';
+import { useDeleteWithConfirm } from '../../hooks/useDeleteWithConfirm';
 import { syncJiraIssue } from '../../utils/api';
 import { GenericDetailPage, type DetailTab } from '../common/GenericDetailPage';
 import { FormTextField, FormDateField, FormNumberField } from '../common/FormFields';
@@ -21,6 +22,7 @@ export const IssuePage: React.FC<IssuePageProps> = ({ data, loading, updateIssue
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { showAlert, showConfirm } = useNotificationContext();
+    const deleteWithConfirm = useDeleteWithConfirm();
     
     const issue = data?.issues.find(e => e.id === id);
     const team = data?.teams.find(t => t.id === issue?.team_id);
@@ -55,13 +57,14 @@ export const IssuePage: React.FC<IssuePageProps> = ({ data, loading, updateIssue
 
     const effortPerSprint = calculateIssueEffortPerSprint(issue, data?.sprints || []);
 
-    const handleDelete = async () => {
+    const handleDelete = () => {
         if (!issue) return;
-        const confirmed = await showConfirm('Delete Issue', `Are you sure you want to delete "${issue.name}"?`);
-        if (confirmed) {
-            deleteIssue(issue.id);
-            navigate(-1);
-        }
+        deleteWithConfirm(
+            'Delete Issue',
+            `Are you sure you want to delete "${issue.name}"?`,
+            () => deleteIssue(issue.id),
+            () => navigate(-1)
+        );
     };
 
     const handleSync = async () => {

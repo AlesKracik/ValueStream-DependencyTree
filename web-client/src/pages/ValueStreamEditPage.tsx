@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { ValueStreamData, ValueStreamEntity } from '@valuestream/shared-types';
-import { useNotificationContext } from '../contexts/NotificationContext';
+import { useDeleteWithConfirm } from '../hooks/useDeleteWithConfirm';
 import styles from '../components/customers/CustomerPage.module.css';
 import { generateId } from '../utils/security';
 import { PageWrapper } from '../components/layout/PageWrapper';
@@ -26,7 +26,7 @@ export const ValueStreamEditPage: React.FC<ValueStreamEditPageProps> = ({
     updateValueStream,
     deleteValueStream
 }) => {
-    const { showConfirm } = useNotificationContext();
+    const deleteWithConfirm = useDeleteWithConfirm();
     const isNew = valueStreamId === 'new';
 
     const [draft, setDraft] = useState<Partial<ValueStreamEntity>>({
@@ -61,13 +61,14 @@ export const ValueStreamEditPage: React.FC<ValueStreamEditPageProps> = ({
         }
     };
 
-    const handleDelete = async () => {
+    const handleDelete = () => {
         if (!ValueStream) return;
-        const confirmed = await showConfirm('Delete Value Stream', `Are you sure you want to delete "${ValueStream.name}"?`);
-        if (confirmed) {
-            deleteValueStream(ValueStream.id);
-            onBack();
-        }
+        deleteWithConfirm(
+            'Delete Value Stream',
+            `Are you sure you want to delete "${ValueStream.name}"?`,
+            () => deleteValueStream(ValueStream.id),
+            onBack
+        );
     };
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

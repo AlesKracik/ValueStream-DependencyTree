@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import type { ValueStreamData, Customer, WorkItem, TcvHistoryEntry } from '@valuestream/shared-types';
 import { useNotificationContext } from '../../contexts/NotificationContext';
+import { useDeleteWithConfirm } from '../../hooks/useDeleteWithConfirm';
 import { generateId } from '../../utils/security';
 import { useCustomerHealth } from '../../hooks/useCustomerHealth';
 import { useCustomerCustomFields } from '../../hooks/useCustomerCustomFields';
@@ -36,6 +37,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     updateWorkItem
 }) => {
     const { showConfirm } = useNotificationContext();
+    const deleteWithConfirm = useDeleteWithConfirm();
     const isNew = customerId === 'new';
 
     // Draft states for new customer creation
@@ -209,16 +211,14 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         });
     };
 
-    const handleDelete = async () => {
+    const handleDelete = () => {
         if (!customer) return;
-        const confirmed = await showConfirm('Delete Customer', `Are you sure you want to delete ${customer.name}? This will remove all their work item impact.`);
-        if (!confirmed) return;
-        try {
-            deleteCustomer(customerId);
-            onBack();
-        } catch (err) {
-            console.error('Delete failed', err);
-        }
+        deleteWithConfirm(
+            'Delete Customer',
+            `Are you sure you want to delete ${customer.name}? This will remove all their work item impact.`,
+            () => deleteCustomer(customerId),
+            onBack
+        );
     };
 
     const mainDetails = (

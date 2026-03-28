@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { Team, TeamMember, ValueStreamData } from '@valuestream/shared-types';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useNotificationContext } from '../../contexts/NotificationContext';
+import { useDeleteWithConfirm } from '../../hooks/useDeleteWithConfirm';
 import { authorizedFetch } from '../../utils/api';
 import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers';
 import { GenericDetailPage, type DetailTab } from '../common/GenericDetailPage';
@@ -20,6 +21,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { showConfirm } = useNotificationContext();
+    const deleteWithConfirm = useDeleteWithConfirm();
     const isNew = id === 'new';
 
     const existingTeam = data?.teams.find(t => t.id === id);
@@ -42,13 +44,14 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
 
     const team = isNew ? newTeamDraft : (existingTeam || {});
 
-    const handleDelete = async () => {
+    const handleDelete = () => {
         if (!team.id) return;
-        const confirmed = await showConfirm('Delete Team', `Are you sure you want to delete "${team.name}"?`);
-        if (confirmed) {
-            deleteTeam(team.id);
-            navigate('/teams');
-        }
+        deleteWithConfirm(
+            'Delete Team',
+            `Are you sure you want to delete "${team.name}"?`,
+            () => deleteTeam(team.id),
+            () => navigate('/teams')
+        );
     };
 
     const handleCreate = async () => {

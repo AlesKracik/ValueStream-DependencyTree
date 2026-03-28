@@ -4,6 +4,7 @@ import type { Issue, ValueStreamData } from '@valuestream/shared-types';
 import { syncJiraIssue } from '../../../utils/api';
 import { SearchableDropdown } from '../../common/SearchableDropdown';
 import { useNotificationContext } from '../../../contexts/NotificationContext';
+import { useDeleteWithConfirm } from '../../../hooks/useDeleteWithConfirm';
 import { generateId } from '../../../utils/security';
 import { parseJiraIssue } from '../../../utils/businessLogic';
 import customerStyles from '../../customers/CustomerPage.module.css';
@@ -29,7 +30,8 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
     deleteIssue,
     setNewWorkItemIssues
 }) => {
-    const { showAlert, showConfirm } = useNotificationContext();
+    const { showAlert } = useNotificationContext();
+    const deleteWithConfirm = useDeleteWithConfirm();
     const navigate = useNavigate();
     const [syncingId, setSyncingId] = useState<string | null>(null);
 
@@ -74,14 +76,15 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
         }
     };
 
-    const handleDeleteIssue = async (id: string, name: string) => {
+    const handleDeleteIssue = (id: string, name: string) => {
         if (isNew) {
             setNewWorkItemIssues(prev => prev.filter(e => e.id !== id));
         } else {
-            const confirmed = await showConfirm('Delete Issue', `Are you sure you want to delete "${name}"? This will permanently remove the issue from the database.`);
-            if (confirmed) {
-                deleteIssue(id);
-            }
+            deleteWithConfirm(
+                'Delete Issue',
+                `Are you sure you want to delete "${name}"? This will permanently remove the issue from the database.`,
+                () => deleteIssue(id)
+            );
         }
     };
 

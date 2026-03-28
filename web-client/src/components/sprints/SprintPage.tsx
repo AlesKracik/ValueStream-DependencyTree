@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { parseISO, addDays, format } from 'date-fns';
 import type { ValueStreamData, Sprint } from '@valuestream/shared-types';
 import { useNotificationContext } from '../../contexts/NotificationContext';
+import { useDeleteWithConfirm } from '../../hooks/useDeleteWithConfirm';
 import styles from '../../pages/List.module.css';
 import { generateId } from '../../utils/security';
 import { PageWrapper } from '../layout/PageWrapper';
@@ -24,6 +25,7 @@ export const SprintPage: React.FC<SprintPageProps> = ({
     deleteSprint
 }) => {
     const { showConfirm } = useNotificationContext();
+    const deleteWithConfirm = useDeleteWithConfirm();
     const [isCreating, setIsCreating] = useState(false);
 
     // Draft states for new sprint creation
@@ -77,11 +79,12 @@ export const SprintPage: React.FC<SprintPageProps> = ({
         setIsCreating(false);
     };
 
-    const handleDelete = async (id: string, name: string) => {
-        const confirmed = await showConfirm('Delete Sprint', `Are you sure you want to delete ${name}? This may affect data mapped to this sprint.`);
-        if (confirmed) {
-            deleteSprint(id);
-        }
+    const handleDelete = (id: string, name: string) => {
+        deleteWithConfirm(
+            'Delete Sprint',
+            `Are you sure you want to delete ${name}? This may affect data mapped to this sprint.`,
+            () => deleteSprint(id)
+        );
     };
 
     const handleArchive = async (id: string, name: string) => {

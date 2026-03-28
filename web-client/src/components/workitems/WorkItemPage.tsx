@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { ValueStreamData, WorkItem, Issue } from '@valuestream/shared-types';
 import { SearchableDropdown } from '../common/SearchableDropdown';
-import { useNotificationContext } from '../../contexts/NotificationContext';
+import { useDeleteWithConfirm } from '../../hooks/useDeleteWithConfirm';
 import { generateId } from '../../utils/security';
 import { calculateWorkItemEffort, calculateWorkItemTcv } from '../../utils/businessLogic';
 import { GenericDetailPage, type DetailTab } from '../common/GenericDetailPage';
@@ -37,7 +37,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     deleteIssue,
     updateIssue
 }) => {
-    const { showConfirm } = useNotificationContext();
+    const deleteWithConfirm = useDeleteWithConfirm();
     const isNew = workItemId === 'new';
 
     // Draft states for new workItem creation
@@ -93,15 +93,13 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
         }
     };
 
-    const handleDelete = async () => {
-        const confirmed = await showConfirm('Delete Work Item', 'Are you sure you want to delete this work item? It will be removed from all associated issues.');
-        if (!confirmed) return;
-        try {
-            deleteWorkItem(workItemId);
-            onBack();
-        } catch (err) {
-            console.error('Delete failed', err);
-        }
+    const handleDelete = () => {
+        deleteWithConfirm(
+            'Delete Work Item',
+            'Are you sure you want to delete this work item? It will be removed from all associated issues.',
+            () => deleteWorkItem(workItemId),
+            onBack
+        );
     };
 
     if (!workItem && !loading) {
