@@ -1,7 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { unmaskSettings } from '../utils/configHelpers';
+import { getIntegrationConfig } from '../utils/configHelpers';
 import { getGleanSettings, refreshGleanToken, gleanChatRequest } from '../utils/gleanHelpers';
 import { LlmGenerateBody, LlmGenerateBodyType } from './schemas';
 
@@ -12,11 +12,10 @@ export const llmRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post<{ Body: LlmGenerateBodyType }>('/api/llm/generate', { schema: { body: LlmGenerateBody } }, async (request, reply) => {
     try {
       const { prompt, config: rawConfig } = request.body;
-      const existing = await fastify.getSettings();
-      const config = unmaskSettings(rawConfig || {}, existing);
+      const { section: ai } = await getIntegrationConfig(fastify, rawConfig || {}, 'ai');
 
-      const provider = config.ai?.provider || 'openai';
-      const apiKey = config.ai?.api_key;
+      const provider = ai.provider || 'openai';
+      const apiKey = ai.api_key;
 
       let resultText = '';
 
@@ -25,13 +24,13 @@ export const llmRoutes: FastifyPluginAsync = async (fastify) => {
         const r = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-          body: JSON.stringify({ model: config.ai?.model || 'gpt-4-turbo', messages: [{ role: 'user', content: prompt }] })
+          body: JSON.stringify({ model: ai.model || 'gpt-4-turbo', messages: [{ role: 'user', content: prompt }] })
         });
         const d = await r.json() as any;
         resultText = d.choices[0].message.content;
       } else if (provider === 'gemini') {
         if (!apiKey) throw new Error('Gemini API key missing');
-        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${config.ai?.model || 'gemini-1.5-pro'}:generateContent?key=${apiKey}`, {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${ai.model || 'gemini-1.5-pro'}:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
@@ -44,7 +43,7 @@ export const llmRoutes: FastifyPluginAsync = async (fastify) => {
         const { stdout } = await execPromise(`npx --no-install auggie --print --quiet "${prompt.replace(/"/g, '\\"')}"`, { env });
         resultText = stdout.trim();
       } else if (provider === 'glean') {
-        const gleanUrl = config.ai?.glean_url;
+        const gleanUrl = ai.glean_url;
         if (!gleanUrl) throw new Error('Glean URL missing');
 
         const normalizedUrl = gleanUrl.replace(/\/$/, '');

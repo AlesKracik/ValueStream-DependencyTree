@@ -4,7 +4,7 @@ import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
 import { spawn } from 'child_process';
-import { unmaskSettings } from '../utils/configHelpers';
+import { getIntegrationConfig } from '../utils/configHelpers';
 import { evictSsoClients } from '../utils/mongoServer';
 import { AwsSsoLoginBody, AwsSsoLoginBodyType } from './schemas';
 
@@ -12,9 +12,7 @@ export const awsRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post<{ Body: AwsSsoLoginBodyType }>('/api/aws/sso/login', { schema: { body: AwsSsoLoginBody } }, async (request, reply) => {
     try {
-      const rawConfig = request.body;
-      const existing = await fastify.getSettings();
-      const config = unmaskSettings(rawConfig, existing);
+      const { full: config } = await getIntegrationConfig(fastify, request.body);
 
       const role = config.role || 'app';
       const auth = config.persistence?.mongo?.[role]?.auth || {};

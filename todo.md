@@ -17,10 +17,10 @@ Fix: Split into useGraphFilters(), useGraphBuilder(), useGraphLayout()
 Each mixes entity editing, sync logic, and multi-tab rendering
 Fix: Extract tab content into sub-components (e.g., CustomerHealthTab, CustomerWorkItemsTab)
 High (Moderate Impact)
-5. Backend: Repeated settings retrieval + unmasking (5 route files)
+5. ~~Backend: Repeated settings retrieval + unmasking (5 route files)~~ ✅ DONE
 
-jira.ts, aha.ts, aws.ts, mongo.ts, llm.ts all repeat getSettings() → unmaskSettings() → extract config → validate
-Fix: Extract getIntegrationConfig(fastify, rawConfig, section, requiredFields) helper
+~~jira.ts, aha.ts, aws.ts, mongo.ts, llm.ts all repeat getSettings() → unmaskSettings() → extract config → validate~~
+Fixed: Extracted `getIntegrationConfig(fastify, rawConfig, section, requiredFields)` helper in `configHelpers.ts`
 6. Backend: ALLOWED_COLLECTIONS duplicated in entity.ts and mongo.ts
 
 Fix: Move to a shared utils/constants.ts

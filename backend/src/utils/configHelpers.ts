@@ -1,6 +1,7 @@
 import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
+import { FastifyInstance } from 'fastify';
 
 /** Resolve the path to settings.json in the backend directory */
 export const getSettingsPath = () => path.resolve(__dirname, '../../settings.json');
@@ -83,6 +84,37 @@ export function unmaskSettings(newData: any, existingSettings: any): any {
   });
 
   return unmasked;
+}
+
+/**
+ * Resolve integration config: fetches stored settings, unmasks raw config against them,
+ * optionally extracts a named section and validates required fields.
+ *
+ * @param fastify  - Fastify instance (for getSettings decorator)
+ * @param rawConfig - Raw config from request body (may contain masked values)
+ * @param section  - Optional top-level key to extract (e.g. 'jira', 'aha', 'ai')
+ * @param requiredFields - Optional array of [fieldName, errorLabel] tuples to validate
+ * @returns { full, section } - full merged config and the extracted section
+ */
+export async function getIntegrationConfig(
+  fastify: FastifyInstance,
+  rawConfig: any,
+  section?: string,
+  requiredFields?: [string, string][]
+): Promise<{ full: any; section: any }> {
+  const existing = await fastify.getSettings();
+  const config = unmaskSettings(rawConfig, existing);
+  const sectionData = section ? (config[section] || {}) : config;
+
+  if (requiredFields) {
+    for (const [field, label] of requiredFields) {
+      if (!sectionData[field]) {
+        throw new Error(`${label} is not configured in settings.`);
+      }
+    }
+  }
+
+  return { full: config, section: sectionData };
 }
 
 // --- Secret extraction / stripping / merging helpers ---

@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { unmaskSettings } from '../utils/configHelpers';
+import { getIntegrationConfig } from '../utils/configHelpers';
 import {
   JiraConfigBody, JiraConfigBodyType,
   JiraIssueBody, JiraIssueBodyType,
@@ -10,16 +10,11 @@ export const jiraRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post<{ Body: JiraConfigBodyType }>('/api/jira/test', { schema: { body: JiraConfigBody } }, async (request, reply) => {
     try {
-      const rawConfig = request.body;
-      const existing = await fastify.getSettings();
-
-      const config = unmaskSettings(rawConfig, existing);
-      const jira = config.jira || {};
-      const base_url = jira.base_url;
+      const { section: jira } = await getIntegrationConfig(
+        fastify, request.body, 'jira', [['base_url', 'Jira Base URL']]
+      );
+      const { base_url, api_token } = jira;
       const api_version = jira.api_version || '3';
-      const api_token = jira.api_token;
-
-      if (!base_url) throw new Error('Jira Base URL is not configured in settings.');
 
       let origin;
       try { origin = new URL(base_url).origin; } catch (e) { throw new Error(`Invalid Jira Base URL: "${base_url}".`); }
@@ -37,17 +32,12 @@ export const jiraRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post<{ Body: JiraIssueBodyType }>('/api/jira/issue', { schema: { body: JiraIssueBody } }, async (request, reply) => {
     try {
-      const rawConfig = request.body;
-      const existing = await fastify.getSettings();
-
-      const config = unmaskSettings(rawConfig, existing);
-      const jira = config.jira || {};
-      const base_url = jira.base_url;
+      const { full: config, section: jira } = await getIntegrationConfig(
+        fastify, request.body, 'jira', [['base_url', 'Jira Base URL']]
+      );
+      const { base_url, api_token } = jira;
       const api_version = jira.api_version || '3';
-      const api_token = jira.api_token;
       const jira_key = config.jira_key;
-
-      if (!base_url) throw new Error('Jira Base URL is not configured in settings.');
 
       let origin;
       try { origin = new URL(base_url).origin; } catch (e) { throw new Error(`Invalid Jira Base URL: "${base_url}".`); }
@@ -63,17 +53,12 @@ export const jiraRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post<{ Body: JiraSearchBodyType }>('/api/jira/search', { schema: { body: JiraSearchBody } }, async (request, reply) => {
     try {
-      const rawConfig = request.body;
-      const existing = await fastify.getSettings();
-
-      const config = unmaskSettings(rawConfig, existing);
-      const jira = config.jira || {};
-      const base_url = jira.base_url;
+      const { full: config, section: jira } = await getIntegrationConfig(
+        fastify, request.body, 'jira', [['base_url', 'Jira Base URL']]
+      );
+      const { base_url, api_token } = jira;
       const api_version = jira.api_version || '3';
-      const api_token = jira.api_token;
       const jql = config.jql;
-
-      if (!base_url) throw new Error('Jira Base URL is not configured in settings.');
 
       let origin;
       try { origin = new URL(base_url).origin; } catch (e) { throw new Error(`Invalid Jira Base URL: "${base_url}".`); }

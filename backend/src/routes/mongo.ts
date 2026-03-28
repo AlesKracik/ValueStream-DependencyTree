@@ -1,5 +1,5 @@
 import { FastifyPluginAsync } from 'fastify';
-import { augmentConfig, unmaskSettings, maskSettings } from '../utils/configHelpers';
+import { augmentConfig, maskSettings, getIntegrationConfig } from '../utils/configHelpers';
 import { getDb } from '../utils/mongoServer';
 import {
   MongoConfigBody, MongoConfigBodyType,
@@ -13,10 +13,7 @@ export const mongoRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post<{ Body: MongoConfigBodyType }>('/api/mongo/databases', { schema: { body: MongoConfigBody } }, async (request, reply) => {
     try {
-      const rawConfig = request.body;
-      const existing = await fastify.getSettings();
-
-      const config = unmaskSettings(rawConfig, existing);
+      const { full: config } = await getIntegrationConfig(fastify, request.body);
       const role = config.connection_type || 'app';
 
       const db = await getDb(augmentConfig(config, role), role);
@@ -30,10 +27,7 @@ export const mongoRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post<{ Body: MongoConfigBodyType }>('/api/mongo/test', { schema: { body: MongoConfigBody } }, async (request, reply) => {
     try {
-      const rawConfig = request.body;
-      const existing = await fastify.getSettings();
-
-      const config = unmaskSettings(rawConfig, existing);
+      const { full: config } = await getIntegrationConfig(fastify, request.body);
       const role = config.connection_type || 'app';
       const targetDb = config.persistence?.mongo?.[role]?.db || 'valueStream';
 

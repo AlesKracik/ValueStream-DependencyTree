@@ -1,21 +1,16 @@
 import { FastifyPluginAsync } from 'fastify';
-import { unmaskSettings } from '../utils/configHelpers';
+import { getIntegrationConfig } from '../utils/configHelpers';
 import { AhaConfigBody, AhaConfigBodyType, AhaFeatureBody, AhaFeatureBodyType } from './schemas';
 
 export const ahaRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post<{ Body: AhaConfigBodyType }>('/api/aha/test', { schema: { body: AhaConfigBody } }, async (request, reply) => {
     try {
-      const rawConfig = request.body;
-      const existing = await fastify.getSettings();
-
-      const config = unmaskSettings(rawConfig, existing);
-      const aha = config.aha || {};
-      const subdomain = aha.subdomain;
-      const api_key = aha.api_key;
-
-      if (!subdomain) throw new Error('Aha! Subdomain is not configured.');
-      if (!api_key) throw new Error('Aha! API Key is not configured.');
+      const { section: aha } = await getIntegrationConfig(
+        fastify, request.body, 'aha',
+        [['subdomain', 'Aha! Subdomain'], ['api_key', 'Aha! API Key']]
+      );
+      const { subdomain, api_key } = aha;
 
       const apiUrl = `https://${subdomain}.aha.io/api/v1/features`;
       const ahaRes = await fetch(apiUrl, {

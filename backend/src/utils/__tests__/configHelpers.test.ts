@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { maskSettings, unmaskSettings, calculateQuarter, extractSecrets, stripSecrets, mergeSecrets, splitDotPath } from '../configHelpers';
+import { describe, it, expect, vi } from 'vitest';
+import { maskSettings, unmaskSettings, calculateQuarter, extractSecrets, stripSecrets, mergeSecrets, splitDotPath, getIntegrationConfig } from '../configHelpers';
 
 describe('configHelpers', () => {
   describe('maskSettings', () => {
@@ -242,6 +242,81 @@ describe('configHelpers', () => {
       const restored = mergeSecrets(stripped, secrets);
 
       expect(restored).toEqual(original);
+    });
+  });
+
+  describe('getIntegrationConfig', () => {
+    const mockFastify = (settings: any) => ({
+      getSettings: vi.fn().mockResolvedValue(settings),
+    }) as any;
+
+    it('should resolve config by unmasking rawConfig against stored settings', async () => {
+      const fastify = mockFastify({ jira: { base_url: 'https://jira.com', api_token: 'real-token' } });
+      const rawConfig = { jira: { base_url: 'https://jira.com', api_token: '********' } };
+
+      const { full } = await getIntegrationConfig(fastify, rawConfig);
+
+      expect(full.jira.api_token).toBe('real-token');
+      expect(full.jira.base_url).toBe('https://jira.com');
+    });
+
+    it('should extract a named section', async () => {
+      const fastify = mockFastify({ jira: { base_url: 'https://jira.com', api_token: 'token' } });
+      const rawConfig = { jira: { base_url: 'https://jira.com', api_token: 'token' } };
+
+      const { section } = await getIntegrationConfig(fastify, rawConfig, 'jira');
+
+      expect(section.base_url).toBe('https://jira.com');
+      expect(section.api_token).toBe('token');
+    });
+
+    it('should return empty object when section does not exist', async () => {
+      const fastify = mockFastify({});
+      const { section } = await getIntegrationConfig(fastify, {}, 'jira');
+
+      expect(section).toEqual({});
+    });
+
+    it('should validate required fields and throw on missing', async () => {
+      const fastify = mockFastify({});
+      const rawConfig = { jira: {} };
+
+      await expect(
+        getIntegrationConfig(fastify, rawConfig, 'jira', [['base_url', 'Jira Base URL']])
+      ).rejects.toThrow('Jira Base URL is not configured in settings.');
+    });
+
+    it('should validate multiple required fields in order', async () => {
+      const fastify = mockFastify({});
+      const rawConfig = { aha: {} };
+
+      await expect(
+        getIntegrationConfig(fastify, rawConfig, 'aha', [['subdomain', 'Aha! Subdomain'], ['api_key', 'Aha! API Key']])
+      ).rejects.toThrow('Aha! Subdomain is not configured in settings.');
+    });
+
+    it('should pass validation when required fields are present', async () => {
+      const fastify = mockFastify({ aha: { subdomain: 'test', api_key: 'key123' } });
+      const rawConfig = { aha: { subdomain: 'test', api_key: 'key123' } };
+
+      const { section } = await getIntegrationConfig(
+        fastify, rawConfig, 'aha', [['subdomain', 'Aha! Subdomain'], ['api_key', 'Aha! API Key']]
+      );
+
+      expect(section.subdomain).toBe('test');
+      expect(section.api_key).toBe('key123');
+    });
+
+    it('should return full config when no section is specified', async () => {
+      const fastify = mockFastify({ existing: true });
+      const rawConfig = { role: 'app', persistence: { mongo: { app: { uri: 'mongodb://host' } } } };
+
+      const { full, section } = await getIntegrationConfig(fastify, rawConfig);
+
+      expect(full.role).toBe('app');
+      expect(full.persistence.mongo.app.uri).toBe('mongodb://host');
+      // When no section, section === full config
+      expect(section).toEqual(full);
     });
   });
 
