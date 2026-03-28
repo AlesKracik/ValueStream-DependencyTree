@@ -6,8 +6,7 @@ import {
   MongoQueryBody, MongoQueryBodyType,
   MongoImportBody, MongoImportBodyType
 } from './schemas';
-
-const ALLOWED_COLLECTIONS = ['customers', 'workItems', 'teams', 'issues', 'sprints', 'valueStreams'];
+import { ALLOWED_COLLECTIONS } from '../utils/constants';
 
 export const mongoRoutes: FastifyPluginAsync = async (fastify) => {
 

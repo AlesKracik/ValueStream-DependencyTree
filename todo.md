@@ -6,17 +6,7 @@
   • snowflake integration
   * TCV History Logic Enhancement: Currently, when a Customer's Actual TCV is updated (archived to history), Work Items linked to "Latest Actual" remain linked to the new "Latest Actual". Consider if some Work Items should be automatically re-linked to the archived historical entry to preserve their context.
 * code readability, organization, DRY and overall architecture
-Code Quality Analysis
-Critical (High Impact)
-3. ~~useGraphLayout.ts — 1,049 lines, mixed concerns~~ ✓ Done: Split into useGraphFilters.ts, useGraphBuilder.ts, useGraphLayout.ts (thin orchestrator)
-4. Large detail pages (CustomerPage 946, WorkItemPage 838, SupportPage 797)
 
-Each mixes entity editing, sync logic, and multi-tab rendering
-Fix: Extract tab content into sub-components (e.g., CustomerHealthTab, CustomerWorkItemsTab)
-High (Moderate Impact)
-6. Backend: ALLOWED_COLLECTIONS duplicated in entity.ts and mongo.ts
-
-Fix: Move to a shared utils/constants.ts
 7. Backend: glean.ts — 319 lines mixing OAuth, chat proxy, and discovery
 
 Fix: Split into gleanAuth.ts, gleanChat.ts, gleanDiscovery.ts

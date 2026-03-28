@@ -8,8 +8,7 @@ import {
   CollectionParams, CollectionParamsType,
   CollectionIdParams, CollectionIdParamsType
 } from './schemas';
-
-const ALLOWED_COLLECTIONS = ['customers', 'workItems', 'teams', 'issues', 'sprints', 'valueStreams'];
+import { ALLOWED_COLLECTIONS } from '../utils/constants';
 // Collections whose mutations affect RICE scores and trigger recomputation
 const SCORE_AFFECTING_COLLECTIONS = ['workItems', 'customers', 'issues'];
 
