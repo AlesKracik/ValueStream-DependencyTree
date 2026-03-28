@@ -178,167 +178,77 @@ export function useValueStreamData(
         fetchData();
     };
 
-    const addCustomer = (customer: Customer) => {
-        persistEntity('customers', 'POST', customer, showAlert);
-        setData(prev => {
-            if (!prev) return prev;
-            return { ...prev, customers: [...(prev.customers || []), customer] };
-        });
-    };
+    // Generic CRUD factory for entities with { id: string }
+    // Eliminates repeated add/update/delete boilerplate across entity types
+    function createEntityCRUD<T extends { id: string }>(
+        collection: string,
+        key: 'customers' | 'workItems' | 'teams' | 'issues' | 'valueStreams',
+        onDeleteCascade?: (prev: ValueStreamData, id: string) => Partial<ValueStreamData>
+    ) {
+        const add = (entity: T) => {
+            persistEntity(collection, 'POST', entity, showAlert);
+            setData(prev => {
+                if (!prev) return prev;
+                return { ...prev, [key]: [...((prev[key] as T[]) || []), entity] };
+            });
+        };
 
-    const deleteCustomer = (id: string) => {
-        // Backend handles cascade: removes customer_targets referencing this customer from all workItems
-        persistEntity('customers', 'DELETE', { id }, showAlert);
-        setData(prev => {
-            if (!prev) return prev;
-            return {
-                ...prev,
-                customers: (prev.customers || []).filter(c => c.id !== id),
-                workItems: (prev.workItems || []).map(f => ({
-                    ...f,
-                    customer_targets: f.customer_targets.filter(ct => ct.customer_id !== id)
-                }))
-            };
-        });
-    };
+        const update = async (id: string, updates: Partial<T>, immediate = false) => {
+            const existing = (data?.[key] as T[] | undefined)?.find(e => e.id === id);
+            if (!existing) return;
+            const updated = { ...existing, ...updates };
 
-    const updateCustomer = async (id: string, updates: Partial<Customer>, immediate = false) => {
-        const existing = data?.customers?.find(c => c.id === id);
-        if (!existing) return;
-        const updated = { ...existing, ...updates };
+            setData(prev => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    [key]: ((prev[key] as T[]) || []).map(e => e.id === id ? updated : e)
+                };
+            });
 
-        setData(prev => {
-            if (!prev) return prev;
-            return {
-                ...prev,
-                customers: (prev.customers || []).map(c => c.id === id ? updated : c)
-            };
-        });
+            if (immediate) {
+                await persistEntity(collection, 'POST', updated, showAlert);
+            } else {
+                debouncedPersist(collection, 'POST', updated);
+            }
+        };
 
-        if (immediate) {
-            await persistEntity('customers', 'POST', updated, showAlert);
-        } else {
-            debouncedPersist('customers', 'POST', updated);
-        }
-    };
+        const remove = (id: string) => {
+            persistEntity(collection, 'DELETE', { id }, showAlert);
+            setData(prev => {
+                if (!prev) return prev;
+                const base: ValueStreamData = {
+                    ...prev,
+                    [key]: ((prev[key] as T[]) || []).filter(e => e.id !== id)
+                };
+                return onDeleteCascade ? { ...base, ...onDeleteCascade(prev, id) } : base;
+            });
+        };
 
-    const addWorkItem = (workItem: WorkItem) => {
-        persistEntity('workItems', 'POST', workItem, showAlert);
-        setData(prev => {
-            if (!prev) return prev;
-            return { ...prev, workItems: [...(prev.workItems || []), workItem] };
-        });
-    };
+        return { add, update, remove };
+    }
 
-    const deleteWorkItem = (id: string) => {
-        // Backend handles cascade: clears work_item_id from all issues referencing this workItem
-        persistEntity('workItems', 'DELETE', { id }, showAlert);
-        setData(prev => {
-            if (!prev) return prev;
-            return {
-                ...prev,
-                workItems: (prev.workItems || []).filter(f => f.id !== id),
-                issues: (prev.issues || []).map(e => e.work_item_id === id ? { ...e, work_item_id: undefined } : e)
-            };
-        });
-    };
+    // Backend handles cascade: removes customer_targets referencing this customer from all workItems
+    const customerCRUD = createEntityCRUD<Customer>('customers', 'customers', (prev, id) => ({
+        workItems: (prev.workItems || []).map(f => ({
+            ...f,
+            customer_targets: f.customer_targets.filter(ct => ct.customer_id !== id)
+        }))
+    }));
 
-    const updateWorkItem = async (id: string, updates: Partial<WorkItem>, immediate = false) => {
-        const existing = data?.workItems?.find(w => w.id === id);
-        if (!existing) return;
-        const updated = { ...existing, ...updates };
+    // Backend handles cascade: clears work_item_id from all issues referencing this workItem
+    const workItemCRUD = createEntityCRUD<WorkItem>('workItems', 'workItems', (prev, id) => ({
+        issues: (prev.issues || []).map(e => e.work_item_id === id ? { ...e, work_item_id: undefined } : e)
+    }));
 
-        setData(prev => {
-            if (!prev) return prev;
-            return {
-                ...prev,
-                workItems: (prev.workItems || []).map(f => f.id === id ? updated : f)
-            };
-        });
+    // Backend handles cascade: clears team_id from all issues referencing this team
+    const teamCRUD = createEntityCRUD<Team>('teams', 'teams', (prev, id) => ({
+        issues: (prev.issues || []).map(e => e.team_id === id ? { ...e, team_id: '' } : e)
+    }));
 
-        if (immediate) {
-            await persistEntity('workItems', 'POST', updated, showAlert);
-        } else {
-            debouncedPersist('workItems', 'POST', updated);
-        }
-    };
+    const issueCRUD = createEntityCRUD<Issue>('issues', 'issues');
 
-    const updateTeam = async (id: string, updates: Partial<Team>, immediate = false) => {
-        const existing = data?.teams?.find(t => t.id === id);
-        if (!existing) return;
-        const updated = { ...existing, ...updates };
-
-        setData(prev => {
-            if (!prev) return prev;
-            return {
-                ...prev,
-                teams: (prev.teams || []).map(t => t.id === id ? updated : t)
-            };
-        });
-
-        if (immediate) {
-            await persistEntity('teams', 'POST', updated, showAlert);
-        } else {
-            debouncedPersist('teams', 'POST', updated);
-        }
-    };
-
-    const addTeam = (team: Team) => {
-        persistEntity('teams', 'POST', team, showAlert);
-        setData(prev => {
-            if (!prev) return prev;
-            return { ...prev, teams: [...(prev.teams || []), team] };
-        });
-    };
-
-    const deleteTeam = (id: string) => {
-        // Backend handles cascade: clears team_id from all issues referencing this team
-        persistEntity('teams', 'DELETE', { id }, showAlert);
-        setData(prev => {
-            if (!prev) return prev;
-            return {
-                ...prev,
-                teams: (prev.teams || []).filter(t => t.id !== id),
-                issues: (prev.issues || []).map(e => e.team_id === id ? { ...e, team_id: '' } : e)
-            };
-        });
-    };
-
-    const addIssue = (issue: Issue) => {
-        persistEntity('issues', 'POST', issue, showAlert);
-        setData(prev => {
-            if (!prev) return prev;
-            return { ...prev, issues: [...(prev.issues || []), issue] };
-        });
-    };
-
-    const deleteIssue = (id: string) => {
-        persistEntity('issues', 'DELETE', { id }, showAlert);
-        setData(prev => {
-            if (!prev) return prev;
-            return { ...prev, issues: (prev.issues || []).filter(e => e.id !== id) };
-        });
-    };
-
-    const updateIssue = async (id: string, updates: Partial<Issue>, immediate = false) => {
-        const existing = data?.issues?.find(e => e.id === id);
-        if (!existing) return;
-        const updated = { ...existing, ...updates };
-
-        setData(prev => {
-            if (!prev) return prev;
-            return {
-                ...prev,
-                issues: (prev.issues || []).map(e => e.id === id ? updated : e)
-            };
-        });
-
-        if (immediate) {
-            await persistEntity('issues', 'POST', updated, showAlert);
-        } else {
-            debouncedPersist('issues', 'POST', updated);
-        }
-    };
+    const valueStreamCRUD = createEntityCRUD<ValueStreamEntity>('valueStreams', 'valueStreams');
 
     const updateSettings = (updates: Partial<Settings>) => {
         setData(prev => {
@@ -453,65 +363,29 @@ export function useValueStreamData(
         });
     };
 
-    const addValueStream = (valueStream: ValueStreamEntity) => {
-        persistEntity('valueStreams', 'POST', valueStream, showAlert);
-        setData(prev => {
-            if (!prev) return prev;
-            return { ...prev, valueStreams: [...(prev.valueStreams || []), valueStream] };
-        });
-    };
-
-    const updateValueStream = async (id: string, updates: Partial<ValueStreamEntity>, immediate = false) => {
-        const existing = data?.valueStreams?.find(d => d.id === id);
-        if (!existing) return;
-        const updated = { ...existing, ...updates };
-
-        setData(prev => {
-            if (!prev) return prev;
-            return {
-                ...prev,
-                valueStreams: (prev.valueStreams || []).map(d => d.id === id ? updated : d)
-            };
-        });
-
-        if (immediate) {
-            await persistEntity('valueStreams', 'POST', updated, showAlert);
-        } else {
-            debouncedPersist('valueStreams', 'POST', updated);
-        }
-    };
-
-    const deleteValueStream = (id: string) => {
-        persistEntity('valueStreams', 'DELETE', { id }, showAlert);
-        setData(prev => {
-            if (!prev) return prev;
-            return { ...prev, valueStreams: (prev.valueStreams || []).filter(d => d.id !== id) };
-        });
-    };
-
     return {
         data,
         loading,
         error,
         refreshData,
-        addCustomer,
-        deleteCustomer,
-        updateCustomer,
-        addWorkItem,
-        deleteWorkItem,
-        updateWorkItem,
-        addIssue,
-        deleteIssue,
-        updateTeam,
-        addTeam,
-        deleteTeam,
-        updateIssue,
+        addCustomer: customerCRUD.add,
+        deleteCustomer: customerCRUD.remove,
+        updateCustomer: customerCRUD.update,
+        addWorkItem: workItemCRUD.add,
+        deleteWorkItem: workItemCRUD.remove,
+        updateWorkItem: workItemCRUD.update,
+        addTeam: teamCRUD.add,
+        deleteTeam: teamCRUD.remove,
+        updateTeam: teamCRUD.update,
+        addIssue: issueCRUD.add,
+        deleteIssue: issueCRUD.remove,
+        updateIssue: issueCRUD.update,
         addSprint,
         updateSprint,
         deleteSprint,
         updateSettings,
-        addValueStream,
-        updateValueStream,
-        deleteValueStream
+        addValueStream: valueStreamCRUD.add,
+        updateValueStream: valueStreamCRUD.update,
+        deleteValueStream: valueStreamCRUD.remove
     };
 }
