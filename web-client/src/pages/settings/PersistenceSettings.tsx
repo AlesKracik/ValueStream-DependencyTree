@@ -2,7 +2,7 @@ import * as React from "react";
 import { useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { authorizedFetch } from "../../utils/api";
-import { useValueStreamContext } from "../../contexts/ValueStreamContext";
+import { useNotificationContext } from "../../contexts/NotificationContext";
 import styles from '../List.module.css';
 import type { SettingsTabProps, MongoTestResult, SSOMessage } from './types';
 
@@ -16,7 +16,7 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
   const activeSubTab = searchParams.get("subtab") || "mongo";
   const activeSubSubTab = searchParams.get("subsubtab") || (activeSubTab === "mongo" ? "application" : "");
 
-  const { showConfirm } = useValueStreamContext();
+  const { showConfirm } = useNotificationContext();
 
   const [isTesting, setIsTesting] = useState(false);
   const [availableDbs, setAvailableDbs] = useState<string[]>([]);

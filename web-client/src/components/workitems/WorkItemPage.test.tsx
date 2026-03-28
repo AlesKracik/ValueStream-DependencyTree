@@ -1,17 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { WorkItemPage } from './WorkItemPage';
-import { useValueStreamContext, NotificationProvider, ValueStreamProvider } from '../../contexts/ValueStreamContext';
+import { NotificationProvider, ValueStreamProvider } from '../../contexts/ValueStreamContext';
+import { useNotificationContext } from '../../contexts/NotificationContext';
 import type { ValueStreamData } from '@valuestream/shared-types';
 import * as api from '../../utils/api';
 import { MemoryRouter } from 'react-router-dom';
 
-vi.mock('../../contexts/ValueStreamContext', async (importOriginal) => {
+vi.mock('../../contexts/NotificationContext', async (importOriginal) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const actual = await importOriginal() as any;
     return {
         ...actual,
-        useValueStreamContext: vi.fn()
+        useNotificationContext: vi.fn()
     };
 });
 
@@ -102,7 +103,7 @@ describe('WorkItemPage', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
             data: mockData,
@@ -161,7 +162,7 @@ describe('WorkItemPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
             data: dataWithUnassigned,
@@ -212,7 +213,7 @@ describe('WorkItemPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
             data: dataWithGlobal,
@@ -243,7 +244,7 @@ describe('WorkItemPage', () => {
         const updateIssueSpy = vi.fn();
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
             data: dataWithIssue,
@@ -277,7 +278,7 @@ describe('WorkItemPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
             data: dataWithDatelessIssue,
@@ -304,7 +305,7 @@ describe('WorkItemPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
             data: dataWithDesc,
@@ -344,7 +345,7 @@ describe('WorkItemPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
             data: dataWithSprint,
@@ -407,7 +408,7 @@ describe('WorkItemPage', () => {
         (api.syncJiraIssue as any).mockRejectedValueOnce(new Error('Jira API Error'));
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
             data: dataWithIssue,
@@ -446,7 +447,7 @@ describe('WorkItemPage', () => {
         (api.syncJiraIssue as any).mockRejectedValueOnce(new Error('Network Failure'));
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
             data: dataWithIssue,
@@ -485,7 +486,7 @@ describe('WorkItemPage', () => {
         (api.syncJiraIssue as any).mockResolvedValueOnce({ fields: { summary: 'Synced Issue' } });
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
             data: dataWithIssue,
@@ -547,7 +548,7 @@ describe('WorkItemPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
             data: dataWithIssue,
@@ -582,7 +583,7 @@ describe('WorkItemPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
             data: dataWithIssue,

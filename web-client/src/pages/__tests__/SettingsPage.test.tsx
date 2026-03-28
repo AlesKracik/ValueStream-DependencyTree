@@ -4,12 +4,12 @@ import { SettingsPage, DEFAULT_SETTINGS } from '../SettingsPage';
 import type { ValueStreamData, Settings } from '@valuestream/shared-types';
 import { MemoryRouter } from 'react-router-dom';
 
-// Mock ValueStreamContext
+// Mock NotificationContext
 const mockShowAlert = vi.fn();
 const mockShowConfirm = vi.fn();
 
-vi.mock('../../contexts/ValueStreamContext', () => ({
-    useValueStreamContext: () => ({
+vi.mock('../../contexts/NotificationContext', () => ({
+    useNotificationContext: () => ({
         showAlert: mockShowAlert,
         showConfirm: mockShowConfirm
     })

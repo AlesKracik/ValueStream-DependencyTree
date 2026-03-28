@@ -2,6 +2,7 @@ import React from 'react';
 import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ValueStreamProvider, NotificationProvider } from '../contexts/ValueStreamContext';
+import { UIStateProvider } from '../contexts/UIStateContext';
 import { vi } from 'vitest';
 import type { ValueStreamData, Issue } from '@valuestream/shared-types';
 
@@ -25,11 +26,13 @@ export function renderWithProviders(
 ) {
     return render(
         <NotificationProvider>
-            <ValueStreamProvider value={{ data, updateIssue, addIssue, deleteIssue }}>
-                <MemoryRouter initialEntries={[route]}>
-                    {ui}
-                </MemoryRouter>
-            </ValueStreamProvider>
+            <UIStateProvider>
+                <ValueStreamProvider value={{ data, updateIssue, addIssue, deleteIssue }}>
+                    <MemoryRouter initialEntries={[route]}>
+                        {ui}
+                    </MemoryRouter>
+                </ValueStreamProvider>
+            </UIStateProvider>
         </NotificationProvider>
     );
 }

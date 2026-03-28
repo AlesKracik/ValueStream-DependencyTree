@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Team, TeamMember, ValueStreamData } from '@valuestream/shared-types';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useValueStreamContext } from '../../contexts/ValueStreamContext';
+import { useNotificationContext } from '../../contexts/NotificationContext';
 import { authorizedFetch } from '../../utils/api';
 import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers';
 import { GenericDetailPage, type DetailTab } from '../common/GenericDetailPage';
@@ -19,7 +19,7 @@ interface TeamPageProps {
 export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, addTeam, deleteTeam }) => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { showConfirm } = useValueStreamContext();
+    const { showConfirm } = useNotificationContext();
     const isNew = id === 'new';
 
     const existingTeam = data?.teams.find(t => t.id === id);

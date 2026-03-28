@@ -1,7 +1,8 @@
 import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { IssuePage } from '../IssuePage';
-import { ValueStreamProvider, NotificationProvider, useValueStreamContext } from '../../../contexts/ValueStreamContext';
+import { ValueStreamProvider, NotificationProvider } from '../../../contexts/ValueStreamContext';
+import { useNotificationContext } from '../../../contexts/NotificationContext';
 import type { ValueStreamData } from '@valuestream/shared-types';
 import * as api from '../../../utils/api';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
@@ -16,12 +17,12 @@ vi.mock('react-router-dom', async () => {
     };
 });
 
-vi.mock('../../../contexts/ValueStreamContext', async (importOriginal) => {
+vi.mock('../../../contexts/NotificationContext', async (importOriginal) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const actual = await importOriginal() as any;
     return {
         ...actual,
-        useValueStreamContext: vi.fn()
+        useNotificationContext: vi.fn()
     };
 });
 
@@ -100,7 +101,7 @@ describe('IssuePage', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert,
             data: mockData,
@@ -261,7 +262,7 @@ describe('IssuePage', () => {
                 ]
             };
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (useValueStreamContext as any).mockReturnValue({
+            (useNotificationContext as any).mockReturnValue({
                 showConfirm: mockShowConfirm,
                 showAlert: mockShowAlert,
                 data: extendedData,
@@ -291,7 +292,7 @@ describe('IssuePage', () => {
 
         it('renders the current Work Item name', () => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (useValueStreamContext as any).mockReturnValue({
+            (useNotificationContext as any).mockReturnValue({
                 showConfirm: mockShowConfirm,
                 showAlert: mockShowAlert,
                 data: dataWithWorkItems,
@@ -304,7 +305,7 @@ describe('IssuePage', () => {
 
         it('updates the Work Item when selecting from dropdown', async () => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (useValueStreamContext as any).mockReturnValue({
+            (useNotificationContext as any).mockReturnValue({
                 showConfirm: mockShowConfirm,
                 showAlert: mockShowAlert,
                 data: dataWithWorkItems,
@@ -323,7 +324,7 @@ describe('IssuePage', () => {
 
         it('updates to undefined when selecting Unassigned', async () => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (useValueStreamContext as any).mockReturnValue({
+            (useNotificationContext as any).mockReturnValue({
                 showConfirm: mockShowConfirm,
                 showAlert: mockShowAlert,
                 data: dataWithWorkItems,
@@ -345,7 +346,7 @@ describe('IssuePage', () => {
         it('deletes the issue after confirmation', async () => {
             const deleteIssueSpy = vi.fn();
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (useValueStreamContext as any).mockReturnValue({
+            (useNotificationContext as any).mockReturnValue({
                 showConfirm: mockShowConfirm,
                 showAlert: mockShowAlert,
                 data: mockData,

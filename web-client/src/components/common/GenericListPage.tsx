@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import styles from '../../pages/List.module.css';
 import { PageWrapper } from '../layout/PageWrapper';
-import { useValueStreamContext } from '../../contexts/ValueStreamContext';
+import { useUIStateContext } from '../../contexts/UIStateContext';
 
 export type SortOption<T> = {
     label: string;
@@ -64,7 +64,7 @@ export function GenericListPage<T extends { id: string }>({
     loadingMessage = "Loading...",
     emptyMessage = "No items found."
 }: GenericListPageProps<T>) {
-    const { uiState, updateUiState } = useValueStreamContext();
+    const { uiState, updateUiState } = useUIStateContext();
     const listRef = useRef<HTMLDivElement>(null);
     const isRestored = useRef(false);
     

@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { GenericListPage } from '../GenericListPage';
 import { MemoryRouter } from 'react-router-dom';
 import { ValueStreamProvider, NotificationProvider } from '../../../contexts/ValueStreamContext';
+import { UIStateProvider } from '../../../contexts/UIStateContext';
 import React from 'react';
 
 const mockItems = [
@@ -35,11 +36,12 @@ describe('GenericListPage State Persistence', () => {
             const [show, setShow] = React.useState(true);
             return (
                 <NotificationProvider>
-                    <ValueStreamProvider value={{ 
-                        data: null, 
-                        updateIssue: vi.fn(), 
-                        addIssue: vi.fn(), 
-                        deleteIssue: vi.fn() 
+                    <UIStateProvider>
+                    <ValueStreamProvider value={{
+                        data: null,
+                        updateIssue: vi.fn(),
+                        addIssue: vi.fn(),
+                        deleteIssue: vi.fn()
                     }}>
                         <main> {/* Mock the main scroll container */}
                             <button onClick={() => setShow(prev => !prev)}>Toggle</button>
@@ -57,6 +59,7 @@ describe('GenericListPage State Persistence', () => {
                             )}
                         </main>
                     </ValueStreamProvider>
+                    </UIStateProvider>
                 </NotificationProvider>
             );
         };

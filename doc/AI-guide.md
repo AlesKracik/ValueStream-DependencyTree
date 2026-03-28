@@ -76,6 +76,10 @@ Centralized in `backend/src/utils/businessLogic.ts`:
 
 ### State Management
 - **Primary Hook**: `web-client/src/hooks/useValueStreamData.ts`.
+- **Context Architecture** (`web-client/src/contexts/`): Three separated concerns:
+  - `NotificationContext.tsx` — `NotificationProvider` + `useNotificationContext()` for alert/confirm modals.
+  - `UIStateContext.tsx` — `UIStateProvider` + `useUIStateContext()` for page-level UI state (filter, sort, scroll) and graph view state.
+  - `ValueStreamContext.tsx` — `ValueStreamProvider` + `useValueStreamContext()` for entity data and mutations (data, updateIssue, addIssue, deleteIssue). Re-exports from the other two contexts for backward compatibility.
 - **Optimistic Updates**: UI updates immediately; persistence is debounced (1s) to prevent excessive writes.
 - **Cascading Deletes**: Referential integrity is enforced **server-side** in the backend DELETE endpoint (e.g., deleting a Customer `$pull`s its targets from all Work Items; deleting a WorkItem `$unset`s `work_item_id` from Issues). The frontend mirrors cascades optimistically in local state for instant UI feedback.
 

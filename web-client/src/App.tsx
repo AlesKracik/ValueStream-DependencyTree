@@ -24,7 +24,8 @@ import { SupportPage } from './pages/SupportPage';
 import { LoginPage } from './pages/LoginPage';
 
 import { useValueStreamData } from './hooks/useValueStreamData';
-import { ValueStreamProvider, NotificationProvider, useNotificationContext, useValueStreamContext } from './contexts/ValueStreamContext';
+import { ValueStreamProvider, NotificationProvider, useNotificationContext } from './contexts/ValueStreamContext';
+import { UIStateProvider, useUIStateContext } from './contexts/UIStateContext';
 import { getAdminSecret } from './utils/api';
 import { deepMerge } from './utils/businessLogic';
 import type { ValueStreamDataState } from '@valuestream/shared-types';
@@ -56,7 +57,8 @@ function createRouteWrapper(config: RouteWrapperConfig): React.FC {
 function ValueStreamRouteWrapper() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { showAlert, viewState, setViewState } = useValueStreamContext();
+  const { showAlert } = useNotificationContext();
+  const { viewState, setViewState } = useUIStateContext();
   // Backend applies the ValueStream's saved (static) parameters as hard filters.
   // Dynamic/transient filters are applied client-side in useGraphLayout.
   const valueStreamState = useValueStreamData(id, undefined, 1000, showAlert);
@@ -192,6 +194,7 @@ function MainAppContent() {
   }, [settingsState.data?.settings?.general?.theme]);
 
   return (
+    <UIStateProvider>
     <ValueStreamProvider value={{}}>
       <BrowserRouter>
         <Routes>
@@ -226,6 +229,7 @@ function MainAppContent() {
         </Routes>
       </BrowserRouter>
     </ValueStreamProvider>
+    </UIStateProvider>
   );
 }
 

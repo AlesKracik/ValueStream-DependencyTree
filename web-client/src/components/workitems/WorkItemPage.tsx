@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { ValueStreamData, WorkItem, Issue } from '@valuestream/shared-types';
 import { SearchableDropdown } from '../common/SearchableDropdown';
-import { useValueStreamContext } from '../../contexts/ValueStreamContext';
+import { useNotificationContext } from '../../contexts/NotificationContext';
 import { generateId } from '../../utils/security';
 import { calculateWorkItemEffort, calculateWorkItemTcv } from '../../utils/businessLogic';
 import { GenericDetailPage, type DetailTab } from '../common/GenericDetailPage';
@@ -37,7 +37,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     deleteIssue,
     updateIssue
 }) => {
-    const { showConfirm } = useValueStreamContext();
+    const { showConfirm } = useNotificationContext();
     const isNew = workItemId === 'new';
 
     // Draft states for new workItem creation

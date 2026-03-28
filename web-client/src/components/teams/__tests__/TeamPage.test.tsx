@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { TeamPage } from '../TeamPage';
-import { ValueStreamProvider, NotificationProvider, useValueStreamContext } from '../../../contexts/ValueStreamContext';
+import { ValueStreamProvider, NotificationProvider } from '../../../contexts/ValueStreamContext';
+import { useNotificationContext } from '../../../contexts/NotificationContext';
 import type { ValueStreamData } from '@valuestream/shared-types';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
@@ -11,12 +12,12 @@ vi.mock('../../../utils/api', () => ({
     debounce: (fn: any) => fn
 }));
 
-vi.mock('../../../contexts/ValueStreamContext', async (importOriginal) => {
+vi.mock('../../../contexts/NotificationContext', async (importOriginal) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const actual = await importOriginal() as any;
     return {
         ...actual,
-        useValueStreamContext: vi.fn()
+        useNotificationContext: vi.fn()
     };
 });
 
@@ -64,7 +65,7 @@ describe('TeamPage', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: mockData,
             updateIssue: vi.fn()
@@ -114,7 +115,7 @@ describe('TeamPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWithCZ,
             updateIssue: vi.fn()
@@ -152,7 +153,7 @@ describe('TeamPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWithOverride,
             updateIssue: vi.fn()
@@ -215,7 +216,7 @@ describe('TeamPage', () => {
 
         cleanup();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWithCZ,
             updateIssue: vi.fn()
@@ -237,7 +238,7 @@ describe('TeamPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWith20,
             updateIssue: vi.fn()
@@ -292,7 +293,7 @@ describe('TeamPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWithMembers,
             updateIssue: vi.fn()
@@ -323,7 +324,7 @@ describe('TeamPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWithLdap,
             updateIssue: vi.fn()
@@ -351,7 +352,7 @@ describe('TeamPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWithoutSettings,
             updateIssue: vi.fn()
@@ -374,7 +375,7 @@ describe('TeamPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWithMembers,
             updateIssue: vi.fn()
@@ -405,7 +406,7 @@ describe('TeamPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWithMembers,
             updateIssue: vi.fn()
@@ -438,7 +439,7 @@ describe('TeamPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWithMembers,
             updateIssue: vi.fn()
@@ -470,7 +471,7 @@ describe('TeamPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWithLdap,
             updateIssue: vi.fn()
@@ -515,7 +516,7 @@ describe('TeamPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWithLdapAndMembers,
             updateIssue: vi.fn()
@@ -562,7 +563,7 @@ describe('TeamPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWithLdap,
             updateIssue: vi.fn()
@@ -595,7 +596,7 @@ describe('TeamPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: dataWithLdap,
             updateIssue: vi.fn()

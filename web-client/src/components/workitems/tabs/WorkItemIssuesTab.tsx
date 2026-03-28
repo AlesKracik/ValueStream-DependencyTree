@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Issue, ValueStreamData } from '@valuestream/shared-types';
 import { syncJiraIssue } from '../../../utils/api';
 import { SearchableDropdown } from '../../common/SearchableDropdown';
-import { useValueStreamContext } from '../../../contexts/ValueStreamContext';
+import { useNotificationContext } from '../../../contexts/NotificationContext';
 import { generateId } from '../../../utils/security';
 import { parseJiraIssue } from '../../../utils/businessLogic';
 import customerStyles from '../../customers/CustomerPage.module.css';
@@ -29,7 +29,7 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
     deleteIssue,
     setNewWorkItemIssues
 }) => {
-    const { showAlert, showConfirm } = useValueStreamContext();
+    const { showAlert, showConfirm } = useNotificationContext();
     const navigate = useNavigate();
     const [syncingId, setSyncingId] = useState<string | null>(null);
 

@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { ValueStreamEditPage } from '../ValueStreamEditPage';
-import { useValueStreamContext } from '../../contexts/ValueStreamContext';
+import { useNotificationContext } from '../../contexts/NotificationContext';
 import type { ValueStreamData } from '@valuestream/shared-types';
 import { MemoryRouter } from 'react-router-dom';
 
-vi.mock('../../contexts/ValueStreamContext', async (importOriginal) => {
+vi.mock('../../contexts/NotificationContext', async (importOriginal) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const actual = await importOriginal() as any;
     return {
         ...actual,
-        useValueStreamContext: vi.fn()
+        useNotificationContext: vi.fn()
     };
 });
 
@@ -63,7 +63,7 @@ describe('ValueStreamEditPage', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: mockData,
             updateIssue

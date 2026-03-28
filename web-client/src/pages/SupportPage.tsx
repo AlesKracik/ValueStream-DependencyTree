@@ -5,7 +5,7 @@ import type { SortOption, ListColumn } from '../components/common/GenericListPag
 import { useNavigate, useLocation } from 'react-router-dom';
 import { llmGenerate, gleanAuthLogin, gleanAuthStatus, gleanChat } from '../utils/api';
 import { generateId } from '../utils/security';
-import { useValueStreamContext } from '../contexts/ValueStreamContext';
+import { useNotificationContext } from '../contexts/NotificationContext';
 import { extractFirstJSONObject } from '../utils/businessLogic';
 
 interface Props {
@@ -69,7 +69,7 @@ const ACTIVITY_ORDER: Record<string, number> = {
 export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { showAlert } = useValueStreamContext();
+    const { showAlert } = useNotificationContext();
     const [isAISearching, setIsAISearching] = useState(false);
     const [searchProgress, setSearchProgress] = useState<string | null>(null);
     const [streamingText, setStreamingText] = useState<string>('');

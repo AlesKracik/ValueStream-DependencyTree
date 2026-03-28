@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { parseISO, addDays, format } from 'date-fns';
 import type { ValueStreamData, Sprint } from '@valuestream/shared-types';
-import { useValueStreamContext } from '../../contexts/ValueStreamContext';
+import { useNotificationContext } from '../../contexts/NotificationContext';
 import styles from '../../pages/List.module.css';
 import { generateId } from '../../utils/security';
 import { PageWrapper } from '../layout/PageWrapper';
@@ -23,7 +23,7 @@ export const SprintPage: React.FC<SprintPageProps> = ({
     updateSprint,
     deleteSprint
 }) => {
-    const { showConfirm } = useValueStreamContext();
+    const { showConfirm } = useNotificationContext();
     const [isCreating, setIsCreating] = useState(false);
 
     // Draft states for new sprint creation

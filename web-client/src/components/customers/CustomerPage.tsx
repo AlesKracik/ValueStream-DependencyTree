@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import type { ValueStreamData, Customer, WorkItem, TcvHistoryEntry } from '@valuestream/shared-types';
-import { useValueStreamContext } from '../../contexts/ValueStreamContext';
+import { useNotificationContext } from '../../contexts/NotificationContext';
 import { generateId } from '../../utils/security';
 import { useCustomerHealth } from '../../hooks/useCustomerHealth';
 import { useCustomerCustomFields } from '../../hooks/useCustomerCustomFields';
@@ -35,7 +35,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     addCustomer,
     updateWorkItem
 }) => {
-    const { showConfirm } = useValueStreamContext();
+    const { showConfirm } = useNotificationContext();
     const isNew = customerId === 'new';
 
     // Draft states for new customer creation

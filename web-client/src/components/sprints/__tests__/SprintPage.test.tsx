@@ -1,16 +1,17 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SprintPage } from '../SprintPage';
-import { ValueStreamProvider, NotificationProvider, useValueStreamContext } from '../../../contexts/ValueStreamContext';
+import { ValueStreamProvider, NotificationProvider } from '../../../contexts/ValueStreamContext';
+import { useNotificationContext } from '../../../contexts/NotificationContext';
 import type { ValueStreamData } from '@valuestream/shared-types';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
-vi.mock('../../../contexts/ValueStreamContext', async (importOriginal) => {
+vi.mock('../../../contexts/NotificationContext', async (importOriginal) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const actual = await importOriginal() as any;
     return {
         ...actual,
-        useValueStreamContext: vi.fn()
+        useNotificationContext: vi.fn()
     };
 });
 
@@ -57,7 +58,7 @@ describe('SprintPage', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: mockData,
             updateIssue: vi.fn()
@@ -162,7 +163,7 @@ describe('SprintPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: pastData,
             updateIssue: vi.fn()
@@ -188,7 +189,7 @@ describe('SprintPage', () => {
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             data: pastData,
             updateIssue: vi.fn()

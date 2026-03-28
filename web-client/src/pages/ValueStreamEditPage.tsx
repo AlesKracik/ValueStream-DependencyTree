@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { ValueStreamData, ValueStreamEntity } from '@valuestream/shared-types';
-import { useValueStreamContext } from '../contexts/ValueStreamContext';
+import { useNotificationContext } from '../contexts/NotificationContext';
 import styles from '../components/customers/CustomerPage.module.css';
 import { generateId } from '../utils/security';
 import { PageWrapper } from '../components/layout/PageWrapper';
@@ -26,7 +26,7 @@ export const ValueStreamEditPage: React.FC<ValueStreamEditPageProps> = ({
     updateValueStream,
     deleteValueStream
 }) => {
-    const { showConfirm } = useValueStreamContext();
+    const { showConfirm } = useNotificationContext();
     const isNew = valueStreamId === 'new';
 
     const [draft, setDraft] = useState<Partial<ValueStreamEntity>>({

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { WorkItem, ValueStreamData } from '@valuestream/shared-types';
 import { syncAhaFeature } from '../../../utils/api';
-import { useValueStreamContext } from '../../../contexts/ValueStreamContext';
+import { useNotificationContext } from '../../../contexts/NotificationContext';
 
 interface Props {
     workItem: WorkItem | undefined;
@@ -20,7 +20,7 @@ export const WorkItemAhaTab: React.FC<Props> = ({
     updateWorkItem,
     data
 }) => {
-    const { showAlert, showConfirm } = useValueStreamContext();
+    const { showAlert, showConfirm } = useNotificationContext();
     const [isSyncingAha, setIsSyncingAha] = useState(false);
 
     const stripHtml = (html: string) => {

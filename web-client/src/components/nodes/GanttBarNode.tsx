@@ -2,6 +2,7 @@ import { memo, useState, useRef, useEffect, useCallback } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { addDays, format, parseISO } from 'date-fns';
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';
+import { useNotificationContext } from '../../contexts/NotificationContext';
 import { sanitizeUrl } from '../../utils/security';
 import { calculateIssueEffortPerSprint } from '../../utils/businessLogic';
 import type { Issue } from '@valuestream/shared-types';
@@ -27,7 +28,8 @@ export interface GanttBarNodeData {
 const PIXELS_PER_DAY = 20;
 
 export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
-    const { data: ValueStreamData, updateIssue, showConfirm } = useValueStreamContext();
+    const { data: ValueStreamData, updateIssue } = useValueStreamContext();
+    const { showConfirm } = useNotificationContext();
     const [dragState, setDragState] = useState<{ active: 'left' | 'right' | null, startX: number, currentDelta: number }>({
         active: null,
         startX: 0,

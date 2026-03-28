@@ -3,7 +3,7 @@ import type { Issue, ValueStreamData } from '@valuestream/shared-types';
 import { useNavigate, useParams } from 'react-router-dom';
 import { calculateIssueEffortPerSprint, parseJiraIssue } from '../../utils/businessLogic';
 import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers';
-import { useValueStreamContext } from '../../contexts/ValueStreamContext';
+import { useNotificationContext } from '../../contexts/NotificationContext';
 import { syncJiraIssue } from '../../utils/api';
 import { GenericDetailPage, type DetailTab } from '../common/GenericDetailPage';
 import { FormTextField, FormDateField, FormNumberField } from '../common/FormFields';
@@ -20,7 +20,7 @@ interface IssuePageProps {
 export const IssuePage: React.FC<IssuePageProps> = ({ data, loading, updateIssue, deleteIssue }) => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { showAlert, showConfirm } = useValueStreamContext();
+    const { showAlert, showConfirm } = useNotificationContext();
     
     const issue = data?.issues.find(e => e.id === id);
     const team = data?.teams.find(t => t.id === issue?.team_id);

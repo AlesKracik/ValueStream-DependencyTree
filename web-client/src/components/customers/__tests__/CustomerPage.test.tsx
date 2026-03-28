@@ -2,14 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act, within, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { CustomerPage } from '../CustomerPage';
-import { useValueStreamContext } from '../../../contexts/ValueStreamContext';
+import { useNotificationContext } from '../../../contexts/NotificationContext';
 import type { ValueStreamData, SupportIssue } from '@valuestream/shared-types';
 import * as api from '../../../utils/api';
 
 // Mock the context
-vi.mock('../../../contexts/ValueStreamContext', () => ({
-    useValueStreamContext: vi.fn(),
-    ValueStreamProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+vi.mock('../../../contexts/NotificationContext', () => ({
+    useNotificationContext: vi.fn(),
 }));
 
 vi.mock('../../../utils/api', () => ({
@@ -81,9 +80,7 @@ describe('CustomerPage', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
-            data: mockData,
-            updateIssue: vi.fn(),
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert
         });
@@ -820,8 +817,7 @@ describe('CustomerPage', () => {
         // healthData is mocked to return 1 issue in 'New' status by default in some tests,
         // but let's make it explicit here.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (useValueStreamContext as any).mockReturnValue({
-            data: mockData,
+        (useNotificationContext as any).mockReturnValue({
             showConfirm: mockShowConfirm,
             showAlert: mockShowAlert
         });
