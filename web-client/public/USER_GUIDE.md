@@ -185,6 +185,8 @@ The granular execution units that bridge Product strategy and Engineering delive
 
 **Tab: Sprint Effort Distribution**
 
+<!-- TODO: screenshot — Issue sprint effort distribution tab -->
+
 *   View and override how effort is allocated across the issue's timeline.
 *   **Columns:** Sprint, Dates, Context (Quarter), Team Capacity, Effort (MDs).
 *   **Manual Overrides:** Click any effort cell to set a manual value. Overridden values are highlighted in bold blue. Click the **X** button to revert to the proportional calculation.
@@ -209,12 +211,16 @@ Engineering teams are the delivery engines, each with a defined velocity.
 
 **Tab: Capacity Overrides**
 
+<!-- TODO: screenshot — Team capacity overrides tab -->
+
 *   View effective capacity per sprint with automatic holiday adjustments.
 *   **Columns:** Sprint, Dates, Standard Work Days, Effective Capacity (MDs).
 *   **Work Days:** Shows the count of business days, with holidays indicated (e.g., `🏖️ -1`).
 *   **Manual Overrides:** Click any capacity cell to set a manual value. Overridden values are highlighted in bold blue. Click the **X** button to revert to the calculated capacity.
 
 **Tab: Members**
+
+<!-- TODO: screenshot — Team members tab -->
 
 *   Inline CRUD for team members.
 *   **Fields:** Name, Username (unique identifier / LDAP merge key), Capacity % (default: 100).
@@ -376,11 +382,15 @@ The Settings page provides six configuration tabs:
 
 #### General Project
 
+<!-- TODO: screenshot — General Project settings tab -->
+
 *   **Colour Palette:** Switch between **Dark mode** and **Filips mode** (high-contrast pastel, designed for readability in bright environments).
 *   **Fiscal Year Start Month:** Align quarter groupings to your organisation's calendar (January–December).
 *   **Sprint Duration (Days):** Default duration for newly created sprints (typically 14).
 
 #### Persistence (Multi-Role)
+
+<!-- TODO: screenshot — Persistence settings tab -->
 
 *   **Application DB:** Where ValueStream stores its internal entities. Configure the MongoDB URI, database name, and authentication method.
 *   **Customer DB:** Connect to your production/external MongoDB to fetch "Custom Fields" via JSON aggregation pipelines.
@@ -397,6 +407,8 @@ The Settings page provides six configuration tabs:
 *   **Import / Export:** Export the entire database as portable JSON, or import from a previous export.
 
 #### Jira Integration
+
+<!-- TODO: screenshot — Jira Integration settings tab -->
 
 *   **Common:** Jira Base URL, API Version, and Personal Access Token (PAT). Includes a **Test Connection** tool.
 *   **Issues:** Tools for bulk operations:
@@ -432,6 +444,8 @@ Once configured, Work Item detail pages gain an **Aha! Integration** tab for lin
 *   **Required Schema:** Read-only display of the JSON schema that the AI response must match, ensuring structured issue extraction.
 
 #### LDAP
+
+<!-- TODO: screenshot — LDAP settings tab -->
 
 *   **General:** LDAP Server URL, Bind DN, and Bind Password (encrypted via SecretManager).
 *   **Team:** Base DN for group searches and a Search Filter template. Use the `{{LDAP_TEAM_NAME}}` placeholder in the filter — it is replaced at runtime with the team's configured LDAP group name (e.g., `(cn={{LDAP_TEAM_NAME}})`).
