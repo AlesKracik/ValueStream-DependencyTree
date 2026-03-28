@@ -2,6 +2,34 @@ export const getAdminSecret = () => sessionStorage.getItem('ADMIN_SECRET') || ''
 export const setAdminSecret = (secret: string) => sessionStorage.setItem('ADMIN_SECRET', secret);
 export const clearAdminSecret = () => sessionStorage.removeItem('ADMIN_SECRET');
 
+/**
+ * Generic POST+JSON API wrapper. Handles authorizedFetch, JSON parsing, and error checking.
+ * @param successCheck - predicate on parsed response to determine success (defaults to checking resData.success)
+ */
+async function apiPost<T>(
+    url: string,
+    body: unknown,
+    extractResult: (data: Record<string, unknown>) => T,
+    errorMessage: string,
+    successCheck?: (data: Record<string, unknown>) => boolean
+): Promise<T> {
+    const response = await authorizedFetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+    });
+
+    const resData = await response.json().catch(() => ({}));
+    const isSuccess = successCheck
+        ? successCheck(resData)
+        : (response.ok && resData.success);
+    if (!isSuccess) {
+        throw new Error(resData?.error || errorMessage);
+    }
+
+    return extractResult(resData);
+}
+
 export const authorizedFetch = async (url: string, options: RequestInit = {}) => {
     const secret = getAdminSecret();
     const headers = {
@@ -42,25 +70,19 @@ export const syncJiraIssue = async (
         throw new Error('Please enter a valid Jira Key before syncing.');
     }
 
-    const response = await authorizedFetch("/api/jira/issue", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+    return apiPost(
+        "/api/jira/issue",
+        {
             jira_key: jiraKey,
             jira: {
                 base_url: settings.base_url,
                 api_version: settings.api_version || "3",
                 api_token: settings.api_token,
             }
-        }),
-    });
-
-    const resData = await response.json().catch(() => ({}));
-    if (!response.ok || !resData.success) {
-        throw new Error(resData?.error || "Failed to fetch Jira data");
-    }
-
-    return resData.data;
+        },
+        (resData) => resData.data,
+        "Failed to fetch Jira data"
+    );
 };
 
 export const syncAhaFeature = async (
@@ -72,57 +94,42 @@ export const syncAhaFeature = async (
         throw new Error('Please enter a valid Aha! Reference Number before syncing.');
     }
 
-    const response = await authorizedFetch("/api/aha/feature", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+    return apiPost(
+        "/api/aha/feature",
+        {
             reference_num: referenceNum,
             aha: {
                 subdomain: ahaSettings.subdomain,
                 api_key: ahaSettings.api_key,
             }
-        }),
-    });
-
-    const resData = await response.json().catch(() => ({}));
-    if (!response.ok || !resData.success) {
-        throw new Error(resData?.error || "Failed to fetch Aha! data");
-    }
-
-    return resData.feature;
+        },
+        (resData) => resData.feature,
+        "Failed to fetch Aha! data"
+    );
 };
 
 export const llmGenerate = async (
     prompt: string,
     config: unknown
 ): Promise<string> => {
-    const response = await authorizedFetch("/api/llm/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, config }),
-    });
-
-    const resData = await response.json().catch(() => ({}));
-    if (!response.ok || !resData.success) {
-        throw new Error(resData?.error || "Failed to generate LLM response");
-    }
-
-    return resData.text;
+    return apiPost(
+        "/api/llm/generate",
+        { prompt, config },
+        (resData) => resData.text as string,
+        "Failed to generate LLM response"
+    );
 };
 
 export const gleanAuthLogin = async (gleanUrl: string): Promise<void> => {
-    const response = await authorizedFetch("/api/glean/auth/init", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gleanUrl }),
-    });
+    const authUrl = await apiPost(
+        "/api/glean/auth/init",
+        { gleanUrl },
+        (resData) => resData.authUrl as string,
+        "Failed to initialize Glean auth",
+        (resData) => !!resData.authUrl
+    );
 
-    const resData = await response.json().catch(() => ({}));
-    if (!response.ok || !resData.authUrl) {
-        throw new Error(resData?.error || "Failed to initialize Glean auth");
-    }
-
-    window.location.href = resData.authUrl;
+    window.location.href = authUrl;
 };
 
 export const gleanAuthStatus = async (gleanUrl: string): Promise<boolean> => {

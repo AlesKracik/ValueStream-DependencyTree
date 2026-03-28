@@ -7,11 +7,9 @@
   * TCV History Logic Enhancement: Currently, when a Customer's Actual TCV is updated (archived to history), Work Items linked to "Latest Actual" remain linked to the new "Latest Actual". Consider if some Work Items should be automatically re-linked to the archived historical entry to preserve their context.
 * code readability, organization, DRY and overall architecture
 
-10. Frontend: api.ts — 6 API functions with 60% duplicated boilerplate
+10. ~~Frontend: api.ts — 6 API functions with 60% duplicated boilerplate~~ DONE
 
-Same authorizedFetch → error handling → response parsing pattern
-Fix: Extract a generic apiRequest<T>(url, options) wrapper
-Medium
+Extracted `apiPost<T>()` generic wrapper; refactored syncJiraIssue, syncAhaFeature, llmGenerate, gleanAuthLogin to use it.
 11. Backend: Inconsistent error handling (9+ routes)
 
 reply.code(500).send({ success: false, error: e.message }) repeated everywhere
