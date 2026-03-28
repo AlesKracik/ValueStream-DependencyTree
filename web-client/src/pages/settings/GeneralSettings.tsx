@@ -1,4 +1,7 @@
 import type { SettingsTabProps } from './types';
+import { FormSelectField, FormNumberField } from '../../components/common/FormFields';
+
+const settingsFieldStyle = { display: "flex" as const, flexDirection: "column" as const, gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" };
 
 export const GeneralSettings: React.FC<SettingsTabProps> = ({
   localFormData,
@@ -10,66 +13,62 @@ export const GeneralSettings: React.FC<SettingsTabProps> = ({
       <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "var(--text-primary)", borderBottom: "1px solid var(--border-secondary)", paddingBottom: "4px" }}>
         Theme
       </h3>
-      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem", marginBottom: "20px" }}>
-        Color Palette:
-        <select
-          value={localFormData.general?.theme || 'dark'}
-          onChange={(e) => {
-              const val = e.target.value as 'dark' | 'filips';
-              updateFormData('general.theme', val);
-              onUpdateSettings({ general: { ...localFormData.general, theme: val } });
-          }}
-        >
-          <option value="dark">Dark mode</option>
-          <option value="filips">Filips mode</option>
-        </select>
-      </label>
+      <FormSelectField
+        label="Color Palette:"
+        value={localFormData.general?.theme || 'dark'}
+        onChange={v => {
+            const val = v as 'dark' | 'filips';
+            updateFormData('general.theme', val);
+            onUpdateSettings({ general: { ...localFormData.general, theme: val } });
+        }}
+        options={[
+            { value: 'dark', label: 'Dark mode' },
+            { value: 'filips', label: 'Filips mode' },
+        ]}
+        style={{ ...settingsFieldStyle, marginBottom: "20px" }}
+      />
 
       <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "var(--text-primary)", borderBottom: "1px solid var(--border-secondary)", paddingBottom: "4px" }}>
         Time
       </h3>
-      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-        Fiscal Year Start Month:
-        <select
-          value={localFormData.general?.fiscal_year_start_month || 1}
-          onChange={(e) => {
-              const val = parseInt(e.target.value);
-              updateFormData('general.fiscal_year_start_month', val);
-              onUpdateSettings({ general: { ...localFormData.general, fiscal_year_start_month: val } });
-          }}
-        >
-          <option value={1}>January (Calendar Year)</option>
-          <option value={2}>February</option>
-          <option value={3}>March</option>
-          <option value={4}>April</option>
-          <option value={5}>May</option>
-          <option value={6}>June</option>
-          <option value={7}>July</option>
-          <option value={8}>August</option>
-          <option value={9}>September</option>
-          <option value={10}>October</option>
-          <option value={11}>November</option>
-          <option value={12}>December</option>
-        </select>
-      </label>
+      <FormSelectField
+        label="Fiscal Year Start Month:"
+        value={localFormData.general?.fiscal_year_start_month || 1}
+        onChange={v => {
+            const val = parseInt(v);
+            updateFormData('general.fiscal_year_start_month', val);
+            onUpdateSettings({ general: { ...localFormData.general, fiscal_year_start_month: val } });
+        }}
+        options={[
+            { value: 1, label: 'January (Calendar Year)' },
+            { value: 2, label: 'February' },
+            { value: 3, label: 'March' },
+            { value: 4, label: 'April' },
+            { value: 5, label: 'May' },
+            { value: 6, label: 'June' },
+            { value: 7, label: 'July' },
+            { value: 8, label: 'August' },
+            { value: 9, label: 'September' },
+            { value: 10, label: 'October' },
+            { value: 11, label: 'November' },
+            { value: 12, label: 'December' },
+        ]}
+        style={settingsFieldStyle}
+      />
 
-      <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-        Sprint Duration (Days):
-        <span style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "-2px", marginBottom: "4px" }}>
-          Defines the default end date when creating new sprints. Does not affect existing sprints.
-        </span>
-        <input
-          type="number"
-          min="1"
-          max="365"
-          value={localFormData.general?.sprint_duration_days || 14}
-          onChange={(e) => {
-              const val = parseInt(e.target.value);
-              updateFormData('general.sprint_duration_days', val);
-              onUpdateSettings({ general: { ...localFormData.general, sprint_duration_days: val } });
-          }}
-        />
-      </label>
+      <FormNumberField
+        label="Sprint Duration (Days):"
+        helperText="Defines the default end date when creating new sprints. Does not affect existing sprints."
+        value={localFormData.general?.sprint_duration_days || 14}
+        onChange={v => {
+            const val = v ?? 14;
+            updateFormData('general.sprint_duration_days', val);
+            onUpdateSettings({ general: { ...localFormData.general, sprint_duration_days: val } });
+        }}
+        min={1}
+        max={365}
+        style={settingsFieldStyle}
+      />
     </>
   );
 };

@@ -8,11 +8,6 @@
 * code readability, organization, DRY and overall architecture
 Code Quality Analysis
 Critical (High Impact)
-1. ~~SettingsPage.tsx — 2,128 lines, God Component~~ **DONE**: Split into SettingsLayout (~170 lines) + 6 focused sub-pages in `web-client/src/pages/settings/` (GeneralSettings, PersistenceSettings, JiraSettings, AhaSettings, AiSettings, LdapSettings). PersistenceSettings also de-duplicated App/Customer Mongo forms via `renderMongoConnectionForm(role)`.
-2. useValueStreamData.ts — Repetitive CRUD factory (200+ duplicated lines)
-
-Identical add/update/delete patterns repeated for all 6 entity types (customers, workItems, teams, issues, sprints, valueStreams)
-Fix: Extract a generic createEntityCRUD<T>(collectionName, idField) factory function
 3. useGraphLayout.ts — 1,049 lines, mixed concerns
 
 Filter validation, graph building, node/edge rendering, and coordinate calculation all in one hook
@@ -32,10 +27,6 @@ Fix: Move to a shared utils/constants.ts
 7. Backend: glean.ts — 319 lines mixing OAuth, chat proxy, and discovery
 
 Fix: Split into gleanAuth.ts, gleanChat.ts, gleanDiscovery.ts
-8. Frontend: No reusable form field components
-
-Every detail page re-implements text/number/date/select input wrappers
-Fix: Create FormTextField, FormNumberField, etc.
 9. Frontend: App.tsx — 13 nearly identical route wrapper functions
 
 Each wraps useNotificationContext() + useValueStreamData() + renders page

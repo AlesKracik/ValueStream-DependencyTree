@@ -6,6 +6,7 @@ import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers'
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import { syncJiraIssue } from '../../utils/api';
 import { GenericDetailPage, type DetailTab } from '../common/GenericDetailPage';
+import { FormTextField, FormDateField, FormNumberField } from '../common/FormFields';
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import customerStyles from '../customers/CustomerPage.module.css';
 
@@ -135,15 +136,12 @@ export const IssuePage: React.FC<IssuePageProps> = ({ data, loading, updateIssue
     const mainDetails = (
         <>
             <div style={{ display: 'flex', gap: '32px', width: '100%' }}>
-                <label>
-                    Name
-                    <input 
-                        type="text" 
-                        value={issue.name || ''} 
-                        onChange={e => updateIssue(issue.id, { name: e.target.value })}
-                        placeholder="Issue Name"
-                    />
-                </label>
+                <FormTextField
+                    label="Name"
+                    value={issue.name || ''}
+                    onChange={v => updateIssue(issue.id, { name: v })}
+                    placeholder="Issue Name"
+                />
                 <label>
                     Work Item
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -158,38 +156,27 @@ export const IssuePage: React.FC<IssuePageProps> = ({ data, loading, updateIssue
                 </label>
             </div>
             <div style={{ display: 'flex', gap: '32px', width: '100%' }}>
-                <label>
-                    Jira Key
-                    <input 
-                        type="text" 
-                        value={issue.jira_key || ''} 
-                        onChange={e => updateIssue(issue.id, { jira_key: e.target.value })}
-                    />
-                </label>
-                <label>
-                    Target Start
-                    <input 
-                        type="date" 
-                        value={localDates.start} 
-                        onChange={e => handleDateChange('start', e.target.value)}
-                    />
-                </label>
-                <label>
-                    Target End
-                    <input 
-                        type="date" 
-                        value={localDates.end} 
-                        onChange={e => handleDateChange('end', e.target.value)}
-                    />
-                </label>
-                <label>
-                    Total Effort (MDs)
-                    <input 
-                        type="number" 
-                        value={issue.effort_md} 
-                        onChange={e => updateIssue(issue.id, { effort_md: parseFloat(e.target.value) })}
-                    />
-                </label>
+                <FormTextField
+                    label="Jira Key"
+                    value={issue.jira_key || ''}
+                    onChange={v => updateIssue(issue.id, { jira_key: v })}
+                />
+                <FormDateField
+                    label="Target Start"
+                    value={localDates.start}
+                    onChange={v => handleDateChange('start', v)}
+                />
+                <FormDateField
+                    label="Target End"
+                    value={localDates.end}
+                    onChange={v => handleDateChange('end', v)}
+                />
+                <FormNumberField
+                    label="Total Effort (MDs)"
+                    value={issue.effort_md}
+                    onChange={v => updateIssue(issue.id, { effort_md: v ?? 0 })}
+                    float
+                />
             </div>
         </>
     );

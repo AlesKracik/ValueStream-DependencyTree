@@ -88,6 +88,7 @@ Centralized in `backend/src/utils/businessLogic.ts`:
 ### List & Detail Pattern
 - **GenericListPage**: Used for all list views (Support, ValueStreams, etc.). Supports persistence of filters/sorts and robust scroll restoration.
 - **GenericDetailPage**: Used for all entity details.
+- **FormFields** (`components/common/FormFields.tsx`): Reusable form field components (`FormTextField`, `FormNumberField`, `FormDateField`, `FormSelectField`, `FormTextArea`) used across detail pages and settings. Support labels, helper text, readOnly, and custom styling.
     - **CustomerPage**: TCV management (Actual vs Potential), Promotion (Potential -> Actual), Support linking to Jira issues, and Custom Field fetching.
     - **WorkItemPage**: Global targeting, ROI metrics, and Issue management with Jira synchronization.
 

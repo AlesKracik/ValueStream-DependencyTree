@@ -8,6 +8,7 @@ import { calculateWorkItemEffort } from '../../utils/businessLogic';
 import { useCustomerHealth } from '../../hooks/useCustomerHealth';
 import { useCustomerCustomFields } from '../../hooks/useCustomerCustomFields';
 import { GenericDetailPage, type DetailTab } from '../common/GenericDetailPage';
+import { FormTextField, FormNumberField, FormDateField } from '../common/FormFields';
 import customerStyles from './CustomerPage.module.css';
 
 export interface CustomerPageProps {
@@ -372,55 +373,49 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     const mainDetails = (
         <>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 }}>
-                <label>
-                    Name:
-                    <input 
-                        type="text" 
-                        value={isNew ? newCustDraft.name : customer?.name} 
-                        onChange={e => {
-                            if (isNew) setNewCustDraft(prev => ({ ...prev, name: e.target.value }));
-                            else if (customer) updateCustomer(customer.id, { name: e.target.value });
-                        }}
-                        placeholder="New Customer"
-                    />
-                </label>
-                <label>
-                    Customer ID:
-                    <input 
-                        type="text" 
-                        value={isNew ? (newCustDraft.customer_id || '') : (customer?.customer_id || '')} 
-                        onChange={e => {
-                            if (isNew) setNewCustDraft(prev => ({ ...prev, customer_id: e.target.value }));
-                            else if (customer) updateCustomer(customer.id, { customer_id: e.target.value });
-                        }}
-                        placeholder="e.g. CUST-123"
-                    />
-                </label>
+                <FormTextField
+                    label="Name:"
+                    value={isNew ? (newCustDraft.name || '') : (customer?.name || '')}
+                    onChange={v => {
+                        if (isNew) setNewCustDraft(prev => ({ ...prev, name: v }));
+                        else if (customer) updateCustomer(customer.id, { name: v });
+                    }}
+                    placeholder="New Customer"
+                />
+                <FormTextField
+                    label="Customer ID:"
+                    value={isNew ? (newCustDraft.customer_id || '') : (customer?.customer_id || '')}
+                    onChange={v => {
+                        if (isNew) setNewCustDraft(prev => ({ ...prev, customer_id: v }));
+                        else if (customer) updateCustomer(customer.id, { customer_id: v });
+                    }}
+                    placeholder="e.g. CUST-123"
+                />
             </div>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <label>
-                        Actual Existing TCV ($):
-                        <input 
-                            type={isNew ? "number" : "text"} 
-                            readOnly={!isNew}
-                            value={isNew ? (newCustDraft.existing_tcv ?? '') : (customer?.existing_tcv || 0).toLocaleString()} 
-                            onChange={e => {
-                                if (!isNew) return;
-                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
-                                setNewCustDraft(prev => ({ ...prev, existing_tcv: val }));
-                            }}
+                    {isNew ? (
+                        <FormNumberField
+                            label="Actual Existing TCV ($):"
+                            value={newCustDraft.existing_tcv ?? ''}
+                            onChange={v => setNewCustDraft(prev => ({ ...prev, existing_tcv: v }))}
                             placeholder="0"
-                            style={!isNew ? { backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-secondary)' } : {}}
                         />
-                    </label>
+                    ) : (
+                        <FormTextField
+                            label="Actual Existing TCV ($):"
+                            value={(customer?.existing_tcv || 0).toLocaleString()}
+                            onChange={() => {}}
+                            readOnly
+                        />
+                    )}
                     <label>
                         Potential TCV ($):
                         <div style={{ display: 'flex', gap: '8px' }}>
-                            <input 
-                                type="number" 
-                                value={isNew ? (newCustDraft.potential_tcv ?? '') : (customer?.potential_tcv || 0)} 
+                            <input
+                                type="number"
+                                value={isNew ? (newCustDraft.potential_tcv ?? '') : (customer?.potential_tcv || 0)}
                                 onChange={e => {
                                     const val = e.target.value === '' ? undefined : parseInt(e.target.value);
                                     if (isNew) setNewCustDraft(prev => ({ ...prev, potential_tcv: val }));
@@ -438,53 +433,41 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                     </label>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <label>
-                        Existing Valid From:
-                        <input 
-                            type="date" 
-                            readOnly={!isNew}
-                            value={isNew ? (newCustDraft.existing_tcv_valid_from || '') : (customer?.existing_tcv_valid_from || '')} 
-                            onChange={e => {
-                                if (!isNew) return;
-                                setNewCustDraft(prev => ({ ...prev, existing_tcv_valid_from: e.target.value }));
-                            }}
-                            style={!isNew ? { backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-secondary)' } : {}}
-                        />
-                    </label>
-                    <label>
-                        Potential Valid From:
-                        <input 
-                            type="date" 
-                            value={isNew ? (newCustDraft.potential_tcv_valid_from || '') : (customer?.potential_tcv_valid_from || '')} 
-                            onChange={e => {
-                                if (isNew) setNewCustDraft(prev => ({ ...prev, potential_tcv_valid_from: e.target.value }));
-                                else if (customer) updateCustomer(customer.id, { potential_tcv_valid_from: e.target.value });
-                            }}
-                        />
-                    </label>
+                    <FormDateField
+                        label="Existing Valid From:"
+                        value={isNew ? (newCustDraft.existing_tcv_valid_from || '') : (customer?.existing_tcv_valid_from || '')}
+                        onChange={v => {
+                            if (!isNew) return;
+                            setNewCustDraft(prev => ({ ...prev, existing_tcv_valid_from: v }));
+                        }}
+                        readOnly={!isNew}
+                    />
+                    <FormDateField
+                        label="Potential Valid From:"
+                        value={isNew ? (newCustDraft.potential_tcv_valid_from || '') : (customer?.potential_tcv_valid_from || '')}
+                        onChange={v => {
+                            if (isNew) setNewCustDraft(prev => ({ ...prev, potential_tcv_valid_from: v }));
+                            else if (customer) updateCustomer(customer.id, { potential_tcv_valid_from: v });
+                        }}
+                    />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                    <label>
-                        Existing Duration (mo):
-                        <input 
-                            type="number" 
-                            readOnly={!isNew}
-                            value={isNew ? (newCustDraft.existing_tcv_duration_months ?? '') : (customer?.existing_tcv_duration_months || 0)} 
-                            onChange={e => {
-                                if (!isNew) return;
-                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
-                                setNewCustDraft(prev => ({ ...prev, existing_tcv_duration_months: val }));
-                            }}
-                            min="0"
-                            placeholder="12"
-                            style={!isNew ? { backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-secondary)' } : {}}
-                        />
-                    </label>
+                    <FormNumberField
+                        label="Existing Duration (mo):"
+                        value={isNew ? (newCustDraft.existing_tcv_duration_months ?? '') : (customer?.existing_tcv_duration_months || 0)}
+                        onChange={v => {
+                            if (!isNew) return;
+                            setNewCustDraft(prev => ({ ...prev, existing_tcv_duration_months: v }));
+                        }}
+                        min={0}
+                        placeholder="12"
+                        readOnly={!isNew}
+                    />
                     <label>
                         Potential Duration (mo):
-                        <input 
-                            type="number" 
-                            value={isNew ? (newCustDraft.potential_tcv_duration_months ?? '') : (customer?.potential_tcv_duration_months || 0)} 
+                        <input
+                            type="number"
+                            value={isNew ? (newCustDraft.potential_tcv_duration_months ?? '') : (customer?.potential_tcv_duration_months || 0)}
                             onChange={e => {
                                 const val = e.target.value === '' ? undefined : parseInt(e.target.value);
                                 if (isNew) setNewCustDraft(prev => ({ ...prev, potential_tcv_duration_months: val }));

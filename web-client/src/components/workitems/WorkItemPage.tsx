@@ -6,6 +6,7 @@ import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import { generateId } from '../../utils/security';
 import { calculateWorkItemEffort, calculateWorkItemTcv, parseJiraIssue } from '../../utils/businessLogic';
 import { GenericDetailPage, type DetailTab } from '../common/GenericDetailPage';
+import { FormTextField, FormNumberField, FormSelectField, FormTextArea } from '../common/FormFields';
 import customerStyles from '../customers/CustomerPage.module.css';
 import { useNavigate } from 'react-router-dom';
 
@@ -245,47 +246,40 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     const mainDetails = (
         <>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 }}>
-                <label>
-                    Name:
-                    <input
-                        type="text"
-                        value={workItem?.name || ''}
-                        onChange={e => {
-                            if (isNew) setNewWorkItemDraft(prev => ({ ...prev, name: e.target.value }));
-                            else updateWorkItem(workItemId, { name: e.target.value });
-                        }}
-                        placeholder="New Work Item"
-                    />
-                </label>
-                <label>
-                    Baseline Effort (MDs):
-                    <input
-                        type="number"
-                        min="0"
-                        value={workItem?.total_effort_mds || 0}
-                        onChange={e => {
-                            const val = parseInt(e.target.value) || 0;
-                            if (isNew) setNewWorkItemDraft(prev => ({ ...prev, total_effort_mds: val }));
-                            else updateWorkItem(workItemId, { total_effort_mds: val });
-                        }}
-                    />
-                </label>
-                <label>
-                    Status:
-                    <select
-                        value={workItem?.status || 'Backlog'}
-                        onChange={e => {
-                            const val = e.target.value as WorkItem['status'];
-                            if (isNew) setNewWorkItemDraft(prev => ({ ...prev, status: val }));
-                            else updateWorkItem(workItemId, { status: val });
-                        }}
-                    >
-                        <option value="Backlog">Backlog</option>
-                        <option value="Planning">Planning</option>
-                        <option value="Development">Development</option>
-                        <option value="Done">Done</option>
-                    </select>
-                </label>
+                <FormTextField
+                    label="Name:"
+                    value={workItem?.name || ''}
+                    onChange={v => {
+                        if (isNew) setNewWorkItemDraft(prev => ({ ...prev, name: v }));
+                        else updateWorkItem(workItemId, { name: v });
+                    }}
+                    placeholder="New Work Item"
+                />
+                <FormNumberField
+                    label="Baseline Effort (MDs):"
+                    value={workItem?.total_effort_mds || 0}
+                    onChange={v => {
+                        const val = v ?? 0;
+                        if (isNew) setNewWorkItemDraft(prev => ({ ...prev, total_effort_mds: val }));
+                        else updateWorkItem(workItemId, { total_effort_mds: val });
+                    }}
+                    min={0}
+                />
+                <FormSelectField
+                    label="Status:"
+                    value={workItem?.status || 'Backlog'}
+                    onChange={v => {
+                        const val = v as WorkItem['status'];
+                        if (isNew) setNewWorkItemDraft(prev => ({ ...prev, status: val }));
+                        else updateWorkItem(workItemId, { status: val });
+                    }}
+                    options={[
+                        { value: 'Backlog', label: 'Backlog' },
+                        { value: 'Planning', label: 'Planning' },
+                        { value: 'Development', label: 'Development' },
+                        { value: 'Done', label: 'Done' },
+                    ]}
+                />
                 <label>
                     Released in Sprint:
                     <SearchableDropdown
@@ -301,19 +295,18 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                 </label>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 }}>
-                <label style={{ flex: 1 }}>
-                    Description:
-                    <textarea
-                        value={workItem?.description || ''}
-                        onChange={e => {
-                            if (isNew) setNewWorkItemDraft(prev => ({ ...prev, description: e.target.value }));
-                            else updateWorkItem(workItemId, { description: e.target.value });
-                        }}
-                        rows={4}
-                        placeholder="Add a detailed description for this work item..."
-                        style={{ resize: 'none', minHeight: '100px', backgroundColor: 'var(--bg-primary)' }}
-                    />
-                </label>
+                <FormTextArea
+                    label="Description:"
+                    value={workItem?.description || ''}
+                    onChange={v => {
+                        if (isNew) setNewWorkItemDraft(prev => ({ ...prev, description: v }));
+                        else updateWorkItem(workItemId, { description: v });
+                    }}
+                    rows={4}
+                    placeholder="Add a detailed description for this work item..."
+                    style={{ flex: 1 }}
+                    textareaStyle={{ resize: 'none', minHeight: '100px', backgroundColor: 'var(--bg-primary)' }}
+                />
                 <div style={{ display: 'flex', gap: '12px' }}>
                     <div style={{ flex: 1, backgroundColor: 'var(--bg-tertiary)', padding: '12px', borderRadius: '6px', border: '1px solid var(--border-secondary)' }}>
                         <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginBottom: '4px' }}>Total Impact (TCV)</div>

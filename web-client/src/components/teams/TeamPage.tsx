@@ -5,6 +5,7 @@ import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import { authorizedFetch } from '../../utils/api';
 import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers';
 import { GenericDetailPage, type DetailTab } from '../common/GenericDetailPage';
+import { FormTextField, FormNumberField, FormSelectField } from '../common/FormFields';
 import customerStyles from '../customers/CustomerPage.module.css';
 
 interface TeamPageProps {
@@ -163,36 +164,30 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
 
     const mainDetails = (
         <>
-            <label>
-                Team Name
-                <input 
-                    type="text" 
-                    value={team.name || ''} 
-                    onChange={e => handleFieldChange({ name: e.target.value })}
-                />
-            </label>
-            <label>
-                Total Capacity (MDs per Sprint)
-                <input 
-                    type="number" 
-                    value={team.total_capacity_mds || 0} 
-                    onChange={e => handleFieldChange({ total_capacity_mds: parseFloat(e.target.value) })}
-                />
-            </label>
-            <label>
-                Country (for Holidays)
-                <select 
-                    value={team.country || 'Default'} 
-                    onChange={e => handleFieldChange({ country: e.target.value })}
-                >
-                    <option value="Default">Default (No Holidays)</option>
-                    <option value="US">United States</option>
-                    <option value="UK">United Kingdom</option>
-                    <option value="DE">Germany</option>
-                    <option value="CZ">Czech Republic</option>
-                    <option value="RO">Romania</option>
-                </select>
-            </label>
+            <FormTextField
+                label="Team Name"
+                value={team.name || ''}
+                onChange={v => handleFieldChange({ name: v })}
+            />
+            <FormNumberField
+                label="Total Capacity (MDs per Sprint)"
+                value={team.total_capacity_mds || 0}
+                onChange={v => handleFieldChange({ total_capacity_mds: v ?? 0 })}
+                float
+            />
+            <FormSelectField
+                label="Country (for Holidays)"
+                value={team.country || 'Default'}
+                onChange={v => handleFieldChange({ country: v })}
+                options={[
+                    { value: 'Default', label: 'Default (No Holidays)' },
+                    { value: 'US', label: 'United States' },
+                    { value: 'UK', label: 'United Kingdom' },
+                    { value: 'DE', label: 'Germany' },
+                    { value: 'CZ', label: 'Czech Republic' },
+                    { value: 'RO', label: 'Romania' },
+                ]}
+            />
         </>
     );
 
