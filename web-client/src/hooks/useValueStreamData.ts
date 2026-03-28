@@ -194,7 +194,7 @@ export function useValueStreamData(
         };
 
         const update = async (id: string, updates: Partial<T>, immediate = false) => {
-            const existing = (data?.[key] as T[] | undefined)?.find(e => e.id === id);
+            const existing = (data?.[key] as T[] | undefined)?.find(entity => entity.id === id);
             if (!existing) return;
             const updated = { ...existing, ...updates };
 
@@ -202,7 +202,7 @@ export function useValueStreamData(
                 if (!prev) return prev;
                 return {
                     ...prev,
-                    [key]: ((prev[key] as T[]) || []).map(e => e.id === id ? updated : e)
+                    [key]: ((prev[key] as T[]) || []).map(entity => entity.id === id ? updated : entity)
                 };
             });
 
@@ -219,7 +219,7 @@ export function useValueStreamData(
                 if (!prev) return prev;
                 const base: ValueStreamData = {
                     ...prev,
-                    [key]: ((prev[key] as T[]) || []).filter(e => e.id !== id)
+                    [key]: ((prev[key] as T[]) || []).filter(entity => entity.id !== id)
                 };
                 return onDeleteCascade ? { ...base, ...onDeleteCascade(prev, id) } : base;
             });
@@ -230,20 +230,20 @@ export function useValueStreamData(
 
     // Backend handles cascade: removes customer_targets referencing this customer from all workItems
     const customerCRUD = createEntityCRUD<Customer>('customers', 'customers', (prev, id) => ({
-        workItems: (prev.workItems || []).map(f => ({
-            ...f,
-            customer_targets: f.customer_targets.filter(ct => ct.customer_id !== id)
+        workItems: (prev.workItems || []).map(workItem => ({
+            ...workItem,
+            customer_targets: workItem.customer_targets.filter(ct => ct.customer_id !== id)
         }))
     }));
 
     // Backend handles cascade: clears work_item_id from all issues referencing this workItem
     const workItemCRUD = createEntityCRUD<WorkItem>('workItems', 'workItems', (prev, id) => ({
-        issues: (prev.issues || []).map(e => e.work_item_id === id ? { ...e, work_item_id: undefined } : e)
+        issues: (prev.issues || []).map(issue => issue.work_item_id === id ? { ...issue, work_item_id: undefined } : issue)
     }));
 
     // Backend handles cascade: clears team_id from all issues referencing this team
     const teamCRUD = createEntityCRUD<Team>('teams', 'teams', (prev, id) => ({
-        issues: (prev.issues || []).map(e => e.team_id === id ? { ...e, team_id: '' } : e)
+        issues: (prev.issues || []).map(issue => issue.team_id === id ? { ...issue, team_id: '' } : issue)
     }));
 
     const issueCRUD = createEntityCRUD<Issue>('issues', 'issues');

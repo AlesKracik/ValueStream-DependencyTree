@@ -106,18 +106,18 @@ export function useGraphBuilder(
         // 2. Process WorkItems (Column 2)
         // Implement RICE WorkItem Prioritization using server-provided scores
         const workItemsToProcess = [...data.workItems]
-            .filter(f => visibleWorkItems.has(f.id))
-            .map(f => {
-                const issuesForWorkItem = (data.issues || []).filter(e => e.work_item_id === f.id && visibleIssues.has(e.id));
-                const issueMdsSum = issuesForWorkItem.reduce((sum, e) => sum + e.effort_md, 0);
-                const hasDatelessIssues = issuesForWorkItem.some(e => !e.target_start || !e.target_end);
+            .filter(workItem => visibleWorkItems.has(workItem.id))
+            .map(workItem => {
+                const issuesForWorkItem = (data.issues || []).filter(issue => issue.work_item_id === workItem.id && visibleIssues.has(issue.id));
+                const issueMdsSum = issuesForWorkItem.reduce((sum, issue) => sum + issue.effort_md, 0);
+                const hasDatelessIssues = issuesForWorkItem.some(issue => !issue.target_start || !issue.target_end);
 
                 // Use centralized logic for effort warning
-                const totalEffort = calculateWorkItemEffort(f, data.issues);
-                const hasUnestimatedEffort = totalEffort === 0 || issuesForWorkItem.some(e => (e.effort_md || 0) === 0);
+                const totalEffort = calculateWorkItemEffort(workItem, data.issues);
+                const hasUnestimatedEffort = totalEffort === 0 || issuesForWorkItem.some(issue => (issue.effort_md || 0) === 0);
 
                 return {
-                    ...f,
+                    ...workItem,
                     issueMdsSum,
                     hasDatelessIssues,
                     hasUnestimatedEffort,
@@ -240,7 +240,7 @@ export function useGraphBuilder(
         });
 
         const visibleIssueIds = new Set(visibleIssues);
-        const allIssuesToShow = (data.issues || []).filter(e => visibleIssueIds.has(e.id));
+        const allIssuesToShow = (data.issues || []).filter(issue => visibleIssueIds.has(issue.id));
 
         // Build work item score lookup for Gantt lane ordering
         const workItemScoreMap: Record<string, number> = {};
@@ -297,7 +297,7 @@ export function useGraphBuilder(
         let currentLaneTop = START_Y - 90; // start aligned with START_Y based on min team height 180
 
         const sortedTeams = [...data.teams]
-            .filter(t => visibleTeams.has(t.id))
+            .filter(team => visibleTeams.has(team.id))
             .sort((a, b) => b.total_capacity_mds - a.total_capacity_mds);
 
         sortedTeams.forEach((team) => {
@@ -379,7 +379,7 @@ export function useGraphBuilder(
                     const ganttStartY = baseY - ((maxLanes - 1) * 45) / 2;
                     const yPos = ganttStartY + (laneIdx * 45);
 
-                    const workItem = data.workItems.find(f => f.id === issue.work_item_id);
+                    const workItem = data.workItems.find(wi => wi.id === issue.work_item_id);
 
                     // Build the segments for heat/intensity mapping using centralized logic
                     const segments: { startOffsetPixels: number, widthPixels: number, intensity: number, color: string, isFrozen: boolean }[] = [];
@@ -564,9 +564,9 @@ export function useGraphBuilder(
             // Calculate extents for the Today line
             let topY = Infinity;
             let bottomY = -Infinity;
-            sortedTeams.forEach(t => {
-                const baseY = teamBaseY[t.id];
-                const maxLanes = Math.max(teamMaxLanes[t.id] || 1, 1);
+            sortedTeams.forEach(team => {
+                const baseY = teamBaseY[team.id];
+                const maxLanes = Math.max(teamMaxLanes[team.id] || 1, 1);
                 const ganttStartY = baseY - ((maxLanes - 1) * 45) / 2;
                 const ganttEndY = ganttStartY + (maxLanes * 45);
                 if (ganttStartY < topY) topY = ganttStartY;
@@ -615,27 +615,27 @@ export function useGraphBuilder(
                     visitedTarget.add(contextKey);
 
                     hNodes.add(currentNodeId);
-                    let outgoingEdges = edges.filter(e => e.source === currentNodeId);
+                    let outgoingEdges = edges.filter(edge => edge.source === currentNodeId);
 
                     // If at a team node, only follow edges to the specific issue's Gantt bar
                     if (currentNodeId.startsWith('team-') && sourceIssueId) {
-                        outgoingEdges = outgoingEdges.filter(e => e.target === `gantt-${sourceIssueId}`);
+                        outgoingEdges = outgoingEdges.filter(edge => edge.target === `gantt-${sourceIssueId}`);
                     }
 
-                    outgoingEdges.forEach(e => {
-                        hEdges.add(e.id);
-                        markHandle(e.source, e.sourceHandle || '');
+                    outgoingEdges.forEach(edge => {
+                        hEdges.add(edge.id);
+                        markHandle(edge.source, edge.sourceHandle || '');
 
                         let nextIssueId = sourceIssueId;
                         // Extract issue context when passing from WorkItem to Team
-                        if (currentNodeId.startsWith('workitem-') && e.id.startsWith('edge__')) {
-                            const parts = e.id.split('__');
+                        if (currentNodeId.startsWith('workitem-') && edge.id.startsWith('edge__')) {
+                            const parts = edge.id.split('__');
                             if (parts.length >= 4) {
                                 nextIssueId = parts[3];
                             }
                         }
 
-                        traceDownstream(e.target, nextIssueId);
+                        traceDownstream(edge.target, nextIssueId);
                     });
                 };
 
@@ -646,16 +646,16 @@ export function useGraphBuilder(
                     visitedSource.add(contextKey);
 
                     hNodes.add(currentNodeId);
-                    let incomingEdges = edges.filter(e => e.target === currentNodeId);
+                    let incomingEdges = edges.filter(edge => edge.target === currentNodeId);
 
                     // If at a team node, only follow incoming edges from the workitem that owns this issue
                     if (currentNodeId.startsWith('team-') && sourceIssueId) {
-                        incomingEdges = incomingEdges.filter(e => e.id.endsWith(`__${sourceIssueId}`));
+                        incomingEdges = incomingEdges.filter(edge => edge.id.endsWith(`__${sourceIssueId}`));
                     }
 
-                    incomingEdges.forEach(e => {
-                        hEdges.add(e.id);
-                        markHandle(e.source, e.sourceHandle || '');
+                    incomingEdges.forEach(edge => {
+                        hEdges.add(edge.id);
+                        markHandle(edge.source, edge.sourceHandle || '');
 
                         let nextIssueId = sourceIssueId;
                         // Extract issue context when passing backwards from Gantt to Team
@@ -663,7 +663,7 @@ export function useGraphBuilder(
                             nextIssueId = currentNodeId.replace('gantt-', '');
                         }
 
-                        traceUpstream(e.source, nextIssueId);
+                        traceUpstream(edge.source, nextIssueId);
                     });
                 };
 
@@ -710,12 +710,12 @@ export function useGraphBuilder(
             });
 
             if (hoveredNodeId) {
-                edges.forEach(e => {
-                    const isHighlighted = hEdges.has(e.id);
-                    e.style = {
-                        ...e.style,
+                edges.forEach(edge => {
+                    const isHighlighted = hEdges.has(edge.id);
+                    edge.style = {
+                        ...edge.style,
                         opacity: isHighlighted ? 1 : 0.05,
-                        stroke: isHighlighted ? 'var(--accent-primary)' : (e.style?.stroke || 'var(--border-hover)'), // make highlighted edges blue for visibility
+                        stroke: isHighlighted ? 'var(--accent-primary)' : (edge.style?.stroke || 'var(--border-hover)'), // make highlighted edges blue for visibility
                         transition: 'all 0.2s'
                     };
                 });

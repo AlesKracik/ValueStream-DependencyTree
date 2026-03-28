@@ -95,38 +95,38 @@ export function useGraphFilters(
 
         // For workitems, use the pre-calculated score from the server
         const validWorkItems = new Set(
-            data.workItems.filter(f => {
-                const transientTextMatch = !ff || f.name.toLowerCase().includes(ff);
-                const baseTextMatch = !bff || f.name.toLowerCase().includes(bff);
+            data.workItems.filter(workItem => {
+                const transientTextMatch = !ff || workItem.name.toLowerCase().includes(ff);
+                const baseTextMatch = !bff || workItem.name.toLowerCase().includes(bff);
                 if (!transientTextMatch || !baseTextMatch) return false;
 
-                if (!passRelease(!!f.released_in_sprint_id)) return false;
+                if (!passRelease(!!workItem.released_in_sprint_id)) return false;
 
                 // Use pre-computed RICE score for filtering
-                const score = f.calculated_score !== undefined ? f.calculated_score : 0;
+                const score = workItem.calculated_score !== undefined ? workItem.calculated_score : 0;
                 return score >= combinedMinScore;
-            }).map(f => f.id)
+            }).map(workItem => workItem.id)
         );
 
         const validIssues = new Set(
-            (data.issues || []).filter(e => {
-                const team = data.teams.find(t => t.id === e.team_id);
+            (data.issues || []).filter(issue => {
+                const team = data.teams.find(t => t.id === issue.team_id);
                 const transientTeamMatch = !tf || (team && team.name.toLowerCase().includes(tf));
                 const baseTeamMatch = !btf || (team && team.name.toLowerCase().includes(btf));
 
-                const workItem = data.workItems.find(f => f.id === e.work_item_id);
-                const issueName = e.name || workItem?.name || 'Task';
+                const workItem = data.workItems.find(wi => wi.id === issue.work_item_id);
+                const issueName = issue.name || workItem?.name || 'Task';
                 const transientIssueMatch = !ef || issueName.toLowerCase().includes(ef);
                 const baseIssueMatch = !bef || issueName.toLowerCase().includes(bef);
 
                 // Sprint Range Filter: Proper overlap check
                 let rangeMatch = true;
                 if (rangeStartDate || rangeEndDate) {
-                    if (!e.target_start || !e.target_end) {
+                    if (!issue.target_start || !issue.target_end) {
                         rangeMatch = false;
                     } else {
-                        const start = parseISO(e.target_start);
-                        const end = parseISO(e.target_end);
+                        const start = parseISO(issue.target_start);
+                        const end = parseISO(issue.target_end);
 
                         const overlapStart = rangeStartDate ? (end >= rangeStartDate) : true;
                         const overlapEnd = rangeEndDate ? (start <= rangeEndDate) : true;
@@ -136,7 +136,7 @@ export function useGraphFilters(
                 }
 
                 return transientTeamMatch && baseTeamMatch && transientIssueMatch && baseIssueMatch && rangeMatch;
-            }).map(e => e.id)
+            }).map(issue => issue.id)
         );
 
         const hasCustomerFilter = cf !== '' || bcf !== '' || combinedMinTcv > 0;
@@ -145,18 +145,18 @@ export function useGraphFilters(
 
         if (!isFilterActive && !selectedNodeId) {
             data.customers.forEach(c => visibleCustomers.add(c.id));
-            data.workItems.forEach(f => visibleWorkItems.add(f.id));
-            data.teams.forEach(t => visibleTeams.add(t.id));
-            (data.issues || []).forEach(e => visibleIssues.add(e.id));
+            data.workItems.forEach(workItem => visibleWorkItems.add(workItem.id));
+            data.teams.forEach(team => visibleTeams.add(team.id));
+            (data.issues || []).forEach(issue => visibleIssues.add(issue.id));
         } else {
             // Build intersection graph
-            data.workItems.forEach(f => {
-                if (!validWorkItems.has(f.id)) return; // WorkItem intrinsically fails
+            data.workItems.forEach(workItem => {
+                if (!validWorkItems.has(workItem.id)) return; // WorkItem intrinsically fails
 
                 // Find connected valid Customers
                 let connectedValidCustomers: string[] = [];
-                if (f.all_customers_target) {
-                    const type = f.all_customers_target.tcv_type;
+                if (workItem.all_customers_target) {
+                    const type = workItem.all_customers_target.tcv_type;
                     // All valid customers who match combinedMinTcv
                     connectedValidCustomers = data.customers
                         .filter(c => validCustomers.has(c.id))
@@ -166,7 +166,7 @@ export function useGraphFilters(
                         })
                         .map(c => c.id);
                 } else {
-                    connectedValidCustomers = f.customer_targets
+                    connectedValidCustomers = workItem.customer_targets
                         .filter(ct => {
                             if (!validCustomers.has(ct.customer_id)) return false;
                             const c = data.customers.find(cust => cust.id === ct.customer_id);
@@ -179,22 +179,22 @@ export function useGraphFilters(
 
                 // Find connected valid Issues
                 const connectedValidIssues = (data.issues || [])
-                    .filter(e => e.work_item_id === f.id && validIssues.has(e.id));
+                    .filter(issue => issue.work_item_id === workItem.id && validIssues.has(issue.id));
 
                 // Strict intersection rules:
                 // If a customer filter is active (transient or base), we MUST have a valid connected customer,
                 // UNLESS it is a global work item which is shown regardless of customer matches.
-                if (hasCustomerFilter && connectedValidCustomers.length === 0 && !f.all_customers_target) return;
+                if (hasCustomerFilter && connectedValidCustomers.length === 0 && !workItem.all_customers_target) return;
 
                 // If a team/issue filter is active (transient or base), we MUST have a valid connected issue.
                 if (hasTeamIssueFilter && connectedValidIssues.length === 0) return;
 
                 // If it survives to here, this workitem path is fully viable!
-                visibleWorkItems.add(f.id);
+                visibleWorkItems.add(workItem.id);
                 connectedValidCustomers.forEach(cId => visibleCustomers.add(cId));
-                connectedValidIssues.forEach(e => {
-                    visibleIssues.add(e.id);
-                    visibleTeams.add(e.team_id);
+                connectedValidIssues.forEach(issue => {
+                    visibleIssues.add(issue.id);
+                    visibleTeams.add(issue.team_id);
                 });
             });
 
@@ -210,10 +210,10 @@ export function useGraphFilters(
             // Special case: WorkItemless Issues
             // If NO customer/workitem filters are applied, standalone valid issues should appear.
             if (!hasCustomerFilter && !hasWorkItemFilter) {
-                (data.issues || []).forEach(e => {
-                    if ((!e.work_item_id || e.work_item_id === 'UNASSIGNED') && validIssues.has(e.id)) {
-                        visibleIssues.add(e.id);
-                        visibleTeams.add(e.team_id);
+                (data.issues || []).forEach(issue => {
+                    if ((!issue.work_item_id || issue.work_item_id === 'UNASSIGNED') && validIssues.has(issue.id)) {
+                        visibleIssues.add(issue.id);
+                        visibleTeams.add(issue.team_id);
                     }
                 });
             }
@@ -221,11 +221,11 @@ export function useGraphFilters(
             // Special case: Standalone Teams
             // If a team filter is active, ensure matching teams are visible even if they have no issues or workitems
             if (tf || btf) {
-                data.teams.forEach(t => {
-                    const transientTeamMatch = !tf || t.name.toLowerCase().includes(tf);
-                    const baseTeamMatch = !btf || t.name.toLowerCase().includes(btf);
+                data.teams.forEach(team => {
+                    const transientTeamMatch = !tf || team.name.toLowerCase().includes(tf);
+                    const baseTeamMatch = !btf || team.name.toLowerCase().includes(btf);
                     if (transientTeamMatch && baseTeamMatch) {
-                        visibleTeams.add(t.id);
+                        visibleTeams.add(team.id);
                     }
                 });
             }
@@ -289,21 +289,21 @@ export function useGraphFilters(
                 visitedTarget.add(contextKey);
 
                 hNodes.add(currentNodeId);
-                let outgoingEdges = logicalEdges.filter(e => e.source === currentNodeId);
+                let outgoingEdges = logicalEdges.filter(edge => edge.source === currentNodeId);
 
                 if (currentNodeId.startsWith('team-') && sourceIssueId) {
-                    outgoingEdges = outgoingEdges.filter(e => e.target === `gantt-${sourceIssueId}`);
+                    outgoingEdges = outgoingEdges.filter(edge => edge.target === `gantt-${sourceIssueId}`);
                 }
 
-                outgoingEdges.forEach(e => {
+                outgoingEdges.forEach(edge => {
                     let nextIssueId = sourceIssueId;
-                    if (currentNodeId.startsWith('workitem-') && e.id.startsWith('edge__')) {
-                        const parts = e.id.split('__');
+                    if (currentNodeId.startsWith('workitem-') && edge.id.startsWith('edge__')) {
+                        const parts = edge.id.split('__');
                         if (parts.length >= 4) {
                             nextIssueId = parts[3];
                         }
                     }
-                    traceDownstream(e.target, nextIssueId);
+                    traceDownstream(edge.target, nextIssueId);
                 });
             };
 
@@ -314,18 +314,18 @@ export function useGraphFilters(
                 visitedSource.add(contextKey);
 
                 hNodes.add(currentNodeId);
-                let incomingEdges = logicalEdges.filter(e => e.target === currentNodeId);
+                let incomingEdges = logicalEdges.filter(edge => edge.target === currentNodeId);
 
                 if (currentNodeId.startsWith('team-') && sourceIssueId) {
-                    incomingEdges = incomingEdges.filter(e => e.id.endsWith(`__${sourceIssueId}`));
+                    incomingEdges = incomingEdges.filter(edge => edge.id.endsWith(`__${sourceIssueId}`));
                 }
 
-                incomingEdges.forEach(e => {
+                incomingEdges.forEach(edge => {
                     let nextIssueId = sourceIssueId;
                     if (currentNodeId.startsWith('gantt-')) {
                         nextIssueId = currentNodeId.replace('gantt-', '');
                     }
-                    traceUpstream(e.source, nextIssueId);
+                    traceUpstream(edge.source, nextIssueId);
                 });
             };
 
