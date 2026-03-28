@@ -112,7 +112,7 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
                                 }}
                                 style={{ flex: 1, minWidth: '60px' }}
                             />
-                            {issue.jira_key && issue.jira_key !== 'TBD' && data?.settings.jira.base_url && (
+                            {issue.jira_key && issue.jira_key !== 'TBD' && data?.settings?.jira?.base_url && (
                                 <a
                                     href={`${data.settings.jira.base_url.replace(/\/$/, '')}/browse/${issue.jira_key}`}
                                     target="_blank"
