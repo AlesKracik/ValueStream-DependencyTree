@@ -79,7 +79,10 @@ Centralized in `backend/src/utils/businessLogic.ts`:
 - **Cascading Deletes**: Referential integrity is enforced **server-side** in the backend DELETE endpoint (e.g., deleting a Customer `$pull`s its targets from all Work Items; deleting a WorkItem `$unset`s `work_item_id` from Issues). The frontend mirrors cascades optimistically in local state for instant UI feedback.
 
 ### Visualization & Layout
-- **Engine**: `web-client/src/hooks/useGraphLayout.ts`.
+- **Engine**: Three hooks in `web-client/src/hooks/`:
+  - `useGraphFilters.ts` — filter validation, visible set computation, and selection-based graph traversal.
+  - `useGraphBuilder.ts` — node/edge construction, coordinate calculation, and highlight application.
+  - `useGraphLayout.ts` — thin orchestrator; public API consumed by components.
 - **Logic**: Deterministic coordinate calculation (X-axis fixed by entity type, Y-axis calculated to minimize edge crossings).
 - **Components**: `web-client/src/components/nodes/` (CustomerNode, WorkItemNode, TeamNode, GanttBarNode, etc.).
 
@@ -98,11 +101,12 @@ Centralized in `backend/src/utils/businessLogic.ts`:
 - **Cleanup**: Automatic expiration of support issues based on `expiration_date`.
 
 ### Modifying the Visualization
-- **Layout**: Update `useGraphLayout.ts`.
+- **Filters**: Update `useGraphFilters.ts` (visible set logic, filter rules).
+- **Layout/Rendering**: Update `useGraphBuilder.ts` (node/edge construction, coordinates, highlights).
 - **Visuals**: Update node components in `src/components/nodes/` or CSS variables in `index.css`.
 
 ## 5. Key Constants & Locations
-- **Layout X-Coordinates**: `COL_CUSTOMER_X`, `COL_WORKITEM_X`, etc., in `useGraphLayout.ts`.
+- **Layout X-Coordinates**: `COL_CUSTOMER_X`, `COL_WORKITEM_X`, etc., in `useGraphBuilder.ts`.
 - **Types**: `shared/types/src/models.ts` (single source of truth, imported as `@valuestream/shared-types`).
 - **API Utilities**: `web-client/src/utils/api.ts`.
 - **Test Utils**: `web-client/src/test/testUtils.tsx`.

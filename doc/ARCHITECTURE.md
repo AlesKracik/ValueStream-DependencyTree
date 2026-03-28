@@ -32,7 +32,7 @@ graph TD
 - **Framework:** React 19 with Vite (`web-client/` directory).
 - **State Management:** Custom `ValueStreamContext` and `useValueStreamData` hook featuring optimistic updates and debounced persistence.
 - **Visualization:** `@xyflow/react` (React Flow) for rendering the interactive dependency graph.
-- **Layout Engine:** A deterministic engine (`useGraphLayout.ts`) that calculates X/Y coordinates based on logical relationships, featuring reachability analysis for hover-based highlighting.
+- **Layout Engine:** A deterministic engine split across three hooks: `useGraphFilters.ts` (filter/visible set logic), `useGraphBuilder.ts` (coordinate calculation, node/edge construction, highlight application), and `useGraphLayout.ts` (thin orchestrator / public API). Features reachability analysis for hover-based highlighting.
 
 ### 2. Backend API (Fastify)
 - **Framework:** A standalone Fastify Node.js application (`backend/` directory).
@@ -167,7 +167,7 @@ sequenceDiagram
 ## Core Algorithms & Code Patterns
 
 ### 1. The Graph Layout Engine
-The core visualization (`useGraphLayout.ts`) is a highly deterministic layout engine, not a physics-based graph.
+The core visualization is a highly deterministic layout engine split across `useGraphFilters.ts` (filter logic), `useGraphBuilder.ts` (rendering), and `useGraphLayout.ts` (orchestrator) — not a physics-based graph.
 - **Column Mapping:** Establishes fixed X-coordinates forming a left-to-right flow pipeline.
 - **Reachability Analysis:** When a node is selected, the engine recursively traces upstream (to root causes) and downstream (to execution) to filter the visible graph to relevant paths.
 - **Coordinate Placement:** Dynamically calculates Y offsets so nodes do not overlap, protecting Issue Gantt bars within Team vertical bounds.

@@ -8,19 +8,12 @@
 * code readability, organization, DRY and overall architecture
 Code Quality Analysis
 Critical (High Impact)
-3. useGraphLayout.ts — 1,049 lines, mixed concerns
-
-Filter validation, graph building, node/edge rendering, and coordinate calculation all in one hook
-Fix: Split into useGraphFilters(), useGraphBuilder(), useGraphLayout()
+3. ~~useGraphLayout.ts — 1,049 lines, mixed concerns~~ ✓ Done: Split into useGraphFilters.ts, useGraphBuilder.ts, useGraphLayout.ts (thin orchestrator)
 4. Large detail pages (CustomerPage 946, WorkItemPage 838, SupportPage 797)
 
 Each mixes entity editing, sync logic, and multi-tab rendering
 Fix: Extract tab content into sub-components (e.g., CustomerHealthTab, CustomerWorkItemsTab)
 High (Moderate Impact)
-5. ~~Backend: Repeated settings retrieval + unmasking (5 route files)~~ ✅ DONE
-
-~~jira.ts, aha.ts, aws.ts, mongo.ts, llm.ts all repeat getSettings() → unmaskSettings() → extract config → validate~~
-Fixed: Extracted `getIntegrationConfig(fastify, rawConfig, section, requiredFields)` helper in `configHelpers.ts`
 6. Backend: ALLOWED_COLLECTIONS duplicated in entity.ts and mongo.ts
 
 Fix: Move to a shared utils/constants.ts
