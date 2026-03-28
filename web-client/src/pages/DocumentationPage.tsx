@@ -18,7 +18,18 @@ export const DocumentationPage: React.FC = () => {
     return (
         <div className={styles.pageContainer} style={{ width: '100%' }}>
             <div style={{ lineHeight: '1.6', color: 'var(--text-secondary)', fontSize: '15px' }}>
-                <ReactMarkdown>{content}</ReactMarkdown>
+                <ReactMarkdown
+                    components={{
+                        img: ({ src, alt, ...props }) => (
+                            <img
+                                {...props}
+                                alt={alt || ''}
+                                src={src && !src.startsWith('/') ? `/${src}` : src}
+                                style={{ maxWidth: '100%', borderRadius: '6px', margin: '8px 0' }}
+                            />
+                        )
+                    }}
+                >{content}</ReactMarkdown>
             </div>
         </div>
     );
