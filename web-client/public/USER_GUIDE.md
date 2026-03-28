@@ -57,7 +57,7 @@ Customers represent the accounts, segments, or contract entities that provide va
 
 The entry point for account management, providing a quick health check of the entire customer base.
 
-![Customers List](images/customers-list.png)
+<!-- TODO: screenshot — Customers list page -->
 
 *   **Columns:** Name, Existing TCV, Potential TCV.
 *   **Sorting:** Order the list by Name or TCV metrics to identify top accounts.
@@ -68,7 +68,7 @@ The entry point for account management, providing a quick health check of the en
 
 The detail page is the command centre for managing a specific account's lifecycle and alignment.
 
-![Customer Detail](images/customer-detail.png)
+<!-- TODO: screenshot — Customer detail page -->
 
 *   **TCV Promotion Lifecycle:** The platform distinguishes between "Actual" (Existing) and "Target" (Potential) TCV.
     *   **Action — "Promote to Actual":** This workflow moves the current Potential TCV into the Actual slot, while automatically snapshotting the old Actual value into the **TCV History** ledger. This ensures a clean audit trail as contracts evolve.
@@ -82,14 +82,14 @@ The detail page uses a tabbed interface to organise complex data sets:
 
 **Tab: Custom Fields**
 
-![Customer Custom Fields](images/customer-detail-fields.png)
+<!-- TODO: screenshot — Customer custom fields tab -->
 
 *   Displays bespoke customer data fetched in real-time from an external MongoDB collection using the Customer ID and the custom aggregation pipeline defined in **Settings > Persistence > Customer**.
 *   Allows viewing nested structures, product clusters, or status fields directly within the portal.
 
 **Tab: Targeted Work Items**
 
-![Customer Targeted Work Items](images/customer-detail-workitems.png)
+<!-- TODO: screenshot — Customer targeted work items tab -->
 
 *   Defines which strategic initiatives are fulfilling the customer's value.
 *   **Add Target:** Link a work item to this customer using the searchable dropdown.
@@ -99,14 +99,14 @@ The detail page uses a tabbed interface to organise complex data sets:
 
 **Tab: TCV History**
 
-![Customer TCV History](images/customer-detail-history.png)
+<!-- TODO: screenshot — Customer TCV history tab -->
 
 *   An immutable, chronological audit trail created by the "Promote to Actual" lifecycle. Displays past values, start dates, and contract durations.
 *   Manually remove historical entries if necessary.
 
 **Tab: Support Health**
 
-![Customer Support Health](images/customer-detail-support.png)
+<!-- TODO: screenshot — Customer support health tab -->
 
 *   **Health Status Indicator:** A coloured dot in the tab label provides an instant health check based on the most serious Jira category:
     *   Red: New / Untriaged issues found.
@@ -128,7 +128,7 @@ Work Items represent strategic initiatives, major feature sets, or roadmap theme
 
 A prioritisation dashboard for the product organisation.
 
-![Work Items List](images/workitems-list.png)
+<!-- TODO: screenshot — Work items list page -->
 
 *   **Columns:** Name, RICE Score, Effort (MDs), TCV, Status, Released Sprint.
 *   **RICE Score:** Calculated as `(Total Impact TCV / Combined Effort MDs)`.
@@ -138,7 +138,7 @@ A prioritisation dashboard for the product organisation.
 
 Define the "What" and the "How" of a strategic goal.
 
-![Work Item Detail](images/workitem-detail.png)
+<!-- TODO: screenshot — Work item detail page -->
 
 *   **Define Scope:** Toggle the **"Global"** flag if the item benefits every customer (e.g., core infrastructure).
 *   **Set Score Components:** Adjust "Baseline Effort" estimates if no issues are yet defined.
@@ -239,7 +239,7 @@ When LDAP is configured in **Settings > LDAP** (General & Team subtabs), an addi
 
 The temporal framework that aligns the organisation.
 
-![Sprints List](images/sprints-list.png)
+<!-- TODO: screenshot — Sprints list page -->
 
 *   **Quarterly Grouping:** Sprints are automatically grouped by fiscal quarters for better long-term planning.
 *   **Statuses:**
@@ -259,7 +259,7 @@ The platform's primary visualisation, mapping value from source to delivery.
 
 #### Value Stream Scopes (Custom Views)
 
-![ValueStream List](images/valuestream-list.png)
+<!-- TODO: screenshot — ValueStream list page -->
 
 Instead of one global view, you can create multiple **Value Stream Scopes**. These are saved configurations that allow you to focus on specific segments of the organisation or roadmap.
 
@@ -272,7 +272,7 @@ Instead of one global view, you can create multiple **Value Stream Scopes**. The
 
 #### The Live Graph Visualisation
 
-![ValueStream View](images/ValueStream.png)
+<!-- TODO: screenshot — ValueStream graph view -->
 
 The Live Graph is a multi-layered dependency tree that maps demand (Customers) to execution (Issues) over a temporal Gantt timeline.
 
@@ -335,7 +335,7 @@ The Live Graph is a multi-layered dependency tree that maps demand (Customers) t
 
 A bird's-eye view of account stability across the customer base.
 
-![Support Health](images/support-health.png)
+<!-- TODO: screenshot — Support health page -->
 
 *   **Ranking:** Issues are sorted by the **Customer's TCV Rank**, prioritising high-revenue accounts.
 *   **Columns:** Customer, TCV Category (💰), Activity, Description, Status.
