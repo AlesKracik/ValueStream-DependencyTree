@@ -38,7 +38,7 @@ graph TD
 - **Framework:** A standalone Fastify Node.js application (`backend/` directory).
 - **Service Layer:** Isolates business logic into `services/` for calculating dynamic RICE scores, effort rollups, and evaluating Sprint capacities.
 - **Data Helpers:** `utils/dbHelpers.ts` provides `fetchWithThreshold()` (413 protection per collection), `buildMongoQuery()` (maps query params to MongoDB queries including relational filters), and `applyValueStreamFilters()` (post-scoring hard filters from ValueStream parameters).
-- **Schema Validation:** Draft-07 JSON schema at `web-client/public/schema.json` and Fastify JSON schemas for API payload validation.
+- **Schema Validation:** Request bodies are validated using `@sinclair/typebox` JSON schemas defined in `backend/src/routes/schemas.ts`.
 
 ### 3. Data & Persistence
 - **Database:** MongoDB architecture supporting both primary Application storage and secondary Customer data integration.
