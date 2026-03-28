@@ -1,4 +1,5 @@
 import { getFullSettingsAsync, saveFullSettingsAsync } from '../services/secretManager';
+import logger from './logger';
 
 export interface GleanTokenResponse {
   access_token: string;
@@ -13,7 +14,7 @@ export async function getGleanSettings() {
     const data = await getFullSettingsAsync();
     return data.ai?.glean_state || { tokens: {}, clients: {} };
   } catch (e) {
-    console.error('Error reading settings for Glean state', e);
+    logger.error(e, 'Error reading settings for Glean state');
     return { tokens: {}, clients: {} };
   }
 }
@@ -56,7 +57,7 @@ export async function refreshGleanToken(normalizedUrl: string, token: any, glean
     tokenData = await refreshRes.json() as any;
   } catch (e) {
     const text = await refreshRes.text().catch(() => 'unavailable');
-    console.error(`Failed to parse refresh token response from ${token.token_endpoint}. Response: ${text.substring(0, 500)}`);
+    logger.error(`Failed to parse refresh token response from ${token.token_endpoint}. Response: ${text.substring(0, 500)}`);
     throw new Error(`Refresh token failed: expected JSON but received ${refreshRes.headers.get('content-type')}`);
   }
   const newToken = {

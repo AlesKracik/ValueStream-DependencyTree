@@ -44,7 +44,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
     // Fire-and-forget: recompute RICE scores when score-affecting entities change
     if (SCORE_AFFECTING_COLLECTIONS.includes(collection)) {
       recomputeScoresForWorkItems(db).catch(err =>
-        console.error('Score recomputation failed:', err)
+        fastify.log.error(err, 'Score recomputation failed')
       );
     }
 
@@ -74,7 +74,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
 
     if (SCORE_AFFECTING_COLLECTIONS.includes(collection)) {
       recomputeScoresForWorkItems(db).catch(err =>
-        console.error('Score recomputation failed:', err)
+        fastify.log.error(err, 'Score recomputation failed')
       );
     }
 
@@ -125,7 +125,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
 
     if (SCORE_AFFECTING_COLLECTIONS.includes(collection)) {
       recomputeScoresForWorkItems(db).catch(err =>
-        console.error('Score recomputation failed:', err)
+        fastify.log.error(err, 'Score recomputation failed')
       );
     }
 

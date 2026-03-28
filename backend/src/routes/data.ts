@@ -142,7 +142,7 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
 
       } catch (mongoErr: any) {
         if (mongoErr.statusCode === 413) throw mongoErr;
-        console.error('MongoDB load error:', mongoErr);
+        fastify.log.error(mongoErr, 'MongoDB load error');
       }
     }
 

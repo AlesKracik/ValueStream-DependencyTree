@@ -2,6 +2,7 @@ import { MongoClient, ServerApiVersion } from 'mongodb';
 import { fromNodeProviderChain, fromSSO } from '@aws-sdk/credential-providers';
 import dns from 'node:dns';
 import { promisify } from 'node:util';
+import logger from './logger';
 
 const dnsLookup = promisify(dns.lookup);
 
@@ -88,7 +89,7 @@ export function evictSsoClients(profile: string): number {
       item.client.close().catch(() => {});
       mongoClients.delete(key);
       evicted++;
-      console.log(`[MONGO] Evicted cached SSO client for profile "${profile}"`);
+      logger.info(`[MONGO] Evicted cached SSO client for profile "${profile}"`);
     }
   }
   return evicted;
@@ -139,13 +140,11 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
   const cached = mongoClients.get(cacheKey);
   if (cached) {
     cached.lastUsed = Date.now();
-    // MONGO_DEBUG: Log cache hit
-    console.log(`[MONGO_DEBUG] Cache HIT for key: ${cacheKey.substring(0, 50)}...`);
+    logger.debug(`[MONGO] Cache HIT for key: ${cacheKey.substring(0, 50)}...`);
     return cached.client.db(dbName);
   }
 
-  // MONGO_DEBUG: Log cache miss / new connection
-  console.log(`[MONGO_DEBUG] Cache MISS for key: ${cacheKey.substring(0, 50)}... - Creating new connection`);
+  logger.debug(`[MONGO] Cache MISS for key: ${cacheKey.substring(0, 50)}... - Creating new connection`);
   const startTime = Date.now();
 
   const options: any = {
@@ -170,15 +169,15 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
       const tunnel = config.tunnels[tunnelName.toLowerCase()];
       effectiveHost = tunnel.host || effectiveHost;
       effectivePort = tunnel.port || effectivePort;
-      console.log(`[MONGO_DEBUG] Using tunnel '${tunnelName}': ${effectiveHost}:${effectivePort}`);
+      logger.debug(`[MONGO] Using tunnel '${tunnelName}': ${effectiveHost}:${effectivePort}`);
     } else {
-      console.log(`[MONGO_DEBUG] Using default proxy: ${effectiveHost}:${effectivePort}`);
+      logger.debug(`[MONGO] Using default proxy: ${effectiveHost}:${effectivePort}`);
     }
 
     if (effectiveHost && effectivePort) {
       options.proxyHost = effectiveHost;
       options.proxyPort = Number(effectivePort);
-      console.log(`[MONGO_DEBUG] Proxy options applied: ${effectiveHost}:${effectivePort}`);
+      logger.debug(`[MONGO] Proxy options applied: ${effectiveHost}:${effectivePort}`);
     }
   }
 
@@ -263,8 +262,7 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
   const client = new MongoClient(uri, options);
   await client.connect();
   
-  // MONGO_DEBUG: Log connection time
-  console.log(`[MONGO_DEBUG] MongoDB connection established in ${Date.now() - startTime}ms`);
+  logger.debug(`[MONGO] Connection established in ${Date.now() - startTime}ms`);
 
   mongoClients.set(cacheKey, { client, lastUsed: Date.now() });
 

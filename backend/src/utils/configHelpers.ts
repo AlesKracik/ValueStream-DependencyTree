@@ -2,6 +2,7 @@ import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
 import { FastifyInstance } from 'fastify';
+import logger from './logger';
 
 /** Resolve the path to settings.json in the backend directory */
 export const getSettingsPath = () => path.resolve(__dirname, '../../settings.json');
@@ -251,10 +252,10 @@ export async function logQuery<T>(name: string, collection: string, op: string, 
   try {
     const res = await promise;
     const count = Array.isArray(res) ? res.length : (res ? 1 : 0);
-    console.log(`[MONGO] ${name} (${collection}.${op}) took ${Date.now() - start}ms (${count} docs)`);
+    logger.debug(`[MONGO] ${name} (${collection}.${op}) took ${Date.now() - start}ms (${count} docs)`);
     return res;
   } catch (e) {
-    console.error(`[MONGO] ${name} (${collection}.${op}) FAILED after ${Date.now() - start}ms`, e);
+    logger.error(e, `[MONGO] ${name} (${collection}.${op}) FAILED after ${Date.now() - start}ms`);
     throw e;
   }
 }

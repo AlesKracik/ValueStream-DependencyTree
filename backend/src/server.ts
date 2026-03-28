@@ -7,9 +7,10 @@ async function start() {
   try {
     const app = await buildApp();
     await app.listen({ port: PORT, host: HOST });
-    console.log(`Server listening on http://${HOST}:${PORT}`);
+    app.log.info(`Server listening on http://${HOST}:${PORT}`);
   } catch (err) {
-    console.error(err);
+    const logger = (await import('./utils/logger')).default;
+    logger.error(err, 'Server startup failed');
     process.exit(1);
   }
 }

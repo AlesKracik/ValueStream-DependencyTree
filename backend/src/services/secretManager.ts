@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { getSettingsPath, readSettingsFile, readSettingsFileAsync, extractSecrets, stripSecrets, mergeSecrets } from '../utils/configHelpers';
 import { SecretProvider, EncryptedFileProvider, EnvProvider, ENV_PREFIX, NoOpProvider } from './providers';
+import logger from '../utils/logger';
 
 // Re-export provider types so existing imports from '../secretManager' continue to work
 export type { SecretProvider };
@@ -22,20 +23,20 @@ function createProvider(): SecretProvider {
   // Priority 1: If VSDT_SECRET_* env vars exist, use EnvProvider
   const hasEnvSecrets = Object.keys(process.env).some(k => k.startsWith(ENV_PREFIX));
   if (hasEnvSecrets) {
-    console.log('[SecretManager] Using EnvProvider (VSDT_SECRET_* env vars detected)');
+    logger.info('[SecretManager] Using EnvProvider (VSDT_SECRET_* env vars detected)');
     return new EnvProvider();
   }
 
   // Priority 2: EncryptedFileProvider (default)
   const masterKey = process.env.ADMIN_SECRET;
   if (!masterKey) {
-    console.warn('[SecretManager] ADMIN_SECRET not set — using NoOpProvider (secrets remain in settings.json)');
+    logger.warn('[SecretManager] ADMIN_SECRET not set — using NoOpProvider (secrets remain in settings.json)');
     return new NoOpProvider();
   }
 
   const settingsPath = getSettingsPath();
   const encPath = settingsPath.replace(/\.json$/, '.secrets.enc');
-  console.log('[SecretManager] Using EncryptedFileProvider');
+  logger.info('[SecretManager] Using EncryptedFileProvider');
   return new EncryptedFileProvider(encPath, masterKey);
 }
 
@@ -62,7 +63,7 @@ export function getFullSettings(): any {
   // Self-heal: if NoOpProvider was created because ADMIN_SECRET wasn't available
   // at singleton creation time, but is now available, re-create the provider.
   if (sm instanceof NoOpProvider && process.env.ADMIN_SECRET) {
-    console.warn('[SecretManager] NoOpProvider was active but ADMIN_SECRET is now available — re-creating provider');
+    logger.warn('[SecretManager] NoOpProvider was active but ADMIN_SECRET is now available — re-creating provider');
     resetSecretManager();
     sm = getSecretManager();
   }
@@ -74,7 +75,7 @@ export function getFullSettings(): any {
     if (Object.keys(extracted).length > 0) {
       return config;
     }
-    console.warn('[Settings] No secrets found in SecretManager or settings.json — returning config without secrets');
+    logger.warn('[Settings] No secrets found in SecretManager or settings.json — returning config without secrets');
   }
 
   // Normal mode: merge secrets from SecretManager into config
@@ -140,7 +141,7 @@ export async function getFullSettingsAsync(): Promise<any> {
   // at singleton creation time (e.g., dotenv file briefly locked on Windows),
   // but ADMIN_SECRET is now available, re-create the provider.
   if (sm instanceof NoOpProvider && process.env.ADMIN_SECRET) {
-    console.warn('[SecretManager] NoOpProvider was active but ADMIN_SECRET is now available — re-creating provider');
+    logger.warn('[SecretManager] NoOpProvider was active but ADMIN_SECRET is now available — re-creating provider');
     resetSecretManager();
     sm = getSecretManager();
   }
@@ -155,7 +156,7 @@ export async function getFullSettingsAsync(): Promise<any> {
     }
     // No secrets in either store — do NOT cache so the next request retries
     // (secrets may become available after migration or file unlock)
-    console.warn('[Settings] No secrets found in SecretManager or settings.json — returning config without secrets (not caching)');
+    logger.warn('[Settings] No secrets found in SecretManager or settings.json — returning config without secrets (not caching)');
     return mergeSecrets(config, {});
   }
 
@@ -228,13 +229,13 @@ export function migrateSecretsFromSettingsFile(): { migrated: number } {
 
   // If using NoOpProvider, we can't migrate — secrets stay in settings.json
   if (sm instanceof NoOpProvider) {
-    console.warn('[SecretManager] Cannot migrate secrets: ADMIN_SECRET not set');
+    logger.warn('[SecretManager] Cannot migrate secrets: ADMIN_SECRET not set');
     return { migrated: 0 };
   }
 
   // If using EnvProvider, secrets are managed externally — don't strip from settings.json
   if (sm instanceof EnvProvider) {
-    console.log('[SecretManager] EnvProvider active — skipping migration (secrets managed externally)');
+    logger.info('[SecretManager] EnvProvider active — skipping migration (secrets managed externally)');
     return { migrated: 0 };
   }
 
@@ -246,6 +247,6 @@ export function migrateSecretsFromSettingsFile(): { migrated: number } {
   const settingsPath = getSettingsPath();
   fs.writeFileSync(settingsPath, JSON.stringify(configOnly, null, 2));
 
-  console.log(`[SecretManager] Migrated ${Object.keys(secrets).length} secrets from settings.json to encrypted storage`);
+  logger.info(`[SecretManager] Migrated ${Object.keys(secrets).length} secrets from settings.json to encrypted storage`);
   return { migrated: Object.keys(secrets).length };
 }
