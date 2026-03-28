@@ -8,8 +8,8 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
 const mockAuthorizedFetch = vi.fn();
 vi.mock('../../../utils/api', () => ({
-    authorizedFetch: (...args: any[]) => mockAuthorizedFetch(...args),
-    debounce: (fn: any) => fn
+    authorizedFetch: (...args: unknown[]) => mockAuthorizedFetch(...args),
+    debounce: (fn: (...a: unknown[]) => unknown) => fn
 }));
 
 vi.mock('../../../contexts/NotificationContext', async (importOriginal) => {
@@ -348,7 +348,7 @@ describe('TeamPage', () => {
     it('hides LDAP Team Name field when settings are missing entirely', () => {
         const dataWithoutSettings = {
             ...mockData,
-            settings: undefined as any
+            settings: undefined as unknown as ValueStreamData['settings']
         };
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

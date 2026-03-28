@@ -176,7 +176,7 @@ describe('WorkItemListPage', () => {
     it('shows "Not Released" when sprints array is missing from data', () => {
         const dataWithoutSprints = {
             ...mockData,
-            sprints: undefined as any
+            sprints: undefined as unknown as ValueStreamData['sprints']
         };
 
         renderWithProviders(

@@ -96,7 +96,6 @@ describe('frontend api utils', () => {
 
   describe('gleanAuthLogin (via apiPost with custom successCheck)', () => {
     it('should redirect on success', async () => {
-      const originalHref = window.location.href;
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => ({ authUrl: 'https://glean.test/auth' }),
