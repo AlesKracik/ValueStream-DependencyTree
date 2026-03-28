@@ -26,7 +26,7 @@ describe('gleanRoutes', () => {
   describe('POST /api/glean/auth/init', () => {
     it('should initialize auth with discovery and DCR', async () => {
       (gleanHelpers.getGleanSettings as any).mockReturnValue({ tokens: {}, clients: {} });
-      
+
       // Mock discovery
       mockFetch.mockResolvedValueOnce({
         ok: true,
