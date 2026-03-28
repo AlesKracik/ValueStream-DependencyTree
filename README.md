@@ -90,13 +90,17 @@ See the **[Networking & SSH Tunneling](./doc/ARCHITECTURE.md#networking--ssh-tun
 
 ## Documentation
 
+See the **[Documentation Index](./doc/INDEX.md)** for the full documentation map, or jump directly to:
+
+- **[Architecture Overview](./doc/ARCHITECTURE.md)**: System components, data model, and core algorithms.
+- **[API Reference](./doc/API-REFERENCE.md)**: Complete REST endpoint catalogue.
+- **[Deployment & Networking](./doc/DEPLOYMENT.md)**: Docker, Kubernetes, and SSH tunneling.
 - **[User Guide](./web-client/public/USER_GUIDE.md)**: How to use the ValueStream, manage TCV, and synchronize with Jira.
-- **[Technical Architecture](./doc/ARCHITECTURE.md)**: System design and data flow.
 
 ## Security
 
 - **Authentication:** Enforced via `ADMIN_SECRET` environment variable.
-- **Secure Storage:** Sensitive credentials (Jira tokens, AWS keys) are kept in a non-public `settings.json` managed by the backend.
+- **Secure Storage:** Sensitive credentials are encrypted at rest. See [Secret Management](./doc/SECRET-MANAGEMENT.md).
 - **Authorized Communication:** All API calls are protected by Bearer token validation.
 
 ## License

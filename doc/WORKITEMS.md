@@ -27,7 +27,7 @@ export interface WorkItem {
 ```
 
 ## Prioritization Logic (RICE Score / ROI)
-The score is calculated server-side in the Vite backend plugin (`vite.config.ts`):
+The score is calculated server-side in `backend/src/services/metricsService.ts`:
 - **Formula:** `Score = Total Impact / Effort`.
 - **Impact (Total TCV):** The contribution of a customer's TCV to a Work Item's Impact depends on the target priority:
     - **Must-have**: Contributes **100%** of the associated Customer TCV.

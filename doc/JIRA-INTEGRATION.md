@@ -4,17 +4,17 @@
 The application integrates with Atlassian Jira to hydrate execution data (Issues) and track customer-linked issues.
 
 ## Connection Architecture
-To bypass browser CORS restrictions, all Jira API requests are routed through a server-side proxy managed by the Vite development server.
+To bypass browser CORS restrictions, all Jira API requests are routed through the Fastify backend server.
 
 ```mermaid
 sequenceDiagram
     participant UI as Web Client
-    participant Proxy as Vite Proxy
+    participant Backend as Fastify Backend
     participant Jira as Atlassian API
-    UI->>Proxy: POST /api/jira/search (with JQL & Settings)
-    Proxy->>Jira: POST /rest/api/3/search (with JQL)
-    Jira-->>Proxy: Raw JSON Data
-    Proxy-->>UI: Raw JSON Data
+    UI->>Backend: POST /api/jira/search (with JQL & Settings)
+    Backend->>Jira: POST /rest/api/3/search (with JQL)
+    Jira-->>Backend: Raw JSON Data
+    Backend-->>UI: Raw JSON Data
 ```
 
 All integration endpoints (`/api/jira/issue`, `/api/jira/search`) expect the necessary Jira configuration (`base_url`, `api_token`, etc.) to be passed within the `jira` section of the request body. This ensures the proxy remains stateless and can handle requests across different integration environments.

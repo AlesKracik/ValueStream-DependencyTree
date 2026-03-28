@@ -6,68 +6,7 @@ The application uses a dual-mode persistence strategy to balance ease of local d
 ## Data Storage
 - **MongoDB:** Primary storage for production-like environments. Entities are stored in collections named after their logical types: `customers`, `workItems`, `teams`, `issues`, `sprints`, and `valueStreams`.
 
-## The Fastify Backend
-The backend is a standalone Fastify Node.js application in `backend/`. It provides REST endpoints for data management, integration, and security.
-
-### Core Data Endpoints
-
-#### 1. `GET /api/workspace`
-The composite hydration endpoint for the Graph View. Uses pre-computed RICE scores on WorkItem documents to enable DB-level filtering.
-- **Parameters:** Accepts `valueStreamId` — if provided, the backend looks up the ValueStream entity's saved `parameters` and builds per-collection MongoDB queries via `buildWorkspaceQueries()` (name text, released status, `calculated_score`, minTcv via `$expr`). Cross-entity filters (issue team membership, sprint range) are applied in-memory by `applyValueStreamFilters()`.
-- **Threshold Protection:** After DB-level and in-memory filtering, `applyValueStreamFilters()` checks the total entity count — returns `413` if it exceeds the threshold (default: 500), asking the user to tighten ValueStream parameters.
-- **Metrics:** `maxScore` and `maxRoi` are computed from pre-computed score fields via `computeMetricsFromPrecomputed()`.
-
-#### 2. `GET /api/data/{collection}`
-Granular endpoints (e.g., `/api/data/customers`, `/api/data/workItems`) allowing the frontend to lazily load only the required entities for specific list or detail views.
-- **Query Filtering:** Accepts query parameters mapped to MongoDB queries via `buildMongoQuery()`. Supports text filters (`customerFilter`, `teamFilter`), status filters (`releasedFilter`), score filters (`minScoreFilter` using `calculated_score`), and relational filters (`customerId`, `workItemId`, `teamId`).
-- **Threshold Protection:** Each endpoint is guarded by `fetchWithThreshold()`.
-- **WorkItems:** Reads pre-computed `calculated_score`, `calculated_tcv`, `calculated_effort` directly from documents — no cross-collection join needed.
-
-#### 2b. `POST /api/data/recomputeScores`
-Migration endpoint that recomputes and persists `calculated_tcv`, `calculated_effort`, `calculated_score` on all WorkItem documents. Run once after deployment to backfill existing data. Scores are also automatically recomputed on every entity save/delete for workItems, customers, and issues.
-
-#### 3. `POST /api/entity/{collection}`
-Upserts a single document into one of the allowed collections (`customers`, `workItems`, etc.).
-- **Debouncing:** Frontend calls are debounced by 1000ms.
-- **Validation:** Ensures a unique index on the `id` field.
-
-#### 4. `DELETE /api/entity/{collection}/{id}`
-Removes a specific document by its unique ID and performs **cascade cleanup** on related collections:
-- **Deleting a Customer:** Removes `customer_targets` entries referencing the customer from all WorkItems (`$pull`).
-- **Deleting a WorkItem:** Clears `work_item_id` from all Issues referencing the WorkItem (`$unset`).
-- **Deleting a Team:** Clears `team_id` from all Issues referencing the Team (`$set: ""`).
-- Returns a `cascaded` object indicating how many related documents were modified.
-
-#### 4. `POST /api/settings`
-Updates the `settings.json` file. It automatically masks/unmasks sensitive fields (API tokens, URIs) recursively within the nested structure during the round-trip to the UI.
-
-### Database Management & Portability
-
-#### 5. `POST /api/mongo/test`
-Validates connectivity to a MongoDB cluster. It accepts a hierarchical configuration object and connection role (`app` or `customer`). Returns whether the targeted database exists and provides descriptive feedback.
-
-#### 6. `POST /api/mongo/databases`
-Lists all databases on a cluster to assist with UI-based discovery. Uses the same hierarchical configuration as the test endpoint.
-
-#### 7. `POST /api/mongo/export`
-Aggregates the entire application database state into a single portable JSON object, including the current settings.
-
-#### 8. `POST /api/mongo/import`
-Wipes the current application database and re-populates it from a provided JSON export.
-
-#### 9. `POST /api/mongo/query`
-A pass-through interface for executing raw MongoDB queries or aggregation pipelines. Primarily used for fetching "Customer Custom Data" from secondary clusters. It expects the nested `persistence.mongo.customer` configuration.
-
-### Security & Integration
-
-#### 10. `GET /api/auth/status`
-Checks if the `ADMIN_SECRET` environment variable is set and if the current session is authorized.
-
-#### 11. `POST /api/jira/*`
-Proxies requests to the Atlassian Jira API (`/test`, `/issue`, `/search`) to bypass CORS and inject credentials securely.
-
-#### 12. `POST /api/llm/generate`
-A unified gateway for multiple AI providers (OpenAI, Gemini, Anthropic, Augment). Supports Server-Sent Events (SSE) for real-time response streaming.
+For the full REST API endpoint catalogue, see [API Reference](API-REFERENCE.md).
 
 ## MongoDB Authentication & Safety
 
@@ -127,18 +66,4 @@ graph TD
     Check -->|Valid| Return
 ```
 
-## Dockerized Persistence
-
-The application includes a `docker-compose.yml` file to quickly spin up a fully connected environment.
-
-### Deployment
-1.  **Start Services:** Run `docker-compose up --build` from the root directory.
-2.  **Configuration:** Inside the application's **Settings** (⚙️), update the **MongoDB URI** to:
-    - `mongodb://mongodb:27017`
-3.  **Persistence:** Data is stored in a named Docker volume (`mongo-data`), ensuring it persists even if containers are stopped or removed.
-
-```mermaid
-graph LR
-    App[App Container] -->|Internal Network| Mongo[Mongo Container]
-    Mongo -->|Mount| Volume[(Docker Volume: mongo-data)]
-```
+For Docker and Kubernetes deployment, see [Deployment & Networking](DEPLOYMENT.md).

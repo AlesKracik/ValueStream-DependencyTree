@@ -32,7 +32,7 @@ Defined in: `web-client/src/types/models.ts`
 - **API Routes**: Domain-specific logic is split into controllers in `backend/src/routes/` (e.g., `data.ts`, `jira.ts`, `auth.ts`). Route request bodies are validated using `@sinclair/typebox` JSON schemas defined in `backend/src/routes/schemas.ts`, providing both runtime validation (Fastify rejects invalid payloads with 400) and compile-time type safety via `FastifyRequest<{ Body: T }>` generics.
 - **Database**: MongoDB (App data + External Customer data).
 - **Core Logic**: `backend/src/utils/mongoServer.ts` (Connections), `backend/src/utils/businessLogic.ts` (RICE scoring, metrics), `backend/src/utils/dbHelpers.ts` (threshold protection, query building, ValueStream filtering), and `backend/src/services/metricsService.ts` (score pre-computation via `recomputeScoresForWorkItems`, metrics computation).
-- **Secret Management**: `backend/src/services/secretManager.ts` — orchestrates secret storage (singleton factory, settings I/O, migration). Provider implementations live in `backend/src/services/providers/`: `EncryptedFileProvider` (AES-256-GCM, default), `EnvProvider` (K8s), `NoOpProvider` (dev fallback). Encrypts sensitive settings (API tokens, DB URIs, AWS credentials) in `settings.secrets.enc`. See `doc/secret-management.md`.
+- **Secret Management**: `backend/src/services/secretManager.ts` — orchestrates secret storage (singleton factory, settings I/O, migration). Provider implementations live in `backend/src/services/providers/`: `EncryptedFileProvider` (AES-256-GCM, default), `EnvProvider` (K8s), `NoOpProvider` (dev fallback). Encrypts sensitive settings (API tokens, DB URIs, AWS credentials) in `settings.secrets.enc`. See [Secret Management](SECRET-MANAGEMENT.md).
 - **Settings Plugin**: `backend/src/plugins/settings.ts` — Fastify decorator providing `fastify.getSettings()` and `fastify.saveSettings()`. Routes use this decorator instead of importing settings functions directly. Backed by async `getFullSettingsAsync()` / `saveFullSettingsAsync()` (non-blocking fs.promises I/O with caching, invalidated on save). Sync `getFullSettings()` / `saveFullSettings()` remain for startup migration only.
 - **Error Handling**: `backend/src/plugins/errorHandler.ts` — global Fastify error handler that standardizes all error responses to `{ success: false, error: message }`. Routes throw errors (or `AppError` from `backend/src/utils/errors.ts` for non-500 status codes) instead of catching them locally. Schema validation errors (400) and custom `AppError` status codes are preserved; unrecognized errors default to 500.
 - **Logging**: All backend logging uses Pino (Fastify's built-in logger). Route handlers use `fastify.log.*` / `request.log.*`. Utility modules that lack Fastify access import the standalone Pino logger from `backend/src/utils/logger.ts`. No `console.*` calls — use `logger.info/warn/error/debug` instead. Set `LOG_LEVEL` env var to control verbosity (default: `info`).
@@ -40,23 +40,13 @@ Defined in: `web-client/src/types/models.ts`
 ### Available APIs
 The backend is a standalone Fastify server running on port 4000. All endpoints require authorization via `ADMIN_SECRET` handled by a Fastify hook (`backend/src/plugins/auth.ts`). The Vite dev server proxies `/api` calls to this backend.
 
-#### Core Data & Services
-The backend encapsulates complex business logic (RICE scoring, fiscal quarter mapping) within a dedicated `backend/src/services/` layer, separating it from the data fetching routes.
+For the complete endpoint catalogue, see [API Reference](API-REFERENCE.md). Key endpoints:
 
-- `GET /api/workspace`: Composite endpoint for the Graph View. Accepts `?valueStreamId=X`. Uses pre-computed RICE scores on WorkItem documents to push ValueStream parameter filters (name, score, released) to the DB level via `buildWorkspaceQueries()`. Cross-entity filters (issue team membership, sprint range) and the post-filter threshold (413) are applied in-memory by `applyValueStreamFilters()`. Metrics (`maxScore`, `maxRoi`) are computed from the filtered set via `computeMetricsFromPrecomputed()`.
-- `POST /api/data/recomputeScores`: Migration endpoint — recomputes and persists `calculated_tcv`, `calculated_effort`, `calculated_score` on all WorkItem documents. Run once after deploying to backfill existing data.
-- `GET /api/data/{collection}`: Granular endpoints (e.g., `/api/data/customers`, `/api/data/workItems`) for list and detail views. Query params are mapped to MongoDB queries via `buildMongoQuery()` — supports text filters (`customerFilter`, `teamFilter`), status filters (`releasedFilter`), score filters (`minScoreFilter`), and relational filters (`customerId`, `workItemId`, `teamId`). Each is protected by `fetchWithThreshold()`. The `workItems` endpoint reads pre-computed scores directly from documents (no cross-collection join needed).
-- `GET /api/settings` & `POST /api/settings`: Retrieves or updates settings. Uses `SecretManager` to store sensitive credentials in an encrypted file (`settings.secrets.enc`) separate from `settings.json`. GET masks secrets with `********`; POST unmasks, splits secrets from config, and writes each to the appropriate store. See `backend/src/services/secretManager.ts` and `doc/secret-management.md`.
-- `POST /api/entity/{collection}`: Upserts documents in MongoDB.
-- `DELETE /api/entity/{collection}/{id}`: Deletes a document and performs **cascade cleanup** — removes customer_targets from WorkItems, clears work_item_id/team_id from Issues. Returns `cascaded` counts.
-- `POST /api/mongo/query`: Executes JSON-based queries (find/aggregate) against the customer or app database.
-
-#### Integrations
-- `POST /api/jira/issue`: Fetches details for a specific Jira key.
-- `POST /api/jira/search`: Executes a JQL search.
-- `POST /api/llm/generate`: Generates text using OpenAI, Gemini, Augment, or Glean.
-- `POST /api/aws/sso/*`: Manages AWS SSO authentication for secure MongoDB tunneling via device-code flow.
-- `POST /api/ldap/sync-members`: Queries an LDAP server for group members. Accepts `{ ldap_team_name }`, reads LDAP connection settings from `settings.json`/SecretManager, resolves member DNs to `{ name, username }` pairs. Used by the Team Members tab for LDAP sync.
+- `GET /api/workspace` — Composite Graph View hydration (ValueStream filtering, RICE scores, metrics).
+- `GET /api/data/{collection}` — Granular entity endpoints with query filtering and threshold protection.
+- `POST /api/entity/{collection}` / `DELETE /api/entity/{collection}/{id}` — CRUD with cascade cleanup.
+- `GET /api/settings` / `POST /api/settings` — Settings with secret masking (see [Secret Management](SECRET-MANAGEMENT.md)).
+- Integration proxies: Jira (`/api/jira/*`), AI (`/api/llm/generate`), Glean (`/api/glean/*`), Aha! (`/api/aha/*`), AWS SSO (`/api/aws/sso/*`), LDAP (`/api/ldap/*`).
 
 ### Business Logic & Metrics
 Centralized in `backend/src/utils/businessLogic.ts`:

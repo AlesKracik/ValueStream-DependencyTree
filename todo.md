@@ -9,7 +9,5 @@
   16. Missing shared API contract types
   No ApiResponse<T> / ApiError in @valuestream/shared-types; frontend uses any for network responses
   Fix: Add response wrapper types to shared package
-  19. Documentation structure (already noted in todo.md) — paragraphs in wrong places, no clear hierarchy
-  * update doc structure. it sometimes has paragraphs in wrong places. Also does not have a good logical hierarchy going from high level tree structure to individiual areas and eventually details
   * split settings on FE and BE related to manage the updates properly
 * security
