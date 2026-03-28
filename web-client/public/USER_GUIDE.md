@@ -23,7 +23,7 @@ Depending on your deployment environment, you can run the application in a few d
 
 The platform is protected by a global `ADMIN_SECRET` environment variable.
 
-<!-- TODO: screenshot — Login page -->
+![Login Page](images/login.png)
 
 *   **Access:** Enter the administrative password to unlock the workspace.
 *   **Session:** Your session is maintained via local storage. If you encounter "Unauthorized" errors, log in again or check your `ADMIN_SECRET` in the `.env` file or Kubernetes secret.
@@ -57,7 +57,7 @@ Customers represent the accounts, segments, or contract entities that provide va
 
 The entry point for account management, providing a quick health check of the entire customer base.
 
-<!-- TODO: screenshot — Customers list page -->
+![Customers List](images/customers-list.png)
 
 *   **Columns:** Name, Existing TCV, Potential TCV.
 *   **Sorting:** Order the list by Name or TCV metrics to identify top accounts.
@@ -68,7 +68,7 @@ The entry point for account management, providing a quick health check of the en
 
 The detail page is the command centre for managing a specific account's lifecycle and alignment.
 
-<!-- TODO: screenshot — Customer detail page -->
+![Customer Detail](images/customer-detail.png)
 
 *   **TCV Promotion Lifecycle:** The platform distinguishes between "Actual" (Existing) and "Target" (Potential) TCV.
     *   **Action — "Promote to Actual":** This workflow moves the current Potential TCV into the Actual slot, while automatically snapshotting the old Actual value into the **TCV History** ledger. This ensures a clean audit trail as contracts evolve.
@@ -82,14 +82,14 @@ The detail page uses a tabbed interface to organise complex data sets:
 
 **Tab: Custom Fields**
 
-<!-- TODO: screenshot — Customer custom fields tab -->
+![Customer Custom Fields](images/customer-detail-fields.png)
 
 *   Displays bespoke customer data fetched in real-time from an external MongoDB collection using the Customer ID and the custom aggregation pipeline defined in **Settings > Persistence > Customer**.
 *   Allows viewing nested structures, product clusters, or status fields directly within the portal.
 
 **Tab: Targeted Work Items**
 
-<!-- TODO: screenshot — Customer targeted work items tab -->
+![Customer Targeted Work Items](images/customer-detail-workitems.png)
 
 *   Defines which strategic initiatives are fulfilling the customer's value.
 *   **Add Target:** Link a work item to this customer using the searchable dropdown.
@@ -99,14 +99,14 @@ The detail page uses a tabbed interface to organise complex data sets:
 
 **Tab: TCV History**
 
-<!-- TODO: screenshot — Customer TCV history tab -->
+![Customer TCV History](images/customer-detail-history.png)
 
 *   An immutable, chronological audit trail created by the "Promote to Actual" lifecycle. Displays past values, start dates, and contract durations.
 *   Manually remove historical entries if necessary.
 
 **Tab: Support Health**
 
-<!-- TODO: screenshot — Customer support health tab -->
+![Customer Support Health](images/customer-detail-support.png)
 
 *   **Health Status Indicator:** A coloured dot in the tab label provides an instant health check based on the most serious Jira category:
     *   Red: New / Untriaged issues found.
@@ -128,7 +128,7 @@ Work Items represent strategic initiatives, major feature sets, or roadmap theme
 
 A prioritisation dashboard for the product organisation.
 
-<!-- TODO: screenshot — Work items list page -->
+![Work Items List](images/workitems-list.png)
 
 *   **Columns:** Name, RICE Score, Effort (MDs), TCV, Status, Released Sprint.
 *   **RICE Score:** Calculated as `(Total Impact TCV / Combined Effort MDs)`.
@@ -138,7 +138,7 @@ A prioritisation dashboard for the product organisation.
 
 Define the "What" and the "How" of a strategic goal.
 
-<!-- TODO: screenshot — Work item detail page -->
+![Work Item Detail](images/workitem-detail.png)
 
 *   **Define Scope:** Toggle the **"Global"** flag if the item benefits every customer (e.g., core infrastructure).
 *   **Set Score Components:** Adjust "Baseline Effort" estimates if no issues are yet defined.
@@ -146,13 +146,13 @@ Define the "What" and the "How" of a strategic goal.
 
 **Tab: Targeted Customers**
 
-<!-- TODO: screenshot — Work Item targeted customers tab -->
+![Work Item Targeted Customers](images/workitem-detail-customers.png)
 
 Define exactly which accounts this initiative is for. Choose the TCV type (Existing/Potential) and Priority (Must-have/Should-have/Nice-to-have) for each account to drive the RICE score. Toggle **"ALL CUSTOMERS (Global)"** to target the entire customer base.
 
 **Tab: Issues & Engineering**
 
-<!-- TODO: screenshot — Work Item issues tab (replaces old workitem-detail-issues.png if needed) -->
+![Work Item Issues](images/workitem-detail-issues.png)
 
 *   Break down strategy into deliverable technical units.
 *   **Issue Linkage:** Add new Issues or link existing ones.
@@ -160,7 +160,7 @@ Define exactly which accounts this initiative is for. Choose the TCV type (Exist
 
 **Tab: Aha! Integration** *(appears only when Aha! is configured in Settings)*
 
-<!-- TODO: screenshot — Work Item Aha! tab -->
+![Work Item Aha! Integration](images/workitem-detail-aha.png)
 
 *   **Link Feature:** Enter an Aha! Reference Number (e.g., `PROD-123`) and click **Sync from Aha!** to pull feature data.
 *   **Synced Information:** Displays the feature's Name, Description (HTML-rendered), Effort (MDs), and Score.
@@ -175,7 +175,7 @@ The granular execution units that bridge Product strategy and Engineering delive
 
 #### Issue Detail View
 
-<!-- TODO: screenshot — Issue detail (replaces old issue-detail.png if needed) -->
+![Issue Detail](images/issue-detail.png)
 
 *   **Name:** Descriptive title for the issue.
 *   **Work Item:** Searchable dropdown to assign the parent Work Item (or "Unassigned").
@@ -185,7 +185,7 @@ The granular execution units that bridge Product strategy and Engineering delive
 
 **Tab: Sprint Effort Distribution**
 
-<!-- TODO: screenshot — Issue sprint effort distribution tab -->
+![Issue Sprint Effort Distribution](images/issue-detail-effort.png)
 
 *   View and override how effort is allocated across the issue's timeline.
 *   **Columns:** Sprint, Dates, Context (Quarter), Team Capacity, Effort (MDs).
@@ -201,7 +201,7 @@ Engineering teams are the delivery engines, each with a defined velocity.
 
 #### Team Detail
 
-<!-- TODO: screenshot — Team detail (replaces old team-detail.png if needed) -->
+![Team Detail](images/team-detail.png)
 
 **Tab: General**
 
@@ -211,7 +211,7 @@ Engineering teams are the delivery engines, each with a defined velocity.
 
 **Tab: Capacity Overrides**
 
-<!-- TODO: screenshot — Team capacity overrides tab -->
+![Team Capacity Overrides](images/team-detail-capacity.png)
 
 *   View effective capacity per sprint with automatic holiday adjustments.
 *   **Columns:** Sprint, Dates, Standard Work Days, Effective Capacity (MDs).
@@ -220,7 +220,7 @@ Engineering teams are the delivery engines, each with a defined velocity.
 
 **Tab: Members**
 
-<!-- TODO: screenshot — Team members tab -->
+![Team Members](images/team-detail-members.png)
 
 *   Inline CRUD for team members.
 *   **Fields:** Name, Username (unique identifier / LDAP merge key), Capacity % (default: 100).
@@ -245,7 +245,7 @@ When LDAP is configured in **Settings > LDAP** (General & Team subtabs), an addi
 
 The temporal framework that aligns the organisation.
 
-<!-- TODO: screenshot — Sprints list page -->
+![Sprints List](images/sprints-list.png)
 
 *   **Quarterly Grouping:** Sprints are automatically grouped by fiscal quarters for better long-term planning.
 *   **Statuses:**
@@ -265,7 +265,7 @@ The platform's primary visualisation, mapping value from source to delivery.
 
 #### Value Stream Scopes (Custom Views)
 
-<!-- TODO: screenshot — ValueStream list page -->
+![ValueStream List](images/valuestream-list.png)
 
 Instead of one global view, you can create multiple **Value Stream Scopes**. These are saved configurations that allow you to focus on specific segments of the organisation or roadmap.
 
@@ -278,7 +278,7 @@ Instead of one global view, you can create multiple **Value Stream Scopes**. The
 
 #### The Live Graph Visualisation
 
-<!-- TODO: screenshot — ValueStream graph view -->
+![ValueStream Graph View](images/ValueStream.png)
 
 The Live Graph is a multi-layered dependency tree that maps demand (Customers) to execution (Issues) over a temporal Gantt timeline.
 
@@ -341,7 +341,7 @@ The Live Graph is a multi-layered dependency tree that maps demand (Customers) t
 
 A bird's-eye view of account stability across the customer base.
 
-<!-- TODO: screenshot — Support health page -->
+![Support Health](images/support-health.png)
 
 *   **Ranking:** Issues are sorted by the **Customer's TCV Rank**, prioritising high-revenue accounts.
 *   **Columns:** Customer, TCV Category (💰), Activity, Description, Status.
@@ -352,7 +352,7 @@ A bird's-eye view of account stability across the customer base.
 
 #### AI-Powered Support Discovery
 
-<!-- TODO: screenshot — AI Support Discovery results -->
+![AI Support Discovery](images/support-ai-discovery.png)
 
 When an AI provider is configured in **Settings > AI & LLM**, the Support page gains an **AI Support Search** button that uses your configured LLM to automatically discover customer issues.
 
@@ -376,13 +376,13 @@ When an AI provider is configured in **Settings > AI & LLM**, the Support page g
 
 ### System Configuration
 
-<!-- TODO: screenshot — Settings page showing all 6 tabs -->
+![Settings Page](images/settings.png)
 
 The Settings page provides six configuration tabs:
 
 #### General Project
 
-<!-- TODO: screenshot — General Project settings tab -->
+![Settings - General Project](images/settings-general.png)
 
 *   **Colour Palette:** Switch between **Dark mode** and **Filips mode** (high-contrast pastel, designed for readability in bright environments).
 *   **Fiscal Year Start Month:** Align quarter groupings to your organisation's calendar (January–December).
@@ -390,7 +390,7 @@ The Settings page provides six configuration tabs:
 
 #### Persistence (Multi-Role)
 
-<!-- TODO: screenshot — Persistence settings tab -->
+![Settings - Persistence](images/settings-persistence.png)
 
 *   **Application DB:** Where ValueStream stores its internal entities. Configure the MongoDB URI, database name, and authentication method.
 *   **Customer DB:** Connect to your production/external MongoDB to fetch "Custom Fields" via JSON aggregation pipelines.
@@ -408,7 +408,7 @@ The Settings page provides six configuration tabs:
 
 #### Jira Integration
 
-<!-- TODO: screenshot — Jira Integration settings tab -->
+![Settings - Jira Integration](images/settings-jira.png)
 
 *   **Common:** Jira Base URL, API Version, and Personal Access Token (PAT). Includes a **Test Connection** tool.
 *   **Issues:** Tools for bulk operations:
@@ -418,7 +418,7 @@ The Settings page provides six configuration tabs:
 
 #### Aha! Integration
 
-<!-- TODO: screenshot — Aha! settings tab -->
+![Settings - Aha! Integration](images/settings-aha.png)
 
 *   **Aha! Subdomain:** Your company's Aha! subdomain (e.g., `your-company` for `your-company.aha.io`).
 *   **Aha! API Key:** Personal Access Token (masked input).
@@ -428,7 +428,7 @@ Once configured, Work Item detail pages gain an **Aha! Integration** tab for lin
 
 #### AI & LLM
 
-<!-- TODO: screenshot — AI & LLM settings tab -->
+![Settings - AI & LLM](images/settings-ai.png)
 
 **General subtab:**
 
@@ -445,7 +445,7 @@ Once configured, Work Item detail pages gain an **Aha! Integration** tab for lin
 
 #### LDAP
 
-<!-- TODO: screenshot — LDAP settings tab -->
+![Settings - LDAP](images/settings-ldap.png)
 
 *   **General:** LDAP Server URL, Bind DN, and Bind Password (encrypted via SecretManager).
 *   **Team:** Base DN for group searches and a Search Filter template. Use the `{{LDAP_TEAM_NAME}}` placeholder in the filter — it is replaced at runtime with the team's configured LDAP group name (e.g., `(cn={{LDAP_TEAM_NAME}})`).
