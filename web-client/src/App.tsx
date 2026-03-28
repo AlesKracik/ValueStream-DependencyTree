@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useParams, Navigate } from 'react-router-dom';
+import type { NavigateFunction } from 'react-router-dom';
 import { ReactFlowProvider } from '@xyflow/react';
 
 // Main entities
@@ -28,6 +29,29 @@ import { getAdminSecret } from './utils/api';
 import { deepMerge } from './utils/businessLogic';
 import type { ValueStreamDataState } from '@valuestream/shared-types';
 import './App.css';
+
+// --- Route wrapper factory ---
+// Eliminates repetitive useNotificationContext() + useValueStreamData() boilerplate.
+type RouteWrapperConfig = {
+  collections: string[];
+  queryParams?: (id?: string) => Record<string, Record<string, string>> | undefined;
+  render: (ctx: {
+    state: ReturnType<typeof useValueStreamData>;
+    id?: string;
+    navigate: NavigateFunction;
+  }) => React.ReactElement;
+};
+
+function createRouteWrapper(config: RouteWrapperConfig): React.FC {
+  return function RouteWrapper() {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const { showAlert } = useNotificationContext();
+    const queryParams = config.queryParams?.(id);
+    const state = useValueStreamData(undefined, undefined, 1000, showAlert, config.collections, queryParams);
+    return config.render({ state, id, navigate });
+  };
+}
 
 function ValueStreamRouteWrapper() {
   const { id } = useParams();
@@ -61,115 +85,99 @@ function ValueStreamRouteWrapper() {
   );
 }
 
-function CustomerPageRouteWrapper() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { showAlert } = useNotificationContext();
-  const state = useValueStreamData(undefined, undefined, 1000, showAlert, ['customers', 'workItems', 'issues', 'settings']);
-  return <CustomerPage customerId={id!} onBack={() => navigate(-1)} {...state} addCustomer={state.addCustomer} />;
-}
+// --- Entity detail page wrappers ---
+const CustomerPageRouteWrapper = createRouteWrapper({
+  collections: ['customers', 'workItems', 'issues', 'settings'],
+  render: ({ state, id, navigate }) =>
+    <CustomerPage customerId={id!} onBack={() => navigate(-1)} {...state} addCustomer={state.addCustomer} />,
+});
 
-function WorkItemPageRouteWrapper() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { showAlert } = useNotificationContext();
+const WorkItemPageRouteWrapper = createRouteWrapper({
+  collections: ['workItems', 'customers', 'teams', 'sprints', 'issues', 'settings'],
   // Filter issues to only those linked to this workItem
-  const queryParams = useMemo(() => {
-    const params: Record<string, Record<string, string>> = {};
-    if (id) params.issues = { workItemId: id };
-    return params;
-  }, [id]);
-  const state = useValueStreamData(undefined, undefined, 1000, showAlert,
-    ['workItems', 'customers', 'teams', 'sprints', 'issues', 'settings'], queryParams);
-  return <WorkItemPage workItemId={id!} onBack={() => navigate(-1)} {...state} />;
-}
+  queryParams: (id) => id ? { issues: { workItemId: id } } : undefined,
+  render: ({ state, id, navigate }) =>
+    <WorkItemPage workItemId={id!} onBack={() => navigate(-1)} {...state} />,
+});
 
-function IssuePageRouteWrapper() {
-  const { showAlert } = useNotificationContext();
-  const state = useValueStreamData(undefined, undefined, 1000, showAlert, ['issues', 'teams', 'workItems', 'sprints', 'settings']);
-  return <IssuePage data={state.data} loading={state.loading} updateIssue={state.updateIssue} deleteIssue={state.deleteIssue} />;
-}
+const IssuePageRouteWrapper = createRouteWrapper({
+  collections: ['issues', 'teams', 'workItems', 'sprints', 'settings'],
+  render: ({ state }) =>
+    <IssuePage data={state.data} loading={state.loading} updateIssue={state.updateIssue} deleteIssue={state.deleteIssue} />,
+});
 
-function TeamPageRouteWrapper() {
-  const { showAlert } = useNotificationContext();
-  const state = useValueStreamData(undefined, undefined, 1000, showAlert, ['teams', 'sprints', 'settings']);
-  return <TeamPage data={state.data} loading={state.loading} updateTeam={state.updateTeam} addTeam={state.addTeam as never} deleteTeam={state.deleteTeam} />;
-}
+const TeamPageRouteWrapper = createRouteWrapper({
+  collections: ['teams', 'sprints', 'settings'],
+  render: ({ state }) =>
+    <TeamPage data={state.data} loading={state.loading} updateTeam={state.updateTeam} addTeam={state.addTeam as never} deleteTeam={state.deleteTeam} />,
+});
 
-function ValueStreamEditPageRouteWrapper() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { showAlert } = useNotificationContext();
-  const state = useValueStreamData(undefined, undefined, 1000, showAlert, ['valueStreams', 'sprints']);
-  return <ValueStreamEditPage valueStreamId={id!} onBack={() => navigate(-1)} {...state} />;
-}
+const ValueStreamEditPageRouteWrapper = createRouteWrapper({
+  collections: ['valueStreams', 'sprints'],
+  render: ({ state, id, navigate }) =>
+    <ValueStreamEditPage valueStreamId={id!} onBack={() => navigate(-1)} {...state} />,
+});
 
 function SprintPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueStreamDataState }) {
   return <SprintPage {...valueStreamState} />;
 }
 
-function SettingsPageRouteWrapper() {
-  const { showAlert } = useNotificationContext();
-  const state = useValueStreamData(undefined, undefined, 1000, showAlert, ['settings']);
-  const mergedSettings = deepMerge(DEFAULT_SETTINGS, state.data?.settings || {});
+const SettingsPageRouteWrapper = createRouteWrapper({
+  collections: ['settings'],
+  render: ({ state }) => {
+    const mergedSettings = deepMerge(DEFAULT_SETTINGS, state.data?.settings || {});
+    return (
+      <SettingsPage
+        settings={mergedSettings}
+        onUpdateSettings={state.data ? state.updateSettings : () => {}}
+        data={state.data}
+        loading={state.loading}
+        error={state.error}
+        updateIssue={state.updateIssue}
+        addIssue={state.addIssue}
+      />
+    );
+  },
+});
 
-  return (
-    <SettingsPage
-      settings={mergedSettings}
-      onUpdateSettings={state.data ? state.updateSettings : () => {}}
-      data={state.data}
-      loading={state.loading}
-      error={state.error}
-      updateIssue={state.updateIssue}
-      addIssue={state.addIssue}
-    />
-  );
-}
+// --- List page wrappers — fetch only the collections they need ---
+const ValueStreamListRouteWrapper = createRouteWrapper({
+  collections: ['valueStreams'],
+  render: ({ state }) => <ValueStreamListPage data={state.data} loading={state.loading} />,
+});
 
-// Lightweight wrappers for list pages — fetch only the collections they need
-function ValueStreamListRouteWrapper() {
-  const { showAlert } = useNotificationContext();
-  const state = useValueStreamData(undefined, undefined, 1000, showAlert, ['valueStreams']);
-  return <ValueStreamListPage data={state.data} loading={state.loading} />;
-}
+const CustomerListRouteWrapper = createRouteWrapper({
+  collections: ['customers'],
+  render: ({ state }) => <CustomerListPage data={state.data} loading={state.loading} />,
+});
 
-function CustomerListRouteWrapper() {
-  const { showAlert } = useNotificationContext();
-  const state = useValueStreamData(undefined, undefined, 1000, showAlert, ['customers']);
-  return <CustomerListPage data={state.data} loading={state.loading} />;
-}
+const TeamListRouteWrapper = createRouteWrapper({
+  collections: ['teams'],
+  render: ({ state }) => <TeamListPage data={state.data} loading={state.loading} />,
+});
 
-function TeamListRouteWrapper() {
-  const { showAlert } = useNotificationContext();
-  const state = useValueStreamData(undefined, undefined, 1000, showAlert, ['teams']);
-  return <TeamListPage data={state.data} loading={state.loading} />;
-}
+const SupportRouteWrapper = createRouteWrapper({
+  collections: ['customers', 'settings'],
+  render: ({ state }) =>
+    <SupportPage data={state.data} loading={state.loading} updateCustomer={state.updateCustomer} />,
+});
 
-function SupportRouteWrapper() {
-  const { showAlert } = useNotificationContext();
-  const state = useValueStreamData(undefined, undefined, 1000, showAlert, ['customers', 'settings']);
-  return <SupportPage data={state.data} loading={state.loading} updateCustomer={state.updateCustomer} />;
-}
+const SprintListRouteWrapper = createRouteWrapper({
+  collections: ['sprints', 'settings'],
+  render: ({ state }) => <SprintPageRouteWrapper valueStreamState={state} />,
+});
 
-function SprintListRouteWrapper() {
-  const { showAlert } = useNotificationContext();
-  const state = useValueStreamData(undefined, undefined, 1000, showAlert, ['sprints', 'settings']);
-  return <SprintPageRouteWrapper valueStreamState={state} />;
-}
+// WorkItems list needs sprints so the "Released" column can resolve sprint names
+const WorkItemListRouteWrapper = createRouteWrapper({
+  collections: ['workItems', 'sprints'],
+  render: ({ state }) => <WorkItemListPage data={state.data} loading={state.loading} />,
+});
 
-function WorkItemListRouteWrapper() {
-  const { showAlert } = useNotificationContext();
-  // WorkItems list needs cross-entity scoring (customers + issues for TCV/effort)
-  // Also fetch sprints so the "Released" column can resolve sprint names
-  const state = useValueStreamData(undefined, undefined, 1000, showAlert, ['workItems', 'sprints']);
-  return <WorkItemListPage data={state.data} loading={state.loading} />;
-}
-
-function ValueStreamNewRouteWrapper() {
-  const { showAlert } = useNotificationContext();
-  const state = useValueStreamData(undefined, undefined, 1000, showAlert, ['valueStreams', 'sprints']);
-  return <ValueStreamEditPage valueStreamId="new" onBack={() => window.history.back()} {...state} />;
-}
+const ValueStreamNewRouteWrapper = createRouteWrapper({
+  collections: ['valueStreams', 'sprints'],
+  render: ({ state }) =>
+    <ValueStreamEditPage valueStreamId="new" onBack={() => window.history.back()} {...state} />,
+});
 
 function MainAppContent() {
   const { showAlert } = useNotificationContext();

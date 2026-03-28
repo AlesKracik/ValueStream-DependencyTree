@@ -7,13 +7,6 @@
   * TCV History Logic Enhancement: Currently, when a Customer's Actual TCV is updated (archived to history), Work Items linked to "Latest Actual" remain linked to the new "Latest Actual". Consider if some Work Items should be automatically re-linked to the archived historical entry to preserve their context.
 * code readability, organization, DRY and overall architecture
 
-7. Backend: glean.ts — 319 lines mixing OAuth, chat proxy, and discovery
-
-Fix: Split into gleanAuth.ts, gleanChat.ts, gleanDiscovery.ts
-9. Frontend: App.tsx — 13 nearly identical route wrapper functions
-
-Each wraps useNotificationContext() + useValueStreamData() + renders page
-Fix: Create a withRouteState(PageComponent) HOC or factory
 10. Frontend: api.ts — 6 API functions with 60% duplicated boilerplate
 
 Same authorizedFetch → error handling → response parsing pattern
