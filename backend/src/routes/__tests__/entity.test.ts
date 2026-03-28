@@ -88,8 +88,9 @@ describe('Entity Routes', () => {
 
     expect(response.statusCode).toBe(400);
     const json = JSON.parse(response.payload);
-    // Schema validation now catches missing 'id' before the handler runs
-    expect(json.message).toContain("required property 'id'");
+    // Schema validation caught by global error handler
+    expect(json.success).toBe(false);
+    expect(json.error).toContain("required property 'id'");
   });
 
   it('should reject an forbidden collection', async () => {

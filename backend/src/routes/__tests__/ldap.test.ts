@@ -105,10 +105,11 @@ describe('LDAP Routes', () => {
             payload: {}
         });
 
-        // Schema validation now catches missing 'ldap_team_name' before the handler runs
+        // Schema validation caught by global error handler
         expect(response.statusCode).toBe(400);
         const body = JSON.parse(response.body);
-        expect(body.message).toContain("required property 'ldap_team_name'");
+        expect(body.success).toBe(false);
+        expect(body.error).toContain("required property 'ldap_team_name'");
     });
 
     it('POST /api/ldap/sync-members should handle single member (not array)', async () => {

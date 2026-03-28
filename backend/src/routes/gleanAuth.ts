@@ -7,6 +7,7 @@ import {
 } from '../utils/gleanHelpers';
 import { GleanAuthInitBody, GleanAuthInitBodyType } from './schemas';
 import { fetchAuthServerUrl, discoverAuthMetadata, ensureClient } from './gleanDiscovery';
+import { AppError } from '../utils/errors';
 
 // Memory storage for PKCE verifiers (short-lived)
 const pkceStore: Record<string, { verifier: string; gleanUrl: string }> = {};
@@ -17,39 +18,34 @@ export async function gleanAuthRoutes(app: FastifyInstance) {
   app.post<{ Body: GleanAuthInitBodyType }>('/api/glean/auth/init', { schema: { body: GleanAuthInitBody } }, async (req, reply) => {
     const { gleanUrl } = req.body;
     if (!gleanUrl) {
-      return reply.status(400).send({ error: 'gleanUrl is required' });
+      throw new AppError('gleanUrl is required', 400);
     }
 
-    try {
-      const normalizedUrl = gleanUrl.replace(/\/$/, '');
-      app.log.info(`Initializing Glean auth for ${normalizedUrl}`);
+    const normalizedUrl = gleanUrl.replace(/\/$/, '');
+    app.log.info(`Initializing Glean auth for ${normalizedUrl}`);
 
-      const authServerBase = await fetchAuthServerUrl(normalizedUrl, app.log);
-      const discoveryData = await discoverAuthMetadata(authServerBase, normalizedUrl, app.log);
-      const client = await ensureClient(normalizedUrl, discoveryData, app.log);
+    const authServerBase = await fetchAuthServerUrl(normalizedUrl, app.log);
+    const discoveryData = await discoverAuthMetadata(authServerBase, normalizedUrl, app.log);
+    const client = await ensureClient(normalizedUrl, discoveryData, app.log);
 
-      // PKCE
-      const verifier = crypto.randomBytes(32).toString('base64url');
-      const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
-      const state = crypto.randomBytes(16).toString('hex');
+    // PKCE
+    const verifier = crypto.randomBytes(32).toString('base64url');
+    const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+    const state = crypto.randomBytes(16).toString('hex');
 
-      pkceStore[state] = { verifier, gleanUrl: normalizedUrl };
+    pkceStore[state] = { verifier, gleanUrl: normalizedUrl };
 
-      const authUrl = new URL(client.authorization_endpoint);
-      authUrl.searchParams.set('response_type', 'code');
-      authUrl.searchParams.set('client_id', client.client_id);
-      authUrl.searchParams.set('redirect_uri', `${process.env.GLEAN_REDIRECT_BASE_URL || 'http://localhost:4000'}/api/glean/auth/callback`);
-      // LIMIT SCOPES HERE
-      authUrl.searchParams.set('scope', 'chat offline_access');
-      authUrl.searchParams.set('state', state);
-      authUrl.searchParams.set('code_challenge', challenge);
-      authUrl.searchParams.set('code_challenge_method', 'S256');
+    const authUrl = new URL(client.authorization_endpoint);
+    authUrl.searchParams.set('response_type', 'code');
+    authUrl.searchParams.set('client_id', client.client_id);
+    authUrl.searchParams.set('redirect_uri', `${process.env.GLEAN_REDIRECT_BASE_URL || 'http://localhost:4000'}/api/glean/auth/callback`);
+    // LIMIT SCOPES HERE
+    authUrl.searchParams.set('scope', 'chat offline_access');
+    authUrl.searchParams.set('state', state);
+    authUrl.searchParams.set('code_challenge', challenge);
+    authUrl.searchParams.set('code_challenge_method', 'S256');
 
-      return { authUrl: authUrl.toString() };
-    } catch (err: any) {
-      app.log.error(err);
-      return reply.status(500).send({ error: err.message });
-    }
+    return { authUrl: authUrl.toString() };
   });
 
   // 2. OAuth Callback

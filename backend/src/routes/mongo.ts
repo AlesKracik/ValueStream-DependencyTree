@@ -62,39 +62,31 @@ export const mongoRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   fastify.post('/api/mongo/export', async (request, reply) => {
-    try {
-      const settings = await fastify.getSettings();
-      const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
+    const settings = await fastify.getSettings();
+    const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
 
-      const data: any = { settings: maskSettings(settings) };
-      for (const col of ALLOWED_COLLECTIONS) {
-        const docs = await db.collection(col).find({}).toArray();
-        data[col] = docs.map(({ _id, ...rest }) => rest);
-      }
-
-      return reply.send({ success: true, data });
-    } catch (e: any) {
-      return reply.code(500).send({ success: false, error: e.message });
+    const data: any = { settings: maskSettings(settings) };
+    for (const col of ALLOWED_COLLECTIONS) {
+      const docs = await db.collection(col).find({}).toArray();
+      data[col] = docs.map(({ _id, ...rest }) => rest);
     }
+
+    return reply.send({ success: true, data });
   });
 
   fastify.post<{ Body: MongoImportBodyType }>('/api/mongo/import', { schema: { body: MongoImportBody } }, async (request, reply) => {
-    try {
-      const { data: importData } = request.body;
-      const settings = await fastify.getSettings();
-      const db = await getDb(augmentConfig(settings, 'app'), 'app', false);
+    const { data: importData } = request.body;
+    const settings = await fastify.getSettings();
+    const db = await getDb(augmentConfig(settings, 'app'), 'app', false);
 
-      for (const col of ALLOWED_COLLECTIONS) {
-        await db.collection(col).deleteMany({});
-        if (importData[col]?.length > 0) {
-            await db.collection(col).insertMany(importData[col] as any[]);
-        }
+    for (const col of ALLOWED_COLLECTIONS) {
+      await db.collection(col).deleteMany({});
+      if (importData[col]?.length > 0) {
+          await db.collection(col).insertMany(importData[col] as any[]);
       }
-
-      return reply.send({ success: true });
-    } catch (e: any) {
-      return reply.code(500).send({ success: false, error: e.message });
     }
+
+    return reply.send({ success: true });
   });
 
 };

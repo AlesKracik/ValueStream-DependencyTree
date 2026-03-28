@@ -9,21 +9,17 @@ export { getSettingsPath };
 
 export const settingsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post<{ Body: Settings }>('/api/settings', { schema: { body: SettingsBody } }, async (request, reply) => {
-    try {
-      const newData = request.body;
+    const newData = request.body;
 
-      // Read current full settings (config + secrets) for unmask
-      const existingSettings = await fastify.getSettings();
+    // Read current full settings (config + secrets) for unmask
+    const existingSettings = await fastify.getSettings();
 
-      // Unmask: restore ******** values from existing secrets
-      const unmasked = unmaskSettings(newData, existingSettings);
+    // Unmask: restore ******** values from existing secrets
+    const unmasked = unmaskSettings(newData, existingSettings);
 
-      // Split write: secrets → SecretManager, config → settings.json
-      await fastify.saveSettings(unmasked);
+    // Split write: secrets → SecretManager, config → settings.json
+    await fastify.saveSettings(unmasked);
 
-      return reply.send({ success: true });
-    } catch (e: any) {
-      return reply.code(500).send({ success: false, error: e.message });
-    }
+    return reply.send({ success: true });
   });
 };
