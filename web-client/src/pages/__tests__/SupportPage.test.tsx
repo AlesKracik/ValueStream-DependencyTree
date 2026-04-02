@@ -786,19 +786,21 @@ describe('SupportPage', () => {
     it('exports CSV with correct format', () => {
         const createObjectURL = vi.fn(() => 'blob:url');
         const revokeObjectURL = vi.fn();
-        const mockClick = vi.fn();
-        const mockAppendChild = vi.fn();
-        const mockRemoveChild = vi.fn();
 
         global.URL.createObjectURL = createObjectURL;
         global.URL.revokeObjectURL = revokeObjectURL;
-        vi.spyOn(document, 'createElement').mockReturnValue({
-            click: mockClick,
-            set href(_: string) {},
-            set download(_: string) {},
-        } as unknown as HTMLElement);
-        vi.spyOn(document.body, 'appendChild').mockImplementation(mockAppendChild);
-        vi.spyOn(document.body, 'removeChild').mockImplementation(mockRemoveChild);
+
+        // Spy on the real anchor's click method via createElement interception
+        let capturedAnchor: HTMLAnchorElement | null = null;
+        const originalCreateElement = document.createElement.bind(document);
+        vi.spyOn(document, 'createElement').mockImplementation((tagName: string, options?: ElementCreationOptions) => {
+            const el = originalCreateElement(tagName, options);
+            if (tagName === 'a') {
+                capturedAnchor = el as HTMLAnchorElement;
+                vi.spyOn(el, 'click').mockImplementation(() => {});
+            }
+            return el;
+        });
 
         renderWithProviders(
             <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
@@ -808,7 +810,10 @@ describe('SupportPage', () => {
         expect(createObjectURL).toHaveBeenCalled();
         const blobArg = createObjectURL.mock.calls[0][0] as Blob;
         expect(blobArg).toBeInstanceOf(Blob);
-        expect(mockClick).toHaveBeenCalled();
+        expect(capturedAnchor).not.toBeNull();
+        expect(capturedAnchor!.click).toHaveBeenCalled();
+
+        vi.restoreAllMocks();
     });
 
     it('handles CSV upsert with file upload', async () => {
@@ -852,10 +857,15 @@ describe('SupportPage', () => {
         });
 
         await waitFor(() => {
-            expect(mockUpdateCustomer).toHaveBeenCalled();
-            const call = mockUpdateCustomer.mock.calls[0];
-            const issues = call[1].support_issues as SupportIssue[];
-            // Find the newly added issue (last one appended)
+            // The first call may be the expired-issue cleanup on mount; find the CSV upsert call
+            const upsertCall = mockUpdateCustomer.mock.calls.find(
+                (c: unknown[]) => {
+                    const issues = (c[1] as { support_issues?: SupportIssue[] }).support_issues;
+                    return issues?.some((i: SupportIssue) => i.description === 'Minimal Issue');
+                }
+            );
+            expect(upsertCall).toBeDefined();
+            const issues = upsertCall![1].support_issues as SupportIssue[];
             const added = issues.find((i: SupportIssue) => i.description === 'Minimal Issue');
             expect(added).toBeDefined();
             expect(added!.status).toBe('to do');
