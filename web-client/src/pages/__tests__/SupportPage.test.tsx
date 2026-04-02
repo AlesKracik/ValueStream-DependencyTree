@@ -824,8 +824,8 @@ describe('SupportPage', () => {
         fireEvent.click(screen.getByText('Upsert from JSON'));
 
         const jsonContent = JSON.stringify([
-            { customer: 'c1', description: 'Updated Issue', status: 'work in progress' },
-            { customer: 'c1', description: 'New Issue', status: 'to do' }
+            { customer: 'Customer A', description: 'Updated Issue', status: 'work in progress' },
+            { customer: 'Customer A', description: 'New Issue', status: 'to do' }
         ]);
         const file = new File([jsonContent], 'test.json', { type: 'application/json' });
 
@@ -850,7 +850,7 @@ describe('SupportPage', () => {
 
         // JSON with only description — status, related_jiras, expiration_date are missing
         const jsonContent = JSON.stringify([
-            { customer: 'c1', description: 'Minimal Issue' }
+            { customer: 'Customer A', description: 'Minimal Issue' }
         ]);
         const file = new File([jsonContent], 'minimal.json', { type: 'application/json' });
 
