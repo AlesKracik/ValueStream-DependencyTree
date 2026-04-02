@@ -754,4 +754,112 @@ describe('SupportPage', () => {
             expect(screen.queryByText('No Match Issue')).toBeNull();
         });
     });
+
+    it('renders Upsert from CSV and Export CSV buttons', () => {
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+        expect(screen.getByText('Upsert from CSV')).toBeDefined();
+        expect(screen.getByText('Export CSV')).toBeDefined();
+    });
+
+    it('opens CSV upsert modal when Upsert from CSV button is clicked', () => {
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+        fireEvent.click(screen.getByText('Upsert from CSV'));
+        expect(screen.getByText('Upsert Support Issues from CSV')).toBeDefined();
+        expect(screen.getByText('Delete support issues not found in CSV')).toBeDefined();
+        expect(screen.getByText('Select CSV File')).toBeDefined();
+    });
+
+    it('closes CSV modal when Cancel is clicked', () => {
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+        fireEvent.click(screen.getByText('Upsert from CSV'));
+        expect(screen.getByText('Upsert Support Issues from CSV')).toBeDefined();
+        fireEvent.click(screen.getByText('Cancel'));
+        expect(screen.queryByText('Upsert Support Issues from CSV')).toBeNull();
+    });
+
+    it('exports CSV with correct format', () => {
+        const createObjectURL = vi.fn(() => 'blob:url');
+        const revokeObjectURL = vi.fn();
+        const mockClick = vi.fn();
+        const mockAppendChild = vi.fn();
+        const mockRemoveChild = vi.fn();
+
+        global.URL.createObjectURL = createObjectURL;
+        global.URL.revokeObjectURL = revokeObjectURL;
+        vi.spyOn(document, 'createElement').mockReturnValue({
+            click: mockClick,
+            set href(_: string) {},
+            set download(_: string) {},
+        } as unknown as HTMLElement);
+        vi.spyOn(document.body, 'appendChild').mockImplementation(mockAppendChild);
+        vi.spyOn(document.body, 'removeChild').mockImplementation(mockRemoveChild);
+
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+        fireEvent.click(screen.getByText('Export CSV'));
+
+        expect(createObjectURL).toHaveBeenCalled();
+        const blobArg = createObjectURL.mock.calls[0][0] as Blob;
+        expect(blobArg).toBeInstanceOf(Blob);
+        expect(mockClick).toHaveBeenCalled();
+    });
+
+    it('handles CSV upsert with file upload', async () => {
+        mockUpdateCustomer.mockResolvedValue(undefined);
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+        fireEvent.click(screen.getByText('Upsert from CSV'));
+
+        const csvContent = 'CUSTOMER,description,status\nc1,Updated Issue,work in progress\nc1,New Issue,to do';
+        const file = new File([csvContent], 'test.csv', { type: 'text/csv' });
+
+        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        expect(fileInput).toBeDefined();
+
+        await act(async () => {
+            fireEvent.change(fileInput, { target: { files: [file] } });
+        });
+
+        await waitFor(() => {
+            expect(mockUpdateCustomer).toHaveBeenCalled();
+        });
+    });
+
+    it('handles CSV upsert with missing columns, applying defaults', async () => {
+        mockUpdateCustomer.mockResolvedValue(undefined);
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+        fireEvent.click(screen.getByText('Upsert from CSV'));
+
+        // CSV with only CUSTOMER and description — status, related_jiras, expiration_date are missing
+        const csvContent = 'CUSTOMER,description\nc1,Minimal Issue';
+        const file = new File([csvContent], 'minimal.csv', { type: 'text/csv' });
+
+        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        expect(fileInput).toBeDefined();
+
+        await act(async () => {
+            fireEvent.change(fileInput, { target: { files: [file] } });
+        });
+
+        await waitFor(() => {
+            expect(mockUpdateCustomer).toHaveBeenCalled();
+            const call = mockUpdateCustomer.mock.calls[0];
+            const issues = call[1].support_issues as SupportIssue[];
+            // Find the newly added issue (last one appended)
+            const added = issues.find((i: SupportIssue) => i.description === 'Minimal Issue');
+            expect(added).toBeDefined();
+            expect(added!.status).toBe('to do');
+            expect(added!.related_jiras).toEqual([]);
+        });
+    });
 });
