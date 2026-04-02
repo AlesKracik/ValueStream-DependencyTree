@@ -755,35 +755,35 @@ describe('SupportPage', () => {
         });
     });
 
-    it('renders Upsert from CSV and Export CSV buttons', () => {
+    it('renders Upsert from JSON and Export JSON buttons', () => {
         renderWithProviders(
             <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
-        expect(screen.getByText('Upsert from CSV')).toBeDefined();
-        expect(screen.getByText('Export CSV')).toBeDefined();
+        expect(screen.getByText('Upsert from JSON')).toBeDefined();
+        expect(screen.getByText('Export JSON')).toBeDefined();
     });
 
-    it('opens CSV upsert modal when Upsert from CSV button is clicked', () => {
+    it('opens JSON upsert modal when Upsert from JSON button is clicked', () => {
         renderWithProviders(
             <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
-        fireEvent.click(screen.getByText('Upsert from CSV'));
-        expect(screen.getByText('Upsert Support Issues from CSV')).toBeDefined();
-        expect(screen.getByText('Delete support issues not found in CSV')).toBeDefined();
-        expect(screen.getByText('Select CSV File')).toBeDefined();
+        fireEvent.click(screen.getByText('Upsert from JSON'));
+        expect(screen.getByText('Upsert Support Issues from JSON')).toBeDefined();
+        expect(screen.getByText('Delete support issues not found in JSON')).toBeDefined();
+        expect(screen.getByText('Select JSON File')).toBeDefined();
     });
 
-    it('closes CSV modal when Cancel is clicked', () => {
+    it('closes JSON modal when Cancel is clicked', () => {
         renderWithProviders(
             <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
-        fireEvent.click(screen.getByText('Upsert from CSV'));
-        expect(screen.getByText('Upsert Support Issues from CSV')).toBeDefined();
+        fireEvent.click(screen.getByText('Upsert from JSON'));
+        expect(screen.getByText('Upsert Support Issues from JSON')).toBeDefined();
         fireEvent.click(screen.getByText('Cancel'));
-        expect(screen.queryByText('Upsert Support Issues from CSV')).toBeNull();
+        expect(screen.queryByText('Upsert Support Issues from JSON')).toBeNull();
     });
 
-    it('exports CSV with correct format', () => {
+    it('exports JSON with correct format', () => {
         const createObjectURL = vi.fn(() => 'blob:url');
         const revokeObjectURL = vi.fn();
 
@@ -805,7 +805,7 @@ describe('SupportPage', () => {
         renderWithProviders(
             <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
-        fireEvent.click(screen.getByText('Export CSV'));
+        fireEvent.click(screen.getByText('Export JSON'));
 
         expect(createObjectURL).toHaveBeenCalled();
         const blobArg = createObjectURL.mock.calls[0][0] as Blob;
@@ -816,15 +816,18 @@ describe('SupportPage', () => {
         vi.restoreAllMocks();
     });
 
-    it('handles CSV upsert with file upload', async () => {
+    it('handles JSON upsert with file upload', async () => {
         mockUpdateCustomer.mockResolvedValue(undefined);
         renderWithProviders(
             <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
-        fireEvent.click(screen.getByText('Upsert from CSV'));
+        fireEvent.click(screen.getByText('Upsert from JSON'));
 
-        const csvContent = 'CUSTOMER,description,status\nc1,Updated Issue,work in progress\nc1,New Issue,to do';
-        const file = new File([csvContent], 'test.csv', { type: 'text/csv' });
+        const jsonContent = JSON.stringify([
+            { customer: 'c1', description: 'Updated Issue', status: 'work in progress' },
+            { customer: 'c1', description: 'New Issue', status: 'to do' }
+        ]);
+        const file = new File([jsonContent], 'test.json', { type: 'application/json' });
 
         const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
         expect(fileInput).toBeDefined();
@@ -838,16 +841,18 @@ describe('SupportPage', () => {
         });
     });
 
-    it('handles CSV upsert with missing columns, applying defaults', async () => {
+    it('handles JSON upsert with missing fields, applying defaults', async () => {
         mockUpdateCustomer.mockResolvedValue(undefined);
         renderWithProviders(
             <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
-        fireEvent.click(screen.getByText('Upsert from CSV'));
+        fireEvent.click(screen.getByText('Upsert from JSON'));
 
-        // CSV with only CUSTOMER and description — status, related_jiras, expiration_date are missing
-        const csvContent = 'CUSTOMER,description\nc1,Minimal Issue';
-        const file = new File([csvContent], 'minimal.csv', { type: 'text/csv' });
+        // JSON with only description — status, related_jiras, expiration_date are missing
+        const jsonContent = JSON.stringify([
+            { customer: 'c1', description: 'Minimal Issue' }
+        ]);
+        const file = new File([jsonContent], 'minimal.json', { type: 'application/json' });
 
         const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
         expect(fileInput).toBeDefined();
@@ -857,7 +862,7 @@ describe('SupportPage', () => {
         });
 
         await waitFor(() => {
-            // The first call may be the expired-issue cleanup on mount; find the CSV upsert call
+            // The first call may be the expired-issue cleanup on mount; find the JSON upsert call
             const upsertCall = mockUpdateCustomer.mock.calls.find(
                 (c: unknown[]) => {
                     const issues = (c[1] as { support_issues?: SupportIssue[] }).support_issues;

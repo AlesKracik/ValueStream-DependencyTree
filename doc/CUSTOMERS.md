@@ -69,10 +69,10 @@ Users can manually add Support Issues to a customer. Each issue includes:
 - **Related Jiras:** A list of Jira keys that are associated with this manual issue.
 - **Expiration Date:** Support issues are automatically removed from the system once they pass their expiration date. This cleanup is triggered whenever a user visits the Support list page or the specific Customer's support tab.
 
-### CSV Import & Export
-The Support list page provides CSV-based bulk operations:
-- **Upsert from CSV:** Opens a modal to upload a CSV file. The CSV must have a header row with a `CUSTOMER` column (matching the customer ID) and columns for support issue attributes (`description`, `status`, `related_jiras`, `expiration_date`). New issues are created for each row. An optional checkbox allows replacing all existing support issues with only the CSV content (removing issues not in the CSV).
-- **Export CSV:** Downloads all support issues as a CSV file with the same column structure, suitable for round-trip editing and re-import.
+### JSON Import & Export
+The Support list page provides JSON-based bulk operations:
+- **Upsert from JSON:** Opens a modal to upload a JSON file. The JSON must be an array of issue objects, each with a `customer` field (matching the customer ID) and optional fields: `description`, `status`, `related_jiras`, `expiration_date`. Missing fields receive defaults (status defaults to "to do"). An optional checkbox allows replacing all existing support issues with only the JSON content (removing issues not in the JSON).
+- **Export JSON:** Downloads all support issues as a JSON array with the same structure, suitable for round-trip editing and re-import.
 
 ### 2. Support Overview & Jira Synchronization
 When Jira integration is configured, the Customer Page displays a "Support Overview" tab that pulls live data from Jira.

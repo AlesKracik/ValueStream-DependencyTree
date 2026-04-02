@@ -154,101 +154,43 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         showAlert(`Created support issue for ${customer.name}`, 'success');
     };
 
-    const parseCsvRows = (text: string): string[][] => {
-        const rows: string[][] = [];
-        let current: string[] = [];
-        let field = '';
-        let inQuotes = false;
-        for (let i = 0; i < text.length; i++) {
-            const ch = text[i];
-            if (inQuotes) {
-                if (ch === '"') {
-                    if (i + 1 < text.length && text[i + 1] === '"') {
-                        field += '"';
-                        i++;
-                    } else {
-                        inQuotes = false;
-                    }
-                } else {
-                    field += ch;
-                }
-            } else if (ch === '"') {
-                inQuotes = true;
-            } else if (ch === ',') {
-                current.push(field.trim());
-                field = '';
-            } else if (ch === '\n' || (ch === '\r' && text[i + 1] === '\n')) {
-                if (ch === '\r') i++;
-                current.push(field.trim());
-                field = '';
-                if (current.some(c => c !== '')) rows.push(current);
-                current = [];
-            } else {
-                field += ch;
-            }
-        }
-        current.push(field.trim());
-        if (current.some(c => c !== '')) rows.push(current);
-        return rows;
-    };
-
-    const handleCsvUpsert = async (file: File) => {
+    const handleJsonUpsert = async (file: File) => {
         if (!data) return;
         setCsvUploading(true);
         try {
             const text = await file.text();
-            const rows = parseCsvRows(text);
-            if (rows.length < 2) {
-                showAlert('CSV must contain a header row and at least one data row.', 'error');
+            let parsed: unknown;
+            try {
+                parsed = JSON.parse(text);
+            } catch {
+                showAlert('Invalid JSON file.', 'error');
                 return;
             }
 
-            const headers = rows[0];
-            const customerIdx = headers.findIndex(h => h.toUpperCase() === 'CUSTOMER');
-            if (customerIdx === -1) {
-                showAlert('CSV must contain a CUSTOMER column.', 'error');
+            if (!Array.isArray(parsed)) {
+                showAlert('JSON must be an array of issue objects with a "customer" field.', 'error');
                 return;
             }
 
-            const supportFields = ['description', 'status', 'related_jiras', 'expiration_date'];
-            const fieldMap: { header: string; field: string; idx: number }[] = [];
-            headers.forEach((h, idx) => {
-                if (idx === customerIdx) return;
-                const lower = h.toLowerCase();
-                if (supportFields.includes(lower)) {
-                    fieldMap.push({ header: h, field: lower, idx });
-                }
-            });
-
-            // Parse CSV rows into per-customer issue lists
             const customerIssues = new Map<string, SupportIssue[]>();
             const now = new Date().toISOString();
 
-            for (let i = 1; i < rows.length; i++) {
-                const values = rows[i];
-                const customerId = values[customerIdx];
-                if (!customerId) continue;
+            for (const raw of parsed) {
+                const customerId = raw.customer;
+                if (!customerId || typeof customerId !== 'string') continue;
 
-                const issue: Record<string, unknown> = {};
-                for (const fm of fieldMap) {
-                    const val = values[fm.idx] || '';
-                    if (fm.field === 'related_jiras') {
-                        issue[fm.field] = val ? val.split(';').map(j => j.trim()).filter(Boolean) : [];
-                    } else {
-                        issue[fm.field] = val;
-                    }
-                }
-
-                // Auto-generate id and apply defaults for missing columns
-                issue.id = generateId('si');
-                if (!issue.description) issue.description = '';
-                if (!issue.status) issue.status = 'to do';
-                if (!issue.related_jiras) issue.related_jiras = [];
-                issue.created_at = now;
-                issue.updated_at = now;
+                const issue: SupportIssue = {
+                    id: generateId('si'),
+                    description: raw.description || '',
+                    status: raw.status || 'to do',
+                    related_jiras: raw.related_jiras || [],
+                    expiration_date: raw.expiration_date,
+                    created_at: now,
+                    updated_at: now,
+                } as SupportIssue;
 
                 const arr = customerIssues.get(customerId) || [];
-                arr.push(issue as unknown as SupportIssue);
+                arr.push(issue);
                 customerIssues.set(customerId, arr);
             }
 
@@ -256,70 +198,59 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             let imported = 0;
             let deleted = 0;
             for (const customer of data.customers) {
-                const csvIssues = customerIssues.get(customer.id);
+                const jsonIssues = customerIssues.get(customer.id);
                 const existing = customer.support_issues || [];
 
-                if (csvIssues) {
-                    // Replace existing issues with CSV content; keep existing if delete not checked
-                    const merged = csvDeleteNotFound ? csvIssues : [...existing, ...csvIssues];
+                if (jsonIssues) {
+                    const merged = csvDeleteNotFound ? jsonIssues : [...existing, ...jsonIssues];
                     if (csvDeleteNotFound) deleted += existing.length;
-                    imported += csvIssues.length;
+                    imported += jsonIssues.length;
                     await updateCustomer(customer.id, { support_issues: merged }, true);
                     customerIssues.delete(customer.id);
                 } else if (csvDeleteNotFound && existing.length > 0) {
-                    // Customer not in CSV — delete all their issues if checkbox checked
                     deleted += existing.length;
                     await updateCustomer(customer.id, { support_issues: [] }, true);
                 }
             }
 
-            // Report any customer IDs in CSV that don't match existing customers
             const unmatchedIds = Array.from(customerIssues.keys());
-            let msg = `CSV import complete: ${imported} issues imported`;
+            let msg = `JSON import complete: ${imported} issues imported`;
             if (deleted > 0) msg += `, ${deleted} previous issues removed`;
             if (unmatchedIds.length > 0) msg += `. Unmatched customer IDs: ${unmatchedIds.join(', ')}`;
             showAlert(msg, unmatchedIds.length > 0 ? 'warning' : 'success');
             setShowCsvModal(false);
         } catch (err) {
-            showAlert(`CSV import failed: ${err instanceof Error ? err.message : String(err)}`, 'error');
+            showAlert(`JSON import failed: ${err instanceof Error ? err.message : String(err)}`, 'error');
         } finally {
             setCsvUploading(false);
         }
     };
 
-    const handleExportCsv = () => {
+    const handleExportJson = () => {
         if (!data) return;
-        const headers = ['CUSTOMER', 'description', 'status', 'related_jiras', 'expiration_date'];
-        const escCsv = (val: string) => {
-            if (val.includes(',') || val.includes('"') || val.includes('\n')) {
-                return `"${val.replace(/"/g, '""')}"`;
-            }
-            return val;
-        };
-
-        const rows = [headers.join(',')];
+        const result: { customer: string; description: string; status: string; related_jiras: string[]; expiration_date: string }[] = [];
         for (const customer of data.customers) {
             for (const issue of customer.support_issues || []) {
-                rows.push([
-                    escCsv(customer.id),
-                    escCsv(issue.description || ''),
-                    escCsv(issue.status || ''),
-                    escCsv((issue.related_jiras || []).join(';')),
-                    escCsv(issue.expiration_date || '')
-                ].join(','));
+                result.push({
+                    customer: customer.id,
+                    description: issue.description || '',
+                    status: issue.status || '',
+                    related_jiras: issue.related_jiras || [],
+                    expiration_date: issue.expiration_date || '',
+                });
             }
         }
 
-        const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+        const blob = new Blob([JSON.stringify(result, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'support_issues.csv';
+        link.download = 'support_issues.json';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        showAlert('CSV exported successfully.', 'success');
+        showAlert('JSON exported successfully.', 'success');
     };
 
     // Automatic cleanup of expired issues
@@ -905,7 +836,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         );
     };
 
-    const renderCsvModal = () => {
+    const renderJsonModal = () => {
         if (!showCsvModal) return null;
         const fileInputRef = React.createRef<HTMLInputElement>();
         return (
@@ -920,10 +851,10 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                     color: 'var(--text-primary)', boxShadow: '0 20px 25px -5px var(--bg-shadow)'
                 }} onClick={e => e.stopPropagation()}>
                     <h2 style={{ marginTop: 0, marginBottom: '16px', fontSize: '18px', borderBottom: '1px solid var(--border-primary)', paddingBottom: '10px' }}>
-                        Upsert Support Issues from CSV
+                        Upsert Support Issues from JSON
                     </h2>
                     <div style={{ marginBottom: '16px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                        CSV must have a header row with a <strong>CUSTOMER</strong> column.
+                        JSON must be an array of issue objects, each with a <strong>customer</strong> field matching a customer ID.
                     </div>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', cursor: 'pointer', fontSize: '14px' }}>
                         <input
@@ -931,7 +862,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                             checked={csvDeleteNotFound}
                             onChange={e => setCsvDeleteNotFound(e.target.checked)}
                         />
-                        Delete support issues not found in CSV
+                        Delete support issues not found in JSON
                     </label>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
                         <button className="btn-secondary" onClick={() => setShowCsvModal(false)}>Cancel</button>
@@ -940,16 +871,16 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                             disabled={csvUploading}
                             onClick={() => fileInputRef.current?.click()}
                         >
-                            {csvUploading ? 'Uploading...' : 'Select CSV File'}
+                            {csvUploading ? 'Uploading...' : 'Select JSON File'}
                         </button>
                         <input
                             ref={fileInputRef}
                             type="file"
-                            accept=".csv"
+                            accept=".json"
                             style={{ display: 'none' }}
                             onChange={e => {
                                 const file = e.target.files?.[0];
-                                if (file) handleCsvUpsert(file);
+                                if (file) handleJsonUpsert(file);
                                 e.target.value = '';
                             }}
                         />
@@ -961,7 +892,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
 
     return (
         <>
-        {renderCsvModal()}
+        {renderJsonModal()}
         <GenericListPage<SupportIssueWithCustomer>
             pageId="support"
             title="Support Issues"
@@ -997,14 +928,14 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                         onClick={() => { setCsvDeleteNotFound(false); setShowCsvModal(true); }}
                         style={{ minWidth: '130px' }}
                     >
-                        Upsert from CSV
+                        Upsert from JSON
                     </button>
                     <button
                         className="btn-primary"
-                        onClick={handleExportCsv}
+                        onClick={handleExportJson}
                         style={{ minWidth: '130px' }}
                     >
-                        Export CSV
+                        Export JSON
                     </button>
                     {data?.settings?.ai?.provider && data?.settings?.ai?.support?.prompt && (
                         <>
