@@ -194,11 +194,27 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                 customerIssues.set(customerId, arr);
             }
 
-            // Upsert for each customer
+            // Upsert for each customer (with substring matching on customer name)
             let imported = 0;
             let deleted = 0;
             for (const customer of data.customers) {
-                const jsonIssues = customerIssues.get(customer.id);
+                // Try exact match on customer id first
+                let matchedKey: string | undefined;
+                if (customerIssues.has(customer.id)) {
+                    matchedKey = customer.id;
+                } else {
+                    // Try substring match on customer name
+                    const cName = customer.name.toLowerCase().trim();
+                    for (const key of customerIssues.keys()) {
+                        const kLower = key.toLowerCase().trim();
+                        if (cName.includes(kLower) || kLower.includes(cName)) {
+                            matchedKey = key;
+                            break;
+                        }
+                    }
+                }
+
+                const jsonIssues = matchedKey ? customerIssues.get(matchedKey) : undefined;
                 const existing = customer.support_issues || [];
 
                 if (jsonIssues) {
@@ -206,7 +222,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                     if (csvDeleteNotFound) deleted += existing.length;
                     imported += jsonIssues.length;
                     await updateCustomer(customer.id, { support_issues: merged }, true);
-                    customerIssues.delete(customer.id);
+                    customerIssues.delete(matchedKey!);
                 } else if (csvDeleteNotFound && existing.length > 0) {
                     deleted += existing.length;
                     await updateCustomer(customer.id, { support_issues: [] }, true);
@@ -854,7 +870,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                         Upsert Support Issues from JSON
                     </h2>
                     <div style={{ marginBottom: '16px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                        JSON must be an array of issue objects, each with a <strong>customer</strong> field matching a customer ID.
+                        JSON must be an array of issue objects, each with a <strong>customer</strong> field. Matching is done by exact customer ID first, then by substring match on customer name.
                     </div>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', cursor: 'pointer', fontSize: '14px' }}>
                         <input

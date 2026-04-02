@@ -877,4 +877,70 @@ describe('SupportPage', () => {
             expect(added!.related_jiras).toEqual([]);
         });
     });
+
+    it('matches customer by substring of name during JSON upsert', async () => {
+        mockUpdateCustomer.mockResolvedValue(undefined);
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+        fireEvent.click(screen.getByText('Upsert from JSON'));
+
+        // Use a substring of "Customer A" as the customer field
+        const jsonContent = JSON.stringify([
+            { customer: 'Customer', description: 'Substring Match Issue', status: 'to do' }
+        ]);
+        const file = new File([jsonContent], 'substring.json', { type: 'application/json' });
+
+        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        expect(fileInput).toBeDefined();
+
+        await act(async () => {
+            fireEvent.change(fileInput, { target: { files: [file] } });
+        });
+
+        await waitFor(() => {
+            const upsertCall = mockUpdateCustomer.mock.calls.find(
+                (c: unknown[]) => {
+                    const issues = (c[1] as { support_issues?: SupportIssue[] }).support_issues;
+                    return issues?.some((i: SupportIssue) => i.description === 'Substring Match Issue');
+                }
+            );
+            expect(upsertCall).toBeDefined();
+            // Should have matched to customer 'c1' (Customer A)
+            expect(upsertCall![0]).toBe('c1');
+        });
+    });
+
+    it('matches customer when customer name is a substring of input', async () => {
+        mockUpdateCustomer.mockResolvedValue(undefined);
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+        fireEvent.click(screen.getByText('Upsert from JSON'));
+
+        // Use a longer string that contains "Customer A" as a substring
+        const jsonContent = JSON.stringify([
+            { customer: 'Customer A International', description: 'Reverse Substring Issue', status: 'to do' }
+        ]);
+        const file = new File([jsonContent], 'reverse.json', { type: 'application/json' });
+
+        const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+        expect(fileInput).toBeDefined();
+
+        await act(async () => {
+            fireEvent.change(fileInput, { target: { files: [file] } });
+        });
+
+        await waitFor(() => {
+            const upsertCall = mockUpdateCustomer.mock.calls.find(
+                (c: unknown[]) => {
+                    const issues = (c[1] as { support_issues?: SupportIssue[] }).support_issues;
+                    return issues?.some((i: SupportIssue) => i.description === 'Reverse Substring Issue');
+                }
+            );
+            expect(upsertCall).toBeDefined();
+            // Should have matched to customer 'c1' (Customer A)
+            expect(upsertCall![0]).toBe('c1');
+        });
+    });
 });
