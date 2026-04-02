@@ -233,6 +233,124 @@ export interface Settings {
 
 export type AppSettings = Settings;
 
+/** Indicates whether a settings field is stored/managed on the server or client */
+export type SettingsScope = 'server' | 'client';
+
+/**
+ * Dot-path scope map for every settings field.
+ * A path acts as a default for all its children unless a more specific path overrides it.
+ * E.g. 'persistence' covers everything under persistence; 'general.theme' overrides the
+ * scope for theme while leaving the rest of 'general' at its parent scope.
+ *
+ * For now all values are kept on the server; change individual entries
+ * to 'client' when moving them to frontend-only storage.
+ */
+export const SETTINGS_SCOPE: Record<string, SettingsScope> = {
+  // general
+  'general': 'server',
+  'general.fiscal_year_start_month': 'server',
+  'general.sprint_duration_days': 'server',
+  'general.theme': 'server',
+  // persistence
+  'persistence': 'server',
+  // jira
+  'jira': 'server',
+  // aha
+  'aha': 'server',
+  // ai
+  'ai': 'server',
+  // ldap
+  'ldap': 'server',
+};
+
+/** Resolve the scope for a dot-path by finding the most specific matching entry */
+export function resolveScope(dotPath: string): SettingsScope {
+  // Try exact match first, then walk up to parent paths
+  let path = dotPath;
+  while (path) {
+    if (path in SETTINGS_SCOPE) return SETTINGS_SCOPE[path];
+    const lastDot = path.lastIndexOf('.');
+    path = lastDot === -1 ? '' : path.substring(0, lastDot);
+  }
+  return 'server'; // default
+}
+
+/**
+ * Partition a settings object into server and client portions.
+ * Walks the tree recursively; at each leaf (or sub-object), checks the scope
+ * via dot-path resolution. If a parent path has a uniform scope, the entire
+ * sub-tree goes to that side without further recursion.
+ */
+export function partitionSettings(settings: Partial<Settings>): {
+  server: Partial<Settings>;
+  client: Partial<Settings>;
+} {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function walk(obj: any, prefix: string): { server: any; client: any } {
+    // If this exact path or a parent has a scope and no children override it, take the shortcut
+    const thisScope = prefix in SETTINGS_SCOPE ? SETTINGS_SCOPE[prefix] : undefined;
+    const hasChildOverrides = Object.keys(SETTINGS_SCOPE).some(
+      k => k.startsWith(prefix + '.') && SETTINGS_SCOPE[k] !== thisScope
+    );
+
+    if (thisScope && !hasChildOverrides) {
+      // Entire sub-tree belongs to one side
+      return thisScope === 'client'
+        ? { server: undefined, client: obj }
+        : { server: obj, client: undefined };
+    }
+
+    // Mixed scope within this sub-tree — recurse into each key
+    if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const serverPart: any = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const clientPart: any = {};
+      let hasServer = false;
+      let hasClient = false;
+
+      for (const key of Object.keys(obj)) {
+        const childPath = prefix ? `${prefix}.${key}` : key;
+        const childScope = resolveScope(childPath);
+
+        // Check if this child itself has mixed children
+        const childHasOverrides = Object.keys(SETTINGS_SCOPE).some(
+          k => k.startsWith(childPath + '.') && SETTINGS_SCOPE[k] !== childScope
+        );
+
+        if (childHasOverrides && typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+          const result = walk(obj[key], childPath);
+          if (result.server !== undefined) { serverPart[key] = result.server; hasServer = true; }
+          if (result.client !== undefined) { clientPart[key] = result.client; hasClient = true; }
+        } else if (childScope === 'client') {
+          clientPart[key] = obj[key];
+          hasClient = true;
+        } else {
+          serverPart[key] = obj[key];
+          hasServer = true;
+        }
+      }
+
+      return {
+        server: hasServer ? serverPart : undefined,
+        client: hasClient ? clientPart : undefined,
+      };
+    }
+
+    // Primitive at a mixed level — resolve by path
+    const scope = resolveScope(prefix);
+    return scope === 'client'
+      ? { server: undefined, client: obj }
+      : { server: obj, client: undefined };
+  }
+
+  const result = walk(settings, '');
+  return {
+    server: result.server || {},
+    client: result.client || {},
+  };
+}
+
 export interface ValueStreamParameters {
   customerFilter: string;
   workItemFilter: string;

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { maskSettings, unmaskSettings, calculateQuarter, extractSecrets, stripSecrets, mergeSecrets, splitDotPath, getIntegrationConfig } from '../configHelpers';
+import { partitionSettings, resolveScope, SETTINGS_SCOPE } from '@valuestream/shared-types';
 
 describe('configHelpers', () => {
   describe('maskSettings', () => {
@@ -317,6 +318,99 @@ describe('configHelpers', () => {
       expect(full.persistence.mongo.app.uri).toBe('mongodb://host');
       // When no section, section === full config
       expect(section).toEqual(full);
+    });
+  });
+
+  describe('resolveScope', () => {
+    it('should return exact match scope', () => {
+      expect(resolveScope('general')).toBe('server');
+      expect(resolveScope('general.theme')).toBe('server');
+    });
+
+    it('should walk up to parent when no exact match', () => {
+      // persistence.mongo.app.uri has no explicit entry, inherits from 'persistence'
+      expect(resolveScope('persistence.mongo.app.uri')).toBe('server');
+    });
+
+    it('should return server as default for unknown paths', () => {
+      expect(resolveScope('unknown.path')).toBe('server');
+    });
+
+    it('should respect a leaf override', () => {
+      const original = SETTINGS_SCOPE['general.theme'];
+      SETTINGS_SCOPE['general.theme'] = 'client';
+      try {
+        expect(resolveScope('general.theme')).toBe('client');
+        expect(resolveScope('general.fiscal_year_start_month')).toBe('server');
+      } finally {
+        SETTINGS_SCOPE['general.theme'] = original;
+      }
+    });
+  });
+
+  describe('partitionSettings', () => {
+    it('should put all keys into server when all scopes are server', () => {
+      const settings = {
+        general: { fiscal_year_start_month: 1, sprint_duration_days: 14, theme: 'dark' as const },
+        jira: { base_url: 'https://jira.com', api_version: '3' as const },
+      };
+
+      const { server, client } = partitionSettings(settings);
+
+      expect(server).toEqual(settings);
+      expect(client).toEqual({});
+    });
+
+    it('should partition an entire top-level section to client', () => {
+      const original = SETTINGS_SCOPE['general'];
+      SETTINGS_SCOPE['general'] = 'client';
+      // Remove leaf overrides so they inherit from parent
+      const savedLeaves: Record<string, string> = {};
+      for (const key of Object.keys(SETTINGS_SCOPE)) {
+        if (key.startsWith('general.')) {
+          savedLeaves[key] = SETTINGS_SCOPE[key];
+          delete SETTINGS_SCOPE[key];
+        }
+      }
+
+      try {
+        const settings = {
+          general: { fiscal_year_start_month: 4, sprint_duration_days: 14, theme: 'dark' as const },
+          jira: { base_url: 'https://jira.com', api_version: '3' as const },
+        };
+
+        const { server, client } = partitionSettings(settings);
+
+        expect(server).toEqual({ jira: settings.jira });
+        expect(client).toEqual({ general: settings.general });
+      } finally {
+        SETTINGS_SCOPE['general'] = original;
+        Object.assign(SETTINGS_SCOPE, savedLeaves);
+      }
+    });
+
+    it('should split fields within a single section when scopes differ', () => {
+      const originalTheme = SETTINGS_SCOPE['general.theme'];
+      SETTINGS_SCOPE['general.theme'] = 'client';
+
+      try {
+        const settings = {
+          general: { fiscal_year_start_month: 4, sprint_duration_days: 14, theme: 'dark' as const },
+        };
+
+        const { server, client } = partitionSettings(settings);
+
+        expect(server).toEqual({ general: { fiscal_year_start_month: 4, sprint_duration_days: 14 } });
+        expect(client).toEqual({ general: { theme: 'dark' } });
+      } finally {
+        SETTINGS_SCOPE['general.theme'] = originalTheme;
+      }
+    });
+
+    it('should handle empty input', () => {
+      const { server, client } = partitionSettings({});
+      expect(server).toEqual({});
+      expect(client).toEqual({});
     });
   });
 
