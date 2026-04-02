@@ -241,7 +241,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         for (const customer of data.customers) {
             for (const issue of customer.support_issues || []) {
                 result.push({
-                    customer: customer.id,
+                    customer: customer.name,
                     description: issue.description || '',
                     status: issue.status || '',
                     related_jiras: issue.related_jiras || [],
