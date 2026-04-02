@@ -1,10 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { refreshGleanToken, gleanChatRequest } from '../gleanHelpers';
+import { refreshGleanToken, gleanChatRequest, saveGleanSettings } from '../gleanHelpers';
 import fs from 'fs';
 
 vi.mock('fs');
 vi.mock('../../routes/settings', () => ({
   getSettingsPath: () => '/tmp/settings.json'
+}));
+
+const mockGetFullSettingsAsync = vi.fn();
+const mockSaveFullSettingsAsync = vi.fn();
+vi.mock('../../services/secretManager', () => ({
+  getFullSettingsAsync: (...args: any[]) => mockGetFullSettingsAsync(...args),
+  saveFullSettingsAsync: (...args: any[]) => mockSaveFullSettingsAsync(...args),
 }));
 
 const mockFetch = vi.fn();
@@ -35,6 +42,9 @@ describe('gleanHelpers', () => {
 
       (fs.existsSync as any).mockReturnValue(true);
       (fs.readFileSync as any).mockReturnValue(JSON.stringify({}));
+      // saveGleanSettings is called fire-and-forget inside refreshGleanToken
+      mockGetFullSettingsAsync.mockResolvedValue({});
+      mockSaveFullSettingsAsync.mockResolvedValue(undefined);
 
       const gleanState = { tokens: {}, clients: {} };
       const result = await refreshGleanToken('https://test.glean.com', mockToken, gleanState);
@@ -48,6 +58,32 @@ describe('gleanHelpers', () => {
           body: expect.any(URLSearchParams)
         })
       );
+    });
+  });
+
+  describe('saveGleanSettings', () => {
+    it('should merge glean state into existing settings and save', async () => {
+      const existingSettings = {
+        persistence: { mongo: { app: { uri: 'mongodb://localhost' } } },
+        ai: { provider: 'glean' },
+      };
+      mockGetFullSettingsAsync.mockResolvedValueOnce(existingSettings);
+      mockSaveFullSettingsAsync.mockResolvedValueOnce(undefined);
+
+      const newGleanState = { tokens: { 'https://test.glean.com': { access_token: 'tok' } }, clients: {} };
+      await saveGleanSettings(newGleanState);
+
+      expect(mockSaveFullSettingsAsync).toHaveBeenCalledWith({
+        persistence: { mongo: { app: { uri: 'mongodb://localhost' } } },
+        ai: { provider: 'glean', glean_state: newGleanState },
+      });
+    });
+
+    it('should throw and not save when reading settings fails', async () => {
+      mockGetFullSettingsAsync.mockRejectedValueOnce(new Error('decrypt failed'));
+
+      await expect(saveGleanSettings({ tokens: {} })).rejects.toThrow('decrypt failed');
+      expect(mockSaveFullSettingsAsync).not.toHaveBeenCalled();
     });
   });
 

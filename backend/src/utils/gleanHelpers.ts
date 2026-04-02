@@ -20,10 +20,13 @@ export async function getGleanSettings() {
 }
 
 export async function saveGleanSettings(state: any) {
-  let data: any = {};
+  let data: any;
   try {
     data = await getFullSettingsAsync();
-  } catch (e) {}
+  } catch (e) {
+    logger.error(e, 'Failed to read current settings before saving Glean state — aborting save to prevent data loss');
+    throw e;
+  }
   if (!data.ai) data.ai = {};
   data.ai.glean_state = state;
   await saveFullSettingsAsync(data);
