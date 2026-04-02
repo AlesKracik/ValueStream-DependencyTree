@@ -80,9 +80,9 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
     const [newIssueCustomerId, setNewIssueCustomerId] = useState('');
     const [newIssueDescription, setNewIssueDescription] = useState('');
     const [newIssueStatus, setNewIssueStatus] = useState<SupportIssue['status']>('to do');
-    const [showCsvModal, setShowCsvModal] = useState(false);
-    const [csvDeleteNotFound, setCsvDeleteNotFound] = useState(false);
-    const [csvUploading, setCsvUploading] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [deleteNotFound, setDeleteNotFound] = useState(false);
+    const [uploading, setUploading] = useState(false);
 
     // Check Glean status on mount and when query params change
     useEffect(() => {
@@ -156,7 +156,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
 
     const handleJsonUpsert = async (file: File) => {
         if (!data) return;
-        setCsvUploading(true);
+        setUploading(true);
         try {
             const text = await file.text();
             let parsed: unknown;
@@ -213,12 +213,10 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                 const existing = customer.support_issues || [];
 
                 if (jsonIssues) {
-                    const merged = csvDeleteNotFound ? jsonIssues : [...existing, ...jsonIssues];
-                    if (csvDeleteNotFound) deleted += existing.length;
                     imported += jsonIssues.length;
-                    await updateCustomer(customer.id, { support_issues: merged }, true);
+                    await updateCustomer(customer.id, { support_issues: jsonIssues }, true);
                     customerIssues.delete(matchedKey!);
-                } else if (csvDeleteNotFound && existing.length > 0) {
+                } else if (deleteNotFound && existing.length > 0) {
                     deleted += existing.length;
                     await updateCustomer(customer.id, { support_issues: [] }, true);
                 }
@@ -229,11 +227,11 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             if (deleted > 0) msg += `, ${deleted} previous issues removed`;
             if (unmatchedIds.length > 0) msg += `. Unmatched customer IDs: ${unmatchedIds.join(', ')}`;
             showAlert(msg, unmatchedIds.length > 0 ? 'warning' : 'success');
-            setShowCsvModal(false);
+            setShowImportModal(false);
         } catch (err) {
             showAlert(`JSON import failed: ${err instanceof Error ? err.message : String(err)}`, 'error');
         } finally {
-            setCsvUploading(false);
+            setUploading(false);
         }
     };
 
@@ -848,14 +846,14 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
     };
 
     const renderJsonModal = () => {
-        if (!showCsvModal) return null;
+        if (!showImportModal) return null;
         const fileInputRef = React.createRef<HTMLInputElement>();
         return (
             <div style={{
                 position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
                 backgroundColor: 'var(--bg-shadow)', display: 'flex',
                 alignItems: 'center', justifyContent: 'center', zIndex: 2000
-            }} onClick={() => setShowCsvModal(false)}>
+            }} onClick={() => setShowImportModal(false)}>
                 <div style={{
                     backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-primary)',
                     borderRadius: '8px', padding: '24px', width: '440px', maxWidth: '90%',
@@ -870,19 +868,19 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', cursor: 'pointer', fontSize: '14px' }}>
                         <input
                             type="checkbox"
-                            checked={csvDeleteNotFound}
-                            onChange={e => setCsvDeleteNotFound(e.target.checked)}
+                            checked={deleteNotFound}
+                            onChange={e => setDeleteNotFound(e.target.checked)}
                         />
                         Delete support issues not found in JSON
                     </label>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                        <button className="btn-secondary" onClick={() => setShowCsvModal(false)}>Cancel</button>
+                        <button className="btn-secondary" onClick={() => setShowImportModal(false)}>Cancel</button>
                         <button
                             className="btn-primary"
-                            disabled={csvUploading}
+                            disabled={uploading}
                             onClick={() => fileInputRef.current?.click()}
                         >
-                            {csvUploading ? 'Uploading...' : 'Select JSON File'}
+                            {uploading ? 'Uploading...' : 'Select JSON File'}
                         </button>
                         <input
                             ref={fileInputRef}
@@ -936,7 +934,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                     </button>
                     <button
                         className="btn-primary"
-                        onClick={() => { setCsvDeleteNotFound(false); setShowCsvModal(true); }}
+                        onClick={() => { setDeleteNotFound(false); setShowImportModal(true); }}
                         style={{ minWidth: '130px' }}
                     >
                         Upsert from JSON
