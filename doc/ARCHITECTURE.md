@@ -43,6 +43,7 @@ graph TD
 ### 3. Data & Persistence
 - **Database:** MongoDB architecture supporting both primary Application storage and secondary Customer data integration.
 - **Connectivity:** Systematic SOCKS5 proxy support for connecting to MongoDB clusters (like Atlas) behind secure SSH bastions.
+- **Settings Scope:** Each settings field is assigned a storage scope (`server` or `client`) via a dot-path map in `SETTINGS_SCOPE`. A `partitionSettings()` utility splits updates accordingly. See [Persistence](PERSISTENCE.md#settings-scope-server--client) for details.
 
 ### 4. External Integrations
 - **Atlassian Jira:** Bidirectional synchronization for Issues, pulling effort, status, and dates.

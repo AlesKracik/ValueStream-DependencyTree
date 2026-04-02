@@ -13,6 +13,7 @@ import {
   AiSettings,
   LdapSettings,
 } from './settings';
+import { ScopeIndicator } from '../components/common/ScopeIndicator';
 
 interface SettingsPageProps {
   settings: Settings;
@@ -146,37 +147,37 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               onClick={() => setTab("general")}
               className={`${styles.tabButton} ${activeTab === "general" ? styles.activeTab : ''}`}
             >
-              General Project
+              General Project<ScopeIndicator path="general" />
             </button>
             <button
               onClick={() => setTab("persistence")}
               className={`${styles.tabButton} ${activeTab === "persistence" ? styles.activeTab : ''}`}
             >
-              Persistence
+              Persistence<ScopeIndicator path="persistence" />
             </button>
             <button
               onClick={() => setTab("jira")}
               className={`${styles.tabButton} ${activeTab === "jira" ? styles.activeTab : ''}`}
             >
-              Jira Integration
+              Jira Integration<ScopeIndicator path="jira" />
             </button>
             <button
               onClick={() => setTab("aha")}
               className={`${styles.tabButton} ${activeTab === "aha" ? styles.activeTab : ''}`}
             >
-              Aha! Integration
+              Aha! Integration<ScopeIndicator path="aha" />
             </button>
             <button
               onClick={() => setTab("ai")}
               className={`${styles.tabButton} ${activeTab === "ai" ? styles.activeTab : ''}`}
             >
-              AI & LLM
+              AI & LLM<ScopeIndicator path="ai" />
             </button>
             <button
               onClick={() => setTab("ldap")}
               className={`${styles.tabButton} ${activeTab === "ldap" ? styles.activeTab : ''}`}
             >
-              LDAP
+              LDAP<ScopeIndicator path="ldap" />
             </button>
           </nav>
 

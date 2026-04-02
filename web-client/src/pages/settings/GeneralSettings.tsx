@@ -1,5 +1,6 @@
 import type { SettingsTabProps } from './types';
 import { FormSelectField, FormNumberField } from '../../components/common/FormFields';
+import { ScopeIndicator } from '../../components/common/ScopeIndicator';
 
 const settingsFieldStyle = { display: "flex" as const, flexDirection: "column" as const, gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" };
 
@@ -15,6 +16,7 @@ export const GeneralSettings: React.FC<SettingsTabProps> = ({
       </h3>
       <FormSelectField
         label="Color Palette:"
+        labelSuffix={<ScopeIndicator path="general.theme" />}
         value={localFormData.general?.theme || 'dark'}
         onChange={v => {
             const val = v as 'dark' | 'filips';
@@ -33,6 +35,7 @@ export const GeneralSettings: React.FC<SettingsTabProps> = ({
       </h3>
       <FormSelectField
         label="Fiscal Year Start Month:"
+        labelSuffix={<ScopeIndicator path="general.fiscal_year_start_month" />}
         value={localFormData.general?.fiscal_year_start_month || 1}
         onChange={v => {
             const val = parseInt(v);
@@ -58,6 +61,7 @@ export const GeneralSettings: React.FC<SettingsTabProps> = ({
 
       <FormNumberField
         label="Sprint Duration (Days):"
+        labelSuffix={<ScopeIndicator path="general.sprint_duration_days" />}
         helperText="Defines the default end date when creating new sprints. Does not affect existing sprints."
         value={localFormData.general?.sprint_duration_days || 14}
         onChange={v => {

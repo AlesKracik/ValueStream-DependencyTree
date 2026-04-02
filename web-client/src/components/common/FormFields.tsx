@@ -4,6 +4,8 @@ import React from 'react';
 interface FormFieldBaseProps {
     /** Label text displayed above the input */
     label: string;
+    /** Optional React node rendered inline after the label text */
+    labelSuffix?: React.ReactNode;
     /** Helper text displayed below the label */
     helperText?: string;
     /** Whether the field is read-only */
@@ -23,11 +25,11 @@ interface FormTextFieldProps extends FormFieldBaseProps {
 }
 
 export const FormTextField: React.FC<FormTextFieldProps> = ({
-    label, helperText, readOnly, style, inputStyle,
+    label, labelSuffix, helperText, readOnly, style, inputStyle,
     value, onChange, placeholder
 }) => (
     <label style={style}>
-        {label}
+        <span>{label}{labelSuffix}</span>
         {helperText && <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '-2px', marginBottom: '4px' }}>{helperText}</span>}
         <input
             type="text"
@@ -56,11 +58,11 @@ interface FormNumberFieldProps extends FormFieldBaseProps {
 }
 
 export const FormNumberField: React.FC<FormNumberFieldProps> = ({
-    label, helperText, readOnly, style, inputStyle,
+    label, labelSuffix, helperText, readOnly, style, inputStyle,
     value, onChange, placeholder, min, max, float
 }) => (
     <label style={style}>
-        {label}
+        <span>{label}{labelSuffix}</span>
         {helperText && <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '-2px', marginBottom: '4px' }}>{helperText}</span>}
         <input
             type="number"
@@ -93,11 +95,11 @@ interface FormDateFieldProps extends FormFieldBaseProps {
 }
 
 export const FormDateField: React.FC<FormDateFieldProps> = ({
-    label, helperText, readOnly, style, inputStyle,
+    label, labelSuffix, helperText, readOnly, style, inputStyle,
     value, onChange
 }) => (
     <label style={style}>
-        {label}
+        <span>{label}{labelSuffix}</span>
         {helperText && <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '-2px', marginBottom: '4px' }}>{helperText}</span>}
         <input
             type="date"
@@ -126,11 +128,11 @@ interface FormSelectFieldProps extends FormFieldBaseProps {
 }
 
 export const FormSelectField: React.FC<FormSelectFieldProps> = ({
-    label, helperText, readOnly, style, inputStyle,
+    label, labelSuffix, helperText, readOnly, style, inputStyle,
     value, onChange, options
 }) => (
     <label style={style}>
-        {label}
+        <span>{label}{labelSuffix}</span>
         {helperText && <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '-2px', marginBottom: '4px' }}>{helperText}</span>}
         <select
             value={value}
@@ -158,11 +160,11 @@ interface FormTextAreaProps extends FormFieldBaseProps {
 }
 
 export const FormTextArea: React.FC<FormTextAreaProps> = ({
-    label, helperText, readOnly, style, inputStyle,
+    label, labelSuffix, helperText, readOnly, style, inputStyle,
     value, onChange, onBlur, placeholder, rows, textareaStyle
 }) => (
     <label style={style}>
-        {label}
+        <span>{label}{labelSuffix}</span>
         {helperText && <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '-2px', marginBottom: '4px' }}>{helperText}</span>}
         <textarea
             value={value}

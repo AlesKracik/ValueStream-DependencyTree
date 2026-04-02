@@ -378,7 +378,13 @@ When an AI provider is configured in **Settings > AI & LLM**, the Support page g
 
 ![Settings Page](images/settings.png)
 
-The Settings page provides six configuration tabs:
+The Settings page provides six configuration tabs.
+
+Each tab and field may display a small **scope icon** indicating where that setting is stored:
+-   **Server icon** (rack): The value is stored and managed on the backend.
+-   **Client icon** (monitor): The value is stored locally in your browser.
+
+Icons only appear at the point where the scope is defined — on tab headers and on individual fields that differ from their section's default scope. Currently all settings are stored on the server.
 
 #### General Project
 

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Shared TypeScript type definitions",
   "private": true,
+  "type": "module",
   "types": "./dist/models.d.ts",
   "main": "./dist/models.js",
   "scripts": {
