@@ -38,8 +38,8 @@ export const DEFAULT_SETTINGS: Settings = {
           method: 'scram',
           aws_auth_type: 'static',
           static: { aws_access_key: '', aws_secret_key: '', aws_session_token: '' },
-          role: { aws_role_arn: '', aws_external_id: '', aws_role_session_name: '' },
-          sso: { aws_sso_start_url: '', aws_sso_region: '', aws_sso_account_id: '', aws_sso_role_name: '' },
+          role: { aws_role_arn: '', aws_external_id: '', aws_role_session_name: '', aws_access_key: '', aws_secret_key: '', aws_session_token: '' },
+          sso: { aws_sso_start_url: '', aws_sso_region: '', aws_sso_account_id: '', aws_sso_role_name: '', aws_access_key: '', aws_secret_key: '', aws_session_token: '' },
           oidc_token: ''
         }
       },
@@ -49,8 +49,8 @@ export const DEFAULT_SETTINGS: Settings = {
           method: 'scram',
           aws_auth_type: 'static',
           static: { aws_access_key: '', aws_secret_key: '', aws_session_token: '' },
-          role: { aws_role_arn: '', aws_external_id: '', aws_role_session_name: '' },
-          sso: { aws_sso_start_url: '', aws_sso_region: '', aws_sso_account_id: '', aws_sso_role_name: '' },
+          role: { aws_role_arn: '', aws_external_id: '', aws_role_session_name: '', aws_access_key: '', aws_secret_key: '', aws_session_token: '' },
+          sso: { aws_sso_start_url: '', aws_sso_region: '', aws_sso_account_id: '', aws_sso_role_name: '', aws_access_key: '', aws_secret_key: '', aws_session_token: '' },
           oidc_token: ''
         }
       }

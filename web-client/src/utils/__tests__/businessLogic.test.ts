@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { 
-    calculateWorkItemEffort, 
+import {
+    deepMerge,
+    calculateWorkItemEffort,
     calculateWorkItemTcv, 
     calculateWorkItemScore,
     calculateIssueEffortPerSprint, 
@@ -408,6 +409,108 @@ describe('businessLogic', () => {
 
         it('returns 1 if both actual and baseline are 0', () => {
             expect(calculateIssueIntensityRatio(0, 0)).toBe(1);
+        });
+    });
+
+    describe('deepMerge', () => {
+        it('preserves source values for keys that exist in target', () => {
+            const target = { a: 1, b: 2 };
+            const source = { a: 10, b: 20 };
+            expect(deepMerge(target, source)).toEqual({ a: 10, b: 20 });
+        });
+
+        it('drops source keys not present in target', () => {
+            const target = { a: 1 };
+            const source = { a: 10, extra: 99 };
+            expect(deepMerge(target, source)).toEqual({ a: 10 });
+        });
+
+        it('recursively merges nested objects', () => {
+            const target = { nested: { x: 1, y: 2 } };
+            const source = { nested: { x: 10 } };
+            expect(deepMerge(target, source)).toEqual({ nested: { x: 10, y: 2 } });
+        });
+
+        it('preserves SSO credential fields through DEFAULT_SETTINGS merge', () => {
+            // Simulates the SettingsPage reconciliation: deepMerge(DEFAULT_SETTINGS, settings)
+            const defaults = {
+                persistence: {
+                    mongo: {
+                        app: {
+                            auth: {
+                                sso: { aws_sso_start_url: '', aws_sso_region: '', aws_access_key: '', aws_secret_key: '', aws_session_token: '' }
+                            }
+                        }
+                    }
+                }
+            };
+            const incoming = {
+                persistence: {
+                    mongo: {
+                        app: {
+                            auth: {
+                                sso: { aws_sso_start_url: 'https://test.aws', aws_sso_region: 'us-east-1', aws_access_key: 'AK', aws_secret_key: 'SK', aws_session_token: 'ST' }
+                            }
+                        }
+                    }
+                }
+            };
+
+            const result = deepMerge(defaults, incoming);
+            const sso = (result as any).persistence.mongo.app.auth.sso;
+            expect(sso.aws_access_key).toBe('AK');
+            expect(sso.aws_secret_key).toBe('SK');
+            expect(sso.aws_session_token).toBe('ST');
+            expect(sso.aws_sso_start_url).toBe('https://test.aws');
+        });
+
+        it('drops SSO credential fields if not in defaults (regression guard)', () => {
+            // If defaults were missing credential keys, deepMerge would drop them
+            const badDefaults = {
+                persistence: {
+                    mongo: {
+                        app: {
+                            auth: {
+                                sso: { aws_sso_start_url: '' } // missing aws_access_key etc.
+                            }
+                        }
+                    }
+                }
+            };
+            const incoming = {
+                persistence: {
+                    mongo: {
+                        app: {
+                            auth: {
+                                sso: { aws_sso_start_url: 'https://test.aws', aws_access_key: 'AK' }
+                            }
+                        }
+                    }
+                }
+            };
+
+            const result = deepMerge(badDefaults, incoming);
+            const sso = (result as any).persistence.mongo.app.auth.sso;
+            expect(sso.aws_sso_start_url).toBe('https://test.aws');
+            // aws_access_key should be dropped because it's not in badDefaults
+            expect(sso.aws_access_key).toBeUndefined();
+        });
+
+        it('preserves Role auth credential fields through merge', () => {
+            const defaults = {
+                auth: {
+                    role: { aws_role_arn: '', aws_access_key: '', aws_secret_key: '', aws_session_token: '' }
+                }
+            };
+            const incoming = {
+                auth: {
+                    role: { aws_role_arn: 'arn:aws:iam::123:role/R', aws_access_key: 'AK', aws_secret_key: 'SK' }
+                }
+            };
+
+            const result = deepMerge(defaults, incoming);
+            expect((result as any).auth.role.aws_access_key).toBe('AK');
+            expect((result as any).auth.role.aws_role_arn).toBe('arn:aws:iam::123:role/R');
         });
     });
 });
