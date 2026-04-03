@@ -55,7 +55,22 @@ export const authorizedFetch = async (url: string, options: RequestInit = {}) =>
     if (response.status === 403) {
         const body = await response.clone().json().catch(() => ({}));
         const msg = body.message || body.error || 'Permission denied';
-        alert(`Access denied: ${msg}`);
+        console.warn(`[Auth] Access denied: ${msg}`);
+        // Show non-blocking notification — avoid alert() which freezes UI during debounced saves
+        const existing = document.getElementById('vst-403-toast');
+        if (!existing) {
+            const toast = document.createElement('div');
+            toast.id = 'vst-403-toast';
+            toast.textContent = `Access denied: ${msg}`;
+            Object.assign(toast.style, {
+                position: 'fixed', bottom: '20px', right: '20px', zIndex: '9999',
+                padding: '12px 20px', borderRadius: '6px', fontSize: '14px',
+                backgroundColor: 'var(--status-danger-bg, #dc2626)', color: 'var(--status-danger-text, #fff)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+            });
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
     }
 
     return response;

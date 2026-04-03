@@ -74,7 +74,11 @@ export const DEFAULT_SETTINGS: Settings = {
   aha: { subdomain: '', api_key: '' },
   ai: { provider: 'openai', api_key: '', model: '', glean_url: '', support: { prompt: '' } },
   ldap: { url: '', bind_dn: '', bind_password: '', team: { base_dn: '', search_filter: '' } },
-  auth: { method: 'local', session_expiry_hours: 24, default_role: 'viewer' }
+  auth: {
+    method: 'local', session_expiry_hours: 24, default_role: 'viewer',
+    aws_sso: { start_url: '', region: '', account_id: '', role_name: '' },
+    okta: { issuer: '', client_id: '', client_secret: '' },
+  }
 };
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
