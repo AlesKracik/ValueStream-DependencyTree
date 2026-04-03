@@ -26,6 +26,7 @@ Each entity corresponds to a layer in the value-stream pipeline:
 
 ## Operations
 
+- [Authentication](AUTHENTICATION.md) — Three auth methods (local, LDAP, AWS SSO), role-based authorization, JWT sessions.
 - [Deployment](DEPLOYMENT.md) — Local development, Docker, Kubernetes, and SSH/SOCKS5 networking.
 - [Persistence](PERSISTENCE.md) — MongoDB configuration, authentication methods (SCRAM, AWS IAM/SSO, OIDC), and migrations.
 - [Secret Management](SECRET-MANAGEMENT.md) — AES-256-GCM encryption, provider selection, key rotation.

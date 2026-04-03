@@ -1,6 +1,14 @@
-export const getAdminSecret = () => sessionStorage.getItem('ADMIN_SECRET') || '';
-export const setAdminSecret = (secret: string) => sessionStorage.setItem('ADMIN_SECRET', secret);
-export const clearAdminSecret = () => sessionStorage.removeItem('ADMIN_SECRET');
+// Auth token storage — supports both legacy ADMIN_SECRET and JWT tokens
+const AUTH_TOKEN_KEY = 'AUTH_TOKEN';
+export const getAdminSecret = () => sessionStorage.getItem(AUTH_TOKEN_KEY) || sessionStorage.getItem('ADMIN_SECRET') || '';
+export const setAdminSecret = (secret: string) => {
+    sessionStorage.setItem(AUTH_TOKEN_KEY, secret);
+    sessionStorage.removeItem('ADMIN_SECRET'); // clean up legacy key
+};
+export const clearAdminSecret = () => {
+    sessionStorage.removeItem(AUTH_TOKEN_KEY);
+    sessionStorage.removeItem('ADMIN_SECRET');
+};
 
 /**
  * Generic POST+JSON API wrapper. Handles authorizedFetch, JSON parsing, and error checking.

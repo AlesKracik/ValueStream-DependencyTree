@@ -222,6 +222,35 @@ export interface AISettings {
   };
 }
 
+export type UserRole = 'admin' | 'editor' | 'viewer';
+
+export type AuthMethod = 'local' | 'ldap' | 'aws-sso';
+
+export interface AwsSsoAuthConfig {
+  start_url: string;
+  region: string;
+  account_id: string;
+  role_name: string;
+}
+
+export interface AuthSettings {
+  method: AuthMethod;
+  session_expiry_hours: number;
+  aws_sso?: AwsSsoAuthConfig;
+  default_role: UserRole;
+}
+
+export interface AppUser {
+  id: string;
+  username: string;
+  display_name: string;
+  role: UserRole;
+  password_hash?: string;
+  source: AuthMethod;
+  created_at: string;
+  last_login?: string;
+}
+
 export interface Settings {
   general: GeneralSettings;
   persistence: PersistenceSettings;
@@ -229,6 +258,7 @@ export interface Settings {
   aha: AhaSettings;
   ai: AISettings;
   ldap: LdapSettings;
+  auth: AuthSettings;
 }
 
 export type AppSettings = Settings;
@@ -250,7 +280,7 @@ export const SETTINGS_SCOPE: Record<string, SettingsScope> = {
   'general': 'server',
   'general.fiscal_year_start_month': 'server',
   'general.sprint_duration_days': 'server',
-  'general.theme': 'server',
+  'general.theme': 'client',
   // persistence
   'persistence': 'server',
   // jira
@@ -261,6 +291,8 @@ export const SETTINGS_SCOPE: Record<string, SettingsScope> = {
   'ai': 'server',
   // ldap
   'ldap': 'server',
+  // auth
+  'auth': 'server',
 };
 
 /** Resolve the scope for a dot-path by finding the most specific matching entry */

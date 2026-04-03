@@ -1,7 +1,23 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { ValueStreamData, Customer, WorkItem, Team, Issue, Settings, Sprint, ValueStreamEntity, ValueStreamParameters } from '@valuestream/shared-types';
+import { partitionSettings } from '@valuestream/shared-types';
 import { authorizedFetch, debounce } from '../utils/api';
 import { calculateQuarter } from '../utils/dateHelpers';
+
+const CLIENT_SETTINGS_KEY = 'vst-client-settings';
+
+function loadClientSettings(): Partial<Settings> {
+    try {
+        const raw = localStorage.getItem(CLIENT_SETTINGS_KEY);
+        return raw ? JSON.parse(raw) : {};
+    } catch {
+        return {};
+    }
+}
+
+function saveClientSettings(settings: Partial<Settings>): void {
+    localStorage.setItem(CLIENT_SETTINGS_KEY, JSON.stringify(settings));
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const persistEntity = async (collection: string, method: 'POST' | 'DELETE', entity: any, showAlert?: (title: string, message: string) => Promise<void>) => {
@@ -30,7 +46,7 @@ const persistEntity = async (collection: string, method: 'POST' | 'DELETE', enti
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const persistSettings = async (settings: any, showAlert?: (title: string, message: string) => Promise<void>) => {
+const persistSettingsToServer = async (settings: any, showAlert?: (title: string, message: string) => Promise<void>) => {
     try {
         const response = await authorizedFetch('/api/settings', {
             method: 'POST',
@@ -52,6 +68,29 @@ const persistSettings = async (settings: any, showAlert?: (title: string, messag
         if (showAlert) {
             showAlert('Network Error', `Could not connect to server while saving settings: ${message}`);
         }
+    }
+};
+
+/** Partition and persist settings: server portion to API, client portion to localStorage */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const persistSettings = async (settings: any, showAlert?: (title: string, message: string) => Promise<void>) => {
+    const { server, client } = partitionSettings(settings);
+
+    // Save client-scoped settings to localStorage
+    if (Object.keys(client).length > 0) {
+        // Merge with existing client settings to preserve fields not in this update
+        const existing = loadClientSettings();
+        const merged = { ...existing };
+        for (const key of Object.keys(client)) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (merged as any)[key] = (client as any)[key];
+        }
+        saveClientSettings(merged);
+    }
+
+    // Send server-scoped settings to backend
+    if (Object.keys(server).length > 0) {
+        await persistSettingsToServer(server, showAlert);
     }
 };
 
@@ -144,11 +183,29 @@ export function useValueStreamData(
                 });
             }
 
+            // Merge client-scoped settings from localStorage into the server response
+            if (finalData.settings) {
+                const clientSettings = loadClientSettings();
+                for (const key of Object.keys(clientSettings)) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const serverSection = (finalData.settings as any)[key];
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const clientSection = (clientSettings as any)[key];
+                    if (serverSection && typeof serverSection === 'object' && typeof clientSection === 'object') {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (finalData.settings as any)[key] = { ...serverSection, ...clientSection };
+                    } else {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (finalData.settings as any)[key] = clientSection;
+                    }
+                }
+            }
+
             if (requestedCollections.includes('workspace')) {
                 setData(finalData as ValueStreamData);
             }
 
-            // Cache theme immediately if available
+            // Apply theme from settings
             const theme = finalData.settings?.general?.theme;
             if (theme) {
                 localStorage.setItem('vst-theme', theme);

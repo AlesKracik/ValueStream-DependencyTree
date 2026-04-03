@@ -1,11 +1,5 @@
 import { Type, Static } from '@sinclair/typebox';
 
-// ── Auth ────────────────────────────────────────────────────────────────────
-export const LoginBody = Type.Object({
-  password: Type.String()
-});
-export type LoginBodyType = Static<typeof LoginBody>;
-
 // ── Entity ──────────────────────────────────────────────────────────────────
 export const EntityBody = Type.Object({
   id: Type.String()

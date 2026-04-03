@@ -12,6 +12,7 @@ import {
   AhaSettings,
   AiSettings,
   LdapSettings,
+  AuthSettings,
 } from './settings';
 import { ScopeIndicator } from '../components/common/ScopeIndicator';
 
@@ -72,7 +73,8 @@ export const DEFAULT_SETTINGS: Settings = {
   jira: { base_url: '', api_version: '3', api_token: '', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
   aha: { subdomain: '', api_key: '' },
   ai: { provider: 'openai', api_key: '', model: '', glean_url: '', support: { prompt: '' } },
-  ldap: { url: '', bind_dn: '', bind_password: '', team: { base_dn: '', search_filter: '' } }
+  ldap: { url: '', bind_dn: '', bind_password: '', team: { base_dn: '', search_filter: '' } },
+  auth: { method: 'local', session_expiry_hours: 24, default_role: 'viewer' }
 };
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
@@ -85,7 +87,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   addIssue,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = (searchParams.get("tab") as "general" | "persistence" | "jira" | "aha" | "ai" | "ldap") || "general";
+  const activeTab = (searchParams.get("tab") as "general" | "persistence" | "jira" | "aha" | "ai" | "ldap" | "auth") || "general";
 
   // Track the settings prop that produced the current localFormData.
   // When settings changes externally, re-merge. Using setState-during-render
@@ -179,6 +181,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             >
               LDAP<ScopeIndicator path="ldap" />
             </button>
+            <button
+              onClick={() => setTab("auth")}
+              className={`${styles.tabButton} ${activeTab === "auth" ? styles.activeTab : ''}`}
+            >
+              Authentication<ScopeIndicator path="auth" />
+            </button>
           </nav>
 
           <div className={styles.tabContent}>
@@ -196,6 +204,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               {activeTab === "aha" && <AhaSettings {...sharedProps} />}
               {activeTab === "ai" && <AiSettings {...sharedProps} />}
               {activeTab === "ldap" && <LdapSettings {...sharedProps} />}
+              {activeTab === "auth" && <AuthSettings {...sharedProps} />}
             </div>
           </div>
         </div>

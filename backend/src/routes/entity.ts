@@ -10,12 +10,14 @@ import {
 } from './schemas';
 import { ALLOWED_COLLECTIONS } from '../utils/constants';
 import { AppError } from '../utils/errors';
+import { requireRole } from '../utils/roleGuard';
 // Collections whose mutations affect RICE scores and trigger recomputation
 const SCORE_AFFECTING_COLLECTIONS = ['workItems', 'customers', 'issues'];
 
 export const entityRoutes: FastifyPluginAsync = async (fastify) => {
   // Use a wildcard param to match /api/entity/:collection/:id
   fastify.post<{ Params: CollectionParamsType; Body: EntityBodyType }>('/api/entity/:collection', { schema: { params: CollectionParams, body: EntityBody } }, async (request, reply) => {
+    requireRole(request, 'editor');
     const { collection } = request.params;
 
     if (!ALLOWED_COLLECTIONS.includes(collection)) {
@@ -82,6 +84,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   fastify.delete<{ Params: CollectionIdParamsType }>('/api/entity/:collection/:id', { schema: { params: CollectionIdParams } }, async (request, reply) => {
+    requireRole(request, 'editor');
     const { collection, id } = request.params;
 
     if (!ALLOWED_COLLECTIONS.includes(collection)) {

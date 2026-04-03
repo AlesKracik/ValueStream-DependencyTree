@@ -324,7 +324,7 @@ describe('configHelpers', () => {
   describe('resolveScope', () => {
     it('should return exact match scope', () => {
       expect(resolveScope('general')).toBe('server');
-      expect(resolveScope('general.theme')).toBe('server');
+      expect(resolveScope('general.theme')).toBe('client');
     });
 
     it('should walk up to parent when no exact match', () => {
@@ -336,20 +336,15 @@ describe('configHelpers', () => {
       expect(resolveScope('unknown.path')).toBe('server');
     });
 
-    it('should respect a leaf override', () => {
-      const original = SETTINGS_SCOPE['general.theme'];
-      SETTINGS_SCOPE['general.theme'] = 'client';
-      try {
-        expect(resolveScope('general.theme')).toBe('client');
-        expect(resolveScope('general.fiscal_year_start_month')).toBe('server');
-      } finally {
-        SETTINGS_SCOPE['general.theme'] = original;
-      }
+    it('should respect a leaf override differing from parent', () => {
+      // general.theme is 'client' while parent 'general' is 'server'
+      expect(resolveScope('general.theme')).toBe('client');
+      expect(resolveScope('general.fiscal_year_start_month')).toBe('server');
     });
   });
 
   describe('partitionSettings', () => {
-    it('should put all keys into server when all scopes are server', () => {
+    it('should split theme to client and rest to server', () => {
       const settings = {
         general: { fiscal_year_start_month: 1, sprint_duration_days: 14, theme: 'dark' as const },
         jira: { base_url: 'https://jira.com', api_version: '3' as const },
@@ -357,8 +352,11 @@ describe('configHelpers', () => {
 
       const { server, client } = partitionSettings(settings);
 
-      expect(server).toEqual(settings);
-      expect(client).toEqual({});
+      expect(server).toEqual({
+        general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
+        jira: { base_url: 'https://jira.com', api_version: '3' },
+      });
+      expect(client).toEqual({ general: { theme: 'dark' } });
     });
 
     it('should partition an entire top-level section to client', () => {
@@ -390,21 +388,15 @@ describe('configHelpers', () => {
     });
 
     it('should split fields within a single section when scopes differ', () => {
-      const originalTheme = SETTINGS_SCOPE['general.theme'];
-      SETTINGS_SCOPE['general.theme'] = 'client';
+      // general.theme is already 'client' while the rest of general is 'server'
+      const settings = {
+        general: { fiscal_year_start_month: 4, sprint_duration_days: 14, theme: 'dark' as const },
+      };
 
-      try {
-        const settings = {
-          general: { fiscal_year_start_month: 4, sprint_duration_days: 14, theme: 'dark' as const },
-        };
+      const { server, client } = partitionSettings(settings);
 
-        const { server, client } = partitionSettings(settings);
-
-        expect(server).toEqual({ general: { fiscal_year_start_month: 4, sprint_duration_days: 14 } });
-        expect(client).toEqual({ general: { theme: 'dark' } });
-      } finally {
-        SETTINGS_SCOPE['general.theme'] = originalTheme;
-      }
+      expect(server).toEqual({ general: { fiscal_year_start_month: 4, sprint_duration_days: 14 } });
+      expect(client).toEqual({ general: { theme: 'dark' } });
     });
 
     it('should handle empty input', () => {

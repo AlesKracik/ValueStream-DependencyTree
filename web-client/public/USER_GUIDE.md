@@ -458,6 +458,17 @@ Once configured, Work Item detail pages gain an **Aha! Integration** tab for lin
 
 Once configured, Team detail pages gain an **LDAP Team Name** field and a **Sync from LDAP** button in the Members tab.
 
+#### Authentication
+
+*   **Method:** Choose how users authenticate:
+    *   **Local accounts** — username/password stored in the application database.
+    *   **LDAP bind** — authenticates against the LDAP server (configured in the LDAP tab).
+    *   **AWS SSO** — device-based SSO authentication through AWS (piggybacks on existing Okta/IdP setup without admin involvement).
+*   **Default role for new users:** The role assigned to auto-provisioned users (LDAP/AWS SSO). Options: Viewer (read-only), Editor (can modify entities), Admin (full access).
+*   **Session expiry:** How long a login session lasts before re-authentication is needed.
+*   **AWS SSO Configuration** (when AWS SSO is selected): SSO Start URL, AWS Region, Account ID, and Role Name. Only users who can assume the configured role get access.
+*   **Users table:** View all registered users, change roles, or delete users (admin only).
+
 ---
 
 ### Theming & Accessibility

@@ -18,8 +18,8 @@ describe('authServer utility', () => {
         it('returns required: false for auth status if no secret is set', () => {
             const result = checkAuth('/api/auth/status', {}, undefined);
             expect(result.authorized).toBe(true);
-            expect(result.statusCode).toBe(200);
-            expect(result.response).toEqual({ required: false, authenticated: true });
+            expect(result.response.required).toBe(false);
+            expect(result.response.authenticated).toBe(true);
         });
 
         it('blocks requests if admin secret is set and not provided', () => {
@@ -32,18 +32,21 @@ describe('authServer utility', () => {
         it('allows requests if admin secret is set and correctly provided via x-admin-secret', () => {
             const result = checkAuth('/api/loadData', { 'x-admin-secret': 'my-secret' }, 'my-secret');
             expect(result.authorized).toBe(true);
+            expect(result.user?.isAdmin).toBe(true);
         });
 
         it('allows requests if admin secret is set and correctly provided via Authorization: Bearer', () => {
             const result = checkAuth('/api/loadData', { 'authorization': 'Bearer my-secret' }, 'my-secret');
             expect(result.authorized).toBe(true);
+            expect(result.user?.isAdmin).toBe(true);
         });
 
         it('returns required: true, authenticated: true for auth status if secret is set and correct via Bearer', () => {
             const result = checkAuth('/api/auth/status', { 'authorization': 'Bearer my-secret' }, 'my-secret');
             expect(result.authorized).toBe(true);
-            expect(result.statusCode).toBe(200);
-            expect(result.response).toEqual({ required: true, authenticated: true });
+            expect(result.response.required).toBe(true);
+            expect(result.response.authenticated).toBe(true);
+            expect(result.response.user.username).toBe('admin');
         });
 
         it('allows /api/auth/login unconditionally to pass through to the server for body parsing', () => {
@@ -51,9 +54,11 @@ describe('authServer utility', () => {
             expect(result.authorized).toBe(true);
         });
 
-        it('is case-insensitive for headers if they are processed by Node middleware (passed as lowercase)', () => {
-            const result = checkAuth('/api/loadData', { 'x-admin-secret': 'my-secret' }, 'my-secret');
-            expect(result.authorized).toBe(true);
+        it('allows public endpoints without auth', () => {
+            expect(checkAuth('/api/auth/methods', {}, 'my-secret').authorized).toBe(true);
+            expect(checkAuth('/api/auth/setup', {}, 'my-secret').authorized).toBe(true);
+            expect(checkAuth('/api/auth/aws-sso/start', {}, 'my-secret').authorized).toBe(true);
+            expect(checkAuth('/api/health', {}, 'my-secret').authorized).toBe(true);
         });
     });
 });
