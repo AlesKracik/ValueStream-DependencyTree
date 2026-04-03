@@ -268,7 +268,17 @@ export function useValueStreamData(
                     }
                     return result;
                 };
+                const serverSso = (finalData.settings as any)?.persistence?.mongo?.app?.auth?.sso;
+                const clientSso = (clientSettings as any)?.persistence?.mongo?.app?.auth?.sso;
                 finalData.settings = deepMergeClientSettings(finalData.settings, clientSettings);
+                const mergedSso = (finalData.settings as any)?.persistence?.mongo?.app?.auth?.sso;
+                console.debug('[fetchData] SSO merge:', {
+                    serverSsoKeys: serverSso ? Object.keys(serverSso) : 'none',
+                    clientSsoKeys: clientSso ? Object.keys(clientSso) : 'none',
+                    mergedSsoKeys: mergedSso ? Object.keys(mergedSso) : 'none',
+                    clientStartUrl: clientSso?.aws_sso_start_url,
+                    mergedStartUrl: mergedSso?.aws_sso_start_url,
+                });
             }
 
             if (requestedCollections.includes('workspace')) {
