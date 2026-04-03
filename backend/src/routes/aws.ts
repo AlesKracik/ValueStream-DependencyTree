@@ -11,8 +11,9 @@ import {
   GetRoleCredentialsCommand,
 } from '@aws-sdk/client-sso';
 import { Type, Static } from '@sinclair/typebox';
-import { getIntegrationConfig } from '../utils/configHelpers';
-import { evictSsoClients } from '../utils/mongoServer';
+import { getIntegrationConfig, augmentConfig } from '../utils/configHelpers';
+import { getDb, evictSsoClients } from '../utils/mongoServer';
+import { upsertExternalUser } from '../services/userService';
 
 // ── Schemas ─────────────────────────────────────────────────────
 
@@ -228,6 +229,19 @@ export const awsRoutes: FastifyPluginAsync = async (fastify) => {
 
     // Evict cached MongoClients so the next connection uses the new creds
     evictSsoClients(session.role);
+
+    // Now that the DB may be reachable, sync the current user if they don't have a record yet
+    if (request.authUser && request.authUser.userId !== 'admin-secret') {
+      try {
+        const freshSettings = await fastify.getSettings();
+        const db = await getDb(augmentConfig(freshSettings, 'app'), 'app', true);
+        const defaultRole = freshSettings.auth?.default_role || 'viewer';
+        await upsertExternalUser(db, request.authUser.username, request.authUser.username, 'aws-sso', defaultRole);
+        fastify.log.info(`[AWS SSO] Synced user '${request.authUser.username}' to DB after credentials saved`);
+      } catch (e: any) {
+        fastify.log.warn(`[AWS SSO] Could not sync user to DB: ${e.message}`);
+      }
+    }
 
     fastify.log.info(`[AWS SSO] Persistence device flow completed for ${session.role}, credentials obtained`);
 
