@@ -7,51 +7,57 @@ import { calculateQuarter } from '../utils/dateHelpers';
 const CLIENT_SETTINGS_FALLBACK_KEY = 'vst-client-settings-pending';
 
 async function loadClientSettings(): Promise<Partial<Settings>> {
-    // Try DB first
+    // Always read localStorage fallback first
+    let pendingSettings: Partial<Settings> = {};
+    try {
+        const raw = localStorage.getItem(CLIENT_SETTINGS_FALLBACK_KEY);
+        if (raw) pendingSettings = JSON.parse(raw);
+    } catch { /* ignore */ }
+
+    // Try DB
     try {
         const res = await authorizedFetch('/api/auth/me/settings');
         if (res.ok) {
             const data = await res.json();
             const dbSettings = data.client_settings || {};
+            const hasDbSettings = Object.keys(dbSettings).length > 0;
+            const hasPending = Object.keys(pendingSettings).length > 0;
 
-            // If we have pending localStorage settings, sync them to DB and clear
-            const pending = localStorage.getItem(CLIENT_SETTINGS_FALLBACK_KEY);
-            if (pending) {
-                try {
-                    const pendingSettings = JSON.parse(pending);
-                    const merged = { ...dbSettings };
-                    for (const key of Object.keys(pendingSettings)) {
+            if (hasPending) {
+                // Merge pending localStorage into DB settings
+                const merged = { ...dbSettings };
+                for (const key of Object.keys(pendingSettings)) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    if (typeof (pendingSettings as any)[key] === 'object' && typeof (merged as any)[key] === 'object') {
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        if (typeof pendingSettings[key] === 'object' && typeof (merged as any)[key] === 'object') {
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            (merged as any)[key] = { ...(merged as any)[key], ...pendingSettings[key] };
-                        } else {
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            (merged as any)[key] = pendingSettings[key];
-                        }
+                        (merged as any)[key] = { ...(merged as any)[key], ...(pendingSettings as any)[key] };
+                    } else {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (merged as any)[key] = (pendingSettings as any)[key];
                     }
-                    // Sync merged settings back to DB
-                    await authorizedFetch('/api/auth/me/settings', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(merged),
-                    });
-                    localStorage.removeItem(CLIENT_SETTINGS_FALLBACK_KEY);
-                    return merged;
-                } catch { /* ignore sync failure, return DB settings */ }
+                }
+
+                // Only clear localStorage if DB actually has a user profile (non-empty response)
+                if (hasDbSettings) {
+                    try {
+                        await authorizedFetch('/api/auth/me/settings', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(merged),
+                        });
+                        localStorage.removeItem(CLIENT_SETTINGS_FALLBACK_KEY);
+                    } catch { /* keep localStorage as fallback */ }
+                }
+
+                return merged;
             }
 
             return dbSettings;
         }
     } catch { /* DB unavailable */ }
 
-    // Fall back to localStorage
-    try {
-        const raw = localStorage.getItem(CLIENT_SETTINGS_FALLBACK_KEY);
-        return raw ? JSON.parse(raw) : {};
-    } catch {
-        return {};
-    }
+    // DB unavailable — return localStorage fallback
+    return pendingSettings;
 }
 
 async function saveClientSettingsToServer(settings: Partial<Settings>): Promise<void> {
@@ -397,14 +403,18 @@ export function useValueStreamData(
                 newSprints.forEach(s => persistEntity('sprints', 'POST', s, showAlert));
             }
 
+            // Only refresh when connection-affecting fields actually changed from their previous values
+            const prevMongo = prev.settings?.persistence?.mongo;
+            const newMongo = newSettings.persistence?.mongo;
             const needsRefresh = (
-                updates.persistence?.mongo?.app?.uri !== undefined || 
-                updates.persistence?.mongo?.app?.db !== undefined ||
-                updates.persistence?.mongo?.app?.auth?.method !== undefined ||
-                updates.persistence?.mongo?.customer?.uri !== undefined ||
-                updates.persistence?.mongo?.customer?.db !== undefined ||
-                updates.jira?.base_url !== undefined || 
-                updates.jira?.api_token !== undefined
+                (newMongo?.app?.uri !== prevMongo?.app?.uri) ||
+                (newMongo?.app?.db !== prevMongo?.app?.db) ||
+                (newMongo?.app?.auth?.method !== prevMongo?.app?.auth?.method) ||
+                (newMongo?.app?.auth?.aws_auth_type !== prevMongo?.app?.auth?.aws_auth_type) ||
+                (newMongo?.customer?.uri !== prevMongo?.customer?.uri) ||
+                (newMongo?.customer?.db !== prevMongo?.customer?.db) ||
+                (newSettings.jira?.base_url !== prev.settings?.jira?.base_url) ||
+                (newSettings.jira?.api_token !== prev.settings?.jira?.api_token)
             );
 
             if (needsRefresh) {
