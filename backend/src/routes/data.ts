@@ -87,6 +87,11 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/api/workspace', async (request, reply) => {
     const settings = await fastify.getSettings();
     const hasAppDb = !!settings.persistence?.mongo?.app?.uri;
+    const appAuth = settings.persistence?.mongo?.app?.auth;
+    if (appAuth?.aws_auth_type === 'sso') {
+      const hasSsoCreds = !!(appAuth?.sso?.aws_access_key);
+      fastify.log.info(`[Workspace] SSO auth type, credentials ${hasSsoCreds ? 'present' : 'MISSING'}`);
+    }
     const { valueStreamId } = (request.query || {}) as any;
 
     const dbData: any = {

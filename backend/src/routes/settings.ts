@@ -22,6 +22,13 @@ export const settingsRoutes: FastifyPluginAsync = async (fastify) => {
     // Split write: secrets → SecretManager, config → settings.json
     await fastify.saveSettings(unmasked);
 
+    // Verify saved settings include SSO credentials (debug)
+    const verified = await fastify.getSettings();
+    const appSso = verified?.persistence?.mongo?.app?.auth?.sso;
+    if (appSso?.aws_access_key) {
+      fastify.log.info(`[Settings] Saved with SSO credentials for app (key starts with ${appSso.aws_access_key.substring(0, 4)}...)`);
+    }
+
     return reply.send({ success: true });
   });
 };
