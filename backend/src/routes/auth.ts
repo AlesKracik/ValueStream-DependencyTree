@@ -99,8 +99,11 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       db = await getAppDb(fastify);
     } catch {
-      // No DB configured — fall back to ADMIN_SECRET only
-      throw new AppError('User database not configured. Use admin password.', 503);
+      // DB unavailable — local method requires it, LDAP can work without it
+      if (method === 'local') {
+        throw new AppError('User database not configured. Use admin password.', 503);
+      }
+      db = null;
     }
 
     if (method === 'local') {
@@ -248,14 +251,26 @@ async function handleLdapLogin(db: any, settings: any, username: string, passwor
       await userClient.unbind();
     }
 
-    // Auth succeeded — upsert user in local DB
-    const user = await upsertExternalUser(db, username, displayName, 'ldap', defaultRole);
+    // Auth succeeded — upsert user in local DB; if DB unavailable, issue JWT from LDAP identity
+    let userRole = defaultRole;
+    let userId = username;
+    let userDisplayName = displayName;
+    if (db) {
+      try {
+        const user = await upsertExternalUser(db, username, displayName, 'ldap', defaultRole);
+        userRole = user.role;
+        userId = user.id;
+        userDisplayName = user.display_name;
+      } catch (dbErr) {
+        console.warn(`[LDAP] Could not persist user to DB: ${(dbErr as Error).message}`);
+      }
+    }
 
-    const token = signToken({ userId: user.id, username: user.username, role: user.role }, expiry);
+    const token = signToken({ userId, username, role: userRole }, expiry);
     return reply.send({
       success: true,
       token,
-      user: { username: user.username, role: user.role, display_name: user.display_name }
+      user: { username, role: userRole, display_name: userDisplayName }
     });
   } catch (e) {
     if (e instanceof AppError) throw e;

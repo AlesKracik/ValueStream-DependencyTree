@@ -199,16 +199,25 @@ export const oktaAuthRoutes: FastifyPluginAsync = async (fastify) => {
       throw new AppError('Could not determine user identity from Okta', 500);
     }
 
-    // Create/update local user
-    const db = await getAppDb(fastify);
+    // Create/update local user; if DB is unavailable, issue JWT from identity alone
     const defaultRole: UserRole = settings.auth?.default_role || 'viewer';
     const expiry: number = settings.auth?.session_expiry_hours || 24;
 
-    const user = await upsertExternalUser(db, username, displayName, 'okta', defaultRole);
-    const jwt = signToken({ userId: user.id, username: user.username, role: user.role }, expiry);
+    let userRole = defaultRole;
+    let userId = username;
+    try {
+      const db = await getAppDb(fastify);
+      const user = await upsertExternalUser(db, username, displayName, 'okta', defaultRole);
+      userRole = user.role;
+      userId = user.id;
+    } catch (dbErr) {
+      fastify.log.warn(`[Okta] Could not persist user to DB (will use identity from token): ${(dbErr as Error).message}`);
+    }
+
+    const jwtToken = signToken({ userId, username, role: userRole }, expiry);
 
     // Redirect to frontend with token
     const frontendBase = getFrontendBase();
-    return reply.redirect(`${frontendBase}/?auth_token=${encodeURIComponent(jwt)}`);
+    return reply.redirect(`${frontendBase}/?auth_token=${encodeURIComponent(jwtToken)}`);
   });
 };

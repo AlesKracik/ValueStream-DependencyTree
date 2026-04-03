@@ -217,19 +217,28 @@ export const awsAuthRoutes: FastifyPluginAsync = async (fastify) => {
       // Extract identity and create/update local user
       const { username, displayName } = extractIdentityFromArn(identity.Arn);
 
-      const db = await getAppDb(fastify);
       const settings = await fastify.getSettings();
       const defaultRole: UserRole = settings.auth?.default_role || 'viewer';
       const expiry: number = settings.auth?.session_expiry_hours || 24;
 
-      const user = await upsertExternalUser(db, username, displayName, 'aws-sso', defaultRole);
+      // Try to persist user to DB; if DB is unavailable, issue JWT from identity alone
+      let userRole = defaultRole;
+      let userId = username;
+      try {
+        const db = await getAppDb(fastify);
+        const user = await upsertExternalUser(db, username, displayName, 'aws-sso', defaultRole);
+        userRole = user.role;
+        userId = user.id;
+      } catch (dbErr) {
+        fastify.log.warn(`[AWS SSO] Could not persist user to DB (will use identity from STS): ${(dbErr as Error).message}`);
+      }
 
-      const jwt = signToken({ userId: user.id, username: user.username, role: user.role }, expiry);
+      const jwt = signToken({ userId, username, role: userRole }, expiry);
 
       return reply.send({
         success: true,
         token: jwt,
-        user: { username: user.username, role: user.role, display_name: user.display_name },
+        user: { username, role: userRole, display_name: displayName },
         aws_identity: { arn: identity.Arn, account: identity.Account },
       });
     }
