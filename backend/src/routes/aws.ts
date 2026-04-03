@@ -192,6 +192,40 @@ export const awsRoutes: FastifyPluginAsync = async (fastify) => {
     // Clean up session
     deviceSessions.delete(session_id);
 
+    // Save credentials directly to server settings so the backend can connect.
+    // This bypasses role checks — any authenticated user who completes the SSO
+    // flow should be able to provide credentials for the shared DB connection.
+    try {
+      const currentSettings = await fastify.getSettings();
+      const dbRole = session.role as 'app' | 'customer';
+      const mongoAuth = currentSettings.persistence?.mongo?.[dbRole]?.auth || {};
+      const updatedSettings = {
+        ...currentSettings,
+        persistence: {
+          ...currentSettings.persistence,
+          mongo: {
+            ...currentSettings.persistence?.mongo,
+            [dbRole]: {
+              ...currentSettings.persistence?.mongo?.[dbRole],
+              auth: {
+                ...mongoAuth,
+                sso: {
+                  ...mongoAuth.sso,
+                  aws_access_key: roleCreds.accessKeyId,
+                  aws_secret_key: roleCreds.secretAccessKey,
+                  aws_session_token: roleCreds.sessionToken || '',
+                }
+              }
+            }
+          }
+        }
+      };
+      await fastify.saveSettings(updatedSettings);
+      fastify.log.info(`[AWS SSO] Saved credentials to server settings for ${dbRole}`);
+    } catch (e: any) {
+      fastify.log.warn(`[AWS SSO] Could not save credentials to server settings: ${e.message}`);
+    }
+
     // Evict cached MongoClients so the next connection uses the new creds
     evictSsoClients(session.role);
 
