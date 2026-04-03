@@ -255,6 +255,9 @@ export function useValueStreamData(
             if (finalData.settings) {
                 const clientSettings = await loadClientSettings();
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                // Deep merge client settings into server settings.
+                // Skip empty client values so they don't overwrite populated server values
+                // (e.g. SSO config set by admin shouldn't be wiped by a new user's empty defaults)
                 const deepMergeClientSettings = (target: any, source: any): any => {
                     if (!source || typeof source !== 'object' || Array.isArray(source)) return source;
                     const result = { ...target };
@@ -263,7 +266,15 @@ export function useValueStreamData(
                             && !Array.isArray(target[key]) && !Array.isArray(source[key])) {
                             result[key] = deepMergeClientSettings(target[key], source[key]);
                         } else {
-                            result[key] = source[key];
+                            // Only override if client value is non-empty, or server has no value
+                            const clientVal = source[key];
+                            const serverVal = target?.[key];
+                            if (clientVal !== '' && clientVal !== undefined && clientVal !== null) {
+                                result[key] = clientVal;
+                            } else if (serverVal === undefined || serverVal === null) {
+                                result[key] = clientVal;
+                            }
+                            // else: keep server value (client is empty, server has data)
                         }
                     }
                     return result;

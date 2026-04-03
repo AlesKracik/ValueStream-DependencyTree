@@ -534,7 +534,7 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
             {mongo.auth.aws_auth_type === 'sso' ? (
               <>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '-8px' }}>
-                  SSO Configuration<ScopeIndicator path={`persistence.mongo.${role}.auth.sso`} />
+                  SSO Configuration
                 </div>
                 <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                   SSO Start URL:

@@ -316,9 +316,15 @@ export const SETTINGS_SCOPE: Record<string, SettingsScope> = {
   'general.theme': 'client',
   // persistence
   'persistence': 'server',
-  // persistence — SSO sub-object is per-user (client); static and role are server-scoped
+  // persistence — SSO config is per-user (client), credentials are shared (server)
   'persistence.mongo.app.auth.sso': 'client',
+  'persistence.mongo.app.auth.sso.aws_access_key': 'server',
+  'persistence.mongo.app.auth.sso.aws_secret_key': 'server',
+  'persistence.mongo.app.auth.sso.aws_session_token': 'server',
   'persistence.mongo.customer.auth.sso': 'client',
+  'persistence.mongo.customer.auth.sso.aws_access_key': 'server',
+  'persistence.mongo.customer.auth.sso.aws_secret_key': 'server',
+  'persistence.mongo.customer.auth.sso.aws_session_token': 'server',
   // jira
   'jira': 'server',
   'jira.api_token': 'client',
