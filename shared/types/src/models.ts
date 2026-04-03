@@ -324,6 +324,7 @@ export const SETTINGS_SCOPE: Record<string, SettingsScope> = {
   'jira.api_token': 'client',
   // aha
   'aha': 'server',
+  'aha.api_key': 'client',
   // ai
   'ai': 'server',
   // ldap

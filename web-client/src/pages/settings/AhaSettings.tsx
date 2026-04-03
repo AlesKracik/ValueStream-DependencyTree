@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { authorizedFetch } from "../../utils/api";
 import type { SettingsTabProps } from './types';
+import { ScopeIndicator } from '../../components/common/ScopeIndicator';
 
 export const AhaSettings: React.FC<SettingsTabProps> = ({
   localFormData,
@@ -62,7 +63,7 @@ export const AhaSettings: React.FC<SettingsTabProps> = ({
       </label>
 
       <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-        Aha! API Key:
+        Aha! API Key:<ScopeIndicator path="aha.api_key" />
         <input
           type="password"
           placeholder="Your Aha! API Key"
