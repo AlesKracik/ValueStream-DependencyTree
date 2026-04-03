@@ -329,6 +329,8 @@ export const SETTINGS_SCOPE: Record<string, SettingsScope> = {
   'ai': 'server',
   // ldap
   'ldap': 'server',
+  'ldap.bind_dn': 'client',
+  'ldap.bind_password': 'client',
   // auth
   'auth': 'server',
 };

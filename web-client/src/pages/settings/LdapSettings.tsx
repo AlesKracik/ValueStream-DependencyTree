@@ -1,6 +1,7 @@
 import { useSearchParams } from "react-router-dom";
 import styles from '../List.module.css';
 import type { SettingsTabProps } from './types';
+import { ScopeIndicator } from '../../components/common/ScopeIndicator';
 
 export const LdapSettings: React.FC<SettingsTabProps> = ({
   localFormData,
@@ -50,7 +51,7 @@ export const LdapSettings: React.FC<SettingsTabProps> = ({
             </label>
 
             <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-              Bind DN:
+              <span>Bind DN:<ScopeIndicator path="ldap.bind_dn" /></span>
               <input
                 type="text"
                 placeholder="cn=admin,dc=example,dc=com"
@@ -61,7 +62,7 @@ export const LdapSettings: React.FC<SettingsTabProps> = ({
             </label>
 
             <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-              Bind Password:
+              <span>Bind Password:<ScopeIndicator path="ldap.bind_password" /></span>
               <input
                 type="password"
                 placeholder="Bind password"
