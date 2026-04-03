@@ -156,7 +156,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     if (!request.authUser) throw new AppError('Not authenticated', 401);
     try {
       const db = await getAppDb(fastify);
-      const settings = await getClientSettings(db, request.authUser.userId);
+      const settings = await getClientSettings(db, request.authUser.username);
       return reply.send({ success: true, client_settings: settings });
     } catch {
       return reply.send({ success: true, client_settings: {} });
@@ -168,7 +168,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     let persisted = false;
     try {
       const db = await getAppDb(fastify);
-      persisted = await saveClientSettings(db, request.authUser.userId, request.body as Record<string, unknown>);
+      persisted = await saveClientSettings(db, request.authUser.username, request.body as Record<string, unknown>);
     } catch {
       // DB unavailable — client settings will be lost but shouldn't block the user
     }

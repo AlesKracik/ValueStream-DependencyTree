@@ -186,8 +186,8 @@ function decryptUserSecrets(blob: string): Record<string, string> {
 
 // ─── Client Settings CRUD ───────────────────────────────────────
 
-export async function getClientSettings(db: Db, userId: string): Promise<Record<string, unknown>> {
-  const doc = await db.collection(USERS_COLLECTION).findOne({ id: userId });
+export async function getClientSettings(db: Db, username: string): Promise<Record<string, unknown>> {
+  const doc = await db.collection(USERS_COLLECTION).findOne({ username });
   const stripped = (doc?.client_settings as Record<string, unknown>) || {};
   const encryptedSecrets = doc?.client_settings_secrets as string | undefined;
 
@@ -201,7 +201,7 @@ export async function getClientSettings(db: Db, userId: string): Promise<Record<
   return stripped;
 }
 
-export async function saveClientSettings(db: Db, userId: string, clientSettings: Record<string, unknown>): Promise<boolean> {
+export async function saveClientSettings(db: Db, username: string, clientSettings: Record<string, unknown>): Promise<boolean> {
   const secrets = extractSecrets(clientSettings);
   const stripped = stripSecrets(clientSettings);
 
@@ -214,7 +214,7 @@ export async function saveClientSettings(db: Db, userId: string, clientSettings:
   }
 
   const result = await db.collection(USERS_COLLECTION).updateOne(
-    { id: userId },
+    { username },
     { $set: update }
   );
   return result.matchedCount > 0;
