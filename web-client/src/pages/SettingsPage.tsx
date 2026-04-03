@@ -87,6 +87,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     return deepMerge(DEFAULT_SETTINGS, settings || {});
   });
 
+  const initSso = (localFormData as any)?.persistence?.mongo?.app?.auth?.sso?.aws_sso_start_url;
+  console.debug('[SettingsPage] render check:', { settingsRef: settings === prevSettings, initSsoStartUrl: initSso });
   if (settings && settings !== prevSettings) {
     setPrevSettings(settings);
     const merged = deepMerge(DEFAULT_SETTINGS, settings);
