@@ -37,17 +37,20 @@ async function loadClientSettings(): Promise<Partial<Settings>> {
                     }
                 }
 
-                // Only clear localStorage if DB actually has a user profile (non-empty response)
-                if (hasDbSettings) {
-                    try {
-                        await authorizedFetch('/api/auth/me/settings', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(merged),
-                        });
-                        localStorage.removeItem(CLIENT_SETTINGS_FALLBACK_KEY);
-                    } catch { /* keep localStorage as fallback */ }
-                }
+                // Try to sync merged settings to DB; only clear localStorage if actually persisted
+                try {
+                    const syncRes = await authorizedFetch('/api/auth/me/settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(merged),
+                    });
+                    if (syncRes.ok) {
+                        const syncData = await syncRes.json().catch(() => ({}));
+                        if (syncData.persisted) {
+                            localStorage.removeItem(CLIENT_SETTINGS_FALLBACK_KEY);
+                        }
+                    }
+                } catch { /* keep localStorage as fallback */ }
 
                 return merged;
             }
@@ -68,8 +71,11 @@ async function saveClientSettingsToServer(settings: Partial<Settings>): Promise<
             body: JSON.stringify(settings),
         });
         if (res.ok) {
-            // DB save succeeded — clear any pending localStorage fallback
-            localStorage.removeItem(CLIENT_SETTINGS_FALLBACK_KEY);
+            const resData = await res.json().catch(() => ({}));
+            if (resData.persisted) {
+                // DB save actually wrote to a user doc — safe to clear fallback
+                localStorage.removeItem(CLIENT_SETTINGS_FALLBACK_KEY);
+            }
             return;
         }
     } catch { /* DB unavailable */ }

@@ -213,8 +213,9 @@ export async function saveClientSettings(db: Db, userId: string, clientSettings:
     update.client_settings_secrets = null;
   }
 
-  await db.collection(USERS_COLLECTION).updateOne(
+  const result = await db.collection(USERS_COLLECTION).updateOne(
     { id: userId },
     { $set: update }
   );
+  return result.matchedCount > 0;
 }

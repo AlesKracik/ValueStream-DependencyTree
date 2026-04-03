@@ -165,13 +165,14 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post('/api/auth/me/settings', async (request, reply) => {
     if (!request.authUser) throw new AppError('Not authenticated', 401);
+    let persisted = false;
     try {
       const db = await getAppDb(fastify);
-      await saveClientSettings(db, request.authUser.userId, request.body as Record<string, unknown>);
+      persisted = await saveClientSettings(db, request.authUser.userId, request.body as Record<string, unknown>);
     } catch {
       // DB unavailable — client settings will be lost but shouldn't block the user
     }
-    return reply.send({ success: true });
+    return reply.send({ success: true, persisted });
   });
 
   // ── User Management (admin only) ─────────────────────────────

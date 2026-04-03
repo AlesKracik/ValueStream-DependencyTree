@@ -129,5 +129,22 @@ describe('userService', () => {
       // Should return without the secret (decryption fails gracefully)
       expect(loaded).toEqual({ jira: {} });
     });
+
+    it('should return true when save matches a user document', async () => {
+      // Simulate existing user doc
+      storedDoc = { id: 'user-1', username: 'alice', client_settings: {} };
+      mockCollection.updateOne.mockResolvedValue({ matchedCount: 1 });
+
+      const persisted = await saveClientSettings(mockDb, 'user-1', { general: { theme: 'dark' } });
+      expect(persisted).toBe(true);
+    });
+
+    it('should return false when save matches no user document', async () => {
+      // No user doc exists for this id
+      mockCollection.updateOne.mockResolvedValue({ matchedCount: 0 });
+
+      const persisted = await saveClientSettings(mockDb, 'nonexistent-user', { general: { theme: 'dark' } });
+      expect(persisted).toBe(false);
+    });
   });
 });
