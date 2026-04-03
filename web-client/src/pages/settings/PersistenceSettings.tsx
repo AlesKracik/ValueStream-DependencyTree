@@ -349,7 +349,6 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
     const providerKey = isCustomer ? 'customer_provider' : 'app_provider';
     const currentProvider = localFormData.persistence[providerKey] || 'mongo';
     const mongo = localFormData.persistence.mongo[role];
-    console.debug(`[PersistenceSettings] ${role} auth:`, { method: mongo.auth.method, aws_auth_type: mongo.auth.aws_auth_type, hasSso: !!mongo.auth.sso, ssoStartUrl: mongo.auth.sso?.aws_sso_start_url });
     const testResult = isCustomer ? customerMongoTestResult : mongoTestResult;
     const testing = isCustomer ? isTestingCustomer : isTesting;
     const dbs = isCustomer ? availableCustomerDbs : availableDbs;

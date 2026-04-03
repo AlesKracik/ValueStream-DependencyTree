@@ -84,26 +84,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   // (the "adjust state based on prop" pattern from React docs) avoids useEffect.
   const [prevSettings, setPrevSettings] = useState(settings);
   const [localFormData, setFormData] = useState<Settings>(() => {
-    const initSettings = settings || {};
-    const initSso = (initSettings as any)?.persistence?.mongo?.app?.auth?.sso;
-    console.debug('[SettingsPage] useState init:', { hasSettings: !!settings, ssoStartUrl: initSso?.aws_sso_start_url, ssoKeys: initSso ? Object.keys(initSso) : 'none' });
-    return deepMerge(DEFAULT_SETTINGS, initSettings);
+    return deepMerge(DEFAULT_SETTINGS, settings || {});
   });
 
-  const initSso = (localFormData as any)?.persistence?.mongo?.app?.auth?.sso?.aws_sso_start_url;
-  console.debug('[SettingsPage] render check:', { settingsRef: settings === prevSettings, initSsoStartUrl: initSso });
   if (settings && settings !== prevSettings) {
     setPrevSettings(settings);
     const merged = deepMerge(DEFAULT_SETTINGS, settings);
-    const incomingSso = (settings as any)?.persistence?.mongo?.app?.auth?.sso;
-    const mergedSso = (merged as any)?.persistence?.mongo?.app?.auth?.sso;
-    console.debug('[SettingsPage] reconciliation:', {
-      incomingAuthType: (settings as any)?.persistence?.mongo?.app?.auth?.aws_auth_type,
-      incomingSsoKeys: incomingSso ? Object.keys(incomingSso) : 'none',
-      incomingSsoStartUrl: incomingSso?.aws_sso_start_url,
-      mergedSsoKeys: mergedSso ? Object.keys(mergedSso) : 'none',
-      mergedSsoStartUrl: mergedSso?.aws_sso_start_url,
-    });
     if (JSON.stringify(merged) !== JSON.stringify(localFormData)) {
       setFormData(merged);
     }

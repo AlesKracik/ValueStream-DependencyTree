@@ -22,7 +22,7 @@ async function loadClientSettings(): Promise<Partial<Settings>> {
             const dbSettings = data.client_settings || {};
             const hasDbSettings = Object.keys(dbSettings).length > 0;
             const hasPending = Object.keys(pendingSettings).length > 0;
-            console.debug('[ClientSettings] load:', { hasDbSettings, hasPending, dbKeys: Object.keys(dbSettings), pendingKeys: Object.keys(pendingSettings), dbHasSso: !!(dbSettings as any).persistence?.mongo?.app?.auth?.sso });
+
 
             if (hasPending) {
                 // Merge pending localStorage into DB settings
@@ -73,7 +73,6 @@ async function saveClientSettingsToServer(settings: Partial<Settings>): Promise<
         });
         if (res.ok) {
             const resData = await res.json().catch(() => ({}));
-            console.debug('[ClientSettings] save response:', { persisted: resData.persisted, keys: Object.keys(settings), hasSso: !!(settings as any).persistence?.mongo?.app?.auth?.sso });
             if (resData.persisted) {
                 localStorage.removeItem(CLIENT_SETTINGS_FALLBACK_KEY);
             } else {
@@ -272,17 +271,7 @@ export function useValueStreamData(
                     }
                     return result;
                 };
-                const serverSso = (finalData.settings as any)?.persistence?.mongo?.app?.auth?.sso;
-                const clientSso = (clientSettings as any)?.persistence?.mongo?.app?.auth?.sso;
                 finalData.settings = deepMergeClientSettings(finalData.settings, clientSettings);
-                const mergedSso = (finalData.settings as any)?.persistence?.mongo?.app?.auth?.sso;
-                console.debug('[fetchData] SSO merge:', {
-                    serverSsoKeys: serverSso ? Object.keys(serverSso) : 'none',
-                    clientSsoKeys: clientSso ? Object.keys(clientSso) : 'none',
-                    mergedSsoKeys: mergedSso ? Object.keys(mergedSso) : 'none',
-                    clientStartUrl: clientSso?.aws_sso_start_url,
-                    mergedStartUrl: mergedSso?.aws_sso_start_url,
-                });
             }
 
             if (requestedCollections.includes('workspace')) {
