@@ -200,14 +200,14 @@ export const oktaAuthRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     // Create/update local user; if DB is unavailable, issue JWT from identity alone
-    const defaultRole: UserRole = settings.auth?.default_role || 'viewer';
+    const configuredRole: UserRole = settings.auth?.default_role || 'viewer';
     const expiry: number = settings.auth?.session_expiry_hours || 24;
 
-    let userRole = defaultRole;
+    let userRole = configuredRole;
     let userId = username;
     try {
       const db = await getAppDb(fastify);
-      const user = await upsertExternalUser(db, username, displayName, 'okta', defaultRole);
+      const user = await upsertExternalUser(db, username, displayName, 'okta', configuredRole);
       userRole = user.role;
       userId = user.id;
     } catch (dbErr) {

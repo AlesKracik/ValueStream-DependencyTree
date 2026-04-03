@@ -218,15 +218,16 @@ export const awsAuthRoutes: FastifyPluginAsync = async (fastify) => {
       const { username, displayName } = extractIdentityFromArn(identity.Arn);
 
       const settings = await fastify.getSettings();
-      const defaultRole: UserRole = settings.auth?.default_role || 'viewer';
+      const configuredRole: UserRole = settings.auth?.default_role || 'viewer';
       const expiry: number = settings.auth?.session_expiry_hours || 24;
 
       // Try to persist user to DB; if DB is unavailable, issue JWT from identity alone
-      let userRole = defaultRole;
+      // Bootstrap: if no users exist yet (or DB unreachable), grant admin
+      let userRole = configuredRole;
       let userId = username;
       try {
         const db = await getAppDb(fastify);
-        const user = await upsertExternalUser(db, username, displayName, 'aws-sso', defaultRole);
+        const user = await upsertExternalUser(db, username, displayName, 'aws-sso', configuredRole);
         userRole = user.role;
         userId = user.id;
       } catch (dbErr) {

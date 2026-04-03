@@ -241,22 +241,24 @@ export function useValueStreamData(
                 });
             }
 
-            // Merge client-scoped settings from user profile into the server response
+            // Deep-merge client-scoped settings from user profile into the server response
             if (finalData.settings) {
                 const clientSettings = await loadClientSettings();
-                for (const key of Object.keys(clientSettings)) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const serverSection = (finalData.settings as any)[key];
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const clientSection = (clientSettings as any)[key];
-                    if (serverSection && typeof serverSection === 'object' && typeof clientSection === 'object') {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        (finalData.settings as any)[key] = { ...serverSection, ...clientSection };
-                    } else {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        (finalData.settings as any)[key] = clientSection;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const deepMergeClientSettings = (target: any, source: any): any => {
+                    if (!source || typeof source !== 'object' || Array.isArray(source)) return source;
+                    const result = { ...target };
+                    for (const key of Object.keys(source)) {
+                        if (target && typeof target[key] === 'object' && typeof source[key] === 'object'
+                            && !Array.isArray(target[key]) && !Array.isArray(source[key])) {
+                            result[key] = deepMergeClientSettings(target[key], source[key]);
+                        } else {
+                            result[key] = source[key];
+                        }
                     }
-                }
+                    return result;
+                };
+                finalData.settings = deepMergeClientSettings(finalData.settings, clientSettings);
             }
 
             if (requestedCollections.includes('workspace')) {
