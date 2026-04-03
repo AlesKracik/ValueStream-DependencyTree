@@ -201,7 +201,7 @@ export async function getClientSettings(db: Db, userId: string): Promise<Record<
   return stripped;
 }
 
-export async function saveClientSettings(db: Db, userId: string, clientSettings: Record<string, unknown>): Promise<void> {
+export async function saveClientSettings(db: Db, userId: string, clientSettings: Record<string, unknown>): Promise<boolean> {
   const secrets = extractSecrets(clientSettings);
   const stripped = stripSecrets(clientSettings);
 
