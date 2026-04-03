@@ -90,6 +90,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   if (settings && settings !== prevSettings) {
     setPrevSettings(settings);
     const merged = deepMerge(DEFAULT_SETTINGS, settings);
+    const incomingSso = (settings as any)?.persistence?.mongo?.app?.auth?.sso;
+    const mergedSso = (merged as any)?.persistence?.mongo?.app?.auth?.sso;
+    if (incomingSso?.aws_sso_start_url || mergedSso?.aws_sso_start_url) {
+      console.debug('[SettingsPage] reconciliation SSO:', { incoming: incomingSso?.aws_sso_start_url, merged: mergedSso?.aws_sso_start_url });
+    }
     if (JSON.stringify(merged) !== JSON.stringify(localFormData)) {
       setFormData(merged);
     }
