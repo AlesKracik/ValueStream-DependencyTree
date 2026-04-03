@@ -193,7 +193,10 @@ const AwsSsoLogin: React.FC<{
     useEffect(() => {
         if (!polling || !sessionId) return;
 
+        let inFlight = false;
         const interval = setInterval(async () => {
+            if (inFlight) return; // skip if previous poll still processing
+            inFlight = true;
             try {
                 const response = await fetch('/api/auth/aws-sso/poll', {
                     method: 'POST',
@@ -214,6 +217,8 @@ const AwsSsoLogin: React.FC<{
             } catch {
                 setPolling(false);
                 setError('Connection lost during SSO login');
+            } finally {
+                inFlight = false;
             }
         }, 5000);
 
