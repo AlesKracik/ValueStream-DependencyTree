@@ -242,13 +242,6 @@ export function useValueStreamData(
                     finalData = { ...finalData, ...res };
                 });
 
-                // Preserve existing un-fetched data in the state context so we don't wipe it out
-                setData(prev => {
-                    const base = prev || { 
-                        customers: [], workItems: [], issues: [], sprints: [], teams: [], valueStreams: [], settings: {} 
-                    } as unknown as ValueStreamData;
-                    return { ...base, ...finalData };
-                });
             }
 
             // Deep-merge client-scoped settings from user profile into the server response
@@ -294,6 +287,14 @@ export function useValueStreamData(
 
             if (requestedCollections.includes('workspace')) {
                 setData(finalData as ValueStreamData);
+            } else {
+                // Granular: merge into existing data, preserving un-fetched collections
+                setData(prev => {
+                    const base = prev || {
+                        customers: [], workItems: [], issues: [], sprints: [], teams: [], valueStreams: [], settings: {}
+                    } as unknown as ValueStreamData;
+                    return { ...base, ...finalData };
+                });
             }
 
             // Apply theme from settings
