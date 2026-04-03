@@ -1,5 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { Client } from 'ldapts';
+import { getIntegrationConfig } from '../utils/configHelpers';
 import { LdapSyncBody, LdapSyncBodyType } from './schemas';
 
 export const ldapRoutes: FastifyPluginAsync = async (fastify) => {
@@ -8,8 +9,7 @@ export const ldapRoutes: FastifyPluginAsync = async (fastify) => {
     const { ldap_team_name } = request.body;
     if (!ldap_team_name) throw new Error('LDAP team name is required.');
 
-    const settings = await fastify.getSettings();
-    const ldap = settings.ldap;
+    const { section: ldap } = await getIntegrationConfig(fastify, request.body, 'ldap');
 
     if (!ldap?.url) throw new Error('LDAP URL is not configured.');
     if (!ldap?.team?.base_dn) throw new Error('LDAP Team Base DN is not configured.');

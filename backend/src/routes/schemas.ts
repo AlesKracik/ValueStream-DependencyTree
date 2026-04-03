@@ -84,7 +84,7 @@ export type AhaFeatureBodyType = Static<typeof AhaFeatureBody>;
 // ── LDAP ────────────────────────────────────────────────────────────────────
 export const LdapSyncBody = Type.Object({
   ldap_team_name: Type.String()
-});
+}, { additionalProperties: true });
 export type LdapSyncBodyType = Static<typeof LdapSyncBody>;
 
 // ── AWS SSO ─────────────────────────────────────────────────────────────────

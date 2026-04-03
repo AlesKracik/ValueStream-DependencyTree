@@ -129,15 +129,16 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
         setIsSyncingLdap(true);
         setLdapSyncResult(null);
         try {
+            const ldapConfig = data?.settings?.ldap;
             const response = await authorizedFetch('/api/ldap/sync-members', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ldap_team_name: team.ldap_team_name })
+                body: JSON.stringify({ ldap_team_name: team.ldap_team_name, ldap: ldapConfig })
             });
-            const data = await response.json();
-            if (!data.success) throw new Error(data.error || 'LDAP sync failed');
+            const resData = await response.json();
+            if (!resData.success) throw new Error(resData.error || 'LDAP sync failed');
 
-            const ldapMembers: { name: string; username: string }[] = data.members;
+            const ldapMembers: { name: string; username: string }[] = resData.members;
             const existingMembers = team.members || [];
             const existingByUsername = new Map(existingMembers.map(m => [m.username, m]));
             const ldapUsernames = new Set(ldapMembers.map(m => m.username));
