@@ -384,7 +384,7 @@ Each tab and field may display a small **scope icon** indicating where that sett
 -   **Server icon** (rack): The value is stored and managed on the backend.
 -   **Client icon** (monitor): The value is stored locally in your browser.
 
-Icons only appear at the point where the scope is defined — on tab headers and on individual fields that differ from their section's default scope. Currently all settings are stored on the server.
+Icons only appear at the point where the scope is defined — on tab headers and on individual fields that differ from their section's default scope. Server settings are shared across all users; client settings (e.g. theme) are stored per-user in your profile and follow you across devices.
 
 #### General Project
 

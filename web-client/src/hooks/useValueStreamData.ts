@@ -4,19 +4,25 @@ import { partitionSettings } from '@valuestream/shared-types';
 import { authorizedFetch, debounce } from '../utils/api';
 import { calculateQuarter } from '../utils/dateHelpers';
 
-const CLIENT_SETTINGS_KEY = 'vst-client-settings';
-
-function loadClientSettings(): Partial<Settings> {
+async function loadClientSettings(): Promise<Partial<Settings>> {
     try {
-        const raw = localStorage.getItem(CLIENT_SETTINGS_KEY);
-        return raw ? JSON.parse(raw) : {};
-    } catch {
-        return {};
-    }
+        const res = await authorizedFetch('/api/auth/me/settings');
+        if (res.ok) {
+            const data = await res.json();
+            return data.client_settings || {};
+        }
+    } catch { /* ignore */ }
+    return {};
 }
 
-function saveClientSettings(settings: Partial<Settings>): void {
-    localStorage.setItem(CLIENT_SETTINGS_KEY, JSON.stringify(settings));
+async function saveClientSettingsToServer(settings: Partial<Settings>): Promise<void> {
+    try {
+        await authorizedFetch('/api/auth/me/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings),
+        });
+    } catch { /* ignore — non-critical */ }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -71,21 +77,20 @@ const persistSettingsToServer = async (settings: any, showAlert?: (title: string
     }
 };
 
-/** Partition and persist settings: server portion to API, client portion to localStorage */
+/** Partition and persist settings: server portion to settings API, client portion to user profile */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const persistSettings = async (settings: any, showAlert?: (title: string, message: string) => Promise<void>) => {
     const { server, client } = partitionSettings(settings);
 
-    // Save client-scoped settings to localStorage
+    // Save client-scoped settings to user profile in DB
     if (Object.keys(client).length > 0) {
-        // Merge with existing client settings to preserve fields not in this update
-        const existing = loadClientSettings();
+        const existing = await loadClientSettings();
         const merged = { ...existing };
         for (const key of Object.keys(client)) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (merged as any)[key] = (client as any)[key];
         }
-        saveClientSettings(merged);
+        await saveClientSettingsToServer(merged);
     }
 
     // Send server-scoped settings to backend
@@ -183,9 +188,9 @@ export function useValueStreamData(
                 });
             }
 
-            // Merge client-scoped settings from localStorage into the server response
+            // Merge client-scoped settings from user profile into the server response
             if (finalData.settings) {
-                const clientSettings = loadClientSettings();
+                const clientSettings = await loadClientSettings();
                 for (const key of Object.keys(clientSettings)) {
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const serverSection = (finalData.settings as any)[key];

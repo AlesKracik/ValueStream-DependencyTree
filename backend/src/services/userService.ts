@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import type { Db } from 'mongodb';
 import type { AppUser, UserRole, AuthMethod } from '@valuestream/shared-types';
+import { extractSecrets, stripSecrets, mergeSecrets } from '../utils/configHelpers';
 import logger from '../utils/logger';
 
 const USERS_COLLECTION = 'users';
@@ -141,5 +142,79 @@ export async function updateLastLogin(db: Db, username: string): Promise<void> {
   await db.collection(USERS_COLLECTION).updateOne(
     { username },
     { $set: { last_login: new Date().toISOString() } }
+  );
+}
+
+// ─── Per-user encryption for client settings secrets ────────────
+
+const ALGORITHM = 'aes-256-gcm';
+const PBKDF2_ITERATIONS = 100_000;
+
+function getUserEncryptionKey(): Buffer {
+  const secret = process.env.ADMIN_SECRET || process.env.VITE_ADMIN_SECRET;
+  if (!secret) return Buffer.alloc(32); // no-op key when no ADMIN_SECRET
+  const salt = crypto.createHash('sha256').update('vst-user-settings').digest();
+  return crypto.pbkdf2Sync(secret, salt, PBKDF2_ITERATIONS, 32, 'sha512');
+}
+
+function encryptUserSecrets(secrets: Record<string, string>): string {
+  const key = getUserEncryptionKey();
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+  const plaintext = JSON.stringify(secrets);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return JSON.stringify({
+    iv: iv.toString('base64'),
+    tag: tag.toString('base64'),
+    data: encrypted.toString('base64'),
+  });
+}
+
+function decryptUserSecrets(blob: string): Record<string, string> {
+  try {
+    const { iv, tag, data } = JSON.parse(blob);
+    const key = getUserEncryptionKey();
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, Buffer.from(iv, 'base64'));
+    decipher.setAuthTag(Buffer.from(tag, 'base64'));
+    const decrypted = Buffer.concat([decipher.update(Buffer.from(data, 'base64')), decipher.final()]);
+    return JSON.parse(decrypted.toString('utf8'));
+  } catch {
+    return {};
+  }
+}
+
+// ─── Client Settings CRUD ───────────────────────────────────────
+
+export async function getClientSettings(db: Db, userId: string): Promise<Record<string, unknown>> {
+  const doc = await db.collection(USERS_COLLECTION).findOne({ id: userId });
+  const stripped = (doc?.client_settings as Record<string, unknown>) || {};
+  const encryptedSecrets = doc?.client_settings_secrets as string | undefined;
+
+  if (encryptedSecrets) {
+    const secrets = decryptUserSecrets(encryptedSecrets);
+    if (Object.keys(secrets).length > 0) {
+      return mergeSecrets(stripped, secrets);
+    }
+  }
+
+  return stripped;
+}
+
+export async function saveClientSettings(db: Db, userId: string, clientSettings: Record<string, unknown>): Promise<void> {
+  const secrets = extractSecrets(clientSettings);
+  const stripped = stripSecrets(clientSettings);
+
+  const update: Record<string, unknown> = { client_settings: stripped };
+
+  if (Object.keys(secrets).length > 0) {
+    update.client_settings_secrets = encryptUserSecrets(secrets);
+  } else {
+    update.client_settings_secrets = null;
+  }
+
+  await db.collection(USERS_COLLECTION).updateOne(
+    { id: userId },
+    { $set: update }
   );
 }

@@ -7,7 +7,8 @@ import { AppError } from '../utils/errors';
 import {
   findUserByUsername, createUser, upsertExternalUser,
   verifyPassword, signToken, updateLastLogin,
-  listUsers, updateUserRole, deleteUser, getUserCount
+  listUsers, updateUserRole, deleteUser, getUserCount,
+  getClientSettings, saveClientSettings
 } from '../services/userService';
 import type { AuthMethod, UserRole } from '@valuestream/shared-types';
 
@@ -147,6 +148,30 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     );
 
     return reply.send({ success: true, token: jwt, user: { username: user.username, role: user.role, display_name: user.display_name } });
+  });
+
+  // ── Current User Client Settings ──────────────────────────────
+
+  fastify.get('/api/auth/me/settings', async (request, reply) => {
+    if (!request.authUser) throw new AppError('Not authenticated', 401);
+    try {
+      const db = await getAppDb(fastify);
+      const settings = await getClientSettings(db, request.authUser.userId);
+      return reply.send({ success: true, client_settings: settings });
+    } catch {
+      return reply.send({ success: true, client_settings: {} });
+    }
+  });
+
+  fastify.post('/api/auth/me/settings', async (request, reply) => {
+    if (!request.authUser) throw new AppError('Not authenticated', 401);
+    try {
+      const db = await getAppDb(fastify);
+      await saveClientSettings(db, request.authUser.userId, request.body as Record<string, unknown>);
+    } catch {
+      // DB unavailable — client settings will be lost but shouldn't block the user
+    }
+    return reply.send({ success: true });
   });
 
   // ── User Management (admin only) ─────────────────────────────

@@ -152,6 +152,8 @@ The `ADMIN_SECRET` environment variable serves as a superuser bypass:
 | POST | `/api/auth/aws-sso/poll` | No | Poll for authorization completion |
 | GET | `/api/auth/okta/login` | No | Redirect to Okta authorization |
 | GET | `/api/auth/okta/callback` | No | Okta OAuth2 callback (exchanges code, redirects to frontend) |
+| GET | `/api/auth/me/settings` | Authenticated | Get current user's client settings |
+| POST | `/api/auth/me/settings` | Authenticated | Save current user's client settings |
 | GET | `/api/auth/users` | Admin | List all users |
 | PUT | `/api/auth/users/:id/role` | Admin | Update user role |
 | DELETE | `/api/auth/users/:id` | Admin | Delete user |

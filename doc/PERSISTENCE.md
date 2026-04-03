@@ -21,7 +21,7 @@ Configuration is stored in `backend/settings.json` with the following top-level 
 
 ### Settings Scope (Server / Client)
 
-Each settings field has a **scope** — either `server` (stored and managed by the backend) or `client` (stored locally in the browser). The scope is defined per dot-path in the `SETTINGS_SCOPE` map (`shared/types/src/models.ts`), using hierarchical inheritance:
+Each settings field has a **scope** — either `server` (stored and managed by the backend in `settings.json`) or `client` (stored per-user in their profile in MongoDB). The scope is defined per dot-path in the `SETTINGS_SCOPE` map (`shared/types/src/models.ts`), using hierarchical inheritance:
 
 - A parent path (e.g. `persistence`) sets the default scope for all its children.
 - A child path (e.g. `general.theme`) can override its parent's scope.
@@ -30,7 +30,7 @@ The `partitionSettings()` utility splits any `Partial<Settings>` into `{ server,
 
 **UI indicator:** Each settings tab and overriding field displays a small icon showing whether it is stored on the server (rack icon) or client (monitor icon). Icons only appear at "points of change" — top-level section headers and fields that override their parent's scope.
 
-Currently all settings are stored on the server. To move a field to client-side storage, update its entry in `SETTINGS_SCOPE` to `'client'`.
+Client-scoped settings are stored in the user's profile document (`users` collection, `client_settings` field) via `GET/POST /api/auth/me/settings`. If the user database is unavailable, client settings silently fall back to empty defaults. To move a field to client-side storage, update its entry in `SETTINGS_SCOPE` to `'client'`.
 
 ### 1. SCRAM (Standard)
 The default authentication method using URI-based credentials.

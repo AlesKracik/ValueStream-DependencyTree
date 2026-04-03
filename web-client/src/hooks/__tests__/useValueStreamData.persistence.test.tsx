@@ -121,6 +121,7 @@ describe('useValueStreamData Persistence', () => {
 
         vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => {
             if (url.startsWith('/api/workspace')) return Promise.resolve({ ok: true, json: () => Promise.resolve(mockData) });
+            if (url.startsWith('/api/auth/me/settings')) return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, client_settings: {} }) });
             return fetchPromise;
         }));
 

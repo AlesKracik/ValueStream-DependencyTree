@@ -256,6 +256,8 @@ export interface AppUser {
   source: AuthMethod;
   created_at: string;
   last_login?: string;
+  /** Per-user client-scoped settings (e.g. theme), stored in user profile */
+  client_settings?: Partial<Settings>;
 }
 
 export interface Settings {
