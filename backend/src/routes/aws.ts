@@ -64,10 +64,11 @@ export const awsRoutes: FastifyPluginAsync = async (fastify) => {
 
     const role = config.role || 'app';
     const auth = config.persistence?.mongo?.[role]?.auth || {};
-    const startUrl = auth.aws_sso_start_url;
-    const region = auth.aws_sso_region;
-    const accountId = auth.aws_sso_account_id;
-    const roleName = auth.aws_sso_role_name;
+    const sso = auth.sso || {};
+    const startUrl = sso.aws_sso_start_url;
+    const region = sso.aws_sso_region;
+    const accountId = sso.aws_sso_account_id;
+    const roleName = sso.aws_sso_role_name;
 
     if (!startUrl || !region) {
       return reply.code(400).send({ success: false, error: 'SSO Start URL and Region are required.' });

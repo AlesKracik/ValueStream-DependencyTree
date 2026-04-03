@@ -27,20 +27,12 @@ const mockSettings: Settings = {
                 db: 'testdb',
                 use_proxy: false,
                 tunnel_name: 'app',
-                auth: { 
+                auth: {
                     method: 'scram',
                     aws_auth_type: 'static',
-                    aws_profile: '',
-                    aws_access_key: '',
-                    aws_secret_key: '',
-                    aws_session_token: '',
-                    aws_role_arn: '',
-                    aws_external_id: '',
-                    aws_role_session_name: '',
-                    aws_sso_start_url: '',
-                    aws_sso_region: '',
-                    aws_sso_account_id: '',
-                    aws_sso_role_name: '',
+                    static: { aws_access_key: '', aws_secret_key: '', aws_session_token: '' },
+                    role: { aws_role_arn: '', aws_external_id: '', aws_role_session_name: '' },
+                    sso: { aws_sso_start_url: '', aws_sso_region: '', aws_sso_account_id: '', aws_sso_role_name: '' },
                     oidc_token: ''
                 }
             },
@@ -50,20 +42,12 @@ const mockSettings: Settings = {
                 use_proxy: false,
                 tunnel_name: 'customer',
                 collection: 'Customers',
-                auth: { 
+                auth: {
                     method: 'scram',
                     aws_auth_type: 'static',
-                    aws_profile: '',
-                    aws_access_key: '',
-                    aws_secret_key: '',
-                    aws_session_token: '',
-                    aws_role_arn: '',
-                    aws_external_id: '',
-                    aws_role_session_name: '',
-                    aws_sso_start_url: '',
-                    aws_sso_region: '',
-                    aws_sso_account_id: '',
-                    aws_sso_role_name: '',
+                    static: { aws_access_key: '', aws_secret_key: '', aws_session_token: '' },
+                    role: { aws_role_arn: '', aws_external_id: '', aws_role_session_name: '' },
+                    sso: { aws_sso_start_url: '', aws_sso_region: '', aws_sso_account_id: '', aws_sso_role_name: '' },
                     oidc_token: ''
                 }
             }
@@ -290,11 +274,10 @@ describe('SettingsPage', () => {
                     ...mockSettings.persistence.mongo,
                     app: {
                         ...mockSettings.persistence.mongo.app,
-                        auth: { 
-                            method: 'aws' as const, 
+                        auth: {
+                            method: 'aws' as const,
                             aws_auth_type: 'role' as const,
-                            aws_profile: 'test-profile',
-                            aws_role_arn: ''
+                            role: { aws_role_arn: '' }
                         }
                     }
                 }
@@ -326,7 +309,7 @@ describe('SettingsPage', () => {
             persistence: expect.objectContaining({
                 mongo: expect.objectContaining({
                     app: expect.objectContaining({
-                        auth: expect.objectContaining({ aws_role_arn: 'arn:aws:iam::123:role/MyRole' })
+                        auth: expect.objectContaining({ role: expect.objectContaining({ aws_role_arn: 'arn:aws:iam::123:role/MyRole' }) })
                     })
                 })
             })
@@ -345,7 +328,7 @@ describe('SettingsPage', () => {
                         auth: {
                             method: 'aws' as const,
                             aws_auth_type: 'sso' as const,
-                            aws_sso_start_url: '',
+                            sso: { aws_sso_start_url: '', aws_sso_region: '', aws_sso_account_id: '', aws_sso_role_name: '' },
                         }
                     }
                 }
@@ -539,10 +522,7 @@ describe('SettingsPage', () => {
                         auth: {
                             method: 'aws' as const,
                             aws_auth_type: 'sso' as const,
-                            aws_sso_start_url: 'https://test.awsapps.com/start',
-                            aws_sso_region: 'us-east-1',
-                            aws_sso_account_id: '123456789012',
-                            aws_sso_role_name: 'ReadOnly'
+                            sso: { aws_sso_start_url: 'https://test.awsapps.com/start', aws_sso_region: 'us-east-1', aws_sso_account_id: '123456789012', aws_sso_role_name: 'ReadOnly' },
                         }
                     }
                 }
@@ -604,10 +584,7 @@ describe('SettingsPage', () => {
                         auth: {
                             method: 'aws' as const,
                             aws_auth_type: 'sso' as const,
-                            aws_sso_start_url: 'https://test.awsapps.com/start',
-                            aws_sso_region: 'us-east-1',
-                            aws_sso_account_id: '123',
-                            aws_sso_role_name: 'R'
+                            sso: { aws_sso_start_url: 'https://test.awsapps.com/start', aws_sso_region: 'us-east-1', aws_sso_account_id: '123', aws_sso_role_name: 'R' },
                         }
                     },
                     customer: {
@@ -615,10 +592,7 @@ describe('SettingsPage', () => {
                         auth: {
                             method: 'aws' as const,
                             aws_auth_type: 'sso' as const,
-                            aws_sso_start_url: 'https://test-customer.awsapps.com/start',
-                            aws_sso_region: 'us-east-1',
-                            aws_sso_account_id: '456',
-                            aws_sso_role_name: 'R'
+                            sso: { aws_sso_start_url: 'https://test-customer.awsapps.com/start', aws_sso_region: 'us-east-1', aws_sso_account_id: '456', aws_sso_role_name: 'R' },
                         }
                     }
                 }

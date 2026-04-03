@@ -109,13 +109,16 @@ describe('mongoServer utility', () => {
   });
 
   it('sets environment variables and NO_PROXY for MONGODB-AWS authentication', async () => {
-    const config = { 
-        uri: 'mongodb://host', 
+    const config = {
+        uri: 'mongodb://host',
         auth: {
             method: 'aws',
-            aws_access_key: 'AK-test',
-            aws_secret_key: 'SK-test',
-            aws_session_token: 'ST-test'
+            aws_auth_type: 'static',
+            static: {
+                aws_access_key: 'AK-test',
+                aws_secret_key: 'SK-test',
+                aws_session_token: 'ST-test'
+            }
         },
         use_proxy: true,
         proxyHost: 'proxy-host',
@@ -152,39 +155,47 @@ describe('mongoServer utility', () => {
     }));
   });
 
-  it('uses fromSSO provider for SSO authentication type', async () => {
+  it('uses SSO credentials when available', async () => {
     const config = {
         uri: 'mongodb://host',
         auth: {
             method: 'aws',
             aws_auth_type: 'sso',
-            aws_profile: 'my-sso-profile'
+            sso: {
+                aws_sso_start_url: 'https://test.awsapps.com/start',
+                aws_sso_region: 'us-east-1',
+                aws_sso_account_id: '123',
+                aws_sso_role_name: 'Role',
+                aws_access_key: 'SSO-AK',
+                aws_secret_key: 'SSO-SK',
+                aws_session_token: 'SSO-ST'
+            }
         }
     };
 
     await getDb(config as any, 'app');
 
-    expect(MongoClient).toHaveBeenCalledWith('mongodb://host', expect.objectContaining({
-        authMechanism: 'MONGODB-AWS',
-        authSource: '$external',
-        auth: { username: '', password: '' },
-        authMechanismProperties: expect.objectContaining({
-            AWS_CREDENTIAL_PROVIDER: expect.any(Function)
-        })
-    }));
+    expect(process.env.AWS_ACCESS_KEY_ID).toBe('SSO-AK');
+    expect(process.env.AWS_SECRET_ACCESS_KEY).toBe('SSO-SK');
+    expect(process.env.AWS_SESSION_TOKEN).toBe('SSO-ST');
   });
 
-  it('throws for SSO auth without profile', async () => {
+  it('throws for SSO auth without credentials', async () => {
     const config = {
         uri: 'mongodb://host',
         auth: {
             method: 'aws',
             aws_auth_type: 'sso',
-            aws_profile: ''
+            sso: {
+                aws_sso_start_url: 'https://test.awsapps.com/start',
+                aws_sso_region: 'us-east-1',
+                aws_sso_account_id: '123',
+                aws_sso_role_name: 'Role'
+            }
         }
     };
 
-    await expect(getDb(config as any, 'app')).rejects.toThrow('AWS SSO credentials or Profile are required');
+    await expect(getDb(config as any, 'app')).rejects.toThrow('AWS SSO credentials are required');
   });
 
   it('throws for static AWS auth without access key', async () => {
@@ -193,8 +204,10 @@ describe('mongoServer utility', () => {
         auth: {
             method: 'aws',
             aws_auth_type: 'static',
-            aws_access_key: '',
-            aws_secret_key: ''
+            static: {
+                aws_access_key: '',
+                aws_secret_key: ''
+            }
         }
     };
 
@@ -218,51 +231,32 @@ describe('mongoServer utility', () => {
   });
 
   describe('evictSsoClients', () => {
-    it('evicts cached SSO clients matching a given profile', async () => {
-      // Create two SSO connections with different profiles
+    it('evicts cached clients matching a given role type', async () => {
       const ssoConfig1 = {
         uri: 'mongodb://host1',
-        auth: { method: 'aws', aws_auth_type: 'sso', aws_profile: 'profile-a' }
+        auth: { method: 'aws', aws_auth_type: 'sso', sso: { aws_sso_start_url: 'u', aws_sso_region: 'r', aws_sso_account_id: 'a', aws_sso_role_name: 'n', aws_access_key: 'AK1', aws_secret_key: 'SK1' } }
       };
       const ssoConfig2 = {
         uri: 'mongodb://host2',
-        auth: { method: 'aws', aws_auth_type: 'sso', aws_profile: 'profile-b' }
+        auth: { method: 'aws', aws_auth_type: 'sso', sso: { aws_sso_start_url: 'u', aws_sso_region: 'r', aws_sso_account_id: 'a', aws_sso_role_name: 'n', aws_access_key: 'AK2', aws_secret_key: 'SK2' } }
       };
 
       await getDb(ssoConfig1 as any, 'app');
-      await getDb(ssoConfig2 as any, 'app');
+      await getDb(ssoConfig2 as any, 'customer');
       expect(getMongoClientCount()).toBe(2);
 
-      // Evict only profile-a
-      const evicted = evictSsoClients('profile-a');
+      // Evict by role type prefix
+      const evicted = evictSsoClients('app');
       expect(evicted).toBe(1);
       expect(getMongoClientCount()).toBe(1);
-
-      // Evict profile-b
-      const evicted2 = evictSsoClients('profile-b');
-      expect(evicted2).toBe(1);
-      expect(getMongoClientCount()).toBe(0);
     });
 
-    it('does not evict non-SSO clients', async () => {
-      // Create a SCRAM connection (no SSO)
+    it('does not evict non-matching clients', async () => {
       const scramConfig = { uri: 'mongodb://host-scram' };
       await getDb(scramConfig, 'app');
       expect(getMongoClientCount()).toBe(1);
 
-      const evicted = evictSsoClients('any-profile');
-      expect(evicted).toBe(0);
-      expect(getMongoClientCount()).toBe(1);
-    });
-
-    it('returns 0 when no matching profile exists', async () => {
-      const ssoConfig = {
-        uri: 'mongodb://host',
-        auth: { method: 'aws', aws_auth_type: 'sso', aws_profile: 'real-profile' }
-      };
-      await getDb(ssoConfig as any, 'app');
-
-      const evicted = evictSsoClients('nonexistent-profile');
+      const evicted = evictSsoClients('customer');
       expect(evicted).toBe(0);
       expect(getMongoClientCount()).toBe(1);
     });

@@ -103,17 +103,28 @@ export interface MongoConfig {
   auth?: {
     method?: 'scram' | 'aws' | 'oidc';
     aws_auth_type?: 'static' | 'role' | 'sso';
-    aws_access_key?: string;
-    aws_secret_key?: string;
-    aws_session_token?: string;
-    aws_role_arn?: string;
-    aws_external_id?: string;
-    aws_role_session_name?: string;
-    aws_profile?: string;
-    aws_sso_start_url?: string;
-    aws_sso_region?: string;
-    aws_sso_account_id?: string;
-    aws_sso_role_name?: string;
+    static?: {
+      aws_access_key: string;
+      aws_secret_key: string;
+      aws_session_token?: string;
+    };
+    role?: {
+      aws_role_arn: string;
+      aws_external_id?: string;
+      aws_role_session_name?: string;
+      aws_access_key?: string;
+      aws_secret_key?: string;
+      aws_session_token?: string;
+    };
+    sso?: {
+      aws_sso_start_url: string;
+      aws_sso_region: string;
+      aws_sso_account_id: string;
+      aws_sso_role_name: string;
+      aws_access_key?: string;
+      aws_secret_key?: string;
+      aws_session_token?: string;
+    };
     oidc_token?: string;
   };
   proxyHost?: string;
@@ -135,7 +146,9 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
   const tunnelName = config.tunnel_name;
 
   // Create a cache key for this specific connection
-  const cacheKey = `${type}:${uri}:${dbName}:${authMethod}:${config.auth?.aws_auth_type || ''}:${useProxy}:${tunnelName || ''}:${config.auth?.aws_access_key || ''}:${config.auth?.aws_profile || ''}`;
+  const awsAuthType = config.auth?.aws_auth_type || '';
+  const awsKeyForCache = config.auth?.static?.aws_access_key || config.auth?.sso?.aws_access_key || config.auth?.role?.aws_access_key || '';
+  const cacheKey = `${type}:${uri}:${dbName}:${authMethod}:${awsAuthType}:${useProxy}:${tunnelName || ''}:${awsKeyForCache}`;
   
   const cached = mongoClients.get(cacheKey);
   if (cached) {
@@ -208,18 +221,16 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
     }
 
     if (awsAuthType === 'sso') {
-      // SSO: if static credentials are available (from SDK device flow), use them directly.
-      // Otherwise fall back to fromSSO() with an AWS CLI profile.
-      const ak = config.auth?.aws_access_key;
-      const sk = config.auth?.aws_secret_key;
+      const sso = config.auth?.sso;
+      const ak = sso?.aws_access_key;
+      const sk = sso?.aws_secret_key;
 
       if (ak && sk) {
-        // Credentials obtained from the SDK-based device flow — use as static
+        // Credentials obtained from the SDK-based device flow
         process.env.AWS_ACCESS_KEY_ID = ak;
         process.env.AWS_SECRET_ACCESS_KEY = sk;
-        const st = config.auth?.aws_session_token;
-        if (st) {
-          process.env.AWS_SESSION_TOKEN = st;
+        if (sso?.aws_session_token) {
+          process.env.AWS_SESSION_TOKEN = sso.aws_session_token;
         } else {
           delete process.env.AWS_SESSION_TOKEN;
         }
@@ -227,54 +238,35 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
           AWS_CREDENTIAL_PROVIDER: fromNodeProviderChain()
         };
       } else {
-        // Fallback: use fromSSO() with an AWS CLI profile
-        const profile = config.auth?.aws_profile;
-        if (!profile) {
-          throw new Error(`AWS SSO credentials or Profile are required for SSO authentication on ${type} DB. Run "Login via AWS SSO" first.`);
-        }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const ssoOptions: any = { profile };
-        if (config.auth?.aws_sso_start_url) ssoOptions.ssoStartUrl = config.auth.aws_sso_start_url;
-        if (config.auth?.aws_sso_region) ssoOptions.ssoRegion = config.auth.aws_sso_region;
-        if (config.auth?.aws_sso_account_id) ssoOptions.ssoAccountId = config.auth.aws_sso_account_id;
-        if (config.auth?.aws_sso_role_name) ssoOptions.ssoRoleName = config.auth.aws_sso_role_name;
-        options.authMechanismProperties = {
-          AWS_CREDENTIAL_PROVIDER: fromSSO(ssoOptions)
-        };
+        throw new Error(`AWS SSO credentials are required for SSO authentication on ${type} DB. Run "Login via AWS SSO" first.`);
       }
     } else if (awsAuthType === 'role') {
-      // Assume Role: use ambient credentials (IRSA/Pod Identity in K8s) or explicit keys,
-      // then assume the target role via STS
-      const ak = config.auth?.aws_access_key;
-      const sk = config.auth?.aws_secret_key;
-      const st = config.auth?.aws_session_token;
-      const roleArn = config.auth?.aws_role_arn;
+      const role = config.auth?.role;
+      const roleArn = role?.aws_role_arn;
 
       if (!roleArn) {
         throw new Error(`AWS Role ARN is required for Assume Role authentication on ${type} DB.`);
       }
 
-      // If explicit keys provided, set them; otherwise rely on ambient credentials
-      if (ak && sk) {
-        process.env.AWS_ACCESS_KEY_ID = ak;
-        process.env.AWS_SECRET_ACCESS_KEY = sk;
-        if (st) {
-          process.env.AWS_SESSION_TOKEN = st;
+      // If explicit keys provided, set them; otherwise rely on ambient credentials (IRSA/Pod Identity)
+      if (role?.aws_access_key && role?.aws_secret_key) {
+        process.env.AWS_ACCESS_KEY_ID = role.aws_access_key;
+        process.env.AWS_SECRET_ACCESS_KEY = role.aws_secret_key;
+        if (role.aws_session_token) {
+          process.env.AWS_SESSION_TOKEN = role.aws_session_token;
         } else {
           delete process.env.AWS_SESSION_TOKEN;
         }
       } else {
-        // Clear any stale explicit credentials so the provider chain uses ambient (IRSA/Pod Identity)
         delete process.env.AWS_ACCESS_KEY_ID;
         delete process.env.AWS_SECRET_ACCESS_KEY;
         delete process.env.AWS_SESSION_TOKEN;
       }
 
-      // Set the role for the MongoDB driver's STS AssumeRole call
       process.env.AWS_ROLE_ARN = roleArn;
-      process.env.AWS_ROLE_SESSION_NAME = config.auth?.aws_role_session_name || `vst-${type}-session`;
-      if (config.auth?.aws_external_id) {
-        process.env.AWS_ROLE_EXTERNAL_ID = config.auth.aws_external_id;
+      process.env.AWS_ROLE_SESSION_NAME = role?.aws_role_session_name || `vst-${type}-session`;
+      if (role?.aws_external_id) {
+        process.env.AWS_ROLE_EXTERNAL_ID = role.aws_external_id;
       } else {
         delete process.env.AWS_ROLE_EXTERNAL_ID;
       }
@@ -284,9 +276,9 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
       };
     } else {
       // Static: user-provided access key / secret key / session token
-      const ak = config.auth?.aws_access_key;
-      const sk = config.auth?.aws_secret_key;
-      const st = config.auth?.aws_session_token;
+      const staticAuth = config.auth?.static;
+      const ak = staticAuth?.aws_access_key;
+      const sk = staticAuth?.aws_secret_key;
 
       if (!ak || !sk) {
         throw new Error(`AWS Access Key and Secret Key are required for Static AWS IAM authentication on ${type} DB.`);
@@ -294,8 +286,8 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
 
       process.env.AWS_ACCESS_KEY_ID = ak;
       process.env.AWS_SECRET_ACCESS_KEY = sk;
-      if (st) {
-        process.env.AWS_SESSION_TOKEN = st;
+      if (staticAuth?.aws_session_token) {
+        process.env.AWS_SESSION_TOKEN = staticAuth.aws_session_token;
       } else {
         delete process.env.AWS_SESSION_TOKEN;
       }

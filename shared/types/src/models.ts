@@ -159,20 +159,39 @@ export interface LdapSettings {
   };
 }
 
-export interface MongoAuthSettings {
-  method: 'scram' | 'aws' | 'oidc';
-  aws_auth_type?: 'static' | 'role' | 'sso';
+export interface AwsStaticAuth {
+  aws_access_key: string;
+  aws_secret_key: string;
+  aws_session_token?: string;
+}
+
+export interface AwsRoleAuth {
+  aws_role_arn: string;
+  aws_external_id?: string;
+  aws_role_session_name?: string;
+  /** Optional explicit credentials; if omitted, ambient credentials (IRSA/Pod Identity) are used */
   aws_access_key?: string;
   aws_secret_key?: string;
   aws_session_token?: string;
-  aws_role_arn?: string;
-  aws_external_id?: string;
-  aws_role_session_name?: string;
-  aws_profile?: string;
-  aws_sso_start_url?: string;
-  aws_sso_region?: string;
-  aws_sso_account_id?: string;
-  aws_sso_role_name?: string;
+}
+
+export interface AwsSsoAuth {
+  aws_sso_start_url: string;
+  aws_sso_region: string;
+  aws_sso_account_id: string;
+  aws_sso_role_name: string;
+  /** Temporary credentials obtained from the SSO device flow */
+  aws_access_key?: string;
+  aws_secret_key?: string;
+  aws_session_token?: string;
+}
+
+export interface MongoAuthSettings {
+  method: 'scram' | 'aws' | 'oidc';
+  aws_auth_type?: 'static' | 'role' | 'sso';
+  static?: AwsStaticAuth;
+  role?: AwsRoleAuth;
+  sso?: AwsSsoAuth;
   oidc_token?: string;
 }
 
@@ -297,22 +316,9 @@ export const SETTINGS_SCOPE: Record<string, SettingsScope> = {
   'general.theme': 'client',
   // persistence
   'persistence': 'server',
-  // persistence — SSO credential fields are per-user (client);
-  // aws_auth_type stays server-scoped (admin decides the method)
-  'persistence.mongo.app.auth.aws_sso_start_url': 'client',
-  'persistence.mongo.app.auth.aws_sso_region': 'client',
-  'persistence.mongo.app.auth.aws_sso_account_id': 'client',
-  'persistence.mongo.app.auth.aws_sso_role_name': 'client',
-  'persistence.mongo.app.auth.aws_access_key': 'client',
-  'persistence.mongo.app.auth.aws_secret_key': 'client',
-  'persistence.mongo.app.auth.aws_session_token': 'client',
-  'persistence.mongo.customer.auth.aws_sso_start_url': 'client',
-  'persistence.mongo.customer.auth.aws_sso_region': 'client',
-  'persistence.mongo.customer.auth.aws_sso_account_id': 'client',
-  'persistence.mongo.customer.auth.aws_sso_role_name': 'client',
-  'persistence.mongo.customer.auth.aws_access_key': 'client',
-  'persistence.mongo.customer.auth.aws_secret_key': 'client',
-  'persistence.mongo.customer.auth.aws_session_token': 'client',
+  // persistence — SSO sub-object is per-user (client); static and role are server-scoped
+  'persistence.mongo.app.auth.sso': 'client',
+  'persistence.mongo.customer.auth.sso': 'client',
   // jira
   'jira': 'server',
   // aha

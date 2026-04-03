@@ -63,10 +63,7 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
                     mongo: {
                         [role]: {
                             auth: {
-                                aws_sso_start_url: auth.aws_sso_start_url,
-                                aws_sso_region: auth.aws_sso_region,
-                                aws_sso_account_id: auth.aws_sso_account_id,
-                                aws_sso_role_name: auth.aws_sso_role_name
+                                sso: auth.sso
                             }
                         }
                     }
@@ -111,11 +108,11 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
                 clearInterval(interval);
                 setSsoPolling(prev => ({ ...prev, [role]: null }));
 
-                // Auto-populate credential fields
+                // Auto-populate credential fields into sso sub-object
                 const { access_key, secret_key, session_token } = data.credentials;
-                updateFormData(`persistence.mongo.${role}.auth.aws_access_key`, access_key);
-                updateFormData(`persistence.mongo.${role}.auth.aws_secret_key`, secret_key);
-                updateFormData(`persistence.mongo.${role}.auth.aws_session_token`, session_token);
+                updateFormData(`persistence.mongo.${role}.auth.sso.aws_access_key`, access_key);
+                updateFormData(`persistence.mongo.${role}.auth.sso.aws_secret_key`, secret_key);
+                updateFormData(`persistence.mongo.${role}.auth.sso.aws_session_token`, session_token);
 
                 // Save settings
                 const mongo = localFormData.persistence.mongo[role];
@@ -128,9 +125,12 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
                                 ...mongo,
                                 auth: {
                                     ...mongo.auth,
-                                    aws_access_key: access_key,
-                                    aws_secret_key: secret_key,
-                                    aws_session_token: session_token,
+                                    sso: {
+                                        ...mongo.auth.sso,
+                                        aws_access_key: access_key,
+                                        aws_secret_key: secret_key,
+                                        aws_session_token: session_token,
+                                    }
                                 }
                             }
                         }
@@ -532,14 +532,17 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
 
             {mongo.auth.aws_auth_type === 'sso' ? (
               <>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '-8px' }}>
+                  SSO Configuration<ScopeIndicator path={`persistence.mongo.${role}.auth.sso`} />
+                </div>
                 <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-                  SSO Start URL:<ScopeIndicator path={`persistence.mongo.${role}.auth.aws_sso_start_url`} />
+                  SSO Start URL:
                   <input
                     type="text"
                     placeholder="https://my-company.awsapps.com/start"
-                    value={(mongo.auth.aws_sso_start_url || "").trim()}
-                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.aws_sso_start_url`, e.target.value)}
-                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, aws_sso_start_url: mongo.auth.aws_sso_start_url } } } } })}
+                    value={(mongo.auth.sso?.aws_sso_start_url || "").trim()}
+                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.sso.aws_sso_start_url`, e.target.value)}
+                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, sso: { ...mongo.auth.sso, aws_sso_start_url: mongo.auth.sso?.aws_sso_start_url } } } } } })}
                   />
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
@@ -547,9 +550,9 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
                   <input
                     type="text"
                     placeholder="us-east-1"
-                    value={mongo.auth.aws_sso_region || ""}
-                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.aws_sso_region`, e.target.value)}
-                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, aws_sso_region: mongo.auth.aws_sso_region } } } } })}
+                    value={mongo.auth.sso?.aws_sso_region || ""}
+                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.sso.aws_sso_region`, e.target.value)}
+                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, sso: { ...mongo.auth.sso, aws_sso_region: mongo.auth.sso?.aws_sso_region } } } } } })}
                   />
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
@@ -557,9 +560,9 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
                   <input
                     type="text"
                     placeholder="123456789012"
-                    value={mongo.auth.aws_sso_account_id || ""}
-                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.aws_sso_account_id`, e.target.value)}
-                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, aws_sso_account_id: mongo.auth.aws_sso_account_id } } } } })}
+                    value={mongo.auth.sso?.aws_sso_account_id || ""}
+                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.sso.aws_sso_account_id`, e.target.value)}
+                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, sso: { ...mongo.auth.sso, aws_sso_account_id: mongo.auth.sso?.aws_sso_account_id } } } } } })}
                   />
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
@@ -567,17 +570,17 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
                   <input
                     type="text"
                     placeholder="AWSReadOnlyAccess"
-                    value={mongo.auth.aws_sso_role_name || ""}
-                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.aws_sso_role_name`, e.target.value)}
-                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, aws_sso_role_name: mongo.auth.aws_sso_role_name } } } } })}
+                    value={mongo.auth.sso?.aws_sso_role_name || ""}
+                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.sso.aws_sso_role_name`, e.target.value)}
+                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, sso: { ...mongo.auth.sso, aws_sso_role_name: mongo.auth.sso?.aws_sso_role_name } } } } } })}
                   />
                 </label>
                 <button
                     type="button"
                     className="btn-primary"
                     onClick={() => handleAWSSSOLOGIN(role)}
-                    disabled={isSSOLoginLoading[role] || !!ssoPolling[role] || !mongo.auth.aws_sso_start_url?.trim()}
-                    style={{ fontSize: '12px', padding: '6px 10px', maxWidth: '12rem' }}
+                    disabled={isSSOLoginLoading[role] || !!ssoPolling[role] || !mongo.auth.sso?.aws_sso_start_url?.trim()}
+                    style={{ alignSelf: "flex-start" }}
                 >
                     {ssoPolling[role] ? 'Waiting for authorization...' : isSSOLoginLoading[role] ? 'Starting...' : 'Login via AWS SSO'}
                 </button>
@@ -589,27 +592,27 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
                   Access Key ID:
                   <input
                     type="text"
-                    value={mongo.auth.aws_access_key || ""}
-                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.aws_access_key`, e.target.value)}
-                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, aws_access_key: mongo.auth.aws_access_key } } } } })}
+                    value={mongo.auth.static?.aws_access_key || ""}
+                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.static.aws_access_key`, e.target.value)}
+                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, static: { ...mongo.auth.static, aws_access_key: mongo.auth.static?.aws_access_key } } } } } })}
                   />
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                   Secret Access Key:
                   <input
                     type="password"
-                    value={mongo.auth.aws_secret_key || ""}
-                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.aws_secret_key`, e.target.value)}
-                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, aws_secret_key: mongo.auth.aws_secret_key } } } } })}
+                    value={mongo.auth.static?.aws_secret_key || ""}
+                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.static.aws_secret_key`, e.target.value)}
+                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, static: { ...mongo.auth.static, aws_secret_key: mongo.auth.static?.aws_secret_key } } } } } })}
                   />
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                   Session Token (Optional):
                   <input
                     type="password"
-                    value={mongo.auth.aws_session_token || ""}
-                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.aws_session_token`, e.target.value)}
-                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, aws_session_token: mongo.auth.aws_session_token } } } } })}
+                    value={mongo.auth.static?.aws_session_token || ""}
+                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.static.aws_session_token`, e.target.value)}
+                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, static: { ...mongo.auth.static, aws_session_token: mongo.auth.static?.aws_session_token } } } } } })}
                   />
                 </label>
               </>
@@ -620,18 +623,18 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
                   <input
                     type="text"
                     placeholder="arn:aws:iam::123456789012:role/MyRole"
-                    value={mongo.auth.aws_role_arn || ""}
-                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.aws_role_arn`, e.target.value)}
-                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, aws_role_arn: mongo.auth.aws_role_arn } } } } })}
+                    value={mongo.auth.role?.aws_role_arn || ""}
+                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.role.aws_role_arn`, e.target.value)}
+                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, role: { ...mongo.auth.role, aws_role_arn: mongo.auth.role?.aws_role_arn } } } } } })}
                   />
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
                   External ID (Optional):
                   <input
                     type="text"
-                    value={mongo.auth.aws_external_id || ""}
-                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.aws_external_id`, e.target.value)}
-                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, aws_external_id: mongo.auth.aws_external_id } } } } })}
+                    value={mongo.auth.role?.aws_external_id || ""}
+                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.role.aws_external_id`, e.target.value)}
+                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, role: { ...mongo.auth.role, aws_external_id: mongo.auth.role?.aws_external_id } } } } } })}
                   />
                 </label>
                 <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
@@ -639,9 +642,9 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
                   <input
                     type="text"
                     placeholder="ValueStreamSession"
-                    value={mongo.auth.aws_role_session_name || ""}
-                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.aws_role_session_name`, e.target.value)}
-                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, aws_role_session_name: mongo.auth.aws_role_session_name } } } } })}
+                    value={mongo.auth.role?.aws_role_session_name || ""}
+                    onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.role.aws_role_session_name`, e.target.value)}
+                    onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, role: { ...mongo.auth.role, aws_role_session_name: mongo.auth.role?.aws_role_session_name } } } } } })}
                   />
                 </label>
               </>
