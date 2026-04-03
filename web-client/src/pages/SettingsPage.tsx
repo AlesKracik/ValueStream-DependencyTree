@@ -84,7 +84,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   // (the "adjust state based on prop" pattern from React docs) avoids useEffect.
   const [prevSettings, setPrevSettings] = useState(settings);
   const [localFormData, setFormData] = useState<Settings>(() => {
-    return deepMerge(DEFAULT_SETTINGS, settings || {});
+    const initSettings = settings || {};
+    const initSso = (initSettings as any)?.persistence?.mongo?.app?.auth?.sso;
+    console.debug('[SettingsPage] useState init:', { hasSettings: !!settings, ssoStartUrl: initSso?.aws_sso_start_url, ssoKeys: initSso ? Object.keys(initSso) : 'none' });
+    return deepMerge(DEFAULT_SETTINGS, initSettings);
   });
 
   const initSso = (localFormData as any)?.persistence?.mongo?.app?.auth?.sso?.aws_sso_start_url;
