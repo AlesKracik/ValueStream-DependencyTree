@@ -26,7 +26,7 @@ import { LoginPage } from './pages/LoginPage';
 import { useValueStreamData } from './hooks/useValueStreamData';
 import { ValueStreamProvider, NotificationProvider, useNotificationContext } from './contexts/ValueStreamContext';
 import { UIStateProvider, useUIStateContext } from './contexts/UIStateContext';
-import { getAdminSecret, setAdminSecret } from './utils/api';
+import { getAdminSecret, setAdminSecret, setUserRole } from './utils/api';
 import { deepMerge } from './utils/businessLogic';
 import type { ValueStreamDataState } from '@valuestream/shared-types';
 import './App.css';
@@ -263,6 +263,10 @@ function App() {
             headers: { 'Authorization': `Bearer ${secret}` }
           });
           authenticated = verifyRes.ok;
+          if (authenticated) {
+            const verifyJson = await verifyRes.json().catch(() => ({}));
+            if (verifyJson.user?.role) setUserRole(verifyJson.user.role);
+          }
         }
 
         setAuthStatus({ loading: false, required, authenticated });

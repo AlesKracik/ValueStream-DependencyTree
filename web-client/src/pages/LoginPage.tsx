@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { setAdminSecret } from '../utils/api';
+import { setAdminSecret, setUserRole } from '../utils/api';
 import type { AuthMethod } from '@valuestream/shared-types';
 
 interface LoginPageProps {
@@ -109,6 +109,7 @@ const PasswordLogin: React.FC<{
 
             const data = await response.json().catch(() => ({}));
             if (response.ok && data.token) {
+                if (data.user?.role) setUserRole(data.user.role);
                 onSuccess(data.token);
             } else {
                 setError(data.error || 'Invalid username or password');
@@ -208,6 +209,7 @@ const AwsSsoLogin: React.FC<{
 
                 if (data.success && data.token) {
                     setPolling(false);
+                    if (data.user?.role) setUserRole(data.user.role);
                     onSuccess(data.token);
                 } else if (!data.pending) {
                     setPolling(false);

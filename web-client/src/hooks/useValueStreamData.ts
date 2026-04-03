@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { ValueStreamData, Customer, WorkItem, Team, Issue, Settings, Sprint, ValueStreamEntity, ValueStreamParameters } from '@valuestream/shared-types';
 import { partitionSettings } from '@valuestream/shared-types';
-import { authorizedFetch, debounce } from '../utils/api';
+import { authorizedFetch, debounce, getUserRole } from '../utils/api';
 import { calculateQuarter } from '../utils/dateHelpers';
 
 async function loadClientSettings(): Promise<Partial<Settings>> {
@@ -93,8 +93,8 @@ const persistSettings = async (settings: any, showAlert?: (title: string, messag
         await saveClientSettingsToServer(merged);
     }
 
-    // Send server-scoped settings to backend
-    if (Object.keys(server).length > 0) {
+    // Send server-scoped settings to backend (admin only)
+    if (Object.keys(server).length > 0 && getUserRole() === 'admin') {
         await persistSettingsToServer(server, showAlert);
     }
 };

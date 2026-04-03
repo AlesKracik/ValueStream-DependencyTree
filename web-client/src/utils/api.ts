@@ -8,7 +8,11 @@ export const setAdminSecret = (secret: string) => {
 export const clearAdminSecret = () => {
     sessionStorage.removeItem(AUTH_TOKEN_KEY);
     sessionStorage.removeItem('ADMIN_SECRET');
+    sessionStorage.removeItem('USER_ROLE');
 };
+
+export const setUserRole = (role: string) => sessionStorage.setItem('USER_ROLE', role);
+export const getUserRole = () => sessionStorage.getItem('USER_ROLE') || 'admin'; // default admin for ADMIN_SECRET/no-auth
 
 /**
  * Generic POST+JSON API wrapper. Handles authorizedFetch, JSON parsing, and error checking.
