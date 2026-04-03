@@ -114,7 +114,7 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
                 updateFormData(`persistence.mongo.${role}.auth.sso.aws_secret_key`, secret_key);
                 updateFormData(`persistence.mongo.${role}.auth.sso.aws_session_token`, session_token);
 
-                // Save settings
+                // Save to client settings (UI state + user profile)
                 const mongo = localFormData.persistence.mongo[role];
                 onUpdateSettings({
                     persistence: {
@@ -136,6 +136,35 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
                         }
                     }
                 });
+
+                // Also save credentials to server settings so the backend
+                // can use them for the shared MongoDB connection
+                try {
+                    await authorizedFetch('/api/settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            persistence: {
+                                ...localFormData.persistence,
+                                mongo: {
+                                    ...localFormData.persistence.mongo,
+                                    [role]: {
+                                        ...mongo,
+                                        auth: {
+                                            ...mongo.auth,
+                                            sso: {
+                                                ...mongo.auth.sso,
+                                                aws_access_key: access_key,
+                                                aws_secret_key: secret_key,
+                                                aws_session_token: session_token,
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }),
+                    });
+                } catch { /* non-critical — Test Connection still works via request body */ }
 
                 setSSOMessage(prev => ({ ...prev, [role]: { success: true, message: 'SSO credentials obtained and saved.' } }));
             } else if (!data.pending) {
