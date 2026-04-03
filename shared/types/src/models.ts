@@ -297,6 +297,22 @@ export const SETTINGS_SCOPE: Record<string, SettingsScope> = {
   'general.theme': 'client',
   // persistence
   'persistence': 'server',
+  // persistence — SSO credential fields are per-user (client);
+  // aws_auth_type stays server-scoped (admin decides the method)
+  'persistence.mongo.app.auth.aws_sso_start_url': 'client',
+  'persistence.mongo.app.auth.aws_sso_region': 'client',
+  'persistence.mongo.app.auth.aws_sso_account_id': 'client',
+  'persistence.mongo.app.auth.aws_sso_role_name': 'client',
+  'persistence.mongo.app.auth.aws_access_key': 'client',
+  'persistence.mongo.app.auth.aws_secret_key': 'client',
+  'persistence.mongo.app.auth.aws_session_token': 'client',
+  'persistence.mongo.customer.auth.aws_sso_start_url': 'client',
+  'persistence.mongo.customer.auth.aws_sso_region': 'client',
+  'persistence.mongo.customer.auth.aws_sso_account_id': 'client',
+  'persistence.mongo.customer.auth.aws_sso_role_name': 'client',
+  'persistence.mongo.customer.auth.aws_access_key': 'client',
+  'persistence.mongo.customer.auth.aws_secret_key': 'client',
+  'persistence.mongo.customer.auth.aws_session_token': 'client',
   // jira
   'jira': 'server',
   // aha
