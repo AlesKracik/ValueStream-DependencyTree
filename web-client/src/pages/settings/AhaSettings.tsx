@@ -63,7 +63,7 @@ export const AhaSettings: React.FC<SettingsTabProps> = ({
       </label>
 
       <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-        Aha! API Key:<ScopeIndicator path="aha.api_key" />
+        <span>Aha! API Key:<ScopeIndicator path="aha.api_key" /></span>
         <input
           type="password"
           placeholder="Your Aha! API Key"

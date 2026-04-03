@@ -252,7 +252,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
             </label>
 
             <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-              Jira Personal Access Token (PAT):<ScopeIndicator path="jira.api_token" />
+              <span>Jira Personal Access Token (PAT):<ScopeIndicator path="jira.api_token" /></span>
               <input
                 type="password"
                 placeholder="Your Jira PAT"
