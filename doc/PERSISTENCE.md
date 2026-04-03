@@ -45,10 +45,14 @@ Allows connection using AWS Identity and Access Management. Supports both static
     - `aws_access_key`, `aws_secret_key`, `aws_session_token`
     - `aws_role_arn`, `aws_external_id`
 - **Driver Logic:** Uses `MONGODB-AWS` mechanism.
-- **SSO Support:** The application includes integrated buttons to streamline AWS SSO authentication:
-    - **Login via AWS SSO:** Executes `aws sso login --use-device-code` on the server. The application automatically constructs a complete authorization URL with the device code pre-filled (e.g., `https://device.sso.../?user_code=ABCD-EFGH`) and displays it as a direct link in the UI for a seamless one-click experience.
-    - **Fetch SSO Credentials:** Executes `aws configure export-credentials` to retrieve temporary keys from the active SSO session and automatically populates the Access Key, Secret Key, and Session Token fields.
-- **Docker Note:** The `aws-cli` is required in the container. If updating from an older version, run `docker compose up --build app` to ensure the CLI is installed.
+- **SSO Support:** The application uses the AWS SDK device authorization flow (no CLI required):
+    1. Configure SSO parameters (Start URL, Region, Account ID, Role Name) in the Persistence settings.
+    2. Click **Login via AWS SSO** — the backend calls `RegisterClient` + `StartDeviceAuthorization` via the AWS SDK.
+    3. A verification URL opens in a new tab for the user to authenticate via their IdP (e.g. Okta).
+    4. The frontend polls `/api/aws/sso/poll` until the user authorizes. The backend then calls `CreateToken` + `GetRoleCredentials` to obtain temporary AWS credentials.
+    5. Credentials (Access Key, Secret Key, Session Token) are auto-populated into the settings and saved.
+    6. MongoDB connects using these static credentials — no AWS CLI profile or `~/.aws/sso/cache` needed.
+- **No AWS CLI required:** The SSO flow is fully SDK-based. No `aws` CLI installation needed in the container.
 
 ### 3. OIDC (OpenID Connect)
 Enables authentication via external identity providers.

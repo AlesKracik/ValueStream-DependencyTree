@@ -77,19 +77,19 @@ export function getMongoClientCount() {
   return mongoClients.size;
 }
 
-/** Evict cached MongoClients whose cache key matches a given AWS SSO profile.
+/** Evict cached MongoClients matching a given identifier (profile name or role type).
  *  Called after SSO re-login so the next getDb() creates a fresh client
- *  with a new fromSSO() credential provider that picks up the refreshed session. */
-export function evictSsoClients(profile: string): number {
+ *  with new credentials. Matches by profile suffix or role prefix (app/customer). */
+export function evictSsoClients(identifier: string): number {
   let evicted = 0;
   for (const [key, item] of mongoClients.entries()) {
     // Cache key format: type:uri:db:authMethod:awsAuthType:proxy:tunnel:accessKey:profile
-    // SSO entries have "aws" as authMethod, "sso" as awsAuthType, and profile at the end
-    if (key.includes(':aws:sso:') && key.endsWith(`:${profile}`)) {
+    // Match by profile (suffix) or by role type (prefix, e.g. "app:" or "customer:")
+    if (key.endsWith(`:${identifier}`) || key.startsWith(`${identifier}:`)) {
       item.client.close().catch(() => {});
       mongoClients.delete(key);
       evicted++;
-      logger.info(`[MONGO] Evicted cached SSO client for profile "${profile}"`);
+      logger.info(`[MONGO] Evicted cached client for "${identifier}"`);
     }
   }
   return evicted;
@@ -208,35 +208,90 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
     }
 
     if (awsAuthType === 'sso') {
-      // SSO: use fromSSO() which auto-refreshes credentials via the cached SSO session
-      const profile = config.auth?.aws_profile;
-      if (!profile) {
-        throw new Error(`AWS Profile is required for SSO authentication on ${type} DB.`);
-      }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const ssoOptions: any = { profile };
+      // SSO: if static credentials are available (from SDK device flow), use them directly.
+      // Otherwise fall back to fromSSO() with an AWS CLI profile.
+      const ak = config.auth?.aws_access_key;
+      const sk = config.auth?.aws_secret_key;
 
-      // If manual SSO config is provided, pass it directly so fromSSO()
-      // works even if the profile isn't in ~/.aws/config
-      if (config.auth?.aws_sso_start_url) ssoOptions.ssoStartUrl = config.auth.aws_sso_start_url;
-      if (config.auth?.aws_sso_region) ssoOptions.ssoRegion = config.auth.aws_sso_region;
-      if (config.auth?.aws_sso_account_id) ssoOptions.ssoAccountId = config.auth.aws_sso_account_id;
-      if (config.auth?.aws_sso_role_name) ssoOptions.ssoRoleName = config.auth.aws_sso_role_name;
+      if (ak && sk) {
+        // Credentials obtained from the SDK-based device flow — use as static
+        process.env.AWS_ACCESS_KEY_ID = ak;
+        process.env.AWS_SECRET_ACCESS_KEY = sk;
+        const st = config.auth?.aws_session_token;
+        if (st) {
+          process.env.AWS_SESSION_TOKEN = st;
+        } else {
+          delete process.env.AWS_SESSION_TOKEN;
+        }
+        options.authMechanismProperties = {
+          AWS_CREDENTIAL_PROVIDER: fromNodeProviderChain()
+        };
+      } else {
+        // Fallback: use fromSSO() with an AWS CLI profile
+        const profile = config.auth?.aws_profile;
+        if (!profile) {
+          throw new Error(`AWS SSO credentials or Profile are required for SSO authentication on ${type} DB. Run "Login via AWS SSO" first.`);
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ssoOptions: any = { profile };
+        if (config.auth?.aws_sso_start_url) ssoOptions.ssoStartUrl = config.auth.aws_sso_start_url;
+        if (config.auth?.aws_sso_region) ssoOptions.ssoRegion = config.auth.aws_sso_region;
+        if (config.auth?.aws_sso_account_id) ssoOptions.ssoAccountId = config.auth.aws_sso_account_id;
+        if (config.auth?.aws_sso_role_name) ssoOptions.ssoRoleName = config.auth.aws_sso_role_name;
+        options.authMechanismProperties = {
+          AWS_CREDENTIAL_PROVIDER: fromSSO(ssoOptions)
+        };
+      }
+    } else if (awsAuthType === 'role') {
+      // Assume Role: use ambient credentials (IRSA/Pod Identity in K8s) or explicit keys,
+      // then assume the target role via STS
+      const ak = config.auth?.aws_access_key;
+      const sk = config.auth?.aws_secret_key;
+      const st = config.auth?.aws_session_token;
+      const roleArn = config.auth?.aws_role_arn;
+
+      if (!roleArn) {
+        throw new Error(`AWS Role ARN is required for Assume Role authentication on ${type} DB.`);
+      }
+
+      // If explicit keys provided, set them; otherwise rely on ambient credentials
+      if (ak && sk) {
+        process.env.AWS_ACCESS_KEY_ID = ak;
+        process.env.AWS_SECRET_ACCESS_KEY = sk;
+        if (st) {
+          process.env.AWS_SESSION_TOKEN = st;
+        } else {
+          delete process.env.AWS_SESSION_TOKEN;
+        }
+      } else {
+        // Clear any stale explicit credentials so the provider chain uses ambient (IRSA/Pod Identity)
+        delete process.env.AWS_ACCESS_KEY_ID;
+        delete process.env.AWS_SECRET_ACCESS_KEY;
+        delete process.env.AWS_SESSION_TOKEN;
+      }
+
+      // Set the role for the MongoDB driver's STS AssumeRole call
+      process.env.AWS_ROLE_ARN = roleArn;
+      process.env.AWS_ROLE_SESSION_NAME = config.auth?.aws_role_session_name || `vst-${type}-session`;
+      if (config.auth?.aws_external_id) {
+        process.env.AWS_ROLE_EXTERNAL_ID = config.auth.aws_external_id;
+      } else {
+        delete process.env.AWS_ROLE_EXTERNAL_ID;
+      }
 
       options.authMechanismProperties = {
-        AWS_CREDENTIAL_PROVIDER: fromSSO(ssoOptions)
+        AWS_CREDENTIAL_PROVIDER: fromNodeProviderChain()
       };
     } else {
-      // Static or Role: user-provided access key / secret key / session token
+      // Static: user-provided access key / secret key / session token
       const ak = config.auth?.aws_access_key;
       const sk = config.auth?.aws_secret_key;
       const st = config.auth?.aws_session_token;
 
       if (!ak || !sk) {
-        throw new Error(`AWS Access Key and Secret Key are required for AWS IAM authentication on ${type} DB.`);
+        throw new Error(`AWS Access Key and Secret Key are required for Static AWS IAM authentication on ${type} DB.`);
       }
 
-      // Set environment variables for AWS SDK to pick up
       process.env.AWS_ACCESS_KEY_ID = ak;
       process.env.AWS_SECRET_ACCESS_KEY = sk;
       if (st) {

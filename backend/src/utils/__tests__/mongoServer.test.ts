@@ -184,7 +184,7 @@ describe('mongoServer utility', () => {
         }
     };
 
-    await expect(getDb(config as any, 'app')).rejects.toThrow('AWS Profile is required for SSO authentication');
+    await expect(getDb(config as any, 'app')).rejects.toThrow('AWS SSO credentials or Profile are required');
   });
 
   it('throws for static AWS auth without access key', async () => {

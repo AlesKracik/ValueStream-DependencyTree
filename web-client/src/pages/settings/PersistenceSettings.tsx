@@ -26,6 +26,7 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
   const [customerMongoTestResult, setCustomerMongoTestResult] = useState<MongoTestResult | null>(null);
   const [isSSOLoginLoading, setIsSSOLoginLoading] = useState<Record<string, boolean>>({ app: false, customer: false });
   const [ssoMessage, setSSOMessage] = useState<Record<string, SSOMessage | null>>({ app: null, customer: null });
+  const [ssoPolling, setSsoPolling] = useState<Record<string, string | null>>({ app: null, customer: null }); // session_id or null
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -61,7 +62,6 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
                     mongo: {
                         [role]: {
                             auth: {
-                                aws_profile: auth.aws_profile,
                                 aws_sso_start_url: auth.aws_sso_start_url,
                                 aws_sso_region: auth.aws_sso_region,
                                 aws_sso_account_id: auth.aws_sso_account_id,
@@ -73,13 +73,83 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
             })
         });
         const data = await res.json();
-        setSSOMessage(prev => ({ ...prev, [role]: { success: data.success, message: data.message || data.error } }));
+        if (data.success && data.session_id) {
+            setSSOMessage(prev => ({ ...prev, [role]: { success: true, message: data.message || 'Waiting for authorization...' } }));
+            setSsoPolling(prev => ({ ...prev, [role]: data.session_id }));
+            // Open verification URL
+            if (data.verification_url) {
+                window.open(data.verification_url, '_blank');
+            }
+            // Start polling
+            pollSsoCredentials(role, data.session_id);
+        } else {
+            setSSOMessage(prev => ({ ...prev, [role]: { success: false, message: data.error || 'Failed to start SSO' } }));
+        }
     } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to initiate SSO login';
         setSSOMessage(prev => ({ ...prev, [role]: { success: false, message: msg } }));
     } finally {
         setIsSSOLoginLoading(prev => ({ ...prev, [role]: false }));
     }
+  };
+
+  const pollSsoCredentials = async (role: 'app' | 'customer', sessionId: string) => {
+    let inFlight = false;
+    const interval = setInterval(async () => {
+        if (inFlight) return;
+        inFlight = true;
+        try {
+            const res = await authorizedFetch('/api/aws/sso/poll', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: sessionId }),
+            });
+            const data = await res.json();
+
+            if (data.success && data.credentials) {
+                clearInterval(interval);
+                setSsoPolling(prev => ({ ...prev, [role]: null }));
+
+                // Auto-populate credential fields
+                const { access_key, secret_key, session_token } = data.credentials;
+                updateFormData(`persistence.mongo.${role}.auth.aws_access_key`, access_key);
+                updateFormData(`persistence.mongo.${role}.auth.aws_secret_key`, secret_key);
+                updateFormData(`persistence.mongo.${role}.auth.aws_session_token`, session_token);
+
+                // Save settings
+                const mongo = localFormData.persistence.mongo[role];
+                onUpdateSettings({
+                    persistence: {
+                        ...localFormData.persistence,
+                        mongo: {
+                            ...localFormData.persistence.mongo,
+                            [role]: {
+                                ...mongo,
+                                auth: {
+                                    ...mongo.auth,
+                                    aws_access_key: access_key,
+                                    aws_secret_key: secret_key,
+                                    aws_session_token: session_token,
+                                }
+                            }
+                        }
+                    }
+                });
+
+                setSSOMessage(prev => ({ ...prev, [role]: { success: true, message: 'SSO credentials obtained and saved.' } }));
+            } else if (!data.pending) {
+                clearInterval(interval);
+                setSsoPolling(prev => ({ ...prev, [role]: null }));
+                setSSOMessage(prev => ({ ...prev, [role]: { success: false, message: data.error || 'SSO failed' } }));
+            }
+        } catch {
+            clearInterval(interval);
+            setSsoPolling(prev => ({ ...prev, [role]: null }));
+            setSSOMessage(prev => ({ ...prev, [role]: { success: false, message: 'Connection lost during SSO' } }));
+        } finally {
+            inFlight = false;
+        }
+    }, 5000);
   };
 
   const handleTestConnection = async (role: 'app' | 'customer' = 'app') => {
@@ -275,6 +345,8 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
 
   const renderMongoConnectionForm = (role: 'app' | 'customer') => {
     const isCustomer = role === 'customer';
+    const providerKey = isCustomer ? 'customer_provider' : 'app_provider';
+    const currentProvider = localFormData.persistence[providerKey] || 'mongo';
     const mongo = localFormData.persistence.mongo[role];
     const testResult = isCustomer ? customerMongoTestResult : mongoTestResult;
     const testing = isCustomer ? isTestingCustomer : isTesting;
@@ -284,6 +356,25 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+          Database Provider:
+          <select
+            value={currentProvider}
+            onChange={(e) => {
+              updateFormData(`persistence.${providerKey}`, e.target.value);
+              onUpdateSettings({ persistence: { ...localFormData.persistence, [providerKey]: e.target.value } });
+            }}
+          >
+            <option value="mongo">MongoDB</option>
+          </select>
+        </label>
+
+        {currentProvider !== 'mongo' ? (
+          <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+            Configuration for this provider is not yet available.
+          </div>
+        ) : (
+        <>
         <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
           Authentication Method:
           <select
@@ -441,53 +532,17 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
             {mongo.auth.aws_auth_type === 'sso' ? (
               <div style={{ padding: '12px', border: '1px solid var(--border-primary)', borderRadius: '4px', backgroundColor: 'rgba(0,0,0,0.1)' }}>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px' }}>
-                  Credentials are resolved automatically from the cached SSO session. Run "Login via AWS SSO" once, then the backend refreshes credentials transparently until the SSO session expires.
+                  Click "Login via AWS SSO" to authenticate via your identity provider. Temporary credentials will be automatically populated.
                 </div>
 
-                <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                    <input type="radio" name={`${role}_sso_mode`} checked={!mongo.auth.aws_sso_start_url} onChange={() => {
-                      updateFormData(`persistence.mongo.${role}.auth.aws_sso_start_url`, '');
-                      updateFormData(`persistence.mongo.${role}.auth.aws_sso_region`, '');
-                      updateFormData(`persistence.mongo.${role}.auth.aws_sso_account_id`, '');
-                      updateFormData(`persistence.mongo.${role}.auth.aws_sso_role_name`, '');
-                      onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, aws_sso_start_url: '', aws_sso_region: '', aws_sso_account_id: '', aws_sso_role_name: '' } } } } });
-                    }} />
-                    Use existing AWS CLI profile
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                    <input type="radio" name={`${role}_sso_mode`} checked={!!mongo.auth.aws_sso_start_url} onChange={() => {
-                      if (!mongo.auth.aws_sso_start_url) {
-                        updateFormData(`persistence.mongo.${role}.auth.aws_sso_start_url`, ' ');
-                      }
-                    }} />
-                    Configure SSO manually
-                  </label>
-                </div>
-
-                <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem", marginBottom: '8px' }}>
-                    AWS Profile:
-                    <input
-                        type="text"
-                        placeholder={`vst-${role}`}
-                        value={mongo.auth.aws_profile || ""}
-                        onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.aws_profile`, e.target.value)}
-                        onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, aws_profile: mongo.auth.aws_profile } } } } })}
-                    />
-                </label>
-                {!mongo.auth.aws_sso_start_url ? (
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '12px' }}>
-                    Profile must already exist in ~/.aws/config with SSO session configured.
-                  </div>
-                ) : (
                 <div style={{ marginBottom: '16px', padding: '12px', border: '1px dashed var(--border-secondary)', borderRadius: '4px' }}>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>SSO parameters (creates a temporary profile for login &amp; credential resolution):</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>SSO configuration:</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                         <label style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "12px", color: "var(--text-muted)" }}>
                             SSO Start URL:
                             <input
                                 type="text"
-                                placeholder="https://..."
+                                placeholder="https://my-company.awsapps.com/start"
                                 value={(mongo.auth.aws_sso_start_url || "").trim()}
                                 onChange={(e) => updateFormData(`persistence.mongo.${role}.auth.aws_sso_start_url`, e.target.value)}
                                 onBlur={() => onUpdateSettings({ persistence: { ...localFormData.persistence, mongo: { ...localFormData.persistence.mongo, [role]: { ...mongo, auth: { ...mongo.auth, aws_sso_start_url: mongo.auth.aws_sso_start_url } } } } })}
@@ -525,17 +580,16 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
                         </label>
                     </div>
                 </div>
-                )}
 
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <button
                         type="button"
                         className="btn-primary"
                         onClick={() => handleAWSSSOLOGIN(role)}
-                        disabled={isSSOLoginLoading[role] || !mongo.auth.aws_profile}
+                        disabled={isSSOLoginLoading[role] || !!ssoPolling[role] || !mongo.auth.aws_sso_start_url?.trim()}
                         style={{ fontSize: '12px', padding: '6px 10px' }}
                     >
-                        Login via AWS SSO
+                        {ssoPolling[role] ? 'Waiting for authorization...' : isSSOLoginLoading[role] ? 'Starting...' : 'Login via AWS SSO'}
                     </button>
                 </div>
                 {renderSSOMessage(role)}
@@ -711,6 +765,8 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
             </label>
           </>
         )}
+        </>
+        )}
       </div>
     );
   };
@@ -722,7 +778,7 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
           onClick={() => setSubTab("mongo")}
           className={`${styles.tabButton} ${activeSubTab === "mongo" ? styles.activeTab : ''}`}
         >
-          Mongo
+          DB
         </button>
         <button
           onClick={() => setSubTab("file")}

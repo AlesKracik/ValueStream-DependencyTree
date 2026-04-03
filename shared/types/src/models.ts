@@ -186,7 +186,12 @@ export interface MongoConfig {
   custom_query?: string; // only for customer
 }
 
+export type AppDbProvider = 'mongo';
+export type CustomerDbProvider = 'mongo';
+
 export interface PersistenceSettings {
+  app_provider: AppDbProvider;
+  customer_provider: CustomerDbProvider;
   mongo: {
     app: MongoConfig;
     customer: MongoConfig;

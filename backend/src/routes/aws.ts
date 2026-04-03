@@ -1,67 +1,208 @@
 import { FastifyPluginAsync } from 'fastify';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
 import crypto from 'crypto';
-import { spawn } from 'child_process';
+import {
+  SSOOIDCClient,
+  RegisterClientCommand,
+  StartDeviceAuthorizationCommand,
+  CreateTokenCommand,
+} from '@aws-sdk/client-sso-oidc';
+import {
+  SSOClient,
+  GetRoleCredentialsCommand,
+} from '@aws-sdk/client-sso';
+import { Type, Static } from '@sinclair/typebox';
 import { getIntegrationConfig } from '../utils/configHelpers';
 import { evictSsoClients } from '../utils/mongoServer';
-import { AwsSsoLoginBody, AwsSsoLoginBodyType } from './schemas';
-import { AppError } from '../utils/errors';
+
+// ── Schemas ─────────────────────────────────────────────────────
+
+const SsoStartBody = Type.Object({
+  role: Type.Optional(Type.String()),
+  persistence: Type.Optional(Type.Object({}, { additionalProperties: true })),
+}, { additionalProperties: true });
+type SsoStartBodyType = Static<typeof SsoStartBody>;
+
+const SsoPollBody = Type.Object({
+  session_id: Type.String(),
+});
+type SsoPollBodyType = Static<typeof SsoPollBody>;
+
+// ── In-memory session store for device auth flows ───────────────
+
+interface DeviceSession {
+  clientId: string;
+  clientSecret: string;
+  deviceCode: string;
+  region: string;
+  accountId: string;
+  roleName: string;
+  role: string; // 'app' | 'customer'
+  expiresAt: number;
+}
+
+const deviceSessions = new Map<string, DeviceSession>();
+
+// Clean up expired sessions
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, session] of deviceSessions) {
+    if (session.expiresAt < now) deviceSessions.delete(id);
+  }
+}, 60_000);
+
+// ── Routes ──────────────────────────────────────────────────────
 
 export const awsRoutes: FastifyPluginAsync = async (fastify) => {
 
-  fastify.post<{ Body: AwsSsoLoginBodyType }>('/api/aws/sso/login', { schema: { body: AwsSsoLoginBody } }, async (request, reply) => {
+  /**
+   * POST /api/aws/sso/login
+   * Initiates the SSO device authorization flow via AWS SDK.
+   * Returns a verification URL for the user to open.
+   */
+  fastify.post<{ Body: SsoStartBodyType }>('/api/aws/sso/login', { schema: { body: SsoStartBody } }, async (request, reply) => {
     const { full: config } = await getIntegrationConfig(fastify, request.body);
 
     const role = config.role || 'app';
     const auth = config.persistence?.mongo?.[role]?.auth || {};
-    const profile = auth.aws_profile;
-    const sso_start_url = auth.aws_sso_start_url;
-    const sso_region = auth.aws_sso_region;
-    const sso_account_id = auth.aws_sso_account_id;
-    const sso_role_name = auth.aws_sso_role_name;
+    const startUrl = auth.aws_sso_start_url;
+    const region = auth.aws_sso_region;
+    const accountId = auth.aws_sso_account_id;
+    const roleName = auth.aws_sso_role_name;
 
-    if (!profile) {
-      throw new AppError('AWS Profile name is required for SSO login.', 400);
+    if (!startUrl || !region) {
+      return reply.code(400).send({ success: false, error: 'SSO Start URL and Region are required.' });
+    }
+    if (!accountId || !roleName) {
+      return reply.code(400).send({ success: false, error: 'SSO Account ID and Role Name are required.' });
     }
 
-    const envVars = { ...process.env };
+    const oidcClient = new SSOOIDCClient({ region });
 
-    // If manual SSO config is provided, create a temp AWS config file
-    // so `aws sso login` works even if the profile isn't in ~/.aws/config
-    if (sso_start_url) {
-      const tempConfigPath = path.join(os.tmpdir(), `aws_config_${crypto.randomBytes(4).toString('hex')}`);
-      fs.writeFileSync(tempConfigPath, `[profile ${profile}]\nsso_start_url = ${sso_start_url}\nsso_region = ${sso_region}\nsso_account_id = ${sso_account_id}\nsso_role_name = ${sso_role_name}\nregion = ${sso_region}\n`);
-      envVars.AWS_CONFIG_FILE = tempConfigPath;
+    // Register a public client (no admin needed)
+    const registerResp = await oidcClient.send(new RegisterClientCommand({
+      clientName: `valuestream-${role}`,
+      clientType: 'public',
+    }));
+
+    if (!registerResp.clientId || !registerResp.clientSecret) {
+      return reply.code(500).send({ success: false, error: 'Failed to register SSO OIDC client' });
     }
 
-    const child = spawn(`aws sso login --profile ${profile} --use-device-code`, { shell: true, env: envVars });
+    // Start device authorization
+    const deviceResp = await oidcClient.send(new StartDeviceAuthorizationCommand({
+      clientId: registerResp.clientId,
+      clientSecret: registerResp.clientSecret,
+      startUrl,
+    }));
 
-    let capturedOutput = '';
-    const outputPromise = new Promise<string>((resolve) => {
-      const timeout = setTimeout(() => resolve(capturedOutput || 'Login initiated (check logs if no URL appears)'), 4000);
+    if (!deviceResp.deviceCode || !deviceResp.verificationUriComplete) {
+      return reply.code(500).send({ success: false, error: 'Failed to start device authorization' });
+    }
 
-      const handleData = (data: any) => {
-        const str = data.toString();
-        capturedOutput += str;
-        if (str.includes('https://') || str.includes('code:')) {
-          clearTimeout(timeout);
-          setTimeout(() => resolve(capturedOutput), 500);
-        }
-      };
-
-      child.stdout.on('data', handleData);
-      child.stderr.on('data', handleData);
+    // Store session for polling
+    const sessionId = crypto.randomUUID();
+    fastify.log.info(`[AWS SSO] Created persistence device session ${sessionId} for ${role}`);
+    deviceSessions.set(sessionId, {
+      clientId: registerResp.clientId,
+      clientSecret: registerResp.clientSecret,
+      deviceCode: deviceResp.deviceCode,
+      region,
+      accountId,
+      roleName,
+      role,
+      expiresAt: Date.now() + (deviceResp.expiresIn || 600) * 1000,
     });
 
-    const message = await outputPromise;
+    // Build a user-friendly message with the URL (backward compatible with existing UI)
+    const url = deviceResp.verificationUriComplete;
+    const code = deviceResp.userCode || '';
+    const message = `SSO authorization started.\n\nOpen this URL to authorize:\n${url}\n\nUser code: ${code}`;
 
-    // Evict cached MongoClients for this SSO profile so the next DB request
-    // creates a fresh connection with refreshed credentials
-    evictSsoClients(profile);
-
-    return reply.send({ success: true, message });
+    return reply.send({
+      success: true,
+      message,
+      session_id: sessionId,
+      verification_url: url,
+      user_code: code,
+      expires_in: deviceResp.expiresIn,
+    });
   });
 
+  /**
+   * POST /api/aws/sso/poll
+   * Poll for token completion. Returns AWS credentials on success.
+   */
+  fastify.post<{ Body: SsoPollBodyType }>('/api/aws/sso/poll', { schema: { body: SsoPollBody } }, async (request, reply) => {
+    const { session_id } = request.body;
+    const session = deviceSessions.get(session_id);
+
+    if (!session) {
+      fastify.log.warn(`[AWS SSO] Poll for unknown persistence session ${session_id}, active: ${deviceSessions.size}`);
+      return reply.code(404).send({ success: false, error: 'Session expired or not found' });
+    }
+
+    if (session.expiresAt < Date.now()) {
+      deviceSessions.delete(session_id);
+      return reply.code(410).send({ success: false, error: 'Session expired' });
+    }
+
+    const oidcClient = new SSOOIDCClient({ region: session.region });
+
+    // Try to create token
+    let tokenResp;
+    try {
+      tokenResp = await oidcClient.send(new CreateTokenCommand({
+        clientId: session.clientId,
+        clientSecret: session.clientSecret,
+        grantType: 'urn:ietf:params:oauth:grant-type:device_code',
+        deviceCode: session.deviceCode,
+      }));
+    } catch (e: any) {
+      if (e.name === 'AuthorizationPendingException') {
+        return reply.send({ success: false, pending: true });
+      }
+      if (e.name === 'SlowDownException') {
+        return reply.send({ success: false, pending: true, slow_down: true });
+      }
+      if (e.name === 'ExpiredTokenException') {
+        deviceSessions.delete(session_id);
+        return reply.code(410).send({ success: false, error: 'Device authorization expired' });
+      }
+      return reply.code(500).send({ success: false, error: `SSO token error: ${e.message}` });
+    }
+
+    if (!tokenResp.accessToken) {
+      return reply.code(500).send({ success: false, error: 'No access token received' });
+    }
+
+    // Get role credentials
+    const ssoClient = new SSOClient({ region: session.region });
+    const credsResp = await ssoClient.send(new GetRoleCredentialsCommand({
+      accountId: session.accountId,
+      roleName: session.roleName,
+      accessToken: tokenResp.accessToken,
+    }));
+
+    const roleCreds = credsResp.roleCredentials;
+    if (!roleCreds?.accessKeyId || !roleCreds?.secretAccessKey) {
+      return reply.code(500).send({ success: false, error: 'Failed to get role credentials' });
+    }
+
+    // Clean up session
+    deviceSessions.delete(session_id);
+
+    // Evict cached MongoClients so the next connection uses the new creds
+    evictSsoClients(session.role);
+
+    fastify.log.info(`[AWS SSO] Persistence device flow completed for ${session.role}, credentials obtained`);
+
+    return reply.send({
+      success: true,
+      credentials: {
+        access_key: roleCreds.accessKeyId,
+        secret_key: roleCreds.secretAccessKey,
+        session_token: roleCreds.sessionToken || '',
+      },
+    });
+  });
 };

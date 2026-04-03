@@ -333,7 +333,7 @@ describe('SettingsPage', () => {
         }));
     });
 
-    it('shows SSO Configuration fields and disables login button when profile is empty', async () => {
+    it('shows SSO Configuration fields and disables login button when start URL is empty', async () => {
         const ssoSettings = {
             ...mockSettings,
             persistence: {
@@ -345,8 +345,7 @@ describe('SettingsPage', () => {
                         auth: {
                             method: 'aws' as const,
                             aws_auth_type: 'sso' as const,
-                            aws_profile: '',
-                            aws_sso_start_url: 'https://test.awsapps.com/start'
+                            aws_sso_start_url: '',
                         }
                     }
                 }
@@ -365,8 +364,6 @@ describe('SettingsPage', () => {
             </MemoryRouter>
         );
 
-        // Manual SSO mode shows the SSO parameter fields
-        expect(screen.getByText(/Configure SSO manually/i)).toBeDefined();
         expect(screen.getByLabelText(/SSO Start URL:/i)).toBeDefined();
         expect(screen.getByLabelText(/SSO Region:/i)).toBeDefined();
 
@@ -530,7 +527,7 @@ describe('SettingsPage', () => {
         });
     });
 
-    it('initiates AWS SSO login', async () => {
+    it('initiates AWS SSO login and shows waiting message', async () => {
         const awsSettings = {
             ...mockSettings,
             persistence: {
@@ -542,8 +539,10 @@ describe('SettingsPage', () => {
                         auth: {
                             method: 'aws' as const,
                             aws_auth_type: 'sso' as const,
-                            aws_profile: 'vst-app',
-                            aws_sso_start_url: 'https://test.aws'
+                            aws_sso_start_url: 'https://test.awsapps.com/start',
+                            aws_sso_region: 'us-east-1',
+                            aws_sso_account_id: '123456789012',
+                            aws_sso_role_name: 'ReadOnly'
                         }
                     }
                 }
@@ -554,10 +553,19 @@ describe('SettingsPage', () => {
             if (url === '/api/aws/sso/login') {
                 return Promise.resolve({
                     ok: true,
-                    json: () => Promise.resolve({ 
-                        success: true, 
-                        message: 'Go to https://device.sso.aws and enter code ABCD-1234' 
+                    json: () => Promise.resolve({
+                        success: true,
+                        session_id: 'test-session',
+                        verification_url: 'https://device.sso.us-east-1.amazonaws.com/?user_code=ABCD-1234',
+                        message: 'Waiting for authorization...'
                     })
+                });
+            }
+            // Poll returns pending
+            if (url === '/api/aws/sso/poll') {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ success: false, pending: true })
                 });
             }
             return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true }) });
@@ -565,8 +573,8 @@ describe('SettingsPage', () => {
 
         render(
             <MemoryRouter initialEntries={['/settings?tab=persistence&subtab=mongo&subsubtab=application']}>
-                <SettingsPage 
-                    settings={awsSettings} 
+                <SettingsPage
+                    settings={awsSettings}
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
                     updateIssue={updateIssue}
@@ -579,8 +587,8 @@ describe('SettingsPage', () => {
         fireEvent.click(loginBtn);
 
         await waitFor(() => {
-            expect(screen.getByText(/Authorization URL:/i)).toBeDefined();
-            expect(screen.getByText('ABCD-1234')).toBeDefined();
+            // Both the button and the message div show "Waiting for authorization..."
+            expect(screen.getAllByText('Waiting for authorization...').length).toBeGreaterThanOrEqual(1);
         });
     });
 
@@ -596,8 +604,10 @@ describe('SettingsPage', () => {
                         auth: {
                             method: 'aws' as const,
                             aws_auth_type: 'sso' as const,
-                            aws_profile: 'vst-app',
-                            aws_sso_start_url: 'https://test.aws'
+                            aws_sso_start_url: 'https://test.awsapps.com/start',
+                            aws_sso_region: 'us-east-1',
+                            aws_sso_account_id: '123',
+                            aws_sso_role_name: 'R'
                         }
                     },
                     customer: {
@@ -605,8 +615,10 @@ describe('SettingsPage', () => {
                         auth: {
                             method: 'aws' as const,
                             aws_auth_type: 'sso' as const,
-                            aws_profile: 'vst-customer',
-                            aws_sso_start_url: 'https://test-customer.aws'
+                            aws_sso_start_url: 'https://test-customer.awsapps.com/start',
+                            aws_sso_region: 'us-east-1',
+                            aws_sso_account_id: '456',
+                            aws_sso_role_name: 'R'
                         }
                     }
                 }
@@ -619,8 +631,15 @@ describe('SettingsPage', () => {
                     ok: true,
                     json: () => Promise.resolve({
                         success: true,
-                        message: 'Go to https://device.sso.aws and enter code WXYZ-5678'
+                        session_id: 'test-session',
+                        message: 'Waiting for authorization...'
                     })
+                });
+            }
+            if (url === '/api/aws/sso/poll') {
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({ success: false, pending: true })
                 });
             }
             return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true }) });
@@ -643,7 +662,7 @@ describe('SettingsPage', () => {
         fireEvent.click(loginBtn);
 
         await waitFor(() => {
-            expect(screen.getByText('WXYZ-5678')).toBeDefined();
+            expect(screen.getAllByText('Waiting for authorization...').length).toBeGreaterThanOrEqual(1);
         });
 
         // Navigate to customer tab - SSO message should not carry over
@@ -651,7 +670,8 @@ describe('SettingsPage', () => {
         fireEvent.click(customerTab);
 
         await waitFor(() => {
-            expect(screen.queryByText('WXYZ-5678')).toBeNull();
+            // Customer tab should show a fresh "Login via AWS SSO" button (not "Waiting...")
+            expect(screen.getByText('Login via AWS SSO')).toBeDefined();
         });
     });
 

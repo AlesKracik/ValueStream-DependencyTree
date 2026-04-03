@@ -403,10 +403,10 @@ Icons only appear at the point where the scope is defined — on tab headers and
 *   **Authentication Methods:**
     *   **SCRAM (Standard):** URI-based credentials (e.g., `mongodb://user:pass@host:27017`).
     *   **AWS IAM:** Static keys or Assume Role. Includes integrated **AWS SSO** support:
-        1.  Select **AWS IAM** auth method.
-        2.  Click **Login via AWS SSO** to get a device code.
-        3.  Authorise in your browser via the provided link.
-        4.  Click **Fetch SSO Credentials** to populate temporary access tokens.
+        1.  Select **AWS IAM** auth method, then **SSO** sub-type.
+        2.  Configure SSO Start URL, Region, Account ID, and Role Name.
+        3.  Click **Login via AWS SSO** — a verification URL opens for IdP authentication.
+        4.  After authorization, temporary credentials are automatically populated and saved.
     *   **OIDC:** Bearer token authentication via external identity providers.
 *   **Proxy:** Enable per-connection SOCKS5 proxy for databases behind SSH bastions.
 *   **Test Connection:** Validate connectivity and list databases.
