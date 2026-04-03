@@ -63,6 +63,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     <AwsSsoLogin onSuccess={handleSuccess} error={error} setError={setError} />
                 )}
 
+                {authMethod === 'okta' && (
+                    <OktaLogin error={error} setError={setError} />
+                )}
+
                 {/* Always show admin password fallback */}
                 {authMethod !== 'local' && (
                     <>
@@ -252,6 +256,40 @@ const AwsSsoLogin: React.FC<{
                 </div>
             )}
 
+            {error && <p style={{ color: 'var(--status-danger-text)', fontSize: '12px', margin: 0 }}>{error}</p>}
+        </>
+    );
+};
+
+// ── Okta Login ─────────────────────────────────────────────────
+
+const OktaLogin: React.FC<{
+    error: string;
+    setError: (e: string) => void;
+}> = ({ error, setError }) => {
+    useEffect(() => {
+        // Check for auth error from Okta callback redirect
+        const params = new URLSearchParams(window.location.search);
+        const authError = params.get('auth_error');
+        if (authError) {
+            setError(authError);
+            // Clean up URL
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+    }, [setError]);
+
+    return (
+        <>
+            <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                Sign in with Okta
+            </p>
+            <button
+                className="btn-primary"
+                onClick={() => { window.location.href = '/api/auth/okta/login'; }}
+                style={{ width: '100%' }}
+            >
+                Login with Okta
+            </button>
             {error && <p style={{ color: 'var(--status-danger-text)', fontSize: '12px', margin: 0 }}>{error}</p>}
         </>
     );

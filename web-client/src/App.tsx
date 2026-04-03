@@ -26,7 +26,7 @@ import { LoginPage } from './pages/LoginPage';
 import { useValueStreamData } from './hooks/useValueStreamData';
 import { ValueStreamProvider, NotificationProvider, useNotificationContext } from './contexts/ValueStreamContext';
 import { UIStateProvider, useUIStateContext } from './contexts/UIStateContext';
-import { getAdminSecret } from './utils/api';
+import { getAdminSecret, setAdminSecret } from './utils/api';
 import { deepMerge } from './utils/businessLogic';
 import type { ValueStreamDataState } from '@valuestream/shared-types';
 import './App.css';
@@ -243,11 +243,19 @@ function App() {
   useEffect(() => {
     async function checkAuth() {
       try {
+        // Handle OAuth redirect: if ?auth_token= is in the URL, store and clean up
+        const params = new URLSearchParams(window.location.search);
+        const authToken = params.get('auth_token');
+        if (authToken) {
+          setAdminSecret(authToken);
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+
         const res = await fetch('/api/auth/status');
         const json = await res.json();
         const required = json.required;
         const secret = getAdminSecret();
-        
+
         // If required, we also need to check if the current secret is valid
         let authenticated = !required;
         if (required && secret) {

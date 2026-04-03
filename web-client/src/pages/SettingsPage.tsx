@@ -152,6 +152,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               General Project<ScopeIndicator path="general" />
             </button>
             <button
+              onClick={() => setTab("auth")}
+              className={`${styles.tabButton} ${activeTab === "auth" ? styles.activeTab : ''}`}
+            >
+              Authentication<ScopeIndicator path="auth" />
+            </button>
+            <button
               onClick={() => setTab("persistence")}
               className={`${styles.tabButton} ${activeTab === "persistence" ? styles.activeTab : ''}`}
             >
@@ -180,12 +186,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               className={`${styles.tabButton} ${activeTab === "ldap" ? styles.activeTab : ''}`}
             >
               LDAP<ScopeIndicator path="ldap" />
-            </button>
-            <button
-              onClick={() => setTab("auth")}
-              className={`${styles.tabButton} ${activeTab === "auth" ? styles.activeTab : ''}`}
-            >
-              Authentication<ScopeIndicator path="auth" />
             </button>
           </nav>
 

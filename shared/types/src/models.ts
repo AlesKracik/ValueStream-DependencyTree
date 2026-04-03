@@ -224,7 +224,7 @@ export interface AISettings {
 
 export type UserRole = 'admin' | 'editor' | 'viewer';
 
-export type AuthMethod = 'local' | 'ldap' | 'aws-sso';
+export type AuthMethod = 'local' | 'ldap' | 'aws-sso' | 'okta';
 
 export interface AwsSsoAuthConfig {
   start_url: string;
@@ -233,10 +233,17 @@ export interface AwsSsoAuthConfig {
   role_name: string;
 }
 
+export interface OktaAuthConfig {
+  issuer: string;        // e.g. https://yourcompany.okta.com
+  client_id: string;
+  client_secret?: string; // optional if using PKCE-only
+}
+
 export interface AuthSettings {
   method: AuthMethod;
   session_expiry_hours: number;
   aws_sso?: AwsSsoAuthConfig;
+  okta?: OktaAuthConfig;
   default_role: UserRole;
 }
 

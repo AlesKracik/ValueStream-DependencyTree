@@ -77,6 +77,7 @@ export const AuthSettings: React.FC<SettingsTabProps> = ({
           { value: 'local', label: 'Local accounts (username/password)' },
           { value: 'ldap', label: 'LDAP bind (uses LDAP settings)' },
           { value: 'aws-sso', label: 'AWS SSO (device authorization)' },
+          { value: 'okta', label: 'Okta (OIDC / OAuth2)' },
         ]}
         style={settingsFieldStyle}
       />
@@ -167,6 +168,54 @@ export const AuthSettings: React.FC<SettingsTabProps> = ({
           LDAP authentication uses the connection settings from the LDAP tab (URL, Bind DN, Bind Password).
           Users authenticate by binding to LDAP with their own credentials.
         </p>
+      )}
+
+      {authMethod === 'okta' && (
+        <>
+          <h3 style={{ margin: "16px 0 4px 0", fontSize: "15px", color: "var(--text-primary)", borderBottom: "1px solid var(--border-secondary)", paddingBottom: "4px" }}>
+            Okta Configuration
+          </h3>
+
+          <FormTextField
+            label="Issuer URL:"
+            value={localFormData.auth?.okta?.issuer || ''}
+            onChange={v => {
+              updateFormData('auth.okta.issuer', v);
+              onUpdateSettings({ auth: { ...localFormData.auth, okta: { ...localFormData.auth?.okta, issuer: v } as any } });
+            }}
+            placeholder="https://yourcompany.okta.com"
+            style={settingsFieldStyle}
+          />
+
+          <FormTextField
+            label="Client ID:"
+            value={localFormData.auth?.okta?.client_id || ''}
+            onChange={v => {
+              updateFormData('auth.okta.client_id', v);
+              onUpdateSettings({ auth: { ...localFormData.auth, okta: { ...localFormData.auth?.okta, client_id: v } as any } });
+            }}
+            placeholder="0oa..."
+            style={settingsFieldStyle}
+          />
+
+          <FormTextField
+            label="Client Secret (optional, for confidential clients):"
+            value={localFormData.auth?.okta?.client_secret || ''}
+            onChange={v => {
+              updateFormData('auth.okta.client_secret', v);
+              onUpdateSettings({ auth: { ...localFormData.auth, okta: { ...localFormData.auth?.okta, client_secret: v } as any } });
+            }}
+            placeholder="Leave empty for PKCE-only (public client)"
+            style={settingsFieldStyle}
+          />
+
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', maxWidth: '32rem' }}>
+            Requires an OIDC Web Application registered in Okta. Set the sign-in redirect URI to:
+            <code style={{ display: 'block', marginTop: '4px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+              {window.location.origin}/api/auth/okta/callback
+            </code>
+          </p>
+        </>
       )}
 
       <h3 style={{ margin: "24px 0 4px 0", fontSize: "15px", color: "var(--text-primary)", borderBottom: "1px solid var(--border-secondary)", paddingBottom: "4px" }}>

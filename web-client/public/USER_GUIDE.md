@@ -464,6 +464,7 @@ Once configured, Team detail pages gain an **LDAP Team Name** field and a **Sync
     *   **Local accounts** — username/password stored in the application database.
     *   **LDAP bind** — authenticates against the LDAP server (configured in the LDAP tab).
     *   **AWS SSO** — device-based SSO authentication through AWS (piggybacks on existing Okta/IdP setup without admin involvement).
+    *   **Okta** — standard OIDC/OAuth2 login via Okta (requires Okta admin to register the app).
 *   **Default role for new users:** The role assigned to auto-provisioned users (LDAP/AWS SSO). Options: Viewer (read-only), Editor (can modify entities), Admin (full access).
 *   **Session expiry:** How long a login session lasts before re-authentication is needed.
 *   **AWS SSO Configuration** (when AWS SSO is selected): SSO Start URL, AWS Region, Account ID, and Role Name. Only users who can assume the configured role get access.

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The application supports three authentication methods, configurable via the **Settings > Authentication** tab. All methods issue JWT tokens for session management. Authorization is role-based, managed locally in MongoDB regardless of the auth source.
+The application supports four authentication methods, configurable via the **Settings > Authentication** tab. All methods issue JWT tokens for session management. Authorization is role-based, managed locally in MongoDB regardless of the auth source.
 
 ## Authentication Methods
 
@@ -66,6 +66,40 @@ The user's identity (email/username) is extracted from the STS ARN. The backend 
 - If the user can assume the configured role, they're authorized
 - Each login session is fully isolated (in-memory, per-request)
 
+### 4. Okta OIDC (`okta`)
+
+Standard OAuth2/OIDC authorization code flow with PKCE against an Okta tenant. **Requires an Okta admin** to register the application.
+
+**Configuration** (Settings > Authentication > Okta Configuration):
+- **Issuer URL** — e.g. `https://yourcompany.okta.com`
+- **Client ID** — from Okta app registration
+- **Client Secret** — optional (only for confidential clients; PKCE works without it)
+
+**Okta Admin Setup:**
+1. Create an **OIDC Web Application** in Okta
+2. Set sign-in redirect URI: `https://<your-app>/api/auth/okta/callback`
+3. Grant type: Authorization Code
+4. Scopes: `openid`, `profile`, `email`
+5. Assign users/groups to the application
+
+**Flow:**
+```
+User clicks "Login with Okta"
+  → Redirect to GET /api/auth/okta/login
+  → Backend discovers Okta endpoints via .well-known/openid-configuration
+  → Redirect to Okta authorization endpoint (with PKCE challenge)
+  → User authenticates in Okta (via Okta login or existing SSO session)
+  → Okta redirects to /api/auth/okta/callback with auth code
+  → Backend exchanges code for tokens (with PKCE verifier)
+  → Extracts identity from ID token (email, name)
+  → Creates/updates local user, issues JWT
+  → Redirects to frontend with ?auth_token=<jwt>
+```
+
+**Environment variables:**
+- `OKTA_REDIRECT_BASE_URL` — Backend base URL for callbacks (defaults to `GLEAN_REDIRECT_BASE_URL` or `http://localhost:4000`)
+- `OKTA_FRONTEND_BASE_URL` — Frontend URL for post-auth redirect (defaults to `GLEAN_FRONTEND_BASE_URL` or `http://localhost:5173`)
+
 ## Authorization
 
 ### Roles
@@ -79,7 +113,7 @@ The user's identity (email/username) is extracted from the STS ARN. The backend 
 ### Role Assignment
 
 - **First user:** Created via `POST /api/auth/setup` with `admin` role
-- **LDAP/AWS SSO users:** Auto-created with the configured default role (Settings > Authentication > Default role)
+- **LDAP/AWS SSO/Okta users:** Auto-created with the configured default role (Settings > Authentication > Default role)
 - **Role changes:** Admin can change any user's role in Settings > Authentication > Users
 
 ### Enforcement
@@ -116,6 +150,8 @@ The `ADMIN_SECRET` environment variable serves as a superuser bypass:
 | POST | `/api/auth/setup` | ADMIN_SECRET | Create first admin user (only when no users exist) |
 | POST | `/api/auth/aws-sso/start` | No | Start device authorization flow |
 | POST | `/api/auth/aws-sso/poll` | No | Poll for authorization completion |
+| GET | `/api/auth/okta/login` | No | Redirect to Okta authorization |
+| GET | `/api/auth/okta/callback` | No | Okta OAuth2 callback (exchanges code, redirects to frontend) |
 | GET | `/api/auth/users` | Admin | List all users |
 | PUT | `/api/auth/users/:id/role` | Admin | Update user role |
 | DELETE | `/api/auth/users/:id` | Admin | Delete user |
@@ -130,6 +166,7 @@ The `ADMIN_SECRET` environment variable serves as a superuser bypass:
 | `backend/src/plugins/auth.ts` | Fastify hook — attaches `request.authUser` |
 | `backend/src/routes/auth.ts` | Login endpoints (local, LDAP) + user management |
 | `backend/src/routes/awsAuth.ts` | AWS SSO device flow endpoints |
+| `backend/src/routes/oktaAuth.ts` | Okta OIDC authorization code flow |
 | `backend/src/utils/roleGuard.ts` | `requireRole()` enforcement helper |
 | `web-client/src/pages/LoginPage.tsx` | Adaptive login UI (local/LDAP form, AWS SSO button) |
 | `web-client/src/pages/settings/AuthSettings.tsx` | Auth configuration + user management UI |
