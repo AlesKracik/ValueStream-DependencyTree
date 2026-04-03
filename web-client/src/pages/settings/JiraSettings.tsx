@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import type { Issue } from '@valuestream/shared-types';
 import { authorizedFetch, syncJiraIssue } from "../../utils/api";
 import { generateId } from '../../utils/security';
+import { ScopeIndicator } from '../../components/common/ScopeIndicator';
 import { parseJiraIssue } from "../../utils/businessLogic";
 import styles from '../List.module.css';
 import type { SettingsTabWithDataProps } from './types';
@@ -251,7 +252,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
             </label>
 
             <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-              Jira Personal Access Token (PAT):
+              Jira Personal Access Token (PAT):<ScopeIndicator path="jira.api_token" />
               <input
                 type="password"
                 placeholder="Your Jira PAT"

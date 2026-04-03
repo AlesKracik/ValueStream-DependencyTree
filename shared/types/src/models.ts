@@ -321,6 +321,7 @@ export const SETTINGS_SCOPE: Record<string, SettingsScope> = {
   'persistence.mongo.customer.auth.sso': 'client',
   // jira
   'jira': 'server',
+  'jira.api_token': 'client',
   // aha
   'aha': 'server',
   // ai
