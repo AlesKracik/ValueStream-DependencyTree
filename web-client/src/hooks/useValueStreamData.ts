@@ -4,25 +4,72 @@ import { partitionSettings } from '@valuestream/shared-types';
 import { authorizedFetch, debounce, getUserRole } from '../utils/api';
 import { calculateQuarter } from '../utils/dateHelpers';
 
+const CLIENT_SETTINGS_FALLBACK_KEY = 'vst-client-settings-pending';
+
 async function loadClientSettings(): Promise<Partial<Settings>> {
+    // Try DB first
     try {
         const res = await authorizedFetch('/api/auth/me/settings');
         if (res.ok) {
             const data = await res.json();
-            return data.client_settings || {};
+            const dbSettings = data.client_settings || {};
+
+            // If we have pending localStorage settings, sync them to DB and clear
+            const pending = localStorage.getItem(CLIENT_SETTINGS_FALLBACK_KEY);
+            if (pending) {
+                try {
+                    const pendingSettings = JSON.parse(pending);
+                    const merged = { ...dbSettings };
+                    for (const key of Object.keys(pendingSettings)) {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        if (typeof pendingSettings[key] === 'object' && typeof (merged as any)[key] === 'object') {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            (merged as any)[key] = { ...(merged as any)[key], ...pendingSettings[key] };
+                        } else {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            (merged as any)[key] = pendingSettings[key];
+                        }
+                    }
+                    // Sync merged settings back to DB
+                    await authorizedFetch('/api/auth/me/settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(merged),
+                    });
+                    localStorage.removeItem(CLIENT_SETTINGS_FALLBACK_KEY);
+                    return merged;
+                } catch { /* ignore sync failure, return DB settings */ }
+            }
+
+            return dbSettings;
         }
-    } catch { /* ignore */ }
-    return {};
+    } catch { /* DB unavailable */ }
+
+    // Fall back to localStorage
+    try {
+        const raw = localStorage.getItem(CLIENT_SETTINGS_FALLBACK_KEY);
+        return raw ? JSON.parse(raw) : {};
+    } catch {
+        return {};
+    }
 }
 
 async function saveClientSettingsToServer(settings: Partial<Settings>): Promise<void> {
     try {
-        await authorizedFetch('/api/auth/me/settings', {
+        const res = await authorizedFetch('/api/auth/me/settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(settings),
         });
-    } catch { /* ignore — non-critical */ }
+        if (res.ok) {
+            // DB save succeeded — clear any pending localStorage fallback
+            localStorage.removeItem(CLIENT_SETTINGS_FALLBACK_KEY);
+            return;
+        }
+    } catch { /* DB unavailable */ }
+
+    // Fall back to localStorage
+    localStorage.setItem(CLIENT_SETTINGS_FALLBACK_KEY, JSON.stringify(settings));
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
