@@ -112,6 +112,7 @@ export const awsAuthRoutes: FastifyPluginAsync = async (fastify) => {
 
     // Store session for polling
     const sessionId = crypto.randomUUID();
+    fastify.log.info(`[AWS SSO] Created device session ${sessionId}, active sessions: ${deviceSessions.size + 1}`);
     deviceSessions.set(sessionId, {
       clientId: registerResp.clientId,
       clientSecret: registerResp.clientSecret,
@@ -144,6 +145,7 @@ export const awsAuthRoutes: FastifyPluginAsync = async (fastify) => {
       const session = deviceSessions.get(session_id);
 
       if (!session) {
+        fastify.log.warn(`[AWS SSO] Poll for unknown session ${session_id}, active sessions: ${deviceSessions.size}`);
         throw new AppError('Session expired or not found', 404);
       }
 

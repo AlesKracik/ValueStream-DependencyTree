@@ -49,7 +49,8 @@ export function signToken(payload: JwtPayload, expiryHours: number = 24): string
 export function verifyToken(token: string): JwtPayload | null {
   try {
     return jwt.verify(token, getSecret()) as JwtPayload;
-  } catch {
+  } catch (e) {
+    logger.warn(`[Auth] JWT verification failed: ${(e as Error).message}`);
     return null;
   }
 }

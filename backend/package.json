@@ -4,7 +4,7 @@
   "description": "ValueStream standalone Fastify API",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch --ignore settings.json --ignore settings.secrets.enc src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "vitest run"
