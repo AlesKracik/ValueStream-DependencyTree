@@ -49,8 +49,13 @@ export const authorizedFetch = async (url: string, options: RequestInit = {}) =>
 
     if (response.status === 401) {
         clearAdminSecret();
-        // Trigger a reload or a state change to show login
         window.location.reload();
+    }
+
+    if (response.status === 403) {
+        const body = await response.clone().json().catch(() => ({}));
+        const msg = body.message || body.error || 'Permission denied';
+        alert(`Access denied: ${msg}`);
     }
 
     return response;
