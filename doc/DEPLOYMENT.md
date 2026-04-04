@@ -66,6 +66,20 @@ kubectl apply -f k8s/web-client.yaml
 kubectl apply -f k8s/ingress.yaml
 ```
 
+### CI/CD — Build & Deploy
+
+A GitHub Actions workflow (`.github/workflows/deploy.yml`) handles image builds and optional deployment. It is triggered manually via `workflow_dispatch`.
+
+1. Go to **Actions > Build & Deploy > Run workflow** in GitHub.
+2. Choose whether to deploy to k8s after building.
+3. The workflow builds both images, tags them with the git SHA, and pushes to GHCR.
+
+Images are published to:
+- `ghcr.io/aleskracik/valuestream-backend:<sha>`
+- `ghcr.io/aleskracik/valuestream-web-client:<sha>`
+
+To enable the deploy step, add a `KUBECONFIG` repository secret containing your base64-encoded kubeconfig.
+
 ### Settings Persistence
 
 The backend writes to `settings.json` and `settings.secrets.enc` at runtime. These files are mounted from a `ReadWriteOnce` PVC (`backend-settings-pvc`), so they survive pod restarts and redeployments. This limits the backend to a single replica; scaling requires migrating settings to a shared store.

@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: valuestream-backend:latest
+        image: ghcr.io/aleskracik/valuestream-backend:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 4000

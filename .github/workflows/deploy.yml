@@ -1,0 +1,78 @@
+name: Build & Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Deploy to k8s after build?"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+env:
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
+  BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/valuestream-backend
+  WEB_CLIENT_IMAGE: ghcr.io/${{ github.repository_owner }}/valuestream-web-client
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      version: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set version tag
+        id: version
+        run: echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push backend
+        run: |
+          docker build \
+            -t ${{ env.BACKEND_IMAGE }}:${{ steps.version.outputs.tag }} \
+            -t ${{ env.BACKEND_IMAGE }}:latest \
+            -f backend/Dockerfile .
+          docker push ${{ env.BACKEND_IMAGE }}:${{ steps.version.outputs.tag }}
+          docker push ${{ env.BACKEND_IMAGE }}:latest
+
+      - name: Build & push web-client
+        run: |
+          docker build \
+            -t ${{ env.WEB_CLIENT_IMAGE }}:${{ steps.version.outputs.tag }} \
+            -t ${{ env.WEB_CLIENT_IMAGE }}:latest \
+            -f web-client/Dockerfile.prod .
+          docker push ${{ env.WEB_CLIENT_IMAGE }}:${{ steps.version.outputs.tag }}
+          docker push ${{ env.WEB_CLIENT_IMAGE }}:latest
+
+  deploy:
+    needs: build-and-push
+    if: inputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+
+      - name: Deploy to k8s
+        run: |
+          VERSION=${{ needs.build-and-push.outputs.version }}
+          kubectl set image deployment/backend backend=${{ env.BACKEND_IMAGE }}:$VERSION
+          kubectl set image deployment/web-client web-client=${{ env.WEB_CLIENT_IMAGE }}:$VERSION
+          kubectl rollout status deployment/backend --timeout=120s
+          kubectl rollout status deployment/web-client --timeout=120s

@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: web-client
-        image: valuestream-web-client:latest
+        image: ghcr.io/aleskracik/valuestream-web-client:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80
