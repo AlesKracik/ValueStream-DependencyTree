@@ -78,7 +78,7 @@ The application is container-ready with `docker-compose.yml`.
 
 ### Kubernetes Deployment
 
-Manifests for Kubernetes (including MongoDB and the SSH sidecar pattern) are located in the **[`k8s/`](./k8s/)** directory.
+Manifests are in **[`k8s/`](./k8s/)** — Ingress, Deployments, a MongoDB StatefulSet, and PVCs for settings persistence. Images are built and pushed to GHCR via a manual GitHub Actions workflow (**Actions > Build & Deploy > Run workflow**). See **[Deployment > Kubernetes](./doc/DEPLOYMENT.md#3-kubernetes-cluster-deployment)** for the full guide.
 
 ### Networking
 
