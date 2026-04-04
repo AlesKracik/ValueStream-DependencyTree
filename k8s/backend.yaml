@@ -1,3 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backend-settings-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -39,6 +50,36 @@ spec:
         #       name: valuestream-secrets
         #       key: VSDT_SECRET_PERSISTENCE_MONGO_APP_URI
         # Add proxy configuration environments if SOCKS proxy is used in K8s
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 4000
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 4000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        volumeMounts:
+        - name: settings
+          mountPath: /app/backend/settings.json
+          subPath: settings.json
+        - name: settings
+          mountPath: /app/backend/settings.secrets.enc
+          subPath: settings.secrets.enc
+      volumes:
+      - name: settings
+        persistentVolumeClaim:
+          claimName: backend-settings-pvc
 ---
 apiVersion: v1
 kind: Service

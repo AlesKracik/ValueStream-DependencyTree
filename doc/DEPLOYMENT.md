@@ -29,8 +29,46 @@ graph LR
 ## 3. Kubernetes (Cluster Deployment)
 
 Manifests are provided in the `k8s/` directory.
-- Decoupled Pods for the Nginx Web Client, Fastify Backend, and MongoDB.
-- `ADMIN_SECRET` is managed via a Kubernetes Secret object.
+
+### Architecture
+
+```mermaid
+graph LR
+    ING[Ingress] -->|"/"| WC[web-client Service]
+    ING -->|"/api"| BE[backend Service]
+    WC --> WC_POD[web-client Pod<br/>nginx static files]
+    BE --> BE_POD[backend Pod<br/>Node.js + PVC]
+    BE_POD --> MG[mongodb Service]
+    MG --> MG_POD[mongodb StatefulSet<br/>+ PVC 5Gi]
+```
+
+### Components
+
+| Manifest | Kind | Notes |
+| :--- | :--- | :--- |
+| `ingress.yaml` | Ingress | Routes `/api` to backend, `/` to web-client. Requires an nginx Ingress controller. |
+| `web-client.yaml` | Deployment + ClusterIP Service | Nginx serving static assets on port 80. |
+| `backend.yaml` | Deployment + ClusterIP Service + PVC | Node.js API on port 4000. Settings files (`settings.json`, `settings.secrets.enc`) are persisted on a `ReadWriteOnce` PVC (100Mi). |
+| `mongodb.yaml` | StatefulSet + Service | MongoDB with a 5Gi `ReadWriteOnce` PVC via `volumeClaimTemplates`. |
+| `secrets.example.yaml` | Secret (example) | Copy, fill in real values, and apply. Holds `ADMIN_SECRET` and optional `VSDT_SECRET_*` env-var overrides. |
+
+### Quick Start
+
+```bash
+# Create secrets (edit with real values first)
+cp k8s/secrets.example.yaml k8s/secrets.yaml
+kubectl apply -f k8s/secrets.yaml
+
+# Deploy all components
+kubectl apply -f k8s/mongodb.yaml
+kubectl apply -f k8s/backend.yaml
+kubectl apply -f k8s/web-client.yaml
+kubectl apply -f k8s/ingress.yaml
+```
+
+### Settings Persistence
+
+The backend writes to `settings.json` and `settings.secrets.enc` at runtime. These files are mounted from a `ReadWriteOnce` PVC (`backend-settings-pvc`), so they survive pod restarts and redeployments. This limits the backend to a single replica; scaling requires migrating settings to a shared store.
 
 ## Networking & SSH Tunneling
 
