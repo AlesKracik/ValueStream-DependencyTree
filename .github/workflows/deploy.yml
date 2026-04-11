@@ -18,7 +18,35 @@ env:
   WEB_CLIENT_IMAGE: ghcr.io/${{ github.repository_owner }}/valuestream-web-client
 
 jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install shared types
+        run: npm install --prefix shared/types
+
+      - name: Build shared types
+        run: npm run build --prefix shared/types
+
+      - name: Install backend deps
+        run: npm install --prefix backend
+
+      - name: Install web-client deps
+        run: npm install --prefix web-client
+
+      - name: Typecheck backend
+        run: npm run typecheck --prefix backend
+
+      - name: Typecheck web-client
+        run: npm run typecheck --prefix web-client
+
   build-and-push:
+    needs: typecheck
     runs-on: ubuntu-latest
     permissions:
       contents: read

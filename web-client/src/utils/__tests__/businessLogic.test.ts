@@ -457,7 +457,8 @@ describe('businessLogic', () => {
             };
 
             const result = deepMerge(defaults, incoming);
-            const sso = (result as any).persistence.mongo.app.auth.sso;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const sso = (result as Record<string, any>).persistence.mongo.app.auth.sso;
             expect(sso.aws_access_key).toBe('AK');
             expect(sso.aws_secret_key).toBe('SK');
             expect(sso.aws_session_token).toBe('ST');
@@ -490,7 +491,8 @@ describe('businessLogic', () => {
             };
 
             const result = deepMerge(badDefaults, incoming);
-            const sso = (result as any).persistence.mongo.app.auth.sso;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const sso = (result as Record<string, any>).persistence.mongo.app.auth.sso;
             expect(sso.aws_sso_start_url).toBe('https://test.aws');
             // aws_access_key should be dropped because it's not in badDefaults
             expect(sso.aws_access_key).toBeUndefined();
@@ -509,8 +511,10 @@ describe('businessLogic', () => {
             };
 
             const result = deepMerge(defaults, incoming);
-            expect((result as any).auth.role.aws_access_key).toBe('AK');
-            expect((result as any).auth.role.aws_role_arn).toBe('arn:aws:iam::123:role/R');
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const role = (result as Record<string, any>).auth.role;
+            expect(role.aws_access_key).toBe('AK');
+            expect(role.aws_role_arn).toBe('arn:aws:iam::123:role/R');
         });
     });
 });

@@ -12,7 +12,7 @@ vi.mock('../../utils/api', () => ({
 /** Helper: mock fetch to return auth method then handle login calls */
 function mockFetchForMethod(method: string = 'local') {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (fetch as any).mockImplementation((url: string, opts?: any) => {
+    (fetch as any).mockImplementation((url: string) => {
         if (url === '/api/auth/methods') {
             return Promise.resolve({
                 ok: true,

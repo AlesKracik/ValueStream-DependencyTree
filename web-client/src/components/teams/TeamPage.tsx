@@ -49,7 +49,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
         deleteWithConfirm(
             'Delete Team',
             `Are you sure you want to delete "${team.name}"?`,
-            () => deleteTeam(team.id),
+            () => deleteTeam(team.id!),
             () => navigate('/teams')
         );
     };

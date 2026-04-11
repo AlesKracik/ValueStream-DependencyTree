@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, act, waitFor, fireEvent } from '@testing-library/react';
 import { SupportPage } from '../SupportPage';
 import { renderWithProviders } from '../../test/testUtils';
-import type { ValueStreamData } from '@valuestream/shared-types';
+import type { ValueStreamData, SupportIssue } from '@valuestream/shared-types';
 
 const mockUpdateCustomer = vi.fn();
 const mockedNavigate = vi.fn();
@@ -27,6 +27,8 @@ const mockData: ValueStreamData = {
     settings: {
         general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
         persistence: { 
+            app_provider: 'mongo',
+            customer_provider: 'mongo',
             mongo: { 
                 app: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false },
                 customer: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false }
@@ -35,7 +37,8 @@ const mockData: ValueStreamData = {
         jira: { base_url: 'https://jira.com', api_version: '3', api_token: '', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
         aha: { subdomain: '', api_key: '' },
         ai: { provider: 'openai', support: { prompt: '' } },
-        ldap: { url: '', bind_dn: '', team: { base_dn: '', search_filter: '' } }
+        ldap: { url: '', bind_dn: '', team: { base_dn: '', search_filter: '' } },
+        auth: { method: 'local' as const, session_expiry_hours: 24, default_role: 'viewer' as const }
     },
     customers: [
         { 
@@ -808,7 +811,8 @@ describe('SupportPage', () => {
         fireEvent.click(screen.getByText('Export JSON'));
 
         expect(createObjectURL).toHaveBeenCalled();
-        const blobArg = createObjectURL.mock.calls[0][0] as Blob;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const blobArg = (createObjectURL.mock.calls as any)[0][0] as Blob;
         expect(blobArg).toBeInstanceOf(Blob);
         expect(capturedAnchor).not.toBeNull();
         expect(capturedAnchor!.click).toHaveBeenCalled();

@@ -34,6 +34,7 @@ export function useGraphFilters(
             visibleIssues: new Set<string>(),
             combinedMinTcv: 0,
             combinedMinScore: 0,
+            isAnyFilterActive: false,
         };
 
         // Calculate visible sets based on combined filters (Logical AND)

@@ -20,7 +20,6 @@ async function loadClientSettings(): Promise<Partial<Settings>> {
         if (res.ok) {
             const data = await res.json();
             const dbSettings = data.client_settings || {};
-            const hasDbSettings = Object.keys(dbSettings).length > 0;
             const hasPending = Object.keys(pendingSettings).length > 0;
 
 
@@ -246,10 +245,10 @@ export function useValueStreamData(
             // Deep-merge client-scoped settings from user profile into the server response
             if (finalData.settings) {
                 const clientSettings = await loadClientSettings();
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 // Deep merge client settings into server settings.
                 // Skip empty client values so they don't overwrite populated server values
                 // (e.g. SSO config set by admin shouldn't be wiped by a new user's empty defaults)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const deepMergeClientSettings = (target: any, source: any): any => {
                     if (!source || typeof source !== 'object' || Array.isArray(source)) return source;
                     const result = { ...target };
@@ -327,7 +326,7 @@ export function useValueStreamData(
             persistEntity(collection, 'POST', entity, showAlert);
             setData(prev => {
                 if (!prev) return prev;
-                return { ...prev, [key]: [...((prev[key] as T[]) || []), entity] };
+                return { ...prev, [key]: [...((prev[key] as unknown as T[]) || []), entity] };
             });
         };
 
@@ -340,7 +339,7 @@ export function useValueStreamData(
                 if (!prev) return prev;
                 return {
                     ...prev,
-                    [key]: ((prev[key] as T[]) || []).map(entity => entity.id === id ? updated : entity)
+                    [key]: ((prev[key] as unknown as T[]) || []).map(entity => entity.id === id ? updated : entity)
                 };
             });
 
@@ -357,7 +356,7 @@ export function useValueStreamData(
                 if (!prev) return prev;
                 const base: ValueStreamData = {
                     ...prev,
-                    [key]: ((prev[key] as T[]) || []).filter(entity => entity.id !== id)
+                    [key]: ((prev[key] as unknown as T[]) || []).filter(entity => entity.id !== id)
                 };
                 return onDeleteCascade ? { ...base, ...onDeleteCascade(prev, id) } : base;
             });

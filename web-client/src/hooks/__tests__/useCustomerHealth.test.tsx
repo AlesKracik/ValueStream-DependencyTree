@@ -19,6 +19,8 @@ const mockCustomer: Customer = {
 const mockSettings: Settings = {
     general: { fiscal_year_start_month: 1, sprint_duration_days: 14 },
     persistence: { 
+        app_provider: 'mongo',
+        customer_provider: 'mongo',
         mongo: { 
             app: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false },
             customer: { uri: '', db: '', auth: { method: 'scram' }, use_proxy: false }
@@ -36,7 +38,8 @@ const mockSettings: Settings = {
     },
     aha: { subdomain: '', api_key: '' },
     ai: { provider: 'openai', support: { prompt: '' } },
-    ldap: { url: '', bind_dn: '', team: { base_dn: '', search_filter: '' } }
+    ldap: { url: '', bind_dn: '', team: { base_dn: '', search_filter: '' } },
+        auth: { method: 'local' as const, session_expiry_hours: 24, default_role: 'viewer' as const }
 };
 
 describe('useCustomerHealth', () => {

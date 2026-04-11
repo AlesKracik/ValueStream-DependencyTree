@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { SettingsTabProps } from './types';
-import type { AuthMethod, UserRole } from '@valuestream/shared-types';
+import type { AuthMethod, UserRole, AwsSsoAuthConfig, OktaAuthConfig } from '@valuestream/shared-types';
 import { FormSelectField, FormNumberField, FormTextField } from '../../components/common/FormFields';
 import { ScopeIndicator } from '../../components/common/ScopeIndicator';
 import { authorizedFetch } from '../../utils/api';
@@ -22,12 +22,11 @@ export const AuthSettings: React.FC<SettingsTabProps> = ({
   onUpdateSettings,
 }) => {
   const [users, setUsers] = useState<AppUserDisplay[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersLoading, setUsersLoading] = useState(true);
 
   const authMethod = localFormData.auth?.method || 'local';
 
   const loadUsers = async () => {
-    setUsersLoading(true);
     try {
       const res = await authorizedFetch('/api/auth/users');
       if (res.ok) {
@@ -38,7 +37,8 @@ export const AuthSettings: React.FC<SettingsTabProps> = ({
     setUsersLoading(false);
   };
 
-  useEffect(() => { loadUsers(); }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- async fetch pattern; setState runs after await, not synchronously
+  useEffect(() => { void loadUsers(); }, []);
 
   const handleRoleChange = async (userId: string, newRole: UserRole) => {
     const res = await authorizedFetch(`/api/auth/users/${userId}/role`, {
@@ -122,7 +122,7 @@ export const AuthSettings: React.FC<SettingsTabProps> = ({
             value={localFormData.auth?.aws_sso?.start_url || ''}
             onChange={v => {
               updateFormData('auth.aws_sso.start_url', v);
-              onUpdateSettings({ auth: { ...localFormData.auth, aws_sso: { ...localFormData.auth?.aws_sso, start_url: v } as any } });
+              onUpdateSettings({ auth: { ...localFormData.auth, aws_sso: { ...localFormData.auth?.aws_sso, start_url: v } as AwsSsoAuthConfig } });
             }}
             placeholder="https://my-company.awsapps.com/start"
             style={settingsFieldStyle}
@@ -133,7 +133,7 @@ export const AuthSettings: React.FC<SettingsTabProps> = ({
             value={localFormData.auth?.aws_sso?.region || ''}
             onChange={v => {
               updateFormData('auth.aws_sso.region', v);
-              onUpdateSettings({ auth: { ...localFormData.auth, aws_sso: { ...localFormData.auth?.aws_sso, region: v } as any } });
+              onUpdateSettings({ auth: { ...localFormData.auth, aws_sso: { ...localFormData.auth?.aws_sso, region: v } as AwsSsoAuthConfig } });
             }}
             placeholder="us-east-1"
             style={settingsFieldStyle}
@@ -144,7 +144,7 @@ export const AuthSettings: React.FC<SettingsTabProps> = ({
             value={localFormData.auth?.aws_sso?.account_id || ''}
             onChange={v => {
               updateFormData('auth.aws_sso.account_id', v);
-              onUpdateSettings({ auth: { ...localFormData.auth, aws_sso: { ...localFormData.auth?.aws_sso, account_id: v } as any } });
+              onUpdateSettings({ auth: { ...localFormData.auth, aws_sso: { ...localFormData.auth?.aws_sso, account_id: v } as AwsSsoAuthConfig } });
             }}
             placeholder="123456789012"
             style={settingsFieldStyle}
@@ -155,7 +155,7 @@ export const AuthSettings: React.FC<SettingsTabProps> = ({
             value={localFormData.auth?.aws_sso?.role_name || ''}
             onChange={v => {
               updateFormData('auth.aws_sso.role_name', v);
-              onUpdateSettings({ auth: { ...localFormData.auth, aws_sso: { ...localFormData.auth?.aws_sso, role_name: v } as any } });
+              onUpdateSettings({ auth: { ...localFormData.auth, aws_sso: { ...localFormData.auth?.aws_sso, role_name: v } as AwsSsoAuthConfig } });
             }}
             placeholder="ViewOnlyAccess"
             style={settingsFieldStyle}
@@ -181,7 +181,7 @@ export const AuthSettings: React.FC<SettingsTabProps> = ({
             value={localFormData.auth?.okta?.issuer || ''}
             onChange={v => {
               updateFormData('auth.okta.issuer', v);
-              onUpdateSettings({ auth: { ...localFormData.auth, okta: { ...localFormData.auth?.okta, issuer: v } as any } });
+              onUpdateSettings({ auth: { ...localFormData.auth, okta: { ...localFormData.auth?.okta, issuer: v } as OktaAuthConfig } });
             }}
             placeholder="https://yourcompany.okta.com"
             style={settingsFieldStyle}
@@ -192,7 +192,7 @@ export const AuthSettings: React.FC<SettingsTabProps> = ({
             value={localFormData.auth?.okta?.client_id || ''}
             onChange={v => {
               updateFormData('auth.okta.client_id', v);
-              onUpdateSettings({ auth: { ...localFormData.auth, okta: { ...localFormData.auth?.okta, client_id: v } as any } });
+              onUpdateSettings({ auth: { ...localFormData.auth, okta: { ...localFormData.auth?.okta, client_id: v } as OktaAuthConfig } });
             }}
             placeholder="0oa..."
             style={settingsFieldStyle}
@@ -203,7 +203,7 @@ export const AuthSettings: React.FC<SettingsTabProps> = ({
             value={localFormData.auth?.okta?.client_secret || ''}
             onChange={v => {
               updateFormData('auth.okta.client_secret', v);
-              onUpdateSettings({ auth: { ...localFormData.auth, okta: { ...localFormData.auth?.okta, client_secret: v } as any } });
+              onUpdateSettings({ auth: { ...localFormData.auth, okta: { ...localFormData.auth?.okta, client_secret: v } as OktaAuthConfig } });
             }}
             placeholder="Leave empty for PKCE-only (public client)"
             style={settingsFieldStyle}

@@ -21,6 +21,8 @@ const mockSettings: Settings = {
         sprint_duration_days: 14
     },
     persistence: {
+        app_provider: 'mongo',
+        customer_provider: 'mongo',
         mongo: {
             app: {
                 uri: 'mongodb://localhost:27017',
@@ -65,7 +67,8 @@ const mockSettings: Settings = {
         support: { prompt: '' }
     },
     aha: { subdomain: '', api_key: '' },
-    ldap: { url: '', bind_dn: '', bind_password: '', team: { base_dn: '', search_filter: '' } }
+    ldap: { url: '', bind_dn: '', bind_password: '', team: { base_dn: '', search_filter: '' } },
+    auth: { method: 'local' as const, session_expiry_hours: 24, default_role: 'viewer' as const }
 };
 
 const mockData: ValueStreamData = {
