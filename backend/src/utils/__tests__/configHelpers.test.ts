@@ -1,5 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
-import { maskSettings, unmaskSettings, calculateQuarter, extractSecrets, stripSecrets, mergeSecrets, splitDotPath, getIntegrationConfig } from '../configHelpers';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+import { maskSettings, unmaskSettings, calculateQuarter, extractSecrets, stripSecrets, mergeSecrets, splitDotPath, getIntegrationConfig, ensureNotDirectory, ensureNotDirectoryAsync } from '../configHelpers';
 import { partitionSettings, resolveScope, SETTINGS_SCOPE } from '@valuestream/shared-types';
 
 describe('configHelpers', () => {
@@ -403,6 +406,65 @@ describe('configHelpers', () => {
       const { server, client } = partitionSettings({});
       expect(server).toEqual({});
       expect(client).toEqual({});
+    });
+  });
+
+  describe('EISDIR handling (PVC subPath mount)', () => {
+    let tmpDir: string;
+
+    beforeEach(() => {
+      tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'eisdir-test-'));
+    });
+
+    afterEach(() => {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    describe('ensureNotDirectory', () => {
+      it('should remove a directory so a file can be written', () => {
+        const filePath = path.join(tmpDir, 'settings.json');
+        fs.mkdirSync(filePath);
+        expect(fs.statSync(filePath).isDirectory()).toBe(true);
+
+        ensureNotDirectory(filePath);
+
+        expect(fs.existsSync(filePath)).toBe(false);
+        // Now a file can be written
+        fs.writeFileSync(filePath, '{}');
+        expect(fs.statSync(filePath).isFile()).toBe(true);
+      });
+
+      it('should be a no-op when path is already a file', () => {
+        const filePath = path.join(tmpDir, 'settings.json');
+        fs.writeFileSync(filePath, '{"key":"value"}');
+
+        ensureNotDirectory(filePath);
+
+        expect(fs.readFileSync(filePath, 'utf-8')).toBe('{"key":"value"}');
+      });
+
+      it('should be a no-op when path does not exist', () => {
+        const filePath = path.join(tmpDir, 'nonexistent.json');
+        ensureNotDirectory(filePath);
+        expect(fs.existsSync(filePath)).toBe(false);
+      });
+    });
+
+    describe('ensureNotDirectoryAsync', () => {
+      it('should remove a directory so a file can be written', async () => {
+        const filePath = path.join(tmpDir, 'settings.json');
+        fs.mkdirSync(filePath);
+
+        await ensureNotDirectoryAsync(filePath);
+
+        expect(fs.existsSync(filePath)).toBe(false);
+      });
+
+      it('should be a no-op when path does not exist', async () => {
+        const filePath = path.join(tmpDir, 'nonexistent.json');
+        await ensureNotDirectoryAsync(filePath);
+        expect(fs.existsSync(filePath)).toBe(false);
+      });
     });
   });
 

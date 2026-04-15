@@ -7,10 +7,35 @@ import logger from './logger';
 /** Resolve the path to settings.json in the backend directory */
 export const getSettingsPath = () => path.resolve(__dirname, '../../settings.json');
 
+/**
+ * If `filePath` is a directory (e.g. empty PVC subPath mount), remove it so a
+ * subsequent write can create an actual file at that path.
+ */
+export function ensureNotDirectory(filePath: string): void {
+  if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
+    fs.rmSync(filePath, { recursive: true });
+  }
+}
+
+/** Async version of ensureNotDirectory */
+export async function ensureNotDirectoryAsync(filePath: string): Promise<void> {
+  try {
+    const stat = await fsPromises.stat(filePath);
+    if (stat.isDirectory()) {
+      await fsPromises.rm(filePath, { recursive: true });
+    }
+  } catch (e: any) {
+    if (e.code === 'ENOENT') return;
+    throw e;
+  }
+}
+
 /** Read raw settings.json from disk synchronously (used only at startup / migration) */
 export function readSettingsFile(): any {
   const settingsPath = getSettingsPath();
   if (fs.existsSync(settingsPath)) {
+    // PVC subPath mounts create a directory when the file doesn't exist on the volume
+    if (fs.statSync(settingsPath).isDirectory()) return {};
     return JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
   }
   return {};
@@ -23,7 +48,7 @@ export async function readSettingsFileAsync(): Promise<any> {
     const content = await fsPromises.readFile(settingsPath, 'utf-8');
     return JSON.parse(content);
   } catch (e: any) {
-    if (e.code === 'ENOENT') return {};
+    if (e.code === 'ENOENT' || e.code === 'EISDIR') return {};
     throw e;
   }
 }

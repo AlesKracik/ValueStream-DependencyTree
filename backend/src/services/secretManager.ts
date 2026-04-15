@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { getSettingsPath, readSettingsFile, readSettingsFileAsync, extractSecrets, stripSecrets, mergeSecrets } from '../utils/configHelpers';
+import { getSettingsPath, readSettingsFile, readSettingsFileAsync, extractSecrets, stripSecrets, mergeSecrets, ensureNotDirectory, ensureNotDirectoryAsync } from '../utils/configHelpers';
 import { SecretProvider, EncryptedFileProvider, EnvProvider, ENV_PREFIX, NoOpProvider } from './providers';
 import logger from '../utils/logger';
 
@@ -100,6 +100,7 @@ export function saveFullSettings(settings: any): void {
   // If NoOpProvider is active (no ADMIN_SECRET), keep legacy behavior:
   // write everything to settings.json so secrets are not lost
   if (sm instanceof NoOpProvider) {
+    ensureNotDirectory(settingsPath);
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
     return;
   }
@@ -108,6 +109,7 @@ export function saveFullSettings(settings: any): void {
   const configOnly = stripSecrets(settings);
 
   // Write non-secrets to settings.json
+  ensureNotDirectory(settingsPath);
   fs.writeFileSync(settingsPath, JSON.stringify(configOnly, null, 2));
 
   // Merge new secrets with existing ones to prevent data loss.
@@ -183,6 +185,7 @@ export async function saveFullSettingsAsync(settings: any): Promise<void> {
 
   // If NoOpProvider is active (no ADMIN_SECRET), keep legacy behavior
   if (sm instanceof NoOpProvider) {
+    await ensureNotDirectoryAsync(settingsPath);
     await fsPromises.writeFile(settingsPath, JSON.stringify(settings, null, 2));
     settingsCache = null;
     return;
@@ -191,6 +194,7 @@ export async function saveFullSettingsAsync(settings: any): Promise<void> {
   const newSecrets = extractSecrets(settings);
   const configOnly = stripSecrets(settings);
 
+  await ensureNotDirectoryAsync(settingsPath);
   await fsPromises.writeFile(settingsPath, JSON.stringify(configOnly, null, 2));
 
   // Merge new secrets with existing ones to prevent data loss.
@@ -245,6 +249,7 @@ export function migrateSecretsFromSettingsFile(): { migrated: number } {
   // Strip secrets from settings.json and rewrite
   const configOnly = stripSecrets(config);
   const settingsPath = getSettingsPath();
+  ensureNotDirectory(settingsPath);
   fs.writeFileSync(settingsPath, JSON.stringify(configOnly, null, 2));
 
   logger.info(`[SecretManager] Migrated ${Object.keys(secrets).length} secrets from settings.json to encrypted storage`);

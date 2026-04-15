@@ -436,6 +436,79 @@ describe('getFullSettingsAsync — no-cache on empty secrets', () => {
   });
 });
 
+describe('saveFullSettings — EISDIR handling (PVC subPath mount)', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'eisdir-save-'));
+    resetSecretManager();
+    invalidateSettingsCache();
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    resetSecretManager();
+    invalidateSettingsCache();
+    vi.restoreAllMocks();
+  });
+
+  it('should handle settings.json being a directory (sync, NoOpProvider)', () => {
+    const settingsJsonPath = path.join(tmpDir, 'settings.json');
+    // Simulate PVC creating a directory instead of a file
+    fs.mkdirSync(settingsJsonPath, { recursive: true });
+
+    const provider = new NoOpProvider();
+    setSecretManager(provider);
+    vi.spyOn(configHelpers, 'getSettingsPath').mockReturnValue(settingsJsonPath);
+
+    saveFullSettings({ general: { theme: 'dark' } });
+
+    // Should have replaced the directory with a file
+    expect(fs.statSync(settingsJsonPath).isFile()).toBe(true);
+    const written = JSON.parse(fs.readFileSync(settingsJsonPath, 'utf-8'));
+    expect(written.general.theme).toBe('dark');
+  });
+
+  it('should handle settings.json being a directory (sync, EncryptedFileProvider)', () => {
+    const settingsJsonPath = path.join(tmpDir, 'settings.json');
+    const encPath = path.join(tmpDir, 'settings.secrets.enc');
+    // Simulate PVC creating a directory instead of a file
+    fs.mkdirSync(settingsJsonPath, { recursive: true });
+
+    const provider = new EncryptedFileProvider(encPath, 'test-key');
+    setSecretManager(provider);
+    vi.spyOn(configHelpers, 'getSettingsPath').mockReturnValue(settingsJsonPath);
+
+    saveFullSettings({
+      general: { theme: 'dark' },
+      jira: { api_token: 'secret' }
+    });
+
+    // Should have replaced the directory with a file
+    expect(fs.statSync(settingsJsonPath).isFile()).toBe(true);
+    const written = JSON.parse(fs.readFileSync(settingsJsonPath, 'utf-8'));
+    expect(written.general.theme).toBe('dark');
+    // Secrets should be in the provider, not in the file
+    expect(written.jira?.api_token).toBeUndefined();
+    expect(provider.get('jira.api_token')).toBe('secret');
+  });
+
+  it('should handle settings.json being a directory (async, NoOpProvider)', async () => {
+    const settingsJsonPath = path.join(tmpDir, 'settings.json');
+    fs.mkdirSync(settingsJsonPath, { recursive: true });
+
+    const provider = new NoOpProvider();
+    setSecretManager(provider);
+    vi.spyOn(configHelpers, 'getSettingsPath').mockReturnValue(settingsJsonPath);
+
+    await saveFullSettingsAsync({ general: { theme: 'light' } });
+
+    expect(fs.statSync(settingsJsonPath).isFile()).toBe(true);
+    const written = JSON.parse(fs.readFileSync(settingsJsonPath, 'utf-8'));
+    expect(written.general.theme).toBe('light');
+  });
+});
+
 describe('saveFullSettings — secret preservation', () => {
   let tmpDir: string;
 
