@@ -198,6 +198,42 @@ describe('mongoServer utility', () => {
     await expect(getDb(config as any, 'app')).rejects.toThrow('AWS SSO credentials are required');
   });
 
+  it('uses ambient AWS credentials without requiring any settings', async () => {
+    const config = {
+        uri: 'mongodb://host',
+        auth: {
+            method: 'aws',
+            aws_auth_type: 'ambient'
+        }
+    };
+
+    // Seed leftover env vars from a prior auth type; ambient must clear them.
+    process.env.AWS_ACCESS_KEY_ID = 'leftover-AK';
+    process.env.AWS_SECRET_ACCESS_KEY = 'leftover-SK';
+    process.env.AWS_SESSION_TOKEN = 'leftover-ST';
+    process.env.AWS_ROLE_ARN = 'leftover-arn';
+    process.env.AWS_ROLE_SESSION_NAME = 'leftover-sess';
+    process.env.AWS_ROLE_EXTERNAL_ID = 'leftover-ext';
+
+    await expect(getDb(config as any, 'app')).resolves.toBeDefined();
+
+    expect(process.env.AWS_ACCESS_KEY_ID).toBeUndefined();
+    expect(process.env.AWS_SECRET_ACCESS_KEY).toBeUndefined();
+    expect(process.env.AWS_SESSION_TOKEN).toBeUndefined();
+    expect(process.env.AWS_ROLE_ARN).toBeUndefined();
+    expect(process.env.AWS_ROLE_SESSION_NAME).toBeUndefined();
+    expect(process.env.AWS_ROLE_EXTERNAL_ID).toBeUndefined();
+
+    expect(MongoClient).toHaveBeenCalledWith('mongodb://host', expect.objectContaining({
+        authMechanism: 'MONGODB-AWS',
+        authSource: '$external',
+        auth: { username: '', password: '' },
+        authMechanismProperties: expect.objectContaining({
+          AWS_CREDENTIAL_PROVIDER: expect.any(Function)
+        })
+    }));
+  });
+
   it('throws for static AWS auth without access key', async () => {
     const config = {
         uri: 'mongodb://host',

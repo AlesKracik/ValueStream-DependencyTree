@@ -38,13 +38,14 @@ The default authentication method using URI-based credentials.
 - **Example:** `mongodb://user:pass@localhost:27017`
 
 ### 2. AWS IAM
-Allows connection using AWS Identity and Access Management. Supports both static keys and Assume Role.
+Allows connection using AWS Identity and Access Management. Supports static keys, Assume Role, SSO, and the service's own ambient AWS identity.
 - **Config:** Nested under `persistence.mongo.[role].auth`:
     - `method`: "aws"
-    - `aws_auth_type`: "static" or "role"
+    - `aws_auth_type`: "static", "role", "sso", or "ambient"
     - `aws_access_key`, `aws_secret_key`, `aws_session_token`
     - `aws_role_arn`, `aws_external_id`
 - **Driver Logic:** Uses `MONGODB-AWS` mechanism.
+- **Ambient mode:** When `aws_auth_type` is `"ambient"`, the service uses whichever AWS identity is already attached to its runtime (IRSA / EKS Pod Identity, EC2 instance profile, ECS task role). No credentials or Role ARN are configured in settings — MongoDB authenticates as the pod/container's own role, which must have access to the target cluster. Useful when the deployment is already scoped by IAM at the platform level.
 - **SSO Support:** The application uses the AWS SDK device authorization flow (no CLI required):
     1. Configure SSO parameters (Start URL, Region, Account ID, Role Name) in the Persistence settings.
     2. Click **Login via AWS SSO** — the backend calls `RegisterClient` + `StartDeviceAuthorization` via the AWS SDK.

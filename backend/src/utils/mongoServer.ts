@@ -102,7 +102,7 @@ export interface MongoConfig {
   tunnel_name?: string;
   auth?: {
     method?: 'scram' | 'aws' | 'oidc';
-    aws_auth_type?: 'static' | 'role' | 'sso';
+    aws_auth_type?: 'static' | 'role' | 'sso' | 'ambient';
     static?: {
       aws_access_key: string;
       aws_secret_key: string;
@@ -220,7 +220,21 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
       }
     }
 
-    if (awsAuthType === 'sso') {
+    if (awsAuthType === 'ambient') {
+      // Service's own AWS identity (IRSA / Pod Identity / EC2 instance profile / ECS task role)
+      // already has MongoDB access — no settings required. Clear any lingering env vars so
+      // prior auth types don't leak credentials into the provider chain.
+      delete process.env.AWS_ACCESS_KEY_ID;
+      delete process.env.AWS_SECRET_ACCESS_KEY;
+      delete process.env.AWS_SESSION_TOKEN;
+      delete process.env.AWS_ROLE_ARN;
+      delete process.env.AWS_ROLE_SESSION_NAME;
+      delete process.env.AWS_ROLE_EXTERNAL_ID;
+
+      options.authMechanismProperties = {
+        AWS_CREDENTIAL_PROVIDER: fromNodeProviderChain()
+      };
+    } else if (awsAuthType === 'sso') {
       const sso = config.auth?.sso;
       const ak = sso?.aws_access_key;
       const sk = sso?.aws_secret_key;

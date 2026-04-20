@@ -527,10 +527,17 @@ export const PersistenceSettings: React.FC<SettingsTabProps> = ({
                 <option value="static">Static Credentials</option>
                 <option value="sso">SSO (Auto-refresh)</option>
                 <option value="role">Assume Role</option>
+                <option value="ambient">Instance Role / IRSA (ambient credentials)</option>
               </select>
             </label>
 
-            {mongo.auth.aws_auth_type === 'sso' ? (
+            {mongo.auth.aws_auth_type === 'ambient' ? (
+              <div style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                No credentials required — the service will authenticate using the AWS identity
+                already attached to its runtime (IRSA, Pod Identity, EC2 instance profile, or ECS
+                task role). Ensure that identity has permissions on the target MongoDB cluster.
+              </div>
+            ) : mongo.auth.aws_auth_type === 'sso' ? (
               <>
                 <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--accent-text)' }}>
                   SSO Configuration<ScopeIndicator path={`persistence.mongo.${role}.auth.sso`} />

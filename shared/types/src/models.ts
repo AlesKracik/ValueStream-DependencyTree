@@ -188,7 +188,7 @@ export interface AwsSsoAuth {
 
 export interface MongoAuthSettings {
   method: 'scram' | 'aws' | 'oidc';
-  aws_auth_type?: 'static' | 'role' | 'sso';
+  aws_auth_type?: 'static' | 'role' | 'sso' | 'ambient';
   static?: AwsStaticAuth;
   role?: AwsRoleAuth;
   sso?: AwsSsoAuth;
