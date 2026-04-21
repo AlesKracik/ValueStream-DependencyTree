@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import logger from '../../utils/logger';
 import { SecretProvider } from './SecretProvider';
 
 const ALGORITHM = 'aes-256-gcm';
@@ -75,6 +76,14 @@ export class EncryptedFileProvider implements SecretProvider {
 
     try {
       const raw = fs.readFileSync(this.filePath, 'utf-8');
+
+      // Treat an empty (or whitespace-only) file as "no secrets yet".
+      // K8s PVC subPath mounts and manual `touch` can produce a zero-byte file.
+      if (raw.trim() === '') {
+        this.cache = {};
+        return this.cache;
+      }
+
       const file: EncryptedFileFormat = JSON.parse(raw);
 
       if (file.version !== 1) {
@@ -108,13 +117,30 @@ export class EncryptedFileProvider implements SecretProvider {
     }
 
     const content = JSON.stringify(encrypted, null, 2);
-    fs.writeFileSync(tmpPath, content);
+
+    // Try atomic write (tmp + rename), but fall back to a direct write if either
+    // step fails. Two known-failing environments:
+    //   - K8s PVC subPath mounts: only the mount point itself is writable; the
+    //     parent dir is the read-only image FS, so writing `.tmp` fails with EROFS.
+    //   - Docker bind mounts on macOS: cross-device renames aren't supported.
     try {
+      fs.writeFileSync(tmpPath, content);
       fs.renameSync(tmpPath, this.filePath);
-    } catch {
-      // Docker bind mounts on macOS don't support atomic rename over the mount.
-      // Fall back to direct write + cleanup.
-      fs.writeFileSync(this.filePath, content);
+    } catch (e: any) {
+      logger.warn(
+        { err: e, path: this.filePath, code: e?.code },
+        '[EncryptedFileProvider] Atomic write failed; falling back to direct write'
+      );
+      try {
+        fs.writeFileSync(this.filePath, content);
+      } catch (writeErr: any) {
+        logger.error(
+          { err: writeErr, path: this.filePath, code: writeErr?.code },
+          '[EncryptedFileProvider] Direct write to secrets file also failed'
+        );
+        throw writeErr;
+      }
+      // Best-effort cleanup of the tmp file if it was created.
       try { fs.unlinkSync(tmpPath); } catch { /* best-effort cleanup */ }
     }
 

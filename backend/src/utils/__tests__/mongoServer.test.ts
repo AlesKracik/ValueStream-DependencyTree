@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MongoClient } from 'mongodb';
-import { getDb, clearMongoCache, getMongoClientCount, startMongoCleanup, stopMongoCleanup, evictSsoClients } from '../mongoServer';
+import { getDb, clearMongoCache, getMongoClientCount, startMongoCleanup, stopMongoCleanup, evictSsoClients, _refreshAmbientAwsEnvSnapshot } from '../mongoServer';
 
 // Mock AWS credential providers
 vi.mock('@aws-sdk/credential-providers', () => ({
@@ -198,40 +198,94 @@ describe('mongoServer utility', () => {
     await expect(getDb(config as any, 'app')).rejects.toThrow('AWS SSO credentials are required');
   });
 
-  it('uses ambient AWS credentials without requiring any settings', async () => {
-    const config = {
+  it('ambient: clears request-scoped creds but preserves IRSA-injected env vars', async () => {
+    const managed = [
+      'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_SESSION_TOKEN',
+      'AWS_ROLE_ARN', 'AWS_ROLE_SESSION_NAME', 'AWS_ROLE_EXTERNAL_ID',
+      'AWS_WEB_IDENTITY_TOKEN_FILE', 'AWS_REGION'
+    ];
+    const saved: Record<string, string | undefined> = {};
+    for (const k of managed) saved[k] = process.env[k];
+
+    try {
+      // Simulate an EKS pod where IRSA webhook injected these at pod start.
+      process.env.AWS_ROLE_ARN = 'arn:aws:iam::123:role/irsa-role';
+      process.env.AWS_WEB_IDENTITY_TOKEN_FILE = '/var/run/secrets/eks.amazonaws.com/serviceaccount/token';
+      process.env.AWS_REGION = 'us-east-1';
+      _refreshAmbientAwsEnvSnapshot();
+
+      // Now simulate a prior 'static'/'role' request that leaked creds into env:
+      process.env.AWS_ACCESS_KEY_ID = 'leftover-AK';
+      process.env.AWS_SECRET_ACCESS_KEY = 'leftover-SK';
+      process.env.AWS_SESSION_TOKEN = 'leftover-ST';
+      process.env.AWS_ROLE_ARN = 'arn:aws:iam::999:role/user-supplied';  // overwrites IRSA's
+      process.env.AWS_ROLE_EXTERNAL_ID = 'leftover-ext';
+
+      const config = {
         uri: 'mongodb://host',
-        auth: {
-            method: 'aws',
-            aws_auth_type: 'ambient'
-        }
-    };
+        auth: { method: 'aws', aws_auth_type: 'ambient' }
+      };
+      await expect(getDb(config as any, 'app')).resolves.toBeDefined();
 
-    // Seed leftover env vars from a prior auth type; ambient must clear them.
-    process.env.AWS_ACCESS_KEY_ID = 'leftover-AK';
-    process.env.AWS_SECRET_ACCESS_KEY = 'leftover-SK';
-    process.env.AWS_SESSION_TOKEN = 'leftover-ST';
-    process.env.AWS_ROLE_ARN = 'leftover-arn';
-    process.env.AWS_ROLE_SESSION_NAME = 'leftover-sess';
-    process.env.AWS_ROLE_EXTERNAL_ID = 'leftover-ext';
+      // Request-scoped creds cleared:
+      expect(process.env.AWS_ACCESS_KEY_ID).toBeUndefined();
+      expect(process.env.AWS_SECRET_ACCESS_KEY).toBeUndefined();
+      expect(process.env.AWS_SESSION_TOKEN).toBeUndefined();
+      expect(process.env.AWS_ROLE_EXTERNAL_ID).toBeUndefined();
 
-    await expect(getDb(config as any, 'app')).resolves.toBeDefined();
+      // IRSA-injected vars restored from snapshot (NOT deleted — fromTokenFile needs them):
+      expect(process.env.AWS_ROLE_ARN).toBe('arn:aws:iam::123:role/irsa-role');
+      expect(process.env.AWS_WEB_IDENTITY_TOKEN_FILE).toBe('/var/run/secrets/eks.amazonaws.com/serviceaccount/token');
+      expect(process.env.AWS_REGION).toBe('us-east-1');
 
-    expect(process.env.AWS_ACCESS_KEY_ID).toBeUndefined();
-    expect(process.env.AWS_SECRET_ACCESS_KEY).toBeUndefined();
-    expect(process.env.AWS_SESSION_TOKEN).toBeUndefined();
-    expect(process.env.AWS_ROLE_ARN).toBeUndefined();
-    expect(process.env.AWS_ROLE_SESSION_NAME).toBeUndefined();
-    expect(process.env.AWS_ROLE_EXTERNAL_ID).toBeUndefined();
-
-    expect(MongoClient).toHaveBeenCalledWith('mongodb://host', expect.objectContaining({
+      expect(MongoClient).toHaveBeenCalledWith('mongodb://host', expect.objectContaining({
         authMechanism: 'MONGODB-AWS',
         authSource: '$external',
         auth: { username: '', password: '' },
         authMechanismProperties: expect.objectContaining({
           AWS_CREDENTIAL_PROVIDER: expect.any(Function)
         })
-    }));
+      }));
+    } finally {
+      for (const k of managed) {
+        if (saved[k] === undefined) delete process.env[k];
+        else process.env[k] = saved[k];
+      }
+      _refreshAmbientAwsEnvSnapshot();
+    }
+  });
+
+  it('ambient: deletes IRSA vars that were absent at module init (non-IRSA environment)', async () => {
+    const managed = ['AWS_ROLE_ARN', 'AWS_ROLE_SESSION_NAME', 'AWS_WEB_IDENTITY_TOKEN_FILE'];
+    const saved: Record<string, string | undefined> = {};
+    for (const k of managed) saved[k] = process.env[k];
+
+    try {
+      // Module init happens with no IRSA env — snapshot is all-undefined.
+      delete process.env.AWS_ROLE_ARN;
+      delete process.env.AWS_WEB_IDENTITY_TOKEN_FILE;
+      _refreshAmbientAwsEnvSnapshot();
+
+      // Prior 'role' auth leaked a user-supplied AWS_ROLE_ARN:
+      process.env.AWS_ROLE_ARN = 'arn:aws:iam::999:role/user-supplied';
+      process.env.AWS_ROLE_SESSION_NAME = 'leftover-sess';
+
+      const config = {
+        uri: 'mongodb://host',
+        auth: { method: 'aws', aws_auth_type: 'ambient' }
+      };
+      await expect(getDb(config as any, 'app')).resolves.toBeDefined();
+
+      // Nothing in snapshot → these should be deleted:
+      expect(process.env.AWS_ROLE_ARN).toBeUndefined();
+      expect(process.env.AWS_ROLE_SESSION_NAME).toBeUndefined();
+    } finally {
+      for (const k of managed) {
+        if (saved[k] === undefined) delete process.env[k];
+        else process.env[k] = saved[k];
+      }
+      _refreshAmbientAwsEnvSnapshot();
+    }
   });
 
   it('throws for static AWS auth without access key', async () => {

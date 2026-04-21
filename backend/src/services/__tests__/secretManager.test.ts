@@ -108,6 +108,28 @@ describe('EncryptedFileProvider', () => {
     expect(() => provider.getAll()).toThrow(/Failed to decrypt/);
   });
 
+  it('should treat an empty file as no secrets (PVC subPath / touch edge case)', () => {
+    // PVC subPath mounts and `touch` can produce a zero-byte file rather than ENOENT
+    fs.writeFileSync(encPath, '');
+
+    const provider = new EncryptedFileProvider(encPath, masterKey);
+    expect(provider.getAll()).toEqual({});
+    expect(provider.get('any.key')).toBeUndefined();
+    expect(provider.hasSecrets()).toBe(false);
+
+    // Should still be writable — subsequent set() must produce a valid encrypted file
+    provider.set('key', 'value');
+    const provider2 = new EncryptedFileProvider(encPath, masterKey);
+    expect(provider2.get('key')).toBe('value');
+  });
+
+  it('should treat a whitespace-only file as no secrets', () => {
+    fs.writeFileSync(encPath, '   \n\t  \n');
+
+    const provider = new EncryptedFileProvider(encPath, masterKey);
+    expect(provider.getAll()).toEqual({});
+  });
+
   it('should handle encPath being a directory (Docker bind mount edge case)', () => {
     // Docker creates a directory when the host file doesn't exist on bind mount
     fs.mkdirSync(encPath, { recursive: true });
@@ -133,7 +155,7 @@ describe('EncryptedFileProvider', () => {
 
     // Spy on fs to make renameSync fail (simulates Docker bind mount on macOS)
     const renameSpy = vi.spyOn(fs, 'renameSync').mockImplementation(() => {
-      throw new Error('EXDEV: cross-device link not permitted');
+      throw Object.assign(new Error('EXDEV: cross-device link not permitted'), { code: 'EXDEV' });
     });
     const writeFileSpy = vi.spyOn(fs, 'writeFileSync');
     const unlinkSpy = vi.spyOn(fs, 'unlinkSync');
@@ -155,6 +177,48 @@ describe('EncryptedFileProvider', () => {
 
     const provider2 = new EncryptedFileProvider(encPath, masterKey);
     expect(provider2.get('key')).toBe('value');
+  });
+
+  it('should fall back to direct write when tmp write fails with EROFS (K8s PVC subPath)', () => {
+    // K8s PVC subPath mounts: only the mount point is writable; writing the
+    // sibling .tmp file to the (read-only) parent directory fails with EROFS.
+    const provider = new EncryptedFileProvider(encPath, masterKey);
+
+    const tmpPath = encPath + '.tmp';
+    const realWriteFileSync = fs.writeFileSync;
+    const writeFileSpy = vi.spyOn(fs, 'writeFileSync').mockImplementation((p: any, data: any, opts?: any) => {
+      if (p === tmpPath) {
+        throw Object.assign(new Error(`EROFS: read-only file system, open '${p}'`), { code: 'EROFS' });
+      }
+      return realWriteFileSync(p, data, opts);
+    });
+    const renameSpy = vi.spyOn(fs, 'renameSync');
+
+    provider.set('key', 'value');
+
+    // Tmp write was attempted and failed; rename should NOT have been called.
+    const writeCallPaths = writeFileSpy.mock.calls.map(c => c[0]);
+    expect(writeCallPaths).toContain(tmpPath);
+    expect(writeCallPaths).toContain(encPath);
+    expect(renameSpy).not.toHaveBeenCalled();
+
+    writeFileSpy.mockRestore();
+    renameSpy.mockRestore();
+
+    // Data must be readable via a fresh provider
+    const provider2 = new EncryptedFileProvider(encPath, masterKey);
+    expect(provider2.get('key')).toBe('value');
+  });
+
+  it('should propagate write errors when both tmp and direct writes fail', () => {
+    const provider = new EncryptedFileProvider(encPath, masterKey);
+
+    vi.spyOn(fs, 'writeFileSync').mockImplementation(() => {
+      throw Object.assign(new Error('EROFS: read-only file system'), { code: 'EROFS' });
+    });
+
+    expect(() => provider.set('key', 'value')).toThrow(/EROFS/);
+    vi.restoreAllMocks();
   });
 
   it('should use cached data on subsequent reads', () => {

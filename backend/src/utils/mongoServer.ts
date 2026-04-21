@@ -6,6 +6,48 @@ import logger from './logger';
 
 const dnsLookup = promisify(dns.lookup);
 
+// Env vars injected by EKS IRSA / Pod Identity / ECS task-role / EC2 webhooks.
+// fromNodeProviderChain() walks: env → SSO → shared-file → webIdentity → ECS → IMDS.
+// The webIdentity step reads AWS_ROLE_ARN + AWS_WEB_IDENTITY_TOKEN_FILE — deleting
+// them makes the step no-op and the chain falls through to "Could not load credentials".
+const AMBIENT_AWS_ENV_KEYS = [
+  'AWS_ROLE_ARN',
+  'AWS_WEB_IDENTITY_TOKEN_FILE',
+  'AWS_ROLE_SESSION_NAME',
+  'AWS_REGION',
+  'AWS_DEFAULT_REGION',
+  'AWS_STS_REGIONAL_ENDPOINTS',
+  'AWS_CONTAINER_CREDENTIALS_RELATIVE_URI',
+  'AWS_CONTAINER_CREDENTIALS_FULL_URI',
+  'AWS_CONTAINER_AUTHORIZATION_TOKEN',
+  'AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE',
+] as const;
+
+let ambientAwsEnvSnapshot: Record<string, string | undefined> = snapshotAmbientAwsEnv();
+
+function snapshotAmbientAwsEnv(): Record<string, string | undefined> {
+  return Object.fromEntries(AMBIENT_AWS_ENV_KEYS.map(k => [k, process.env[k]]));
+}
+
+/** Restore the module-init snapshot of IRSA/ambient env vars, and clear any
+ *  request-scoped credentials leaked in by prior 'static' / 'role' / 'sso' auth. */
+function restoreAmbientAwsEnv(): void {
+  delete process.env.AWS_ACCESS_KEY_ID;
+  delete process.env.AWS_SECRET_ACCESS_KEY;
+  delete process.env.AWS_SESSION_TOKEN;
+  delete process.env.AWS_ROLE_EXTERNAL_ID;
+  for (const k of AMBIENT_AWS_ENV_KEYS) {
+    const v = ambientAwsEnvSnapshot[k];
+    if (v === undefined) delete process.env[k];
+    else process.env[k] = v;
+  }
+}
+
+/** Test-only: re-capture the ambient env snapshot (e.g. after a test sets IRSA vars). */
+export function _refreshAmbientAwsEnvSnapshot(): void {
+  ambientAwsEnvSnapshot = snapshotAmbientAwsEnv();
+}
+
 // SSRF Protection: Check if URL is internal/private
 export async function isSafeUrl(urlStr: string) {
   try {
@@ -222,14 +264,11 @@ export async function getDb(config: MongoConfig, type: 'app' | 'customer' = 'app
 
     if (awsAuthType === 'ambient') {
       // Service's own AWS identity (IRSA / Pod Identity / EC2 instance profile / ECS task role)
-      // already has MongoDB access — no settings required. Clear any lingering env vars so
-      // prior auth types don't leak credentials into the provider chain.
-      delete process.env.AWS_ACCESS_KEY_ID;
-      delete process.env.AWS_SECRET_ACCESS_KEY;
-      delete process.env.AWS_SESSION_TOKEN;
-      delete process.env.AWS_ROLE_ARN;
-      delete process.env.AWS_ROLE_SESSION_NAME;
-      delete process.env.AWS_ROLE_EXTERNAL_ID;
+      // already has MongoDB access — no settings required. Restore the snapshot of ambient
+      // env vars captured at module load so that request-scoped credentials from prior
+      // 'static'/'role'/'sso' calls don't leak into the provider chain, while keeping the
+      // IRSA-injected AWS_ROLE_ARN + AWS_WEB_IDENTITY_TOKEN_FILE intact for fromTokenFile.
+      restoreAmbientAwsEnv();
 
       options.authMechanismProperties = {
         AWS_CREDENTIAL_PROVIDER: fromNodeProviderChain()
