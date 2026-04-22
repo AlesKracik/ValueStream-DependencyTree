@@ -192,9 +192,10 @@ def build_signed_request(region: str, creds: dict) -> dict:
 
 
 def main() -> None:
+    profile_hint = DEFAULT_PROFILE or '$AWS_PROFILE or "default"'
     parser = argparse.ArgumentParser(description="Generate a pre-signed STS GetCallerIdentity request")
-    parser.add_argument("--profile", default=None, help=f"AWS profile name (default: {DEFAULT_PROFILE or '$AWS_PROFILE or \"default\"'})")
-    parser.add_argument("--region", default=None, help=f"AWS region for the STS endpoint (default: {DEFAULT_REGION})")
+    parser.add_argument("--profile", default=None, help="AWS profile name (default: " + profile_hint + ")")
+    parser.add_argument("--region", default=None, help="AWS region for the STS endpoint (default: " + DEFAULT_REGION + ")")
     parser.add_argument("--output", default="sts-request.json", help="Output file path (default: sts-request.json)")
     parser.add_argument("--stdout", action="store_true", help="Print to stdout instead of writing a file")
     parser.add_argument("--no-login", action="store_true", help="Do not run `aws sso login` automatically when credentials are missing or expired")
