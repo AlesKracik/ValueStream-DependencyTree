@@ -63,6 +63,7 @@ export const DEFAULT_SETTINGS: Settings = {
   auth: {
     method: 'local', session_expiry_hours: 24, default_role: 'viewer',
     aws_sso: { start_url: '', region: '', account_id: '', role_name: '' },
+    aws_sts: { region: '', account_id: '', role_name: '', default_profile: '', max_request_age_seconds: 300 },
     okta: { issuer: '', client_id: '', client_secret: '' },
   }
 };
