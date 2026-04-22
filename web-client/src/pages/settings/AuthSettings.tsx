@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { SettingsTabProps } from './types';
-import type { AuthMethod, UserRole, AwsSsoAuthConfig, OktaAuthConfig } from '@valuestream/shared-types';
+import type { AuthMethod, UserRole, AwsSsoAuthConfig, AwsStsAuthConfig, OktaAuthConfig } from '@valuestream/shared-types';
 import { FormSelectField, FormNumberField, FormTextField } from '../../components/common/FormFields';
 import { ScopeIndicator } from '../../components/common/ScopeIndicator';
 import { authorizedFetch } from '../../utils/api';
@@ -77,6 +77,7 @@ export const AuthSettings: React.FC<SettingsTabProps> = ({
           { value: 'local', label: 'Local accounts (username/password)' },
           { value: 'ldap', label: 'LDAP bind (uses LDAP settings)' },
           { value: 'aws-sso', label: 'AWS SSO (device authorization)' },
+          { value: 'aws-sts', label: 'AWS STS (client-signed GetCallerIdentity)' },
           { value: 'okta', label: 'Okta (OIDC / OAuth2)' },
         ]}
         style={settingsFieldStyle}
@@ -158,6 +159,77 @@ export const AuthSettings: React.FC<SettingsTabProps> = ({
               onUpdateSettings({ auth: { ...localFormData.auth, aws_sso: { ...localFormData.auth?.aws_sso, role_name: v } as AwsSsoAuthConfig } });
             }}
             placeholder="ViewOnlyAccess"
+            style={settingsFieldStyle}
+          />
+        </>
+      )}
+
+      {authMethod === 'aws-sts' && (
+        <>
+          <h3 style={{ margin: "16px 0 4px 0", fontSize: "15px", color: "var(--text-primary)", borderBottom: "1px solid var(--border-secondary)", paddingBottom: "4px" }}>
+            AWS STS Configuration
+          </h3>
+
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', maxWidth: '32rem', margin: 0 }}>
+            Users sign a <code>sts:GetCallerIdentity</code> request on their own machine with their
+            AWS credentials and upload the signed payload. The backend forwards it to STS and issues
+            a JWT if the returned ARN matches the role below. Requires no backend AWS access.
+          </p>
+
+          <FormTextField
+            label="AWS Region:"
+            value={localFormData.auth?.aws_sts?.region || ''}
+            onChange={v => {
+              updateFormData('auth.aws_sts.region', v);
+              onUpdateSettings({ auth: { ...localFormData.auth, aws_sts: { ...localFormData.auth?.aws_sts, region: v } as AwsStsAuthConfig } });
+            }}
+            placeholder="us-east-1"
+            style={settingsFieldStyle}
+          />
+
+          <FormTextField
+            label="Account ID:"
+            value={localFormData.auth?.aws_sts?.account_id || ''}
+            onChange={v => {
+              updateFormData('auth.aws_sts.account_id', v);
+              onUpdateSettings({ auth: { ...localFormData.auth, aws_sts: { ...localFormData.auth?.aws_sts, account_id: v } as AwsStsAuthConfig } });
+            }}
+            placeholder="123456789012"
+            style={settingsFieldStyle}
+          />
+
+          <FormTextField
+            label="Allowed Role Name:"
+            value={localFormData.auth?.aws_sts?.role_name || ''}
+            onChange={v => {
+              updateFormData('auth.aws_sts.role_name', v);
+              onUpdateSettings({ auth: { ...localFormData.auth, aws_sts: { ...localFormData.auth?.aws_sts, role_name: v } as AwsStsAuthConfig } });
+            }}
+            placeholder="DeveloperAccess"
+            style={settingsFieldStyle}
+          />
+
+          <FormTextField
+            label="Default AWS Profile (baked into helper script):"
+            value={localFormData.auth?.aws_sts?.default_profile || ''}
+            onChange={v => {
+              updateFormData('auth.aws_sts.default_profile', v);
+              onUpdateSettings({ auth: { ...localFormData.auth, aws_sts: { ...localFormData.auth?.aws_sts, default_profile: v } as AwsStsAuthConfig } });
+            }}
+            placeholder="vst"
+            style={settingsFieldStyle}
+          />
+
+          <FormNumberField
+            label="Max request age (seconds):"
+            value={localFormData.auth?.aws_sts?.max_request_age_seconds ?? 300}
+            onChange={v => {
+              const val = v ?? 300;
+              updateFormData('auth.aws_sts.max_request_age_seconds', val);
+              onUpdateSettings({ auth: { ...localFormData.auth, aws_sts: { ...localFormData.auth?.aws_sts, max_request_age_seconds: val } as AwsStsAuthConfig } });
+            }}
+            min={60}
+            max={3600}
             style={settingsFieldStyle}
           />
         </>

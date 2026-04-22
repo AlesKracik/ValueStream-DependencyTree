@@ -22,6 +22,7 @@ const PUBLIC_PREFIXES = [
   '/api/auth/methods',
   '/api/auth/setup',
   '/api/auth/aws-sso/',
+  '/api/auth/aws-sts/',
   '/api/auth/okta/',
   '/api/health',
 ];

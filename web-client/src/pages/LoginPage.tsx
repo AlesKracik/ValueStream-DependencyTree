@@ -63,6 +63,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                     <AwsSsoLogin onSuccess={handleSuccess} error={error} setError={setError} />
                 )}
 
+                {authMethod === 'aws-sts' && (
+                    <AwsStsLogin onSuccess={handleSuccess} error={error} setError={setError} />
+                )}
+
                 {authMethod === 'okta' && (
                     <OktaLogin error={error} setError={setError} />
                 )}
@@ -262,6 +266,85 @@ const AwsSsoLogin: React.FC<{
                     )}
                 </div>
             )}
+
+            {error && <p style={{ color: 'var(--status-danger-text)', fontSize: '12px', margin: 0 }}>{error}</p>}
+        </>
+    );
+};
+
+// ── AWS STS Pre-signed Login ───────────────────────────────────
+
+const AwsStsLogin: React.FC<{
+    onSuccess: (token: string) => void;
+    error: string;
+    setError: (e: string) => void;
+}> = ({ onSuccess, error, setError }) => {
+    const [loading, setLoading] = useState(false);
+    const [fileName, setFileName] = useState('');
+
+    const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setFileName(file.name);
+        setError('');
+        setLoading(true);
+
+        try {
+            const text = await file.text();
+            let payload: unknown;
+            try {
+                payload = JSON.parse(text);
+            } catch {
+                setError('Uploaded file is not valid JSON. Did you select sts-request.json?');
+                return;
+            }
+
+            const response = await fetch('/api/auth/aws-sts/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await response.json().catch(() => ({}));
+            if (response.ok && data.token) {
+                if (data.user?.role) setUserRole(data.user.role);
+                onSuccess(data.token);
+            } else {
+                setError(data.error || 'STS verification failed');
+            }
+        } catch {
+            setError('Connection error');
+        } finally {
+            setLoading(false);
+            // Reset input so the same file can be re-uploaded after an error
+            e.target.value = '';
+        }
+    };
+
+    return (
+        <>
+            <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-muted)', textAlign: 'center' }}>
+                Sign in with a pre-signed AWS STS request
+            </p>
+
+            <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                <li>Download <a href="/api/auth/aws-sts/helper-script" download="sts-sign.py" style={{ color: 'var(--accent-primary)' }}>sts-sign.py</a> and run it. It runs <code>aws sso login</code> for you if needed.</li>
+                <li>Upload the generated <code>sts-request.json</code> below.</li>
+            </ol>
+
+            <label
+                className="btn-primary"
+                style={{ width: '100%', textAlign: 'center', cursor: loading ? 'wait' : 'pointer', display: 'block', padding: '8px 12px' }}
+            >
+                {loading ? 'Verifying...' : (fileName ? `Re-upload (last: ${fileName})` : 'Upload sts-request.json')}
+                <input
+                    type="file"
+                    accept="application/json,.json"
+                    onChange={handleFile}
+                    disabled={loading}
+                    style={{ display: 'none' }}
+                />
+            </label>
 
             {error && <p style={{ color: 'var(--status-danger-text)', fontSize: '12px', margin: 0 }}>{error}</p>}
         </>

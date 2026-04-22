@@ -248,7 +248,7 @@ export interface AISettings {
 
 export type UserRole = 'admin' | 'editor' | 'viewer';
 
-export type AuthMethod = 'local' | 'ldap' | 'aws-sso' | 'okta';
+export type AuthMethod = 'local' | 'ldap' | 'aws-sso' | 'okta' | 'aws-sts';
 
 export interface AwsSsoAuthConfig {
   start_url: string;
@@ -263,10 +263,25 @@ export interface OktaAuthConfig {
   client_secret?: string; // optional if using PKCE-only
 }
 
+/**
+ * AWS STS pre-signed caller-identity auth config.
+ * The user signs a GetCallerIdentity request on their own machine using their
+ * local AWS credentials; the backend forwards the signed request to STS and
+ * checks the returned ARN against the configured role.
+ */
+export interface AwsStsAuthConfig {
+  region: string;                  // must match the STS endpoint host
+  account_id: string;              // allowed AWS account
+  role_name: string;               // allowed role (extracted from assumed-role ARN)
+  default_profile?: string;        // baked into the downloadable helper script
+  max_request_age_seconds?: number; // defaults to 300 (5 minutes)
+}
+
 export interface AuthSettings {
   method: AuthMethod;
   session_expiry_hours: number;
   aws_sso?: AwsSsoAuthConfig;
+  aws_sts?: AwsStsAuthConfig;
   okta?: OktaAuthConfig;
   default_role: UserRole;
 }

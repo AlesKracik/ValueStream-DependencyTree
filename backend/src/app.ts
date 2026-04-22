@@ -24,6 +24,7 @@ import { awsRoutes } from './routes/aws';
 import { gleanRoutes } from './routes/glean';
 import { ldapRoutes } from './routes/ldap';
 import { awsAuthRoutes } from './routes/awsAuth';
+import { awsStsAuthRoutes } from './routes/awsStsAuth';
 import { oktaAuthRoutes } from './routes/oktaAuth';
 import { migrateSecretsFromSettingsFile, getSecretManager } from './services/secretManager';
 
@@ -64,6 +65,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(gleanRoutes);
   await app.register(ldapRoutes);
   await app.register(awsAuthRoutes);
+  await app.register(awsStsAuthRoutes);
   await app.register(oktaAuthRoutes);
 
   // Auto-migrate secrets from plain-text settings.json to encrypted storage
