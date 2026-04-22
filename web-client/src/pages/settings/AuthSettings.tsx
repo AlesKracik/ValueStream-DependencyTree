@@ -199,13 +199,13 @@ export const AuthSettings: React.FC<SettingsTabProps> = ({
           />
 
           <FormTextField
-            label="Allowed Role Name:"
+            label="Allowed Role Name (or Identity Center permission-set name):"
             value={localFormData.auth?.aws_sts?.role_name || ''}
             onChange={v => {
               updateFormData('auth.aws_sts.role_name', v);
               onUpdateSettings({ auth: { ...localFormData.auth, aws_sts: { ...localFormData.auth?.aws_sts, role_name: v } as AwsStsAuthConfig } });
             }}
-            placeholder="DeveloperAccess"
+            placeholder="CustomPowerUserAccess"
             style={settingsFieldStyle}
           />
 

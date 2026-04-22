@@ -154,6 +154,72 @@ describe('AWS STS Auth Routes', () => {
     expect(JSON.parse(response.payload).error).toMatch(/999999999999/);
   });
 
+  it('POST /api/auth/aws-sts/verify accepts SSO-wrapped role via permission-set name', async () => {
+    // Admin configures permission-set name; STS returns AWSReservedSSO_<name>_<hash>
+    app.getSettings = vi.fn().mockResolvedValue({
+      ...baseSettings,
+      auth: { ...baseSettings.auth, aws_sts: { ...baseSettings.auth.aws_sts, role_name: 'CustomPowerUserAccess' } },
+    });
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: async () => stsSuccessXml('arn:aws:sts::123456789012:assumed-role/AWSReservedSSO_CustomPowerUserAccess_a1b2c3d4e5f67890/alice@example.com'),
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/aws-sts/verify',
+      payload: buildSignedRequest(),
+    });
+    expect(response.statusCode).toBe(200);
+    const json = JSON.parse(response.payload);
+    expect(json.success).toBe(true);
+    expect(json.user.username).toBe('alice@example.com');
+    expect(json.aws_identity.role).toBe('AWSReservedSSO_CustomPowerUserAccess_a1b2c3d4e5f67890');
+  });
+
+  it('POST /api/auth/aws-sts/verify handles permission-set names containing underscores', async () => {
+    app.getSettings = vi.fn().mockResolvedValue({
+      ...baseSettings,
+      auth: { ...baseSettings.auth, aws_sts: { ...baseSettings.auth.aws_sts, role_name: 'Custom_Power_User_Access' } },
+    });
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: async () => stsSuccessXml('arn:aws:sts::123456789012:assumed-role/AWSReservedSSO_Custom_Power_User_Access_a1b2c3d4e5f67890/alice@example.com'),
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/aws-sts/verify',
+      payload: buildSignedRequest(),
+    });
+    expect(response.statusCode).toBe(200);
+  });
+
+  it('POST /api/auth/aws-sts/verify rejects SSO-wrapped role whose permission set differs from config', async () => {
+    app.getSettings = vi.fn().mockResolvedValue({
+      ...baseSettings,
+      auth: { ...baseSettings.auth, aws_sts: { ...baseSettings.auth.aws_sts, role_name: 'CustomPowerUserAccess' } },
+    });
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: async () => stsSuccessXml('arn:aws:sts::123456789012:assumed-role/AWSReservedSSO_ReadOnlyAccess_a1b2c3d4e5f67890/alice@example.com'),
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/aws-sts/verify',
+      payload: buildSignedRequest(),
+    });
+    expect(response.statusCode).toBe(403);
+    expect(JSON.parse(response.payload).error).toMatch(/permission set: ReadOnlyAccess/);
+  });
+
   it('POST /api/auth/aws-sts/verify issues a JWT for a matching ARN', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,

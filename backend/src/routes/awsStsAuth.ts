@@ -45,6 +45,20 @@ function extractIdentityFromArn(arn: string): { username: string; displayName: s
   };
 }
 
+/**
+ * For IAM Identity Center (SSO) sessions, STS returns the assumed role as
+ * `AWSReservedSSO_<PermissionSetName>_<16-hex-hash>`. Extract the permission
+ * set name so admins can configure `role_name` using the Identity Center
+ * console name (e.g. "CustomPowerUserAccess") rather than the wrapped form.
+ * Returns null for non-SSO role names.
+ */
+function extractSsoPermissionSetName(roleName: string): string | null {
+  // Greedy .+ with trailing 16-hex anchor handles permission set names
+  // that themselves contain underscores (e.g. "Custom_Power_User_Access").
+  const m = /^AWSReservedSSO_(.+)_([0-9a-f]{16})$/i.exec(roleName);
+  return m ? m[1] : null;
+}
+
 /** Parse the STS GetCallerIdentity XML response */
 function parseStsResponse(xml: string): { arn?: string; account?: string; userId?: string } {
   const arn = /<Arn>([^<]+)<\/Arn>/.exec(xml)?.[1];
@@ -184,8 +198,15 @@ export const awsStsAuthRoutes: FastifyPluginAsync = async (fastify) => {
       if (identity.account !== stsConfig.account_id || account !== stsConfig.account_id) {
         throw new AppError(`Account ${identity.account} is not authorized (expected ${stsConfig.account_id})`, 403);
       }
-      if (identity.roleName !== stsConfig.role_name) {
-        throw new AppError(`Role ${identity.roleName} is not authorized (expected ${stsConfig.role_name})`, 403);
+      const permissionSet = extractSsoPermissionSetName(identity.roleName);
+      const roleMatches =
+        identity.roleName === stsConfig.role_name ||
+        permissionSet === stsConfig.role_name;
+      if (!roleMatches) {
+        const actual = permissionSet
+          ? `${identity.roleName} (permission set: ${permissionSet})`
+          : identity.roleName;
+        throw new AppError(`Role ${actual} is not authorized (expected ${stsConfig.role_name})`, 403);
       }
 
       const configuredRole: UserRole = settings.auth?.default_role || 'viewer';

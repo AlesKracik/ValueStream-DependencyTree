@@ -77,6 +77,10 @@ The backend simply forwards the signed bytes to STS and reads back the verified 
 - **AWS Region** — e.g. `us-west-2`; must match the STS endpoint the helper signs for.
 - **Account ID** — only callers from this account are accepted.
 - **Allowed Role Name** — only assumed-role ARNs with this role name are accepted.
+  For AWS Identity Center (SSO) sessions, STS returns the role wrapped as
+  `AWSReservedSSO_<PermissionSetName>_<16-hex-hash>`; configure the
+  permission-set name (e.g. `CustomPowerUserAccess`) and the backend matches
+  either the literal role name or the extracted permission-set name.
 - **Default AWS Profile** — baked into the downloadable helper script so users can run it with
   no flags.
 - **Max request age (seconds)** — default 300. Rejects signed requests older than this to limit
