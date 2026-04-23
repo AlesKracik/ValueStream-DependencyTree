@@ -56,6 +56,99 @@ describe('Error Handler Plugin', () => {
     expect(json.error).toBe('Forbidden');
   });
 
+  it('should enrich TypeError: fetch failed with cause details (ECONNREFUSED)', async () => {
+    const fetchApp = Fastify({ logger: false });
+    await fetchApp.register(errorHandlerPlugin);
+
+    fetchApp.get('/test/fetch-refused', async () => {
+      const err = new TypeError('fetch failed');
+      (err as Error & { cause?: unknown }).cause = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:4321'), {
+        code: 'ECONNREFUSED',
+        address: '127.0.0.1',
+        port: 4321,
+        syscall: 'connect',
+      });
+      throw err;
+    });
+    await fetchApp.ready();
+
+    const response = await fetchApp.inject({ method: 'GET', url: '/test/fetch-refused' });
+    expect(response.statusCode).toBe(500);
+    const json = JSON.parse(response.payload);
+    expect(json.success).toBe(false);
+    expect(json.error).toContain('ECONNREFUSED');
+    expect(json.error).toContain('127.0.0.1:4321');
+    expect(json.error).toContain('GET /test/fetch-refused');
+
+    await fetchApp.close();
+  });
+
+  it('should enrich TypeError: fetch failed with hostname on DNS failure (ENOTFOUND)', async () => {
+    const fetchApp = Fastify({ logger: false });
+    await fetchApp.register(errorHandlerPlugin);
+
+    fetchApp.get('/test/fetch-dns', async () => {
+      const err = new TypeError('fetch failed');
+      (err as Error & { cause?: unknown }).cause = Object.assign(new Error('getaddrinfo ENOTFOUND does-not-exist.invalid'), {
+        code: 'ENOTFOUND',
+        hostname: 'does-not-exist.invalid',
+        syscall: 'getaddrinfo',
+      });
+      throw err;
+    });
+    await fetchApp.ready();
+
+    const response = await fetchApp.inject({ method: 'GET', url: '/test/fetch-dns' });
+    const json = JSON.parse(response.payload);
+    expect(json.error).toContain('ENOTFOUND');
+    expect(json.error).toContain('does-not-exist.invalid');
+
+    await fetchApp.close();
+  });
+
+  it('should unwrap nested cause (undici ConnectTimeoutError)', async () => {
+    const fetchApp = Fastify({ logger: false });
+    await fetchApp.register(errorHandlerPlugin);
+
+    fetchApp.get('/test/fetch-timeout', async () => {
+      const err = new TypeError('fetch failed');
+      // Simulate undici wrapping the real cause one level deeper.
+      const inner = Object.assign(new Error('Connect Timeout Error'), {
+        code: 'UND_ERR_CONNECT_TIMEOUT',
+        hostname: 'slow.example.com',
+        port: 443,
+      });
+      (err as Error & { cause?: unknown }).cause = { cause: inner };
+      throw err;
+    });
+    await fetchApp.ready();
+
+    const response = await fetchApp.inject({ method: 'GET', url: '/test/fetch-timeout' });
+    const json = JSON.parse(response.payload);
+    expect(json.error).toContain('UND_ERR_CONNECT_TIMEOUT');
+    expect(json.error).toContain('slow.example.com:443');
+
+    await fetchApp.close();
+  });
+
+  it('should fall back to generic message when fetch error has no cause', async () => {
+    const fetchApp = Fastify({ logger: false });
+    await fetchApp.register(errorHandlerPlugin);
+
+    fetchApp.get('/test/fetch-bare', async () => {
+      throw new TypeError('fetch failed');
+    });
+    await fetchApp.ready();
+
+    const response = await fetchApp.inject({ method: 'GET', url: '/test/fetch-bare' });
+    const json = JSON.parse(response.payload);
+    expect(json.error).toContain('Outbound request failed');
+    expect(json.error).toContain('GET /test/fetch-bare');
+    expect(json.error).not.toBe('fetch failed');
+
+    await fetchApp.close();
+  });
+
   it('should return 400 with standard format for schema validation errors', async () => {
     // Request to a non-existent route returns 404 from Fastify's default handler,
     // but schema validation errors (400) go through our handler
