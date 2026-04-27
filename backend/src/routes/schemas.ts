@@ -82,6 +82,12 @@ export const AhaFeatureBody = Type.Intersect([
 ]);
 export type AhaFeatureBodyType = Static<typeof AhaFeatureBody>;
 
+export const AhaFeaturesBody = Type.Intersect([
+  AhaConfigBody,
+  Type.Object({ workspace: Type.String() })
+]);
+export type AhaFeaturesBodyType = Static<typeof AhaFeaturesBody>;
+
 // ── LDAP ────────────────────────────────────────────────────────────────────
 export const LdapSyncBody = Type.Object({
   ldap_team_name: Type.String()

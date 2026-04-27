@@ -7,6 +7,42 @@ import { countBusinessDays } from './dateHelpers';
  */
 
 /**
+ * Maps an Aha! feature payload to the WorkItem fields we cache.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const parseAhaFeature = (feature: any): {
+    aha_reference: NonNullable<WorkItem['aha_reference']>;
+    aha_synced_data: NonNullable<WorkItem['aha_synced_data']>;
+} => {
+    const syncedData: NonNullable<WorkItem['aha_synced_data']> = {
+        name: feature.name,
+        description: feature.description?.body || '',
+        score: feature.score,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        requirements: feature.requirements?.map((r: any) => ({
+            id: r.id,
+            reference_num: r.reference_num,
+            name: r.name,
+            description: r.description?.body || '',
+            url: r.url,
+        })) || [],
+    };
+    if (feature.original_estimate) {
+        // Aha! original_estimate is in minutes; 480 minutes = 1 person-day.
+        syncedData.total_effort_mds = Math.round(feature.original_estimate / 480);
+    }
+
+    return {
+        aha_reference: {
+            id: feature.id,
+            reference_num: feature.reference_num,
+            url: feature.url,
+        },
+        aha_synced_data: syncedData,
+    };
+};
+
+/**
  * Parses Jira issue data into a partial Issue object.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

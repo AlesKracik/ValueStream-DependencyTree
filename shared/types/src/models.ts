@@ -147,6 +147,7 @@ export interface JiraSettings {
 export interface AhaSettings {
   subdomain: string;
   api_key?: string;
+  workspace?: string;
 }
 
 export interface LdapSettings {

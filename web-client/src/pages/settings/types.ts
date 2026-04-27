@@ -1,4 +1,4 @@
-import type { Settings, ValueStreamData, Issue, Customer } from '@valuestream/shared-types';
+import type { Settings, ValueStreamData, Issue, Customer, WorkItem } from '@valuestream/shared-types';
 
 /** Props shared by all settings sub-page components */
 export interface SettingsTabProps {
@@ -8,12 +8,14 @@ export interface SettingsTabProps {
   settings: Settings;
 }
 
-/** Extended props for tabs that need workspace data (Jira) */
+/** Extended props for tabs that need workspace data (Jira, Aha!) */
 export interface SettingsTabWithDataProps extends SettingsTabProps {
   data: ValueStreamData | null;
   updateIssue: (id: string, updates: Partial<Issue>, immediate?: boolean) => Promise<void>;
   addIssue: (issue: Issue) => void;
   updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
+  updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
+  addWorkItem: (workItem: WorkItem) => void;
 }
 
 export interface MongoTestResult {

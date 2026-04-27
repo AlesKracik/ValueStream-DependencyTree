@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import type { Settings, ValueStreamData, Issue, Customer } from '@valuestream/shared-types';
+import type { Settings, ValueStreamData, Issue, Customer, WorkItem } from '@valuestream/shared-types';
 import styles from './List.module.css';
 import { PageWrapper } from "../components/layout/PageWrapper";
 import { deepMerge } from "../utils/businessLogic";
@@ -25,6 +25,8 @@ interface SettingsPageProps {
   updateIssue: (id: string, updates: Partial<Issue>, immediate?: boolean) => Promise<void>;
   addIssue: (issue: Issue) => void;
   updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
+  updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
+  addWorkItem: (workItem: WorkItem) => void;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -58,7 +60,7 @@ export const DEFAULT_SETTINGS: Settings = {
     }
   },
   jira: { base_url: '', api_version: '3', api_token: '', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
-  aha: { subdomain: '', api_key: '' },
+  aha: { subdomain: '', api_key: '', workspace: '' },
   ai: { provider: 'openai', api_key: '', model: '', glean_url: '', support: { prompt: '' } },
   ldap: { url: '', bind_dn: '', bind_password: '', team: { base_dn: '', search_filter: '' } },
   auth: {
@@ -78,6 +80,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   updateIssue,
   addIssue,
   updateCustomer,
+  updateWorkItem,
+  addWorkItem,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get("tab") as "general" | "persistence" | "jira" | "aha" | "ai" | "ldap" | "auth") || "general";
@@ -193,9 +197,21 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   updateIssue={updateIssue}
                   addIssue={addIssue}
                   updateCustomer={updateCustomer}
+                  updateWorkItem={updateWorkItem}
+                  addWorkItem={addWorkItem}
                 />
               )}
-              {activeTab === "aha" && <AhaSettings {...sharedProps} />}
+              {activeTab === "aha" && (
+                <AhaSettings
+                  {...sharedProps}
+                  data={data}
+                  updateIssue={updateIssue}
+                  addIssue={addIssue}
+                  updateCustomer={updateCustomer}
+                  updateWorkItem={updateWorkItem}
+                  addWorkItem={addWorkItem}
+                />
+              )}
               {activeTab === "ai" && <AiSettings {...sharedProps} />}
               {activeTab === "ldap" && <LdapSettings {...sharedProps} />}
               {activeTab === "auth" && <AuthSettings {...sharedProps} />}

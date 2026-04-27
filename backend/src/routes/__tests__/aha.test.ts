@@ -151,4 +151,52 @@ describe('Aha! Routes', () => {
     expect(body.success).toBe(false);
     expect(body.error).toContain('not found in Aha!');
   });
+
+  it('POST /api/aha/features should paginate until features.length < per_page', async () => {
+    const page1Features = Array.from({ length: 200 }, (_, i) => ({ id: `${i}`, reference_num: `PROD-${i}`, name: `Feature ${i}` }));
+    const page2Features = Array.from({ length: 5 }, (_, i) => ({ id: `${200 + i}`, reference_num: `PROD-${200 + i}`, name: `Feature ${200 + i}` }));
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ features: page1Features }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: () => Promise.resolve({ features: page2Features }) });
+    global.fetch = mockFetch;
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/aha/features',
+      payload: { workspace: 'PROD' }
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.success).toBe(true);
+    expect(body.features).toHaveLength(205);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch).toHaveBeenNthCalledWith(1,
+      'https://test-subdomain.aha.io/api/v1/products/PROD/features?per_page=200&page=1',
+      expect.any(Object)
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(2,
+      'https://test-subdomain.aha.io/api/v1/products/PROD/features?per_page=200&page=2',
+      expect.any(Object)
+    );
+  });
+
+  it('POST /api/aha/features should return 404 error when workspace not found', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found'
+    });
+    global.fetch = mockFetch;
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/aha/features',
+      payload: { workspace: 'NOPE' }
+    });
+
+    expect(response.statusCode).toBe(500);
+    const body = JSON.parse(response.body);
+    expect(body.error).toContain('NOPE');
+  });
 });

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { WorkItem, ValueStreamData } from '@valuestream/shared-types';
 import { syncAhaFeature } from '../../../utils/api';
+import { parseAhaFeature } from '../../../utils/businessLogic';
 import { useNotificationContext } from '../../../contexts/NotificationContext';
 
 interface Props {
@@ -38,33 +39,17 @@ export const WorkItemAhaTab: React.FC<Props> = ({
         setIsSyncingAha(true);
         try {
             const feature = await syncAhaFeature(workItem.aha_reference.reference_num, data?.settings?.aha || {});
-
-            const syncedData: NonNullable<WorkItem['aha_synced_data']> = {
-                name: feature.name,
-                description: feature.description?.body || '',
-                score: feature.score,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                requirements: feature.requirements?.map((r: any) => ({
-                    id: r.id,
-                    reference_num: r.reference_num,
-                    name: r.name,
-                    description: r.description?.body || '',
-                    url: r.url
-                })) || []
-            };
-
-            if (feature.original_estimate) {
-                syncedData.total_effort_mds = Math.round(feature.original_estimate / 480);
-            }
+            const parsed = parseAhaFeature(feature);
 
             const updates: Partial<WorkItem> = {
-                aha_synced_data: syncedData,
+                aha_synced_data: parsed.aha_synced_data,
                 aha_reference: {
                     ...workItem.aha_reference,
-                    id: feature.id,
-                    url: feature.url,
-                    reference_num: workItem.aha_reference.reference_num
-                }
+                    ...parsed.aha_reference,
+                    // Preserve the user-typed reference_num verbatim — Aha! sometimes
+                    // returns a normalized casing that diverges from what's stored.
+                    reference_num: workItem.aha_reference.reference_num,
+                },
             };
 
             if (isNew) {

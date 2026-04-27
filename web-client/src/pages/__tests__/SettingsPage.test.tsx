@@ -87,6 +87,8 @@ describe('SettingsPage', () => {
     const updateIssue = vi.fn();
     const addIssue = vi.fn();
     const updateCustomer = vi.fn();
+    const updateWorkItem = vi.fn();
+    const addWorkItem = vi.fn();
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -130,6 +132,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -148,6 +152,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -181,6 +187,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -231,6 +239,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -249,6 +259,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -302,6 +314,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -354,6 +368,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -376,6 +392,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -396,6 +414,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -415,6 +435,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -434,6 +456,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -461,6 +485,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -493,6 +519,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -515,6 +543,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -578,6 +608,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -647,6 +679,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -698,6 +732,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -744,6 +780,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -775,6 +813,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -801,6 +841,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -820,6 +862,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );
@@ -840,6 +884,8 @@ describe('SettingsPage', () => {
                     updateIssue={updateIssue}
                     addIssue={addIssue}
                     updateCustomer={updateCustomer}
+                    updateWorkItem={updateWorkItem}
+                    addWorkItem={addWorkItem}
                 />
             </MemoryRouter>
         );

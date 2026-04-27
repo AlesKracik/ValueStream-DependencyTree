@@ -140,6 +140,30 @@ export const syncAhaFeature = async (
     );
 };
 
+export const importAhaFeatures = async (
+    workspace: string,
+    ahaSettings: { subdomain?: string; api_key?: string }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any[]> => {
+    if (!workspace) {
+        throw new Error('Please enter a valid Aha! Workspace before importing.');
+    }
+
+    return apiPost(
+        "/api/aha/features",
+        {
+            workspace,
+            aha: {
+                subdomain: ahaSettings.subdomain,
+                api_key: ahaSettings.api_key,
+            }
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (resData) => (resData.features as any[]) || [],
+        "Failed to fetch Aha! features"
+    );
+};
+
 export const llmGenerate = async (
     prompt: string,
     config: unknown
