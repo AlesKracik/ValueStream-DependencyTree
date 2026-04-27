@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { Issue } from '@valuestream/shared-types';
-import { authorizedFetch, syncJiraIssue } from "../../utils/api";
+import { authorizedFetch } from "../../utils/api";
 import { generateId } from '../../utils/security';
 import { ScopeIndicator } from '../../components/common/ScopeIndicator';
 import { parseJiraIssue } from "../../utils/businessLogic";
@@ -90,20 +90,59 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
     let successCount = 0;
     let failCount = 0;
 
+    // Batch via /api/jira/search with `key in (...)` — chunked at 50 keys per call
+    // to stay well under JQL length limits and the server's maxResults: 100 cap.
+    const CHUNK_SIZE = 50;
+    const fetchedByKey = new Map<string, Record<string, unknown>>();
+    const chunkCount = Math.ceil(issuesWithKeys.length / CHUNK_SIZE);
+
+    for (let c = 0; c < chunkCount; c++) {
+      const chunk = issuesWithKeys.slice(c * CHUNK_SIZE, (c + 1) * CHUNK_SIZE);
+      const keyList = chunk.map(e => e.jira_key).join(", ");
+      setSyncProgress(`Fetching ${c * CHUNK_SIZE + 1}-${c * CHUNK_SIZE + chunk.length} of ${issuesWithKeys.length}…`);
+      try {
+        const response = await authorizedFetch("/api/jira/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jql: `key in (${keyList})`,
+            jira: {
+              base_url: jira.base_url,
+              api_version: jira.api_version,
+              api_token: jira.api_token,
+            }
+          }),
+        });
+        const resData = await response.json();
+        if (!response.ok || !resData.success) throw new Error(resData.error || "Failed to fetch Jira data");
+        const names = resData.data?.names || {};
+        for (const issue of resData.data?.issues || []) {
+          // Search response carries `names` at the top level; parseJiraIssue
+          // expects it per-issue (matching the single-issue endpoint shape).
+          fetchedByKey.set(issue.key, { ...issue, names });
+        }
+      } catch (err: unknown) {
+        console.error(`Error fetching chunk ${c + 1}/${chunkCount}:`, err);
+        // Whole chunk failed → mark each issue in chunk as failed
+        failCount += chunk.length;
+      }
+    }
+
     for (let i = 0; i < issuesWithKeys.length; i++) {
       const issue = issuesWithKeys[i];
-      setSyncProgress(`Syncing ${i + 1}/${issuesWithKeys.length}: ${issue.jira_key}`);
+      const issueData = fetchedByKey.get(issue.jira_key);
+      if (!issueData) continue; // already counted as failed above
+      setSyncProgress(`Updating ${i + 1}/${issuesWithKeys.length}: ${issue.jira_key}`);
       try {
-        const issueData = await syncJiraIssue(issue.jira_key, jira);
-
         const updates = parseJiraIssue(issueData, data.teams);
         await updateIssue(issue.id, updates, true);
         successCount++;
       } catch (err: unknown) {
-        console.error(`Error syncing ${issue.jira_key}:`, err);
+        console.error(`Error updating ${issue.jira_key}:`, err);
         failCount++;
       }
     }
+
     setIsSyncing(false);
     setSyncProgress("");
     setImportSyncResult({ success: failCount === 0, message: `Sync complete. ${successCount} succeeded, ${failCount} failed.` });
@@ -148,6 +187,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
       if (!response.ok || !resData.success) throw new Error(resData.error || "Failed to fetch Jira data");
 
       const issues = resData.data.issues || [];
+      const names = resData.data.names || {};
       if (issues.length === 0) {
         setImportSyncResult({ success: true, message: "No issues found for the provided JQL." });
         setIsImporting(false);
@@ -160,7 +200,9 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
         const jiraKey = issue.key;
         setImportProgress(`Processing ${i + 1}/${issues.length}: ${jiraKey}`);
 
-        const updates = parseJiraIssue(issue, data.teams);
+        // Search response carries `names` at the top level; inject so parseJiraIssue
+        // can resolve custom-field IDs (target_start, target_end, team).
+        const updates = parseJiraIssue({ ...issue, names }, data.teams);
 
         const existingIssue = (data.issues || []).find((e) => e.jira_key === jiraKey);
         try {
@@ -209,10 +251,10 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
           General
         </button>
         <button
-          onClick={() => setSubTab("issues")}
-          className={`${styles.tabButton} ${activeSubTab === "issues" ? styles.activeTab : ''}`}
+          onClick={() => setSubTab("work-items")}
+          className={`${styles.tabButton} ${activeSubTab === "work-items" ? styles.activeTab : ''}`}
         >
-          Issues
+          Work Items
         </button>
         <button
           onClick={() => setSubTab("customer")}
@@ -291,7 +333,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
           </div>
         )}
 
-        {activeSubTab === "issues" && (
+        {activeSubTab === "work-items" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
               Import JQL Query:
