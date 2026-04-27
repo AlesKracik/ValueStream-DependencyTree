@@ -86,6 +86,7 @@ describe('SettingsPage', () => {
     const onUpdateSettings = vi.fn();
     const updateIssue = vi.fn();
     const addIssue = vi.fn();
+    const updateCustomer = vi.fn();
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -128,6 +129,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -145,6 +147,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -177,6 +180,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -226,6 +230,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -243,6 +248,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -295,6 +301,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -346,6 +353,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -367,6 +375,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -386,6 +395,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -404,6 +414,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -422,6 +433,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -448,6 +460,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -479,6 +492,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -500,6 +514,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -562,6 +577,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -630,6 +646,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -680,6 +697,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -725,6 +743,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -755,6 +774,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -780,6 +800,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -798,6 +819,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );
@@ -817,6 +839,7 @@ describe('SettingsPage', () => {
                     data={mockData}
                     updateIssue={updateIssue}
                     addIssue={addIssue}
+                    updateCustomer={updateCustomer}
                 />
             </MemoryRouter>
         );

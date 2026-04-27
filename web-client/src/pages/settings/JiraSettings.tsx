@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import type { Issue } from '@valuestream/shared-types';
+import type { Issue, JiraIssue } from '@valuestream/shared-types';
 import { authorizedFetch } from "../../utils/api";
 import { generateId } from '../../utils/security';
 import { ScopeIndicator } from '../../components/common/ScopeIndicator';
@@ -16,6 +16,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
   data,
   updateIssue,
   addIssue,
+  updateCustomer,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeSubTab = searchParams.get("subtab") || "common";
@@ -28,6 +29,9 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
   const [importJql, setImportJql] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<string>("");
+  const [isSyncingSupport, setIsSyncingSupport] = useState(false);
+  const [supportSyncProgress, setSupportSyncProgress] = useState<string>("");
+  const [supportSyncResult, setSupportSyncResult] = useState<{ success: boolean; message: string; } | null>(null);
 
   const setSubTab = (subtab: string) => {
     setSearchParams((prev) => {
@@ -146,6 +150,136 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
     setIsSyncing(false);
     setSyncProgress("");
     setImportSyncResult({ success: failCount === 0, message: `Sync complete. ${successCount} succeeded, ${failCount} failed.` });
+  };
+
+  const handleSyncSupportJiras = async () => {
+    if (!data) return;
+    const { jira } = localFormData;
+
+    if (!jira.base_url || !jira.api_token) {
+      setSupportSyncResult({ success: false, message: "Base URL and PAT are required to sync." });
+      return;
+    }
+
+    // Per-customer scoped key list — used later to build the merged cache.
+    const customers = data.customers || [];
+    const customerScopedKeys = new Map<string, string[]>();
+    const allKeys = new Set<string>();
+    for (const c of customers) {
+      const keys = (c.support_issues || [])
+        .flatMap(s => s.related_jiras || [])
+        .filter(k => k && k !== "TBD");
+      const unique = Array.from(new Set(keys));
+      if (unique.length > 0) {
+        customerScopedKeys.set(c.id, unique);
+        unique.forEach(k => allKeys.add(k));
+      }
+    }
+
+    if (allKeys.size === 0) {
+      setSupportSyncResult({ success: true, message: "No support issues with related Jira keys found." });
+      return;
+    }
+
+    setIsSyncingSupport(true);
+    setSupportSyncResult(null);
+
+    const CHUNK_SIZE = 50;
+    const allKeysArr = Array.from(allKeys);
+    const chunkCount = Math.ceil(allKeysArr.length / CHUNK_SIZE);
+    // Track which keys were attempted in *successful* chunks. Only those keys are
+    // candidates for replacement; keys whose chunk failed are left as-is in the
+    // existing cache so a transient failure doesn't clobber stale-but-known data.
+    const attemptedKeys = new Set<string>();
+    const fetchedByKey = new Map<string, JiraIssue>();
+    let successfulChunks = 0;
+
+    const baseUrl = (jira.base_url || "").replace(/\/+$/, "");
+    const now = new Date().toISOString();
+
+    for (let c = 0; c < chunkCount; c++) {
+      const chunk = allKeysArr.slice(c * CHUNK_SIZE, (c + 1) * CHUNK_SIZE);
+      setSupportSyncProgress(`Fetching ${c * CHUNK_SIZE + 1}-${c * CHUNK_SIZE + chunk.length} of ${allKeysArr.length}…`);
+      try {
+        const response = await authorizedFetch("/api/jira/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jql: `key in (${chunk.map(k => `"${k}"`).join(", ")})`,
+            jira: {
+              base_url: jira.base_url,
+              api_version: jira.api_version,
+              api_token: jira.api_token,
+            }
+          }),
+        });
+        const resData = await response.json();
+        if (!response.ok || !resData.success) throw new Error(resData.error || "Failed to fetch Jira data");
+        successfulChunks++;
+        chunk.forEach(k => attemptedKeys.add(k));
+        for (const issue of resData.data?.issues || []) {
+          const fields = issue.fields || {};
+          fetchedByKey.set(issue.key, {
+            key: issue.key,
+            summary: fields.summary || "Unknown",
+            status: fields.status?.name || "Unknown",
+            priority: fields.priority?.name || "Default",
+            url: `${baseUrl}/browse/${issue.key}`,
+            last_updated: now,
+            // Category isn't known without the JQL buckets; 'noop' matches
+            // the placeholder used by useCustomerHealth's fetchByKeys path.
+            category: "noop",
+          });
+        }
+      } catch (err: unknown) {
+        console.error(`Error fetching chunk ${c + 1}/${chunkCount}:`, err);
+      }
+    }
+
+    if (successfulChunks === 0) {
+      setIsSyncingSupport(false);
+      setSupportSyncProgress("");
+      setSupportSyncResult({ success: false, message: "All Jira fetches failed. No customers updated." });
+      return;
+    }
+
+    let customerSuccessCount = 0;
+    let customerFailCount = 0;
+    let customerIdx = 0;
+    for (const [customerId, scopedKeys] of customerScopedKeys.entries()) {
+      customerIdx++;
+      setSupportSyncProgress(`Updating ${customerIdx}/${customerScopedKeys.size}…`);
+      const customer = customers.find(x => x.id === customerId);
+      if (!customer) { customerFailCount++; continue; }
+
+      // Replace only the entries whose key was attempted (in a successful chunk).
+      // Keys not attempted (chunk failure) stay as-is; keys attempted but missing
+      // from Jira's response are dropped from the cache.
+      const existing = customer.jira_support_issues || [];
+      const fresh = scopedKeys
+        .map(k => fetchedByKey.get(k))
+        .filter((v): v is JiraIssue => Boolean(v));
+      const merged = [
+        ...existing.filter(i => !attemptedKeys.has(i.key)),
+        ...fresh,
+      ];
+      try {
+        await updateCustomer(customer.id, { jira_support_issues: merged }, true);
+        customerSuccessCount++;
+      } catch (err: unknown) {
+        console.error(`Error updating customer ${customer.id}:`, err);
+        customerFailCount++;
+      }
+    }
+
+    setIsSyncingSupport(false);
+    setSupportSyncProgress("");
+    const failedChunks = chunkCount - successfulChunks;
+    const chunkNote = failedChunks > 0 ? ` ${failedChunks}/${chunkCount} Jira chunks failed (those keys left untouched).` : "";
+    setSupportSyncResult({
+      success: customerFailCount === 0 && failedChunks === 0,
+      message: `Sync complete. ${customerSuccessCount} customers updated, ${customerFailCount} failed.${chunkNote}`,
+    });
   };
 
   const handleImportFromJira = async () => {
@@ -418,6 +552,37 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
                 onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, customer: { ...localFormData.jira.customer, jql_noop: localFormData.jira.customer?.jql_noop } } })}
               />
             </label>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "16px" }}>
+              <p style={{ color: "var(--text-muted)", fontSize: "13px", margin: 0 }}>
+                Refresh the cached Jira status for every <code>related_jiras</code> key on every customer&apos;s support issues.
+              </p>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleSyncSupportJiras}
+                style={{ alignSelf: "flex-start" }}
+                disabled={isTesting || isSyncing || isImporting || isSyncingSupport || ((!localFormData.jira.base_url && !settings?.jira?.base_url) && (!localFormData.jira.api_token && !settings?.jira?.api_token))}
+              >
+                {isSyncingSupport ? supportSyncProgress : "Sync Support-Issue Jiras"}
+              </button>
+            </div>
+
+            {supportSyncResult && (
+              <div
+                style={{
+                  padding: "10px",
+                  borderRadius: "4px",
+                  fontSize: "14px",
+                  backgroundColor: supportSyncResult.success ? "var(--status-success-bg)" : "var(--status-danger-bg)",
+                  color: supportSyncResult.success ? "var(--status-success)" : "var(--status-danger-text)",
+                  border: `1px solid ${supportSyncResult.success ? "var(--status-success)" : "var(--status-danger-border)"}`,
+                  marginTop: "8px",
+                }}
+              >
+                {supportSyncResult.message}
+              </div>
+            )}
           </div>
         )}
       </div>

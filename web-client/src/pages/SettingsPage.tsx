@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import type { Settings, ValueStreamData, Issue } from '@valuestream/shared-types';
+import type { Settings, ValueStreamData, Issue, Customer } from '@valuestream/shared-types';
 import styles from './List.module.css';
 import { PageWrapper } from "../components/layout/PageWrapper";
 import { deepMerge } from "../utils/businessLogic";
@@ -24,6 +24,7 @@ interface SettingsPageProps {
   error?: Error | null;
   updateIssue: (id: string, updates: Partial<Issue>, immediate?: boolean) => Promise<void>;
   addIssue: (issue: Issue) => void;
+  updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -76,6 +77,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   error,
   updateIssue,
   addIssue,
+  updateCustomer,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get("tab") as "general" | "persistence" | "jira" | "aha" | "ai" | "ldap" | "auth") || "general";
@@ -190,6 +192,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   data={data}
                   updateIssue={updateIssue}
                   addIssue={addIssue}
+                  updateCustomer={updateCustomer}
                 />
               )}
               {activeTab === "aha" && <AhaSettings {...sharedProps} />}

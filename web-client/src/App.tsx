@@ -125,7 +125,7 @@ function SprintPageRouteWrapper({ valueStreamState }: { valueStreamState: ValueS
 }
 
 const SettingsPageRouteWrapper = createRouteWrapper({
-  collections: ['settings', 'issues', 'teams'],
+  collections: ['settings', 'issues', 'teams', 'customers'],
   render: ({ state }) => {
     const mergedSettings = deepMerge(DEFAULT_SETTINGS, state.data?.settings || {});
     return (
@@ -137,6 +137,7 @@ const SettingsPageRouteWrapper = createRouteWrapper({
         error={state.error}
         updateIssue={state.updateIssue}
         addIssue={state.addIssue}
+        updateCustomer={state.updateCustomer}
       />
     );
   },

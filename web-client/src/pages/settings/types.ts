@@ -1,4 +1,4 @@
-import type { Settings, ValueStreamData, Issue } from '@valuestream/shared-types';
+import type { Settings, ValueStreamData, Issue, Customer } from '@valuestream/shared-types';
 
 /** Props shared by all settings sub-page components */
 export interface SettingsTabProps {
@@ -13,6 +13,7 @@ export interface SettingsTabWithDataProps extends SettingsTabProps {
   data: ValueStreamData | null;
   updateIssue: (id: string, updates: Partial<Issue>, immediate?: boolean) => Promise<void>;
   addIssue: (issue: Issue) => void;
+  updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
 }
 
 export interface MongoTestResult {
