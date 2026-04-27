@@ -32,14 +32,11 @@ export const ahaRoutes: FastifyPluginAsync = async (fastify) => {
     const { reference_num } = request.body;
     if (!reference_num) throw new Error('Aha! Reference Number is required.');
 
-    const existing = await fastify.getSettings();
-
-    const aha = existing.aha || {};
-    const subdomain = aha.subdomain;
-    const api_key = aha.api_key;
-
-    if (!subdomain) throw new Error('Aha! Subdomain is not configured in settings.');
-    if (!api_key) throw new Error('Aha! API Key is not configured in settings.');
+    const { section: aha } = await getIntegrationConfig(
+      fastify, request.body, 'aha',
+      [['subdomain', 'Aha! Subdomain'], ['api_key', 'Aha! API Key']]
+    );
+    const { subdomain, api_key } = aha;
 
     const apiUrl = `https://${subdomain}.aha.io/api/v1/features/${reference_num}`;
     const ahaRes = await fetch(apiUrl, {

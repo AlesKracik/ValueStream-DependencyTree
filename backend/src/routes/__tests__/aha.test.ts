@@ -99,6 +99,39 @@ describe('Aha! Routes', () => {
     );
   });
 
+  it('POST /api/aha/feature should unmask api_key from request body using stored settings', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ feature: { id: '1', reference_num: 'PROD-1', name: 'F' } })
+    });
+    global.fetch = mockFetch;
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/aha/feature',
+      payload: {
+        reference_num: 'PROD-1',
+        aha: {
+          subdomain: 'test-subdomain',
+          api_key: '********'
+        }
+      }
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.success).toBe(true);
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://test-subdomain.aha.io/api/v1/features/PROD-1',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          'Authorization': 'Bearer test-key'
+        })
+      })
+    );
+  });
+
   it('POST /api/aha/feature should return 404 when feature not found', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,

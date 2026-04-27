@@ -76,9 +76,10 @@ export const AhaConfigBody = Type.Object({
 }, { additionalProperties: true });
 export type AhaConfigBodyType = Static<typeof AhaConfigBody>;
 
-export const AhaFeatureBody = Type.Object({
-  reference_num: Type.String()
-});
+export const AhaFeatureBody = Type.Intersect([
+  AhaConfigBody,
+  Type.Object({ reference_num: Type.String() })
+]);
 export type AhaFeatureBodyType = Static<typeof AhaFeatureBody>;
 
 // ── LDAP ────────────────────────────────────────────────────────────────────
