@@ -34,8 +34,8 @@ const mockData: ValueStreamData = {
         { id: 'c1', name: 'Cust A', existing_tcv: 1000, potential_tcv: 500 }
     ],
     workItems: [
-        { id: 'w1', name: 'Alpha Item', score: 10, calculated_score: 10, calculated_tcv: 1000, calculated_effort: 5, total_effort_mds: 5, status: 'Backlog', customer_targets: [{ customer_id: 'c1', tcv_type: 'existing' }], released_in_sprint_id: 's3' },
-        { id: 'w2', name: 'Gamma Item', score: 50, calculated_score: 50, calculated_tcv: 500, calculated_effort: 20, total_effort_mds: 20, status: 'Backlog', customer_targets: [{ customer_id: 'c1', tcv_type: 'potential' }], released_in_sprint_id: 's1' },
+        { id: 'w1', name: 'Alpha Item', score: 10, calculated_score: 10, calculated_tcv: 1000, calculated_effort: 5, total_effort_mds: 5, stackrank: 200, status: 'Backlog', customer_targets: [{ customer_id: 'c1', tcv_type: 'existing' }], released_in_sprint_id: 's3' },
+        { id: 'w2', name: 'Gamma Item', score: 50, calculated_score: 50, calculated_tcv: 500, calculated_effort: 20, total_effort_mds: 20, stackrank: 100, status: 'Backlog', customer_targets: [{ customer_id: 'c1', tcv_type: 'potential' }], released_in_sprint_id: 's1' },
         { id: 'w3', name: 'Beta Item', score: 30, calculated_score: 30, calculated_tcv: 0, calculated_effort: 10, total_effort_mds: 10, status: 'Backlog', customer_targets: [], released_in_sprint_id: 's2' }
     ],
     teams: [],
@@ -86,6 +86,33 @@ describe('WorkItemListPage', () => {
         expect(screen.getByText('Alpha Item')).toBeDefined();
         expect(screen.queryByText('Beta Item')).toBeNull();
         expect(screen.queryByText('Gamma Item')).toBeNull();
+    });
+
+    it('sorts work items by stack rank, with unranked items at the end', () => {
+        const { container } = renderWithProviders(
+            <WorkItemListPage data={mockData} loading={false} />
+        );
+
+        // Click "Stack Rank" sort button — sorting ascends by stackrank, unranked items use MAX_SAFE_INTEGER and land last.
+        const stackRankBtn = screen.getByRole('button', { name: /Stack Rank/i });
+        fireEvent.click(stackRankBtn);
+
+        const items = container.querySelectorAll('[class*="listItem"]');
+        // Gamma (100) → Alpha (200) → Beta (unranked, last)
+        expect(items[0].textContent).toContain('Gamma Item');
+        expect(items[1].textContent).toContain('Alpha Item');
+        expect(items[2].textContent).toContain('Beta Item');
+    });
+
+    it('renders "—" for work items with no stack rank', () => {
+        const { container } = renderWithProviders(
+            <WorkItemListPage data={mockData} loading={false} />
+        );
+
+        // Default sort by name ascending: Alpha, Beta (unranked), Gamma
+        const items = container.querySelectorAll('[class*="listItem"]');
+        expect(items[1].textContent).toContain('Beta Item');
+        expect(items[1].textContent).toContain('—');
     });
 
     it('sorts work items by name', () => {

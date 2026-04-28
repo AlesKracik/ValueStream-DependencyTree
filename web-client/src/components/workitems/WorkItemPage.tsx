@@ -128,6 +128,16 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     }}
                     min={0}
                 />
+                <FormNumberField
+                    label="Stack Rank:"
+                    helperText="Lower = higher priority. Leave empty to keep the work item unranked."
+                    value={workItem?.stackrank ?? ''}
+                    onChange={v => {
+                        if (isNew) setNewWorkItemDraft(prev => ({ ...prev, stackrank: v }));
+                        else updateWorkItem(workItemId, { stackrank: v });
+                    }}
+                    min={0}
+                />
                 <div style={{ display: 'flex', gap: '16px' }}>
                     <div style={{ flex: 1 }}>
                         <FormSelectField

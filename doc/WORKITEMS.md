@@ -12,6 +12,7 @@ export interface WorkItem {
   status: 'Backlog' | 'Planning' | 'Development' | 'Done';
   total_effort_mds: number; // Estimated man-days
   score: number;            // Calculated RICE score
+  stackrank?: number;       // Manual priority order (lower = higher priority); undefined = unranked
   customer_targets: {
     customer_id: string;
     tcv_type: 'existing' | 'potential';
@@ -49,6 +50,9 @@ graph LR
     Effort[Man-Days] --> Score
     Score --> Scaling[Visual Node Size]
 ```
+
+## Manual Priority (Stack Rank)
+The `stackrank` field is a manual integer ordering used alongside the calculated RICE score. Lower numbers indicate higher priority. The Work Items list view supports sorting by Stack Rank — items without a value sort to the end on ascending order. The field is purely informational; it does not feed into the RICE calculation.
 
 ## Visual Representation
 - **Node Type:** `WorkItemNode`.

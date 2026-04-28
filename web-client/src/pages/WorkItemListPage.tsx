@@ -17,7 +17,13 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
     const sortOptions: SortOption<WorkItem>[] = useMemo(() => [
         { label: 'Name', key: 'name', getValue: (w) => w.name },
         { label: 'Score', key: 'score', getValue: (w) => w.calculated_score || 0 },
-        { 
+        {
+            label: 'Stack Rank',
+            key: 'stackrank',
+            // Unranked items sort to the end on ascending order (the natural "least-prioritized" position).
+            getValue: (w) => w.stackrank ?? Number.MAX_SAFE_INTEGER
+        },
+        {
             label: 'TCV',
             key: 'tcv',
             getValue: (w) => w.calculated_tcv || 0
@@ -27,7 +33,7 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
             key: 'status',
             getValue: (w) => STATUS_ORDER.indexOf(w.status || 'Backlog')
         },
-        { 
+        {
             label: 'Effort',
             key: 'effort',
             getValue: (w) => w.calculated_effort || 0
@@ -41,14 +47,20 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
 
     const columns: ListColumn<WorkItem>[] = useMemo(() => [
         { header: 'Name', render: (w) => w.name, flex: 2, sortKey: 'name' },
-        { 
-            header: 'Score', 
+        {
+            header: 'Score',
             render: (w) => Math.round(w.calculated_score || 0).toLocaleString(),
             flex: 1,
             sortKey: 'score'
         },
-        { 
-            header: 'Effort', 
+        {
+            header: 'Stack Rank',
+            render: (w) => w.stackrank ?? '—',
+            flex: 1,
+            sortKey: 'stackrank'
+        },
+        {
+            header: 'Effort',
             render: (w) => `${(w.calculated_effort || 0).toLocaleString()} MDs`,
             flex: 1,
             sortKey: 'effort'
