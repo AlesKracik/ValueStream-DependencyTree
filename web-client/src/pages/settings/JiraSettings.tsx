@@ -303,13 +303,12 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
     let updateCount = 0;
 
     try {
-      const finalJql = importJql.toLowerCase().includes("issuetype") ? importJql : `(${importJql}) AND issuetype = Issue`;
       setImportProgress("Fetching issues...");
       const response = await authorizedFetch("/api/jira/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          jql: finalJql,
+          jql: importJql,
           jira: {
             base_url: jira.base_url,
             api_version: jira.api_version,
@@ -473,7 +472,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
               Import JQL Query:
               <input
                 type="text"
-                placeholder="project = PROJ AND issuetype = Issue"
+                placeholder="project = PROJ AND status != Done"
                 value={importJql}
                 onChange={(e) => setImportJql(e.target.value)}
               />

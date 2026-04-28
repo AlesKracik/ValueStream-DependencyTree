@@ -65,7 +65,15 @@ export const jiraRoutes: FastifyPluginAsync = async (fastify) => {
       body: JSON.stringify({ jql, expand: ['names'], maxResults: 100 })
     });
 
-    return reply.send({ success: true, data: await jiraRes.json() });
+    const body: any = await jiraRes.json().catch(() => ({}));
+    if (!jiraRes.ok) {
+      const errorMessages = Array.isArray(body?.errorMessages) && body.errorMessages.length > 0
+        ? body.errorMessages.join('; ')
+        : `Jira returned HTTP ${jiraRes.status}`;
+      return reply.code(jiraRes.status).send({ success: false, error: errorMessages });
+    }
+
+    return reply.send({ success: true, data: body });
   });
 
 };
