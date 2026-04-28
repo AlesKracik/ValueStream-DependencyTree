@@ -63,7 +63,7 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
         const newId = generateId('e');
         const newIssue: Issue = {
             id: newId,
-            jira_key: 'TBD',
+            jira_key: '',
             name: '',
             effort_md: 0,
             team_id: data?.teams[0]?.id || '',
@@ -98,11 +98,11 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
                     border: '1px solid var(--border-secondary)'
                 }}>
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
-                        <div style={{ width: '120px', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        <div style={{ width: '138px', display: 'flex', gap: '4px', alignItems: 'center' }}>
                             <input
                                 type="text"
                                 value={issue.jira_key}
-                                placeholder="Key"
+                                placeholder="TBD"
                                 onChange={e => {
                                     if (isNew) {
                                         setNewWorkItemIssues(prev => prev.map(ev => ev.id === issue.id ? { ...ev, jira_key: e.target.value } : ev));

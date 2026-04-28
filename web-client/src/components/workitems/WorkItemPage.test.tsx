@@ -537,7 +537,7 @@ describe('WorkItemPage', () => {
 
         expect(defaultProps.addIssue).toHaveBeenCalledWith(expect.objectContaining({
             work_item_id: 'f1',
-            jira_key: 'TBD'
+            jira_key: ''
         }));
     });
 
@@ -756,7 +756,7 @@ describe('WorkItemPage', () => {
         fireEvent.click(screen.getByText('+ New Issue'));
         
         // Find the newly added issue row and fill it
-        fireEvent.change(screen.getByPlaceholderText('Key'), { target: { value: 'PROJ-999' } });
+        fireEvent.change(screen.getByPlaceholderText('TBD'), { target: { value: 'PROJ-999' } });
         fireEvent.change(screen.getByPlaceholderText('Issue Name'), { target: { value: 'Draft Issue' } });
 
         fireEvent.click(screen.getByText('Save Work Item'));
