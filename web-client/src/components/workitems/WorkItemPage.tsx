@@ -40,8 +40,16 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     const deleteWithConfirm = useDeleteWithConfirm();
     const isNew = workItemId === 'new';
 
-    // Draft states for new workItem creation
-    const [newWorkItemDraft, setNewWorkItemDraft] = useState<Partial<WorkItem>>({ name: '', description: '', status: 'Backlog', total_effort_mds: 0, customer_targets: [] });
+    // Draft states for new workItem creation. stackrank defaults to the lowest priority slot
+    // (max existing rank + 1000) so the user gets sparse spacing for free; they can clear it
+    // to keep the item unranked or override with any integer.
+    const [newWorkItemDraft, setNewWorkItemDraft] = useState<Partial<WorkItem>>(() => {
+        const ranks = (data?.workItems ?? [])
+            .map(w => w.stackrank)
+            .filter((r): r is number => typeof r === 'number');
+        const nextRank = ranks.length > 0 ? Math.max(...ranks) + 1000 : 1000;
+        return { name: '', description: '', status: 'Backlog', total_effort_mds: 0, customer_targets: [], stackrank: nextRank };
+    });
     const [newWorkItemCustomers, setNewWorkItemCustomers] = useState<{ customerId: string, tcv_type: 'existing' | 'potential', priority: 'Must-have' | 'Should-have' | 'Nice-to-have', tcv_history_id?: string }[]>([]);
     const [newWorkItemIssues, setNewWorkItemIssues] = useState<Issue[]>([]);
 
@@ -67,6 +75,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     status: (newWorkItemDraft.status as WorkItem['status']) || 'Backlog',
                     total_effort_mds: newWorkItemDraft.total_effort_mds || 0,
                     score: newWorkItemDraft.score || 0,
+                    stackrank: newWorkItemDraft.stackrank,
                     customer_targets: newWorkItemCustomers.map(c => ({
                         customer_id: c.customerId,
                         tcv_type: c.tcv_type,
@@ -130,7 +139,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                 />
                 <FormNumberField
                     label="Stack Rank:"
-                    helperText="Lower = higher priority. Leave empty to keep the work item unranked."
+                    helperText="Higher = higher priority. Leave empty to keep the work item unranked."
                     value={workItem?.stackrank ?? ''}
                     onChange={v => {
                         if (isNew) setNewWorkItemDraft(prev => ({ ...prev, stackrank: v }));

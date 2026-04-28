@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { WorkItemListPage } from '../WorkItemListPage';
 import { renderWithProviders } from '../../test/testUtils';
 import type { ValueStreamData } from '@valuestream/shared-types';
@@ -88,20 +88,25 @@ describe('WorkItemListPage', () => {
         expect(screen.queryByText('Gamma Item')).toBeNull();
     });
 
-    it('sorts work items by stack rank, with unranked items at the end', () => {
+    it('sorts work items by stack rank — higher value = higher priority, unranked at the bottom', () => {
         const { container } = renderWithProviders(
             <WorkItemListPage data={mockData} loading={false} />
         );
 
-        // Click "Stack Rank" sort button — sorting ascends by stackrank, unranked items use MAX_SAFE_INTEGER and land last.
         const stackRankBtn = screen.getByRole('button', { name: /Stack Rank/i });
+        // First click: ascending → unranked first (MIN_SAFE_INTEGER), then 100, then 200.
         fireEvent.click(stackRankBtn);
+        let items = container.querySelectorAll('[class*="listItem"]');
+        expect(items[0].textContent).toContain('Beta Item');   // unranked
+        expect(items[1].textContent).toContain('Gamma Item');  // 100
+        expect(items[2].textContent).toContain('Alpha Item');  // 200
 
-        const items = container.querySelectorAll('[class*="listItem"]');
-        // Gamma (100) → Alpha (200) → Beta (unranked, last)
-        expect(items[0].textContent).toContain('Gamma Item');
-        expect(items[1].textContent).toContain('Alpha Item');
-        expect(items[2].textContent).toContain('Beta Item');
+        // Second click: descending → highest priority first, unranked last.
+        fireEvent.click(stackRankBtn);
+        items = container.querySelectorAll('[class*="listItem"]');
+        expect(items[0].textContent).toContain('Alpha Item');  // 200
+        expect(items[1].textContent).toContain('Gamma Item');  // 100
+        expect(items[2].textContent).toContain('Beta Item');   // unranked
     });
 
     it('renders "—" for work items with no stack rank', () => {
@@ -162,6 +167,46 @@ describe('WorkItemListPage', () => {
         );
 
         expect(screen.getByText('Loading work items...')).toBeDefined();
+    });
+
+    it('Compact Ranks renumbers ranked items to multiples of 1000 in their current order, leaving unranked alone', async () => {
+        const updateWorkItem = vi.fn().mockResolvedValue(undefined);
+        // Ranks: 100 (Gamma), 200 (Alpha), unranked (Beta) → after compact: 1000, 2000, unranked.
+        renderWithProviders(
+            <WorkItemListPage data={mockData} loading={false} updateWorkItem={updateWorkItem} />
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /Compact Ranks/i }));
+
+        // Confirm the modal that asks "Compact stack ranks?"
+        await waitFor(() => screen.getByText(/Compact stack ranks\?/i));
+        fireEvent.click(screen.getByRole('button', { name: /^Confirm$/i }));
+
+        await waitFor(() => expect(updateWorkItem).toHaveBeenCalledTimes(2));
+
+        // Lower current rank gets the lower new rank — Gamma (100) → 1000, Alpha (200) → 2000.
+        expect(updateWorkItem).toHaveBeenNthCalledWith(1, 'w2', { stackrank: 1000 });
+        expect(updateWorkItem).toHaveBeenNthCalledWith(2, 'w1', { stackrank: 2000 });
+
+        // Beta (no stackrank) is never updated.
+        const updatedIds = updateWorkItem.mock.calls.map(c => c[0]);
+        expect(updatedIds).not.toContain('w3');
+    });
+
+    it('Compact Ranks shows an alert (no update calls) when no work item has a stack rank', async () => {
+        const updateWorkItem = vi.fn().mockResolvedValue(undefined);
+        const dataNoRanks: ValueStreamData = {
+            ...mockData,
+            workItems: mockData.workItems.map(w => ({ ...w, stackrank: undefined }))
+        };
+        renderWithProviders(
+            <WorkItemListPage data={dataNoRanks} loading={false} updateWorkItem={updateWorkItem} />
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /Compact Ranks/i }));
+
+        await waitFor(() => screen.getByText(/Nothing to compact/i));
+        expect(updateWorkItem).not.toHaveBeenCalled();
     });
 
     it('shows empty message when no work items are found', () => {

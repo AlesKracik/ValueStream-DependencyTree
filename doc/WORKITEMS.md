@@ -12,7 +12,7 @@ export interface WorkItem {
   status: 'Backlog' | 'Planning' | 'Development' | 'Done';
   total_effort_mds: number; // Estimated man-days
   score: number;            // Calculated RICE score
-  stackrank?: number;       // Manual priority order (lower = higher priority); undefined = unranked
+  stackrank?: number;       // Manual priority order (higher = higher priority); undefined = unranked
   customer_targets: {
     customer_id: string;
     tcv_type: 'existing' | 'potential';
@@ -52,7 +52,10 @@ graph LR
 ```
 
 ## Manual Priority (Stack Rank)
-The `stackrank` field is a manual integer ordering used alongside the calculated RICE score. Lower numbers indicate higher priority. The Work Items list view supports sorting by Stack Rank — items without a value sort to the end on ascending order. The field is purely informational; it does not feed into the RICE calculation.
+The `stackrank` field is a manual integer ordering used alongside the calculated RICE score. **Higher numbers indicate higher priority** so a brand-new top-priority work item can simply take `max(stackrank) + 1` without ever needing negative values. The Work Items list view supports sorting by Stack Rank — unranked items always sort to the least-prioritized end (bottom on descending, top on ascending). The field is purely informational; it does not feed into the RICE calculation.
+
+### Sparse spacing & inserting between items
+New work items default to `max(stackrank) + 1000`, giving 1000-unit gaps between consecutive ranks. To insert an item between two neighbors, just type any integer in the gap (e.g. between 2000 and 3000, use 2500). Over time the gaps shrink. When that happens, the **Compact Ranks** button on the Work Items list page renumbers all currently-ranked items to clean multiples of 1000 (1000, 2000, 3000, …) preserving their existing order. Unranked items are left untouched.
 
 ## Visual Representation
 - **Node Type:** `WorkItemNode`.

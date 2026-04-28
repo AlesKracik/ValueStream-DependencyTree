@@ -761,11 +761,31 @@ describe('WorkItemPage', () => {
 
         fireEvent.click(screen.getByText('Save Work Item'));
 
-        expect(defaultProps.addWorkItem).toHaveBeenCalledWith(expect.objectContaining({ name: 'New Feature' }));
+        // Stack rank defaults to (max existing rank + 1000); the only existing item has no rank, so 1000.
+        expect(defaultProps.addWorkItem).toHaveBeenCalledWith(expect.objectContaining({ name: 'New Feature', stackrank: 1000 }));
         expect(defaultProps.addIssue).toHaveBeenCalledWith(expect.objectContaining({
             jira_key: 'PROJ-999',
             name: 'Draft Issue',
             work_item_id: expect.any(String) // the new work item ID
+        }));
+    });
+
+    it('defaults new work item stackrank to (max existing rank + 1000)', () => {
+        const dataWithRanks: ValueStreamData = {
+            ...mockData,
+            workItems: [
+                { ...mockData.workItems[0], stackrank: 5000 },
+                { ...mockData.workItems[0], id: 'f2', name: 'B', stackrank: 3000 }
+            ]
+        };
+        renderPage({ ...defaultProps, data: dataWithRanks }, 'new');
+
+        fireEvent.change(screen.getByLabelText(/Name:/i), { target: { value: 'Top Priority Item' } });
+        fireEvent.click(screen.getByText('Save Work Item'));
+
+        expect(defaultProps.addWorkItem).toHaveBeenCalledWith(expect.objectContaining({
+            name: 'Top Priority Item',
+            stackrank: 6000
         }));
     });
 });

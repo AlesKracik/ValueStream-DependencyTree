@@ -3,16 +3,45 @@ import { useNavigate } from 'react-router-dom';
 import type { ValueStreamData, WorkItem } from '@valuestream/shared-types';
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption, ListColumn } from '../components/common/GenericListPage';
+import { useNotificationContext } from '../contexts/NotificationContext';
 
 interface Props {
     data: ValueStreamData | null;
     loading: boolean;
+    updateWorkItem?: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
 }
 
 const STATUS_ORDER = ['Backlog', 'Planning', 'Development', 'Done'];
+const RANK_STEP = 1000;
 
-export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
+export const WorkItemListPage: React.FC<Props> = ({ data, loading, updateWorkItem }) => {
     const navigate = useNavigate();
+    const { showAlert, showConfirm } = useNotificationContext();
+
+    const handleCompactRanks = async () => {
+        const ranked = (data?.workItems ?? [])
+            .filter((w): w is WorkItem & { stackrank: number } => typeof w.stackrank === 'number')
+            .slice()
+            .sort((a, b) => a.stackrank - b.stackrank);
+
+        if (ranked.length === 0) {
+            await showAlert('Nothing to compact', 'No work items have a stack rank yet.');
+            return;
+        }
+
+        const confirmed = await showConfirm(
+            'Compact stack ranks?',
+            `This will renumber the stack ranks of ${ranked.length} ranked work item${ranked.length === 1 ? '' : 's'} to ${RANK_STEP}, ${2 * RANK_STEP}, ${3 * RANK_STEP}, ... preserving their current order. Unranked items stay as-is.`
+        );
+        if (!confirmed || !updateWorkItem) return;
+
+        for (let i = 0; i < ranked.length; i++) {
+            const newRank = (i + 1) * RANK_STEP;
+            if (ranked[i].stackrank !== newRank) {
+                await updateWorkItem(ranked[i].id, { stackrank: newRank });
+            }
+        }
+    };
 
     const sortOptions: SortOption<WorkItem>[] = useMemo(() => [
         { label: 'Name', key: 'name', getValue: (w) => w.name },
@@ -20,8 +49,9 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
         {
             label: 'Stack Rank',
             key: 'stackrank',
-            // Unranked items sort to the end on ascending order (the natural "least-prioritized" position).
-            getValue: (w) => w.stackrank ?? Number.MAX_SAFE_INTEGER
+            // Higher number = higher priority; unranked items use MIN_SAFE_INTEGER so they
+            // land at the least-prioritized end regardless of sort direction.
+            getValue: (w) => w.stackrank ?? Number.MIN_SAFE_INTEGER
         },
         {
             label: 'TCV',
@@ -100,6 +130,16 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading }) => {
                 label: "+ New Work Item",
                 onClick: () => navigate('/workitem/new')
             }}
+            additionalControls={
+                <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={handleCompactRanks}
+                    title="Renumber stack ranks to clean multiples of 1000, preserving order. Use this when gaps between ranks get too small to insert new items."
+                >
+                    Compact Ranks
+                </button>
+            }
             loadingMessage="Loading work items..."
             emptyMessage="No work items found."
         />

@@ -175,7 +175,7 @@ const SprintListRouteWrapper = createRouteWrapper({
 // WorkItems list needs sprints so the "Released" column can resolve sprint names
 const WorkItemListRouteWrapper = createRouteWrapper({
   collections: ['workItems', 'sprints'],
-  render: ({ state }) => <WorkItemListPage data={state.data} loading={state.loading} />,
+  render: ({ state }) => <WorkItemListPage data={state.data} loading={state.loading} updateWorkItem={state.updateWorkItem} />,
 });
 
 const ValueStreamNewRouteWrapper = createRouteWrapper({
