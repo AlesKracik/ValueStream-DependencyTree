@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { Customer, SupportIssue, JiraIssue, ValueStreamData } from '@valuestream/shared-types';
 import type { CustomerHealthData } from '../../../hooks/useCustomerHealth';
 import { generateId } from '../../../utils/security';
+import { buildSupportStatusPatch } from '../../../utils/businessLogic';
 import customerStyles from '../CustomerPage.module.css';
 
 interface JiraKeysInputProps {
@@ -149,15 +150,8 @@ export const CustomerSupportTab: React.FC<Props> = ({ customer, data, updateCust
                                             <select
                                                 value={issue.status}
                                                 onChange={e => {
-                                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                                    const newStatus = e.target.value as any;
-                                                    const updates: Partial<SupportIssue> = { status: newStatus };
-                                                    if (newStatus === 'done' && !issue.expiration_date) {
-                                                        const expiry = new Date();
-                                                        expiry.setDate(expiry.getDate() + 5);
-                                                        updates.expiration_date = expiry.toISOString().split('T')[0];
-                                                    }
-                                                    updateIssue(updates);
+                                                    const newStatus = e.target.value as SupportIssue['status'];
+                                                    updateIssue(buildSupportStatusPatch(issue, newStatus));
                                                 }}
                                             >
                                                 <option value="to do">To Do</option>

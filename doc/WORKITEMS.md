@@ -57,9 +57,20 @@ The `stackrank` field is a manual integer ordering used alongside the calculated
 ### Sparse spacing & inserting between items
 New work items default to `max(stackrank) + 1000`, giving 1000-unit gaps between consecutive ranks. To insert an item between two neighbors, just type any integer in the gap (e.g. between 2000 and 3000, use 2500). Over time the gaps shrink. When that happens, the **Compact Ranks** button on the Work Items list page renumbers all currently-ranked items to clean multiples of 1000 (1000, 2000, 3000, …) preserving their existing order. Unranked items are left untouched.
 
+## Prioritization Toggle
+Both the Work Items list and the ValueStream dashboard expose a single toggle (`prioritizationMetric`, stored on `ValueStreamViewState` and shared across the two views via `UIStateContext`) that selects which metric drives ordering and visual sizing:
+
+| Mode | Field source | Notes |
+| ------------- | ------------------------------ | ----------------------------------------------------------------------------------------------- |
+| Score         | `calculated_score` (RICE)      | Default. Server provides the global `maxScore` for consistent sizing across filters.            |
+| Product Value | `aha_synced_data.score`        | Pulled from Aha! when a work item has an `aha_reference`. Items without sync data show "—".     |
+| Stack Rank    | `stackrank`                    | Higher value = higher priority. Unranked items sort to the bottom and show "—".                 |
+
+In all modes higher value = higher priority (top of the list, biggest node). On the Work Items list, the toggle drives a single dynamic "Priority" column whose header label matches the active metric. The **Compact Ranks** action lives in the upper-right header and only appears when the toggle is set to Stack Rank, since it has no meaning otherwise.
+
 ## Visual Representation
 - **Node Type:** `WorkItemNode`.
-- **Scaling:** Size scales based on the RICE score relative to the global maximum score.
+- **Scaling:** Size scales based on the active prioritization metric value relative to its maximum across the visible work-item set (or the server-provided `maxScore` in Score mode).
 - **Tooltip:** Hovering over the node displays the `description`.
 - **Status Icons:**
     - `📦`: Released (linked to a sprint).

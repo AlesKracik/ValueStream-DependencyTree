@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState, useCallback } from 'react';
 import type { ValueStreamData, Customer, SupportIssue } from '@valuestream/shared-types';
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption, ListColumn } from '../components/common/GenericListPage';
@@ -6,7 +6,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { llmGenerate, gleanAuthLogin, gleanAuthStatus, gleanChat } from '../utils/api';
 import { generateId } from '../utils/security';
 import { useNotificationContext } from '../contexts/NotificationContext';
-import { extractFirstJSONObject } from '../utils/businessLogic';
+import { extractFirstJSONObject, buildSupportStatusPatch } from '../utils/businessLogic';
 
 interface Props {
     data: ValueStreamData | null;
@@ -20,7 +20,12 @@ interface SupportIssueWithCustomer {
     status: string;
     customerName: string;
     customerId: string;
-    category: number;
+    /** Customer's combined TCV (existing + potential). Drives sort and visible bag fill. */
+    totalTcv: number;
+    /** Max combined TCV across all customers (for tooltip context). */
+    maxTcv: number;
+    /** totalTcv / maxTcv ∈ [0, 1]. Whale = 1.0 → 3 fully-visible bags; 0.5 → 1.5 bags worth. */
+    tcvRatio: number;
     activity: 'new' | 'updated' | 'none';
     isJira: boolean;
     linkedJiras?: { key: string; status: string; url: string }[];
@@ -66,6 +71,23 @@ const ACTIVITY_ORDER: Record<string, number> = {
     'none': 2
 };
 
+const STATUS_OPTIONS: { value: SupportIssue['status']; label: string }[] = [
+    { value: 'to do', label: 'To Do' },
+    { value: 'work in progress', label: 'Work in Progress' },
+    { value: 'noop', label: 'No-op' },
+    { value: 'waiting for customer', label: 'Waiting for Customer' },
+    { value: 'waiting for other party', label: 'Waiting for Other Party' },
+    { value: 'done', label: 'Done' },
+];
+
+const statusBadgeColor = (status: string): string => {
+    const s = (status || '').toLowerCase();
+    if (s === 'done' || s === 'resolved' || s === 'closed') return 'var(--status-success)';
+    if (s === 'to do' || s === 'new' || s === 'open') return 'var(--status-danger)';
+    if (s === 'work in progress' || s === 'in progress' || s === 'in_progress' || s === 'active') return 'var(--status-warning)';
+    return 'var(--accent-primary)';
+};
+
 export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -83,6 +105,50 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
     const [showImportModal, setShowImportModal] = useState(false);
     const [deleteNotFound, setDeleteNotFound] = useState(false);
     const [uploading, setUploading] = useState(false);
+
+    // Per-row drafts for the inline-editable description textarea. The textarea reads from
+    // the draft if present, else from the underlying issue. Drafts are cleared on commit.
+    const [descriptionDrafts, setDescriptionDrafts] = useState<Record<string, string>>({});
+
+    const updateIssueOnCustomer = useCallback(async (
+        customerId: string,
+        issueId: string,
+        patch: Partial<SupportIssue>
+    ) => {
+        const customer = data?.customers.find(c => c.id === customerId);
+        if (!customer) return;
+        const updated = (customer.support_issues || []).map(si =>
+            si.id === issueId
+                ? { ...si, ...patch, updated_at: new Date().toISOString() }
+                : si
+        );
+        await updateCustomer(customerId, { support_issues: updated }, true);
+    }, [data, updateCustomer]);
+
+    const commitDescription = useCallback(async (customerId: string, issueId: string, currentValue: string) => {
+        const draft = descriptionDrafts[issueId];
+        // Drop the draft regardless so the field re-syncs with server state on next render.
+        setDescriptionDrafts(prev => {
+            const next = { ...prev };
+            delete next[issueId];
+            return next;
+        });
+        if (draft === undefined || draft === currentValue) return;
+        await updateIssueOnCustomer(customerId, issueId, { description: draft });
+    }, [descriptionDrafts, updateIssueOnCustomer]);
+
+    const handleStatusChange = useCallback(async (
+        customerId: string,
+        issueId: string,
+        newStatus: SupportIssue['status']
+    ) => {
+        const customer = data?.customers.find(c => c.id === customerId);
+        const issue = customer?.support_issues?.find(si => si.id === issueId);
+        if (!issue) return;
+        // Use the shared helper so the inline list and the customer detail page apply
+        // the same "moving to Done schedules an auto-expiration" rule.
+        await updateIssueOnCustomer(customerId, issueId, buildSupportStatusPatch(issue, newStatus));
+    }, [data, updateIssueOnCustomer]);
 
     // Check Glean status on mount and when query params change
     useEffect(() => {
@@ -464,15 +530,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
 
         data.customers.forEach(customer => {
             const combinedTcv = (customer.existing_tcv || 0) + (customer.potential_tcv || 0);
-            let tcvCategory = 1;
-            if (maxCombinedTcv > 0) {
-                const bandSize = maxCombinedTcv / 3;
-                if (combinedTcv > bandSize * 2) {
-                    tcvCategory = 3;
-                } else if (combinedTcv > bandSize) {
-                    tcvCategory = 2;
-                }
-            }
+            const tcvRatio = maxCombinedTcv > 0 ? combinedTcv / maxCombinedTcv : 0;
 
             // Manual Support Issues
             (customer.support_issues || []).forEach(issue => {
@@ -492,7 +550,9 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                     status: issue.status,
                     customerName: customer.name,
                     customerId: customer.id,
-                    category: tcvCategory,
+                    totalTcv: combinedTcv,
+                    maxTcv: maxCombinedTcv,
+                    tcvRatio,
                     activity,
                     isJira: false,
                     linkedJiras: linkedJiras.length > 0 ? linkedJiras : undefined,
@@ -505,12 +565,12 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
 
     const sortOptions: SortOption<SupportIssueWithCustomer>[] = useMemo(() => [
         { label: 'Customer', key: 'customerName', getValue: (d) => d.customerName },
-        { label: '💰', key: 'category', getValue: (d) => d.category.toString() },
+        { label: '💰', key: 'tcv', getValue: (d) => d.totalTcv },
         { label: 'Activity', key: 'activity', getValue: (d) => ACTIVITY_ORDER[d.activity].toString() },
         { label: 'Description', key: 'description', getValue: (d) => d.description },
-        { 
-            label: 'Status', 
-            key: 'status', 
+        {
+            label: 'Status',
+            key: 'status',
             getValue: (d) => {
                 const normalized = (d.status || '').trim().toLowerCase();
                 const order = STATUS_ORDER[normalized] ?? 99;
@@ -532,13 +592,38 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         },
         {
             header: '💰',
-            render: (d) => (
-                <span title={`TCV Category: ${d.category}`} style={{ fontSize: '14px' }}>
-                    {'💰'.repeat(d.category)}
-                </span>
-            ),
+            render: (d) => {
+                // Three-slot continuous fill: bags[i] = how much of slot i is filled (0..1).
+                // Whale (tcvRatio = 1) → all three slots fully visible. tcvRatio = 0.5 →
+                // slot 0 fully filled, slot 1 half-filled, slot 2 empty (faint).
+                const bags = d.tcvRatio * 3;
+                const slotFills = [0, 1, 2].map(i => Math.max(0, Math.min(1, bags - i)));
+                const pct = Math.round(d.tcvRatio * 100);
+                const tooltip = d.maxTcv > 0
+                    ? `TCV: $${d.totalTcv.toLocaleString()} (${pct}% of max $${d.maxTcv.toLocaleString()})`
+                    : `TCV: $${d.totalTcv.toLocaleString()}`;
+                return (
+                    <span
+                        data-testid="tcv-bags"
+                        data-tcv-ratio={d.tcvRatio.toFixed(3)}
+                        title={tooltip}
+                        style={{ fontSize: '14px', whiteSpace: 'nowrap' }}
+                    >
+                        {slotFills.map((fill, i) => (
+                            <span
+                                key={i}
+                                data-testid={`tcv-bag-slot-${i}`}
+                                data-fill={fill.toFixed(3)}
+                                // Baseline opacity 0.15 keeps an empty-slot outline so the column
+                                // stays visually consistent even for low-TCV customers.
+                                style={{ opacity: 0.15 + 0.85 * fill }}
+                            >💰</span>
+                        ))}
+                    </span>
+                );
+            },
             flex: 0.5,
-            sortKey: 'category'
+            sortKey: 'tcv'
         },
         {
             header: 'Activity',
@@ -560,76 +645,114 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             flex: 0.6,
             sortKey: 'activity'
         },
-        { 
-            header: 'Description', 
-            render: (d) => (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <span style={{ fontWeight: 'normal', whiteSpace: 'pre-wrap', color: 'var(--text-primary)' }}>{d.description}</span>
-                    {d.linkedJiras && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                            {d.linkedJiras.map(jira => (
-                                <div 
-                                    key={jira.key} 
-                                    onClick={() => {
-                                        if (jira.url) {
-                                            window.open(jira.url, '_blank');
-                                        }
-                                    }}
-                                    style={{ 
-                                        fontSize: '10px', 
-                                        backgroundColor: 'var(--bg-tertiary)', 
-                                        border: '1px solid var(--border-secondary)',
-                                        borderRadius: '4px',
-                                        padding: '1px 6px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                        cursor: jira.url ? 'pointer' : 'default',
-                                        color: 'var(--text-primary)'
-                                    }}
-                                    title={`Jira Status: ${jira.status}`}
-                                >
-                                    <span style={{ fontWeight: 'bold' }}>{jira.key}</span>
-                                    <span style={{ 
-                                        fontSize: '9px', 
-                                        color: 'var(--text-muted)',
-                                        borderLeft: '1px solid var(--border-secondary)',
-                                        paddingLeft: '4px',
-                                        fontWeight: 'bold'
-                                    }}>{jira.status}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            ), 
+        {
+            header: 'Description',
+            render: (d) => {
+                const draftValue = descriptionDrafts[d.id];
+                const value = draftValue !== undefined ? draftValue : d.description;
+                return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <textarea
+                            aria-label={`Description for issue ${d.id}`}
+                            value={value}
+                            rows={Math.min(4, Math.max(1, value.split('\n').length))}
+                            onChange={e => setDescriptionDrafts(prev => ({ ...prev, [d.id]: e.target.value }))}
+                            onBlur={() => commitDescription(d.customerId, d.id, d.description)}
+                            onClick={e => e.stopPropagation()}
+                            onMouseDown={e => e.stopPropagation()}
+                            onKeyDown={e => e.stopPropagation()}
+                            style={{
+                                width: '100%',
+                                padding: '4px 6px',
+                                borderRadius: '4px',
+                                border: '1px solid var(--border-hover)',
+                                backgroundColor: 'var(--bg-primary)',
+                                color: 'var(--text-primary)',
+                                resize: 'vertical',
+                                fontFamily: 'inherit',
+                                fontSize: '13px',
+                                whiteSpace: 'pre-wrap'
+                            }}
+                        />
+                        {d.linkedJiras && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                {d.linkedJiras.map(jira => (
+                                    <div
+                                        key={jira.key}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (jira.url) {
+                                                window.open(jira.url, '_blank');
+                                            }
+                                        }}
+                                        style={{
+                                            fontSize: '10px',
+                                            backgroundColor: 'var(--bg-tertiary)',
+                                            border: '1px solid var(--border-secondary)',
+                                            borderRadius: '4px',
+                                            padding: '1px 6px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            cursor: jira.url ? 'pointer' : 'default',
+                                            color: 'var(--text-primary)'
+                                        }}
+                                        title={`Jira Status: ${jira.status}`}
+                                    >
+                                        <span style={{ fontWeight: 'bold' }}>{jira.key}</span>
+                                        <span style={{
+                                            fontSize: '9px',
+                                            color: 'var(--text-muted)',
+                                            borderLeft: '1px solid var(--border-secondary)',
+                                            paddingLeft: '4px',
+                                            fontWeight: 'bold'
+                                        }}>{jira.status}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                );
+            },
             flex: 3,
             sortKey: 'description'
         },
-        { 
-            header: 'Status', 
+        {
+            header: 'Status',
             render: (d) => {
-                const status = (d.status || '').toLowerCase();
+                const isKnown = STATUS_OPTIONS.some(o => o.value === d.status);
                 return (
-                    <span style={{ 
-                        padding: '2px 8px', 
-                        borderRadius: '4px', 
-                        backgroundColor: (status === 'done' || status === 'resolved' || status === 'closed') ? 'var(--status-success)' : 
-                                       (status === 'to do' || status === 'new' || status === 'open') ? 'var(--status-danger)' : 
-                                       (status === 'work in progress' || status === 'in progress' || status === 'in_progress' || status === 'active') ? 'var(--status-warning)' : 'var(--accent-primary)',
-                        fontSize: '11px',
-                        color: 'white',
-                        display: 'inline-block',
-                        fontWeight: 'bold'
-                    }}>
-                        {d.status}
-                    </span>
+                    <select
+                        aria-label={`Status for issue ${d.id}`}
+                        value={d.status}
+                        onChange={e => handleStatusChange(d.customerId, d.id, e.target.value as SupportIssue['status'])}
+                        onClick={e => e.stopPropagation()}
+                        onMouseDown={e => e.stopPropagation()}
+                        onKeyDown={e => e.stopPropagation()}
+                        style={{
+                            width: '100%',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            backgroundColor: statusBadgeColor(d.status),
+                            color: 'white',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            border: 'none',
+                            cursor: 'pointer',
+                            textTransform: 'capitalize'
+                        }}
+                    >
+                        {!isKnown && <option value={d.status}>{d.status}</option>}
+                        {STATUS_OPTIONS.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                    </select>
                 );
-            }, 
+            },
             flex: 1,
             sortKey: 'status'
         }
-    ], []);
+    ], [descriptionDrafts, commitDescription, handleStatusChange]);
 
     const renderAIResults = () => {
         if (!isAISearching && (!showAIResults || !aiResults)) return null;
@@ -778,7 +901,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
     const renderCreateForm = () => {
         if (!showCreateForm) return null;
         return (
-            <div style={{
+            <div data-testid="create-issue-form" style={{
                 backgroundColor: 'var(--bg-secondary)',
                 border: '2px solid var(--accent-primary)',
                 borderRadius: '8px',
@@ -923,52 +1046,34 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                 }
             }}
             columns={columns}
-            additionalControls={
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                        className="btn-primary"
-                        onClick={handleOpenCreateForm}
-                        style={{ minWidth: '130px' }}
-                    >
-                        + Create Issue
-                    </button>
-                    <button
-                        className="btn-primary"
-                        onClick={() => { setDeleteNotFound(false); setShowImportModal(true); }}
-                        style={{ minWidth: '130px' }}
-                    >
-                        Upsert from JSON
-                    </button>
-                    <button
-                        className="btn-primary"
-                        onClick={handleExportJson}
-                        style={{ minWidth: '130px' }}
-                    >
-                        Export JSON
-                    </button>
-                    {data?.settings?.ai?.provider && data?.settings?.ai?.support?.prompt && (
-                        <>
-                            {data.settings.ai.provider === 'glean' && !isGleanAuthenticated && (
-                                <button
-                                    className="btn-primary"
-                                    onClick={handleGleanLogin}
-                                    style={{ minWidth: '160px' }}
-                                >
-                                    Connect Glean
-                                </button>
-                            )}
-                            <button
-                                className="btn-primary"
-                                onClick={handleAISearch}
-                                disabled={isAISearching || (data.settings.ai.provider === 'glean' && !isGleanAuthenticated)}
-                                style={{ minWidth: '160px' }}
-                            >
-                                {isAISearching ? (searchProgress || 'AI Searching...') : 'AI Support Search'}
-                            </button>
-                        </>
-                    )}
-                </div>
-            }
+            actionButton={{
+                label: '+ Create Issue',
+                onClick: handleOpenCreateForm
+            }}
+            secondaryActions={[
+                {
+                    label: 'Upsert from JSON',
+                    onClick: () => { setDeleteNotFound(false); setShowImportModal(true); }
+                },
+                {
+                    label: 'Export JSON',
+                    onClick: handleExportJson
+                },
+                ...(data?.settings?.ai?.provider && data?.settings?.ai?.support?.prompt
+                    ? [
+                        ...(data.settings.ai.provider === 'glean' && !isGleanAuthenticated
+                            ? [{ label: 'Connect Glean', onClick: handleGleanLogin }]
+                            : []
+                        ),
+                        {
+                            label: isAISearching ? (searchProgress || 'AI Searching...') : 'AI Support Search',
+                            onClick: handleAISearch,
+                            disabled: isAISearching || (data.settings.ai.provider === 'glean' && !isGleanAuthenticated)
+                        }
+                    ]
+                    : []
+                )
+            ]}
             renderBelowControls={renderAIResults}
             renderAboveList={renderCreateForm}
             emptyMessage="No support issues tracked."

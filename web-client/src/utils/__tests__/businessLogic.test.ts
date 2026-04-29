@@ -2,11 +2,15 @@ import { describe, it, expect } from 'vitest';
 import {
     deepMerge,
     calculateWorkItemEffort,
-    calculateWorkItemTcv, 
+    calculateWorkItemTcv,
     calculateWorkItemScore,
-    calculateIssueEffortPerSprint, 
-    calculateIssueIntensityRatio, 
-    parseJiraIssue 
+    calculateIssueEffortPerSprint,
+    calculateIssueIntensityRatio,
+    parseJiraIssue,
+    buildSupportStatusPatch,
+    SUPPORT_DONE_RETENTION_DAYS,
+    estimateTeamCapacityMds,
+    TEAM_CAPACITY_PTO_FACTOR
 } from '../businessLogic';
 import type { WorkItem, Issue, Customer, Sprint, Team } from '@valuestream/shared-types';
 
@@ -515,6 +519,89 @@ describe('businessLogic', () => {
             const role = (result as Record<string, any>).auth.role;
             expect(role.aws_access_key).toBe('AK');
             expect(role.aws_role_arn).toBe('arn:aws:iam::123:role/R');
+        });
+    });
+
+    describe('buildSupportStatusPatch', () => {
+        const isoToday = (offsetDays: number): string => {
+            const d = new Date();
+            d.setDate(d.getDate() + offsetDays);
+            return d.toISOString().split('T')[0];
+        };
+
+        it('sets only the status when transitioning to a non-done status', () => {
+            const patch = buildSupportStatusPatch({ expiration_date: undefined }, 'work in progress');
+            expect(patch).toEqual({ status: 'work in progress' });
+        });
+
+        it('schedules an auto-expiration N days out when transitioning to "done" with no existing expiry', () => {
+            const patch = buildSupportStatusPatch({ expiration_date: undefined }, 'done');
+            expect(patch.status).toBe('done');
+            expect(patch.expiration_date).toBe(isoToday(SUPPORT_DONE_RETENTION_DAYS));
+        });
+
+        it('does NOT overwrite an existing expiration_date when transitioning to "done"', () => {
+            const existing = '2099-12-31';
+            const patch = buildSupportStatusPatch({ expiration_date: existing }, 'done');
+            expect(patch.status).toBe('done');
+            // expiration_date is not part of the patch — caller's existing value is preserved.
+            expect(patch.expiration_date).toBeUndefined();
+        });
+
+        it('does NOT set expiration_date when transitioning AWAY from done to a non-done status', () => {
+            const patch = buildSupportStatusPatch({ expiration_date: undefined }, 'to do');
+            expect(patch).toEqual({ status: 'to do' });
+            expect(patch.expiration_date).toBeUndefined();
+        });
+    });
+
+    describe('estimateTeamCapacityMds', () => {
+        it('returns 0 for an empty member list', () => {
+            expect(estimateTeamCapacityMds([], 14)).toBe(0);
+        });
+
+        it('returns 0 when sprint duration is non-positive', () => {
+            expect(estimateTeamCapacityMds([{ capacity_percentage: 100 }], 0)).toBe(0);
+            expect(estimateTeamCapacityMds([{ capacity_percentage: 100 }], -5)).toBe(0);
+        });
+
+        it('computes 8 MDs for one full-time member on a 14-day sprint (10 working days × 80%)', () => {
+            // 14 * 5/7 = 10 working days. 10 * 1.0 = 10 gross. 10 * 0.8 = 8 net.
+            expect(estimateTeamCapacityMds([{ capacity_percentage: 100 }], 14)).toBe(8);
+        });
+
+        it('scales by per-member capacity_percentage', () => {
+            // Three members at 100%, 50%, 25% → effective FTEs = 1.75
+            // workingDays = 10. gross = 10 * 1.75 = 17.5. net = 17.5 * 0.8 = 14.
+            const members = [
+                { capacity_percentage: 100 },
+                { capacity_percentage: 50 },
+                { capacity_percentage: 25 }
+            ];
+            expect(estimateTeamCapacityMds(members, 14)).toBe(14);
+        });
+
+        it('honors a non-default sprint duration', () => {
+            // 7-day sprint = 5 working days. One full-time member: 5 * 0.8 = 4.
+            expect(estimateTeamCapacityMds([{ capacity_percentage: 100 }], 7)).toBe(4);
+        });
+
+        it('rounds to one decimal', () => {
+            // 1 member @ 33% on a 14-day sprint: 10 * 0.33 * 0.8 = 2.64 → 2.6.
+            expect(estimateTeamCapacityMds([{ capacity_percentage: 33 }], 14)).toBe(2.6);
+        });
+
+        it('treats missing/falsy capacity_percentage as 0', () => {
+            // First member contributes nothing; second adds 8.
+            const members = [
+                { capacity_percentage: 0 },
+                { capacity_percentage: 100 }
+            ];
+            expect(estimateTeamCapacityMds(members, 14)).toBe(8);
+        });
+
+        it('exposes the PTO factor constant', () => {
+            expect(TEAM_CAPACITY_PTO_FACTOR).toBe(0.8);
         });
     });
 });

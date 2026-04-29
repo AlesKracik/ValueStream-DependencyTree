@@ -60,6 +60,28 @@ The **Members** tab on the Team Detail page provides inline CRUD for team member
 | Username | Unique identifier (used as merge key for LDAP sync) |
 | Capacity % | Percentage of capacity this member contributes (default: 100) |
 
+### Estimate Capacity from Members
+A header action on the Members tab seeds `Team.total_capacity_mds` from the current member roster instead of having you maintain the number by hand. The button is disabled until the team has at least one member; clicking it asks for confirmation before overwriting the existing value.
+
+**Formula** (lives in `web-client/src/utils/businessLogic.ts` as `estimateTeamCapacityMds`):
+
+```
+workingDays = sprint_duration_days × 5/7              // settings → general.sprint_duration_days; 14 → 10
+gross       = Σ workingDays × (member.capacity_percentage / 100)
+net         = gross × TEAM_CAPACITY_PTO_FACTOR        // 0.8 — leaves 20% for PTO/sickness
+total_capacity_mds = round(net, 1 decimal)
+```
+
+Country-specific holiday reductions are intentionally NOT applied here — those live in the **Capacity Overrides** tab, which knows the actual per-sprint dates. This action only seeds the *baseline* `total_capacity_mds`; per-sprint overrides on top of it (whether manual or holiday-driven) keep working as before.
+
+**Examples:**
+| Members | Sprint length | total_capacity_mds |
+|---|---|---|
+| 1 × 100 % | 14 days | 8.0 |
+| 1 × 100 % + 1 × 50 % | 14 days | 12.0 |
+| 1 × 33 % | 14 days | 2.6 |
+| 1 × 100 % | 7 days | 4.0 |
+
 ### LDAP Sync
 When LDAP is configured in Settings (LDAP tab → General & Team subtabs), an additional **LDAP Team Name** field appears at the top of the Members tab.
 

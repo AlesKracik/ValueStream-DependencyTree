@@ -1,10 +1,38 @@
 import { useMemo } from 'react';
 import { differenceInDays, parseISO, min, max, format, isWeekend } from 'date-fns';
 import type { Node, Edge } from '@xyflow/react';
-import type { ValueStreamData } from '@valuestream/shared-types';
+import type { ValueStreamData, WorkItem, WorkItemPriorityMetric } from '@valuestream/shared-types';
 import Holidays from 'date-holidays';
 import { calculateWorkItemEffort, calculateIssueEffortPerSprint, calculateIssueIntensityRatio } from '../utils/businessLogic';
 import type { GraphFilterResult } from './useGraphFilters';
+
+/**
+ * Priority metric helpers
+ *
+ * Convention: HIGHER value = HIGHER priority (top of the list, biggest node).
+ *  - score      → calculated_score (RICE/ROI). Missing → 0.
+ *  - aha_score  → aha_synced_data.score (Product Value from Aha!). Missing → 0.
+ *  - stackrank  → manual stackrank. Missing → MIN_SAFE_INTEGER for sort
+ *    (unranked items sink to the bottom regardless of sort direction), but
+ *    null for the displayed value (shown as "—") and 0 for size.
+ */
+function getMetricSortValue(wi: WorkItem, metric: WorkItemPriorityMetric): number {
+    if (metric === 'score') return wi.calculated_score || 0;
+    if (metric === 'aha_score') return wi.aha_synced_data?.score ?? 0;
+    return wi.stackrank ?? Number.MIN_SAFE_INTEGER;
+}
+
+function getMetricDisplayValue(wi: WorkItem, metric: WorkItemPriorityMetric): number | null {
+    if (metric === 'score') return wi.calculated_score || 0;
+    if (metric === 'aha_score') return wi.aha_synced_data?.score ?? null;
+    return wi.stackrank ?? null;
+}
+
+function getMetricSizeValue(wi: WorkItem, metric: WorkItemPriorityMetric): number {
+    if (metric === 'score') return wi.calculated_score || 0;
+    if (metric === 'aha_score') return wi.aha_synced_data?.score ?? 0;
+    return wi.stackrank ?? 0;
+}
 
 interface Holiday {
     date: string;
@@ -20,7 +48,8 @@ export function useGraphBuilder(
     filters: GraphFilterResult,
     hoveredNodeId: string | null,
     sprintOffset: number,
-    showDependencies: boolean
+    showDependencies: boolean,
+    prioritizationMetric: WorkItemPriorityMetric = 'score'
 ): { nodes: Node[]; edges: Edge[] } {
     return useMemo(() => {
         if (!data) return { nodes: [], edges: [] };
@@ -125,14 +154,29 @@ export function useGraphBuilder(
                 };
             });
 
-        // Use global metrics from server for consistent scaling across filters
-        const maxScore = data.metrics?.maxScore || 1;
+        // Compute the per-metric max used for node sizing (highest = full size).
+        // Score uses the server-provided global max for consistent scaling across filters;
+        // aha_score and stackrank are computed locally from the visible work item set.
+        let maxMetricValue: number;
+        if (prioritizationMetric === 'score') {
+            maxMetricValue = data.metrics?.maxScore || 1;
+        } else {
+            maxMetricValue = workItemsToProcess.reduce(
+                (acc, wi) => Math.max(acc, getMetricSizeValue(wi, prioritizationMetric)),
+                0
+            ) || 1;
+        }
         const maxRoi = data.metrics?.maxRoi || 0.0001;
-        const sortedWorkItems = workItemsToProcess.sort((a, b) => (b.calculated_score || 0) - (a.calculated_score || 0)); // Descending by RICE Score
+
+        // Sort descending by the active metric → highest priority on top.
+        const sortedWorkItems = workItemsToProcess.sort(
+            (a, b) => getMetricSortValue(b, prioritizationMetric) - getMetricSortValue(a, prioritizationMetric)
+        );
 
         sortedWorkItems.forEach((workItem, index) => {
-            const score = workItem.calculated_score || 0;
-            const sizeRatio = maxScore > 0 ? score / maxScore : 0.5;
+            const sizeValue = getMetricSizeValue(workItem, prioritizationMetric);
+            const displayValue = getMetricDisplayValue(workItem, prioritizationMetric);
+            const sizeRatio = maxMetricValue > 0 ? sizeValue / maxMetricValue : 0.5;
             const nodeSize = 100 * 0.6 + (100 * 0.8 * sizeRatio);
 
             nodes.push({
@@ -144,8 +188,8 @@ export function useGraphBuilder(
                     description: workItem.description,
                     effortMds: workItem.calculatedEffort,
                     issueMds: workItem.issueMdsSum,
-                    score: score,
-                    maxScore: maxScore,
+                    score: displayValue,
+                    maxScore: maxMetricValue,
                     baseSize: 100,
                     isGlobal: !!workItem.all_customers_target,
                     releasedInSprintId: workItem.released_in_sprint_id,
@@ -242,22 +286,22 @@ export function useGraphBuilder(
         const visibleIssueIds = new Set(visibleIssues);
         const allIssuesToShow = (data.issues || []).filter(issue => visibleIssueIds.has(issue.id));
 
-        // Build work item score lookup for Gantt lane ordering
-        const workItemScoreMap: Record<string, number> = {};
+        // Build work item priority lookup for Gantt lane ordering using the active metric.
+        const workItemPriorityMap: Record<string, number> = {};
         (data.workItems || []).forEach(wi => {
-            workItemScoreMap[wi.id] = wi.calculated_score || 0;
+            workItemPriorityMap[wi.id] = getMetricSortValue(wi, prioritizationMetric);
         });
 
-        // Sort issues: by related work item score (descending) so highest-scored items get top lanes,
+        // Sort issues: by related work item priority (descending) so highest-priority items get top lanes,
         // then by start date as tiebreaker. Issues without dates go last.
         const sortedIssues = [...allIssuesToShow].sort((a, b) => {
             const hasDateA = !!(a.target_start && a.target_end);
             const hasDateB = !!(b.target_start && b.target_end);
 
             if (hasDateA && hasDateB) {
-                const scoreA = workItemScoreMap[a.work_item_id || ''] || 0;
-                const scoreB = workItemScoreMap[b.work_item_id || ''] || 0;
-                if (scoreA !== scoreB) return scoreB - scoreA; // Higher score = top lane
+                const priA = workItemPriorityMap[a.work_item_id || ''] ?? Number.MIN_SAFE_INTEGER;
+                const priB = workItemPriorityMap[b.work_item_id || ''] ?? Number.MIN_SAFE_INTEGER;
+                if (priA !== priB) return priB - priA; // Higher priority = top lane
                 return parseISO(a.target_start!).getTime() - parseISO(b.target_start!).getTime();
             }
             if (hasDateA) return -1;
@@ -723,5 +767,5 @@ export function useGraphBuilder(
         }
 
         return { nodes, edges };
-    }, [data, filters, hoveredNodeId, sprintOffset, showDependencies]);
+    }, [data, filters, hoveredNodeId, sprintOffset, showDependencies, prioritizationMetric]);
 }

@@ -69,6 +69,9 @@ graph TD
 - Parameters are edited via the **Edit Parameters** button located in the top-right corner of the active ValueStream.
 - Parameters are stored in the MongoDB `valueStreams` collection.
 
+## Visualization controls
+The dashboard's filter bar exposes a **Prioritize by** select (Score · Product Value · Stack Rank) that drives work-item ordering and node sizing. The choice is held in `ValueStreamViewState.prioritizationMetric` on `UIStateContext`, so it stays in sync with the matching toggle on the Work Items list page. See [WORKITEMS.md](WORKITEMS.md#prioritization-toggle) for the metric semantics.
+
 
 
 

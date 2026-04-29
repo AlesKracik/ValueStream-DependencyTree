@@ -35,6 +35,17 @@ interface GenericListPageProps<T> {
         label: string;
         onClick: () => void;
     };
+    /**
+     * Secondary buttons rendered to the LEFT of the primary action button
+     * in the header (upper right). Use for ancillary actions (e.g. "Compact Ranks")
+     * that don't deserve the primary slot but should still live in the header.
+     */
+    secondaryActions?: {
+        label: string;
+        onClick: () => void;
+        title?: string;
+        disabled?: boolean;
+    }[];
     additionalControls?: React.ReactNode;
     renderBelowControls?: () => React.ReactNode;
     renderAboveList?: () => React.ReactNode;
@@ -58,6 +69,7 @@ export function GenericListPage<T extends { id: string }>({
     renderItemRight,
     columns,
     actionButton,
+    secondaryActions,
     additionalControls,
     renderBelowControls,
     renderAboveList,
@@ -250,11 +262,25 @@ export function GenericListPage<T extends { id: string }>({
         >
             <div className={styles.header}>
                 <h1>{title}</h1>
-                {actionButton && (
-                    <button onClick={actionButton.onClick} className="btn-primary">
-                        {actionButton.label}
-                    </button>
-                )}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {secondaryActions?.map((action, i) => (
+                        <button
+                            key={i}
+                            type="button"
+                            onClick={action.onClick}
+                            title={action.title}
+                            disabled={action.disabled}
+                            className="btn-primary"
+                        >
+                            {action.label}
+                        </button>
+                    ))}
+                    {actionButton && (
+                        <button onClick={actionButton.onClick} className="btn-primary">
+                            {actionButton.label}
+                        </button>
+                    )}
+                </div>
             </div>
 
             <div className={styles.controls} style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>

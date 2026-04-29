@@ -479,6 +479,15 @@ export interface ValueStreamData {
   };
 }
 
+/**
+ * Which metric drives work item ordering and node sizing across the
+ * WorkItemList page and the ValueStream dashboard.
+ *  - 'score'      → calculated_score (RICE/ROI)
+ *  - 'aha_score'  → aha_synced_data.score (Product Value pulled from Aha!)
+ *  - 'stackrank'  → manual stackrank (higher value = higher priority)
+ */
+export type WorkItemPriorityMetric = 'score' | 'aha_score' | 'stackrank';
+
 export interface ValueStreamViewState {
   sprintOffset: number;
   customerFilter: string;
@@ -490,6 +499,7 @@ export interface ValueStreamViewState {
   issueFilter: string;
   showDependencies: boolean;
   disableHoverHighlight: boolean;
+  prioritizationMetric: WorkItemPriorityMetric;
   selectedNodeId?: string | null;
   isInitialOffsetSet: boolean;
   viewport?: { x: number; y: number; zoom: number };

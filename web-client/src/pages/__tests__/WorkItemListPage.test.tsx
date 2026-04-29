@@ -93,31 +93,81 @@ describe('WorkItemListPage', () => {
             <WorkItemListPage data={mockData} loading={false} />
         );
 
-        const stackRankBtn = screen.getByRole('button', { name: /Stack Rank/i });
+        // Switch the prioritization toggle to Stack Rank, then sort by the (now "Stack Rank") column.
+        // The toggle is role=radio and the column header is role=button — distinct queries.
+        fireEvent.click(screen.getByRole('radio', { name: /Stack Rank/i }));
+        const priorityBtn = screen.getByRole('button', { name: /^Stack Rank/i });
+
         // First click: ascending → unranked first (MIN_SAFE_INTEGER), then 100, then 200.
-        fireEvent.click(stackRankBtn);
+        fireEvent.click(priorityBtn);
         let items = container.querySelectorAll('[class*="listItem"]');
         expect(items[0].textContent).toContain('Beta Item');   // unranked
         expect(items[1].textContent).toContain('Gamma Item');  // 100
         expect(items[2].textContent).toContain('Alpha Item');  // 200
 
         // Second click: descending → highest priority first, unranked last.
-        fireEvent.click(stackRankBtn);
+        fireEvent.click(priorityBtn);
         items = container.querySelectorAll('[class*="listItem"]');
         expect(items[0].textContent).toContain('Alpha Item');  // 200
         expect(items[1].textContent).toContain('Gamma Item');  // 100
         expect(items[2].textContent).toContain('Beta Item');   // unranked
     });
 
-    it('renders "—" for work items with no stack rank', () => {
+    it('renders "—" for work items with no stack rank when toggled to Stack Rank', () => {
         const { container } = renderWithProviders(
             <WorkItemListPage data={mockData} loading={false} />
         );
 
-        // Default sort by name ascending: Alpha, Beta (unranked), Gamma
+        // Switch toggle to Stack Rank so the Priority column renders stackrank values.
+        fireEvent.click(screen.getByRole('radio', { name: /Stack Rank/i }));
+
+        // Default sort by name ascending: Alpha (200), Beta (unranked), Gamma (100)
         const items = container.querySelectorAll('[class*="listItem"]');
         expect(items[1].textContent).toContain('Beta Item');
         expect(items[1].textContent).toContain('—');
+    });
+
+    it('toggle switches the Priority column header label', () => {
+        renderWithProviders(
+            <WorkItemListPage data={mockData} loading={false} />
+        );
+
+        // Default metric is Score; the sortable column header should read "Score".
+        expect(screen.getByRole('button', { name: /^Score/i })).toBeDefined();
+
+        // Switch to Stack Rank and the same column header should now read "Stack Rank".
+        fireEvent.click(screen.getByRole('radio', { name: /Stack Rank/i }));
+        expect(screen.getByRole('button', { name: /^Stack Rank/i })).toBeDefined();
+
+        // Switch to Product Value and the column header should read "Product Value".
+        fireEvent.click(screen.getByRole('radio', { name: /Product Value/i }));
+        expect(screen.getByRole('button', { name: /^Product Value/i })).toBeDefined();
+    });
+
+    it('renders Product Value from aha_synced_data.score when toggled to Product Value', () => {
+        const dataWithAha: ValueStreamData = {
+            ...mockData,
+            workItems: [
+                { ...mockData.workItems[0], aha_synced_data: { score: 77 } }, // Alpha
+                { ...mockData.workItems[1] }, // Gamma — no aha data
+                { ...mockData.workItems[2], aha_synced_data: { score: 42 } }  // Beta
+            ]
+        };
+
+        const { container } = renderWithProviders(
+            <WorkItemListPage data={dataWithAha} loading={false} />
+        );
+
+        fireEvent.click(screen.getByRole('radio', { name: /Product Value/i }));
+
+        // Default sort by name ascending: Alpha, Beta, Gamma
+        const items = container.querySelectorAll('[class*="listItem"]');
+        expect(items[0].textContent).toContain('Alpha Item');
+        expect(items[0].textContent).toContain('77');
+        expect(items[1].textContent).toContain('Beta Item');
+        expect(items[1].textContent).toContain('42');
+        expect(items[2].textContent).toContain('Gamma Item');
+        expect(items[2].textContent).toContain('—'); // No aha data for Gamma
     });
 
     it('sorts work items by name', () => {
@@ -176,6 +226,8 @@ describe('WorkItemListPage', () => {
             <WorkItemListPage data={mockData} loading={false} updateWorkItem={updateWorkItem} />
         );
 
+        // Compact Ranks only appears when the prioritization toggle is set to Stack Rank.
+        fireEvent.click(screen.getByRole('radio', { name: /Stack Rank/i }));
         fireEvent.click(screen.getByRole('button', { name: /Compact Ranks/i }));
 
         // Confirm the modal that asks "Compact stack ranks?"
@@ -203,10 +255,20 @@ describe('WorkItemListPage', () => {
             <WorkItemListPage data={dataNoRanks} loading={false} updateWorkItem={updateWorkItem} />
         );
 
+        // Compact Ranks only appears when the prioritization toggle is set to Stack Rank.
+        fireEvent.click(screen.getByRole('radio', { name: /Stack Rank/i }));
         fireEvent.click(screen.getByRole('button', { name: /Compact Ranks/i }));
 
         await waitFor(() => screen.getByText(/Nothing to compact/i));
         expect(updateWorkItem).not.toHaveBeenCalled();
+    });
+
+    it('Compact Ranks button is not shown when toggle is set to Score (default)', () => {
+        renderWithProviders(
+            <WorkItemListPage data={mockData} loading={false} />
+        );
+
+        expect(screen.queryByRole('button', { name: /Compact Ranks/i })).toBeNull();
     });
 
     it('shows empty message when no work items are found', () => {

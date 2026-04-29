@@ -1,4 +1,4 @@
-import type { ValueStreamData, ValueStreamParameters } from '@valuestream/shared-types';
+import type { ValueStreamData, ValueStreamParameters, WorkItemPriorityMetric } from '@valuestream/shared-types';
 import { useGraphFilters } from './useGraphFilters';
 import { useGraphBuilder } from './useGraphBuilder';
 
@@ -15,7 +15,8 @@ export function useGraphLayout(
     minTcv: number = 0,
     minScore: number = 0,
     selectedNodeId: string | null = null,
-    baseParams: ValueStreamParameters | null = null
+    baseParams: ValueStreamParameters | null = null,
+    prioritizationMetric: WorkItemPriorityMetric = 'score'
 ) {
     const filters = useGraphFilters(
         data,
@@ -31,5 +32,5 @@ export function useGraphLayout(
         showDependencies
     );
 
-    return useGraphBuilder(data, filters, hoveredNodeId, sprintOffset, showDependencies);
+    return useGraphBuilder(data, filters, hoveredNodeId, sprintOffset, showDependencies, prioritizationMetric);
 }

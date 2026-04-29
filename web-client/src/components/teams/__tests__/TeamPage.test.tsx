@@ -612,6 +612,114 @@ describe('TeamPage', () => {
         const syncBtn = screen.getByText('Sync from LDAP') as HTMLButtonElement;
         expect(syncBtn.disabled).toBe(true);
     });
+
+    describe('Estimate Capacity from Members', () => {
+        it('disables the button when the team has no members', () => {
+            renderTeamPage();
+            fireEvent.click(screen.getByText('Members'));
+
+            const btn = screen.getByRole('button', { name: /Estimate Capacity from Members/i }) as HTMLButtonElement;
+            expect(btn.disabled).toBe(true);
+        });
+
+        it('shows the computed estimate alongside the button when members are present', () => {
+            const dataWithMembers = {
+                ...mockData,
+                teams: [{
+                    ...mockData.teams[0],
+                    // 100% + 50% on a 14-day sprint → workingDays=10, gross=15, net=12.
+                    members: [
+                        { name: 'A', username: 'a', capacity_percentage: 100 },
+                        { name: 'B', username: 'b', capacity_percentage: 50 }
+                    ]
+                }]
+            };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (useNotificationContext as any).mockReturnValue({
+                showConfirm: mockShowConfirm,
+                data: dataWithMembers,
+                updateIssue: vi.fn()
+            });
+
+            renderTeamPage({ ...defaultProps, data: dataWithMembers });
+            fireEvent.click(screen.getByText('Members'));
+
+            // Hint text reports the computed value (12 MDs) and the configured sprint length (14 days).
+            expect(screen.getByText(/Estimated capacity from members:/i)).toBeDefined();
+            expect(screen.getByText(/12 MDs/i)).toBeDefined();
+            expect(screen.getByText(/14-day sprint/i)).toBeDefined();
+        });
+
+        it('updates total_capacity_mds with the estimate after the user confirms', async () => {
+            const dataWithMembers = {
+                ...mockData,
+                teams: [{
+                    ...mockData.teams[0],
+                    members: [
+                        { name: 'A', username: 'a', capacity_percentage: 100 },
+                        { name: 'B', username: 'b', capacity_percentage: 50 }
+                    ]
+                }]
+            };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (useNotificationContext as any).mockReturnValue({
+                showConfirm: mockShowConfirm,
+                data: dataWithMembers,
+                updateIssue: vi.fn()
+            });
+            mockShowConfirm.mockResolvedValueOnce(true);
+
+            renderTeamPage({ ...defaultProps, data: dataWithMembers });
+            fireEvent.click(screen.getByText('Members'));
+
+            const btn = screen.getByRole('button', { name: /Estimate Capacity from Members/i });
+            fireEvent.click(btn);
+
+            // Confirmation message includes the computed value and the PTO/sickness rationale.
+            expect(mockShowConfirm).toHaveBeenCalledWith(
+                expect.stringMatching(/Estimate Total Capacity/i),
+                expect.stringContaining('12')
+            );
+            const confirmBody = mockShowConfirm.mock.calls[0][1] as string;
+            expect(confirmBody).toMatch(/PTO\/sickness/i);
+            expect(confirmBody).toMatch(/14-day sprint/i);
+
+            await waitFor(() => {
+                expect(updateTeamSpy).toHaveBeenCalledWith('t1', { total_capacity_mds: 12 });
+            });
+        });
+
+        it('does NOT update when the user cancels the confirmation', async () => {
+            const dataWithMembers = {
+                ...mockData,
+                teams: [{
+                    ...mockData.teams[0],
+                    members: [{ name: 'A', username: 'a', capacity_percentage: 100 }]
+                }]
+            };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (useNotificationContext as any).mockReturnValue({
+                showConfirm: mockShowConfirm,
+                data: dataWithMembers,
+                updateIssue: vi.fn()
+            });
+            mockShowConfirm.mockResolvedValueOnce(false);
+
+            renderTeamPage({ ...defaultProps, data: dataWithMembers });
+            fireEvent.click(screen.getByText('Members'));
+
+            fireEvent.click(screen.getByRole('button', { name: /Estimate Capacity from Members/i }));
+
+            await waitFor(() => {
+                expect(mockShowConfirm).toHaveBeenCalled();
+            });
+            // updateTeam should not have been called for total_capacity_mds.
+            const capacityCalls = updateTeamSpy.mock.calls.filter(
+                (c: unknown[]) => Object.prototype.hasOwnProperty.call(c[1] as object, 'total_capacity_mds')
+            );
+            expect(capacityCalls).toHaveLength(0);
+        });
+    });
 });
 
 

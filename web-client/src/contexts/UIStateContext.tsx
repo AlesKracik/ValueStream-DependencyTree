@@ -39,6 +39,7 @@ export const UIStateProvider: React.FC<{ children: React.ReactNode }> = ({ child
         issueFilter: '',
         showDependencies: false,
         disableHoverHighlight: true,
+        prioritizationMetric: 'score',
         isInitialOffsetSet: false,
     });
 

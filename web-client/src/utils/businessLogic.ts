@@ -1,10 +1,80 @@
 import { parseISO, differenceInDays, max, min, format } from 'date-fns';
-import type { WorkItem, Issue, Customer, Sprint, Team } from '@valuestream/shared-types';
+import type { WorkItem, Issue, Customer, Sprint, Team, SupportIssue } from '@valuestream/shared-types';
 import { countBusinessDays } from './dateHelpers';
 
 /**
  * Reusable business logic for metrics calculation.
  */
+
+/**
+ * When a support issue is marked Done it is auto-expired after this many calendar days
+ * unless the user has set their own expiration date. SupportPage's expired-issue cleanup
+ * sweeps these out once the date passes.
+ */
+export const SUPPORT_DONE_RETENTION_DAYS = 5;
+
+/**
+ * Fraction of a team's gross member-MDs that survives once we reserve headroom for PTO
+ * and sickness. 0.8 = "leave 20% for time off". Used by the Members-tab "Estimate from
+ * Members" action to seed Team.total_capacity_mds.
+ */
+export const TEAM_CAPACITY_PTO_FACTOR = 0.8;
+
+/**
+ * Working-days-per-calendar-day ratio used when deriving working days from the configured
+ * `general.sprint_duration_days` setting. A standard week is 5 working / 7 calendar days,
+ * so a 14-day sprint resolves to 10 working days. Country-specific holidays are NOT
+ * subtracted here — that adjustment lives in the Capacity Overrides tab where actual
+ * sprint dates are known.
+ */
+const WORKING_DAYS_RATIO = 5 / 7;
+
+/**
+ * Estimate a team's total per-sprint capacity in man-days from its members' allocations
+ * and the configured sprint length. Result is rounded to one decimal.
+ *
+ *   workingDays = sprint_duration_days * 5/7
+ *   gross       = sum(workingDays * (capacity_percentage / 100)) over members
+ *   net         = gross * TEAM_CAPACITY_PTO_FACTOR
+ *
+ * Returns 0 if there are no members or the sprint length is non-positive.
+ */
+export function estimateTeamCapacityMds(
+    members: { capacity_percentage: number }[],
+    sprintDurationDays: number
+): number {
+    if (!members.length || sprintDurationDays <= 0) return 0;
+    const workingDays = sprintDurationDays * WORKING_DAYS_RATIO;
+    const grossMds = members.reduce(
+        (sum, m) => sum + workingDays * ((m.capacity_percentage || 0) / 100),
+        0
+    );
+    const netMds = grossMds * TEAM_CAPACITY_PTO_FACTOR;
+    return Math.round(netMds * 10) / 10;
+}
+
+/**
+ * Build the patch to apply to a SupportIssue when its status changes. Centralizes the
+ * "moving to Done schedules an auto-cleanup expiration" rule so the inline list editor
+ * and the customer detail page stay consistent.
+ *
+ * - Always sets the new status.
+ * - If transitioning to 'done' AND no explicit expiration_date is set, schedules cleanup
+ *   for today + SUPPORT_DONE_RETENTION_DAYS (ISO yyyy-MM-dd).
+ * - Never overwrites an expiration_date the user already chose.
+ */
+export function buildSupportStatusPatch(
+    issue: Pick<SupportIssue, 'expiration_date'>,
+    newStatus: SupportIssue['status']
+): Partial<SupportIssue> {
+    const patch: Partial<SupportIssue> = { status: newStatus };
+    if (newStatus === 'done' && !issue.expiration_date) {
+        const expiry = new Date();
+        expiry.setDate(expiry.getDate() + SUPPORT_DONE_RETENTION_DAYS);
+        patch.expiration_date = expiry.toISOString().split('T')[0];
+    }
+    return patch;
+}
 
 /**
  * Maps an Aha! feature payload to the WorkItem fields we cache.

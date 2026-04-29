@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, act, waitFor, fireEvent } from '@testing-library/react';
+import { screen, act, waitFor, fireEvent, within } from '@testing-library/react';
 import { SupportPage } from '../SupportPage';
 import { renderWithProviders } from '../../test/testUtils';
 import type { ValueStreamData, SupportIssue } from '@valuestream/shared-types';
@@ -88,9 +88,10 @@ describe('SupportPage', () => {
             <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
-        expect(screen.getByText('Active Issue')).toBeDefined();
-        expect(screen.getByText('Expired Issue')).toBeDefined();
-        expect(screen.getByText('Future Expiring Issue')).toBeDefined();
+        // Description renders as an editable textarea — assert via display value, not text content.
+        expect(screen.getByDisplayValue('Active Issue')).toBeDefined();
+        expect(screen.getByDisplayValue('Expired Issue')).toBeDefined();
+        expect(screen.getByDisplayValue('Future Expiring Issue')).toBeDefined();
 
         // Check for linked Jira
         expect(screen.getByText('SUP-101')).toBeDefined();
@@ -164,9 +165,9 @@ describe('SupportPage', () => {
 
         // The items should now be in order: Todo, WIP, Done
         // We can check their relative position in the DOM
-        const todoIdx = screen.getByText('Todo Issue').closest('div[class*="listItem"]');
-        const wipIdx = screen.getByText('WIP Issue').closest('div[class*="listItem"]');
-        const doneIdx = screen.getByText('Done Issue').closest('div[class*="listItem"]');
+        const todoIdx = screen.getByDisplayValue('Todo Issue').closest('div[class*="listItem"]');
+        const wipIdx = screen.getByDisplayValue('WIP Issue').closest('div[class*="listItem"]');
+        const doneIdx = screen.getByDisplayValue('Done Issue').closest('div[class*="listItem"]');
 
         expect(todoIdx).toBeDefined();
         expect(wipIdx).toBeDefined();
@@ -204,9 +205,9 @@ describe('SupportPage', () => {
             fireEvent.click(statusSortBtn);
         });
 
-        const todoIdx = screen.getByText('Todo Spaced').closest('div[class*="listItem"]');
-        const wipIdx = screen.getByText('WIP Mixed').closest('div[class*="listItem"]');
-        const doneIdx = screen.getByText('Done Upper').closest('div[class*="listItem"]');
+        const todoIdx = screen.getByDisplayValue('Todo Spaced').closest('div[class*="listItem"]');
+        const wipIdx = screen.getByDisplayValue('WIP Mixed').closest('div[class*="listItem"]');
+        const doneIdx = screen.getByDisplayValue('Done Upper').closest('div[class*="listItem"]');
 
         expect(todoIdx!.compareDocumentPosition(wipIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
         expect(wipIdx!.compareDocumentPosition(doneIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -240,8 +241,8 @@ describe('SupportPage', () => {
             fireEvent.click(statusSortBtn);
         });
 
-        const todoIdx = screen.getByText('Todo Issue').closest('div[class*="listItem"]');
-        const doneIdx = screen.getByText('Done Issue').closest('div[class*="listItem"]');
+        const todoIdx = screen.getByDisplayValue('Todo Issue').closest('div[class*="listItem"]');
+        const doneIdx = screen.getByDisplayValue('Done Issue').closest('div[class*="listItem"]');
 
         // Done should now be BEFORE Todo
         expect(doneIdx!.compareDocumentPosition(todoIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -282,14 +283,14 @@ describe('SupportPage', () => {
             fireEvent.click(statusSortBtn);
         });
 
-        const waitingB = screen.getByText('Waiting B').closest('div[class*="listItem"]');
-        const doneA = screen.getByText('Done A').closest('div[class*="listItem"]');
+        const waitingB = screen.getByDisplayValue('Waiting B').closest('div[class*="listItem"]');
+        const doneA = screen.getByDisplayValue('Done A').closest('div[class*="listItem"]');
 
         // Waiting B (4) should be BEFORE Done A (5)
         expect(waitingB!.compareDocumentPosition(doneA!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
-    it('calculates and displays TCV categories (money bags) correctly', () => {
+    it('renders three bag slots whose per-slot opacity reflects TCV relative to the whale', () => {
         const tcvData: ValueStreamData = {
             ...mockData,
             customers: [
@@ -321,18 +322,44 @@ describe('SupportPage', () => {
             <SupportPage data={tcvData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
-        // Max TCV is 100. BandSize is 33.33.
-        // Low TCV (10) -> Band 1 (1 bag)
-        // Mid TCV (50) -> Band 2 (2 bags)
-        // High TCV (100) -> Band 3 (3 bags)
+        // Locate each customer's bags wrapper via the row that contains its description.
+        const bagsFor = (issueDescription: string): HTMLElement => {
+            const row = screen.getByDisplayValue(issueDescription).closest('[class*="listItem"]')!;
+            return within(row as HTMLElement).getByTestId('tcv-bags') as HTMLElement;
+        };
 
-        const lowCategory = screen.getByTitle('TCV Category: 1');
-        const midCategory = screen.getByTitle('TCV Category: 2');
-        const highCategory = screen.getByTitle('TCV Category: 3');
+        // Max TCV is 100, so ratios are 0.1, 0.5, 1.0 → bags = 0.3, 1.5, 3.0.
+        const lowBags = bagsFor('Low Issue');
+        const midBags = bagsFor('Mid Issue');
+        const highBags = bagsFor('High Issue');
 
-        expect(lowCategory.textContent).toBe('💰');
-        expect(midCategory.textContent).toBe('💰💰');
-        expect(highCategory.textContent).toBe('💰💰💰');
+        // Whale always shows 3 fully-filled slots.
+        expect(highBags.getAttribute('data-tcv-ratio')).toBe('1.000');
+        expect(within(highBags).getByTestId('tcv-bag-slot-0').getAttribute('data-fill')).toBe('1.000');
+        expect(within(highBags).getByTestId('tcv-bag-slot-1').getAttribute('data-fill')).toBe('1.000');
+        expect(within(highBags).getByTestId('tcv-bag-slot-2').getAttribute('data-fill')).toBe('1.000');
+
+        // Mid (0.5 of whale) → slot 0 fully filled, slot 1 half filled, slot 2 empty.
+        expect(midBags.getAttribute('data-tcv-ratio')).toBe('0.500');
+        expect(within(midBags).getByTestId('tcv-bag-slot-0').getAttribute('data-fill')).toBe('1.000');
+        expect(within(midBags).getByTestId('tcv-bag-slot-1').getAttribute('data-fill')).toBe('0.500');
+        expect(within(midBags).getByTestId('tcv-bag-slot-2').getAttribute('data-fill')).toBe('0.000');
+
+        // Low (0.1 of whale) → slot 0 30% filled, slot 1+2 empty.
+        expect(lowBags.getAttribute('data-tcv-ratio')).toBe('0.100');
+        expect(within(lowBags).getByTestId('tcv-bag-slot-0').getAttribute('data-fill')).toBe('0.300');
+        expect(within(lowBags).getByTestId('tcv-bag-slot-1').getAttribute('data-fill')).toBe('0.000');
+        expect(within(lowBags).getByTestId('tcv-bag-slot-2').getAttribute('data-fill')).toBe('0.000');
+
+        // Tooltip exposes the actual TCV and percentage of max.
+        expect(highBags.getAttribute('title')).toBe('TCV: $100 (100% of max $100)');
+        expect(midBags.getAttribute('title')).toBe('TCV: $50 (50% of max $100)');
+        expect(lowBags.getAttribute('title')).toBe('TCV: $10 (10% of max $100)');
+
+        // All three slots are always rendered (textContent is always 3 bags).
+        expect(highBags.textContent).toBe('💰💰💰');
+        expect(midBags.textContent).toBe('💰💰💰');
+        expect(lowBags.textContent).toBe('💰💰💰');
     });
 
     it('sorts by TCV category (money bag) correctly', async () => {
@@ -373,9 +400,9 @@ describe('SupportPage', () => {
             fireEvent.click(tcvSortBtn);
         });
 
-        const lowIdx = screen.getByText('Low Issue').closest('div[class*="listItem"]');
-        const midIdx = screen.getByText('Mid Issue').closest('div[class*="listItem"]');
-        const highIdx = screen.getByText('High Issue').closest('div[class*="listItem"]');
+        const lowIdx = screen.getByDisplayValue('Low Issue').closest('div[class*="listItem"]');
+        const midIdx = screen.getByDisplayValue('Mid Issue').closest('div[class*="listItem"]');
+        const highIdx = screen.getByDisplayValue('High Issue').closest('div[class*="listItem"]');
 
         // Ascending order: 1, 2, 3 bags
         expect(lowIdx!.compareDocumentPosition(midIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -417,9 +444,9 @@ describe('SupportPage', () => {
         });
 
         // Order should be: New, Updated, None
-        const newIdx = screen.getByText('New Issue').closest('div[class*="listItem"]');
-        const updatedIdx = screen.getByText('Updated Issue').closest('div[class*="listItem"]');
-        const noneIdx = screen.getByText('None Issue').closest('div[class*="listItem"]');
+        const newIdx = screen.getByDisplayValue('New Issue').closest('div[class*="listItem"]');
+        const updatedIdx = screen.getByDisplayValue('Updated Issue').closest('div[class*="listItem"]');
+        const noneIdx = screen.getByDisplayValue('None Issue').closest('div[class*="listItem"]');
 
         expect(newIdx!.compareDocumentPosition(updatedIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
         expect(updatedIdx!.compareDocumentPosition(noneIdx!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -457,19 +484,186 @@ describe('SupportPage', () => {
             <SupportPage data={multilineData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
-        // Using a regex to find the text which might be normalized in some environments
-        const descriptionElement = screen.getByText(/Line 1/);
-        expect(descriptionElement.textContent).toContain('Line 1');
-        expect(descriptionElement.textContent).toContain('Line 2');
-        expect(window.getComputedStyle(descriptionElement).whiteSpace).toBe('pre-wrap');
+        // Description renders as a textarea; its value preserves the raw multiline string.
+        // RTL normalizes whitespace in display-value queries, so look up by aria-label and
+        // assert against the raw .value to keep the newline check exact.
+        const textarea = screen.getByLabelText('Description for issue m1') as HTMLTextAreaElement;
+        expect(textarea.value).toBe('Line 1\nLine 2');
+        expect(window.getComputedStyle(textarea).whiteSpace).toBe('pre-wrap');
     });
 
-    it('navigates to customer support tab when an issue is clicked', () => {
+    it('saves an inline description edit on textarea blur', async () => {
+        mockUpdateCustomer.mockResolvedValue(undefined);
+
         renderWithProviders(
             <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
-        const issueRow = screen.getByText('Active Issue').closest('[class*="listItem"]')!;
+        const textarea = screen.getByDisplayValue('Active Issue') as HTMLTextAreaElement;
+        fireEvent.change(textarea, { target: { value: 'Active Issue (edited)' } });
+        fireEvent.blur(textarea);
+
+        await waitFor(() => {
+            const editCall = mockUpdateCustomer.mock.calls.find(
+                (c: unknown[]) => {
+                    const issues = (c[1] as { support_issues?: SupportIssue[] }).support_issues;
+                    return issues?.some((i: SupportIssue) => i.description === 'Active Issue (edited)');
+                }
+            );
+            expect(editCall).toBeDefined();
+            expect(editCall![0]).toBe('c1');
+            expect(editCall![2]).toBe(true); // immediate persistence
+            const edited = (editCall![1].support_issues as SupportIssue[])
+                .find((i: SupportIssue) => i.id === 'i1');
+            expect(edited?.description).toBe('Active Issue (edited)');
+            // Other fields preserved
+            expect(edited?.status).toBe('to do');
+            expect(edited?.related_jiras).toEqual(['SUP-101']);
+        });
+    });
+
+    it('does NOT call updateCustomer on blur when description was not changed', () => {
+        mockUpdateCustomer.mockResolvedValue(undefined);
+
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        const textarea = screen.getByDisplayValue('Active Issue') as HTMLTextAreaElement;
+        // Focus and blur without changing the value should not trigger a save.
+        const callsBefore = mockUpdateCustomer.mock.calls.length;
+        fireEvent.blur(textarea);
+
+        // Cleanup-on-mount may have already fired (expired-issue removal); only check that no
+        // new call was made on the no-op blur.
+        expect(mockUpdateCustomer.mock.calls.length).toBe(callsBefore);
+    });
+
+    it('saves an inline status change immediately on select onChange', async () => {
+        mockUpdateCustomer.mockResolvedValue(undefined);
+
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        // Find the inline-edit row's status select via aria-label.
+        const statusSelect = screen.getByLabelText('Status for issue i1') as HTMLSelectElement;
+        fireEvent.change(statusSelect, { target: { value: 'work in progress' } });
+
+        await waitFor(() => {
+            const editCall = mockUpdateCustomer.mock.calls.find(
+                (c: unknown[]) => {
+                    const issues = (c[1] as { support_issues?: SupportIssue[] }).support_issues;
+                    return issues?.some((i: SupportIssue) => i.id === 'i1' && i.status === 'work in progress');
+                }
+            );
+            expect(editCall).toBeDefined();
+            expect(editCall![0]).toBe('c1');
+            // Non-done transitions should NOT touch expiration_date.
+            const edited = (editCall![1].support_issues as SupportIssue[])
+                .find((i: SupportIssue) => i.id === 'i1');
+            expect(edited?.expiration_date).toBeUndefined();
+        });
+    });
+
+    it('sets an auto-expiration when an inline status change moves an issue to "done"', async () => {
+        mockUpdateCustomer.mockResolvedValue(undefined);
+
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        // i1 (Active Issue) starts as 'to do' with no expiration_date.
+        const statusSelect = screen.getByLabelText('Status for issue i1') as HTMLSelectElement;
+        fireEvent.change(statusSelect, { target: { value: 'done' } });
+
+        await waitFor(() => {
+            const editCall = mockUpdateCustomer.mock.calls.find(
+                (c: unknown[]) => {
+                    const issues = (c[1] as { support_issues?: SupportIssue[] }).support_issues;
+                    return issues?.some((i: SupportIssue) => i.id === 'i1' && i.status === 'done');
+                }
+            );
+            expect(editCall).toBeDefined();
+            const edited = (editCall![1].support_issues as SupportIssue[])
+                .find((i: SupportIssue) => i.id === 'i1');
+            expect(edited?.status).toBe('done');
+            // Expiration date should be set (today + 5d) — exact value computed by the helper.
+            expect(edited?.expiration_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+            const expiry = new Date(edited!.expiration_date!);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const diffDays = Math.round((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            expect(diffDays).toBe(5);
+        });
+    });
+
+    it('does NOT overwrite an existing expiration_date when an inline status change moves to "done"', async () => {
+        mockUpdateCustomer.mockResolvedValue(undefined);
+        const dataWithExpiry: ValueStreamData = {
+            ...mockData,
+            customers: [
+                {
+                    ...mockData.customers[0],
+                    support_issues: [
+                        { id: 'i1', description: 'Pre-set Expiry', status: 'to do', expiration_date: '2099-12-31' }
+                    ]
+                }
+            ]
+        };
+
+        renderWithProviders(
+            <SupportPage data={dataWithExpiry} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        const statusSelect = screen.getByLabelText('Status for issue i1') as HTMLSelectElement;
+        fireEvent.change(statusSelect, { target: { value: 'done' } });
+
+        await waitFor(() => {
+            const editCall = mockUpdateCustomer.mock.calls.find(
+                (c: unknown[]) => {
+                    const issues = (c[1] as { support_issues?: SupportIssue[] }).support_issues;
+                    return issues?.some((i: SupportIssue) => i.id === 'i1' && i.status === 'done');
+                }
+            );
+            expect(editCall).toBeDefined();
+            const edited = (editCall![1].support_issues as SupportIssue[])
+                .find((i: SupportIssue) => i.id === 'i1');
+            expect(edited?.expiration_date).toBe('2099-12-31');
+        });
+    });
+
+    it('clicking the inline description textarea does NOT navigate', () => {
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        const textarea = screen.getByDisplayValue('Active Issue');
+        fireEvent.click(textarea);
+
+        expect(mockedNavigate).not.toHaveBeenCalled();
+    });
+
+    it('changing the inline status select does NOT navigate', () => {
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        const statusSelect = screen.getByLabelText('Status for issue i1');
+        fireEvent.click(statusSelect);
+        fireEvent.change(statusSelect, { target: { value: 'done' } });
+
+        expect(mockedNavigate).not.toHaveBeenCalled();
+    });
+
+    it('navigates to customer support tab when an issue row is clicked (outside the inline editors)', () => {
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        // Locate the row via the editable description textarea, then click the row container.
+        // Clicks on the textarea/select stop propagation so navigation only fires from elsewhere on the row.
+        const issueRow = screen.getByDisplayValue('Active Issue').closest('[class*="listItem"]')!;
         fireEvent.click(issueRow);
 
         expect(mockedNavigate).toHaveBeenCalledWith('/customer/c1?tab=support&issueId=i1');
@@ -481,16 +675,16 @@ describe('SupportPage', () => {
         );
 
         const filterInput = screen.getByPlaceholderText(/Filter issues/i);
-        
+
         // Filter by description
         fireEvent.change(filterInput, { target: { value: 'Active' } });
-        expect(screen.getByText('Active Issue')).toBeDefined();
-        expect(screen.queryByText('Expired Issue')).toBeNull();
+        expect(screen.getByDisplayValue('Active Issue')).toBeDefined();
+        expect(screen.queryByDisplayValue('Expired Issue')).toBeNull();
 
         // Filter by customer name
         fireEvent.change(filterInput, { target: { value: 'Customer A' } });
-        expect(screen.getByText('Active Issue')).toBeDefined();
-        expect(screen.getByText('Expired Issue')).toBeDefined();
+        expect(screen.getByDisplayValue('Active Issue')).toBeDefined();
+        expect(screen.getByDisplayValue('Expired Issue')).toBeDefined();
     });
 
     it('performs AI search and matches customers by customerId and name fallback', async () => {
@@ -665,8 +859,9 @@ describe('SupportPage', () => {
         const textarea = screen.getByPlaceholderText('Describe the support issue...');
         fireEvent.change(textarea, { target: { value: 'WIP issue' } });
 
-        // Change status to "work in progress"
-        const statusSelect = screen.getByDisplayValue('To Do');
+        // Scope to the inline-create form to disambiguate from per-row inline-edit status selects.
+        const createForm = screen.getByTestId('create-issue-form');
+        const statusSelect = within(createForm).getByDisplayValue('To Do');
         fireEvent.change(statusSelect, { target: { value: 'work in progress' } });
 
         await act(async () => {

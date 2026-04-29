@@ -5,6 +5,7 @@ import { useNotificationContext } from '../../contexts/NotificationContext';
 import { useDeleteWithConfirm } from '../../hooks/useDeleteWithConfirm';
 import { authorizedFetch } from '../../utils/api';
 import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers';
+import { estimateTeamCapacityMds, TEAM_CAPACITY_PTO_FACTOR } from '../../utils/businessLogic';
 import { GenericDetailPage, type DetailTab } from '../common/GenericDetailPage';
 import { FormTextField, FormNumberField, FormSelectField } from '../common/FormFields';
 import customerStyles from '../customers/CustomerPage.module.css';
@@ -83,6 +84,24 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
     };
 
     const ldapConfigured = !!(data?.settings?.ldap?.url && data?.settings?.ldap?.team?.base_dn && data?.settings?.ldap?.team?.search_filter);
+
+    const sprintDurationDays = data?.settings?.general?.sprint_duration_days || 14;
+    const memberCount = (team.members || []).length;
+    const estimatedCapacity = estimateTeamCapacityMds(team.members || [], sprintDurationDays);
+
+    const handleEstimateCapacity = async () => {
+        if (memberCount === 0) return;
+        const ptoPct = Math.round((1 - TEAM_CAPACITY_PTO_FACTOR) * 100);
+        const confirmed = await showConfirm(
+            'Estimate Total Capacity from Members',
+            `Set Total Capacity (MDs per Sprint) to ${estimatedCapacity}? ` +
+            `Computed from a ${sprintDurationDays}-day sprint (≈${(sprintDurationDays * 5 / 7).toFixed(1)} working days), ` +
+            `${memberCount} member${memberCount === 1 ? '' : 's'}, with ${ptoPct}% reserved for PTO/sickness. ` +
+            `Current value (${team.total_capacity_mds ?? 0}) will be replaced.`
+        );
+        if (!confirmed) return;
+        handleFieldChange({ total_capacity_mds: estimatedCapacity });
+    };
 
     const handleAddMember = () => {
         if (!memberDraft.name || !memberDraft.username) return;
@@ -287,6 +306,33 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
             label: 'Members',
             content: (
                 <>
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '12px',
+                        marginBottom: '16px',
+                        flexWrap: 'wrap'
+                    }}>
+                        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                            {memberCount > 0
+                                ? <>Estimated capacity from members: <strong>{estimatedCapacity} MDs</strong> ({sprintDurationDays}-day sprint, {Math.round((1 - TEAM_CAPACITY_PTO_FACTOR) * 100)}% PTO reserve)</>
+                                : <>Add members below to enable capacity estimation.</>
+                            }
+                        </div>
+                        <button
+                            type="button"
+                            className="btn-primary"
+                            onClick={handleEstimateCapacity}
+                            disabled={memberCount === 0}
+                            title={memberCount === 0
+                                ? 'Add members first'
+                                : `Set Total Capacity to ${estimatedCapacity} MDs based on member allocations and the configured sprint length`}
+                        >
+                            Estimate Capacity from Members
+                        </button>
+                    </div>
+
                     {ldapConfigured && (
                         <div style={{ marginBottom: '16px', maxWidth: '32rem' }}>
                             <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '14px', color: 'var(--text-secondary)' }}>

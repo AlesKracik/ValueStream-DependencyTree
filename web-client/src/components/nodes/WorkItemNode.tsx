@@ -7,7 +7,8 @@ interface WorkItemNodeData {
     description?: string;
     effortMds: number;
     issueMds?: number;
-    score: number;
+    /** Metric value to display in the circle. null/undefined renders as "—". */
+    score: number | null;
     maxScore: number;
     baseSize: number;
     isGlobal?: boolean;
@@ -17,7 +18,7 @@ interface WorkItemNodeData {
 }
 
 export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
-    // Size ranges from 60px to 140px based on RICE Score proportion
+    // Size ranges from 60px to 140px based on metric value proportion
     const sizeRatio = data.maxScore > 0 ? (data.score || 0) / data.maxScore : 0.5;
     const nodeSize = data.baseSize * 0.6 + (data.baseSize * 0.8 * sizeRatio);
 
@@ -70,12 +71,12 @@ export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
                 )}
             </div>
 
-            <div style={{ 
-                fontWeight: 'bold', 
-                fontSize: `${Math.max(10, nodeSize * 0.22)}px`, 
-                color: 'var(--node-score)' 
+            <div style={{
+                fontWeight: 'bold',
+                fontSize: `${Math.max(10, nodeSize * 0.22)}px`,
+                color: 'var(--node-score)'
             }}>
-                {formatScore(data.score)}
+                {data.score == null ? '—' : formatScore(data.score)}
             </div>
         </BaseCircleNode>
     );

@@ -129,7 +129,8 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         viewState.minTcvFilter ? Number(viewState.minTcvFilter) : 0,
         viewState.minScoreFilter ? Number(viewState.minScoreFilter) : 0,
         viewState.selectedNodeId || null,
-        baseParams
+        baseParams,
+        viewState.prioritizationMetric
     );
 
     const handleFitView = useCallback(() => {
@@ -438,6 +439,18 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                     <div className={styles.filterGroup}>
                         <label>Visualization</label>
                         <div className={styles.toggleGroup}>
+                            <label className={styles.toggleItem} title="Which metric drives work item ordering and node size">
+                                Prioritize by:
+                                <select
+                                    value={viewState.prioritizationMetric}
+                                    onChange={e => setViewState((s: ValueStreamViewState) => ({ ...s, prioritizationMetric: e.target.value as ValueStreamViewState['prioritizationMetric'] }))}
+                                    style={{ marginLeft: '6px' }}
+                                >
+                                    <option value="score">Score</option>
+                                    <option value="aha_score">Product Value</option>
+                                    <option value="stackrank">Stack Rank</option>
+                                </select>
+                            </label>
                             <label className={styles.toggleItem}>
                                 <input
                                     type="checkbox"

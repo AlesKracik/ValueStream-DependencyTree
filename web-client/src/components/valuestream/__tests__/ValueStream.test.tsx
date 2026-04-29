@@ -90,6 +90,7 @@ const mockViewState: ValueStreamViewState = {
     minScoreFilter: '',
     showDependencies: true,
     disableHoverHighlight: false,
+    prioritizationMetric: 'score',
     isInitialOffsetSet: true
 };
 
