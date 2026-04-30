@@ -11,7 +11,7 @@ import { countBusinessDays } from './dateHelpers';
  * unless the user has set their own expiration date. SupportPage's expired-issue cleanup
  * sweeps these out once the date passes.
  */
-export const SUPPORT_DONE_RETENTION_DAYS = 5;
+export const SUPPORT_DONE_RETENTION_DAYS = 1;
 
 /**
  * Fraction of a team's gross member-MDs that survives once we reserve headroom for PTO

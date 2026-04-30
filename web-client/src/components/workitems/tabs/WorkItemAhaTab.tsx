@@ -70,7 +70,7 @@ export const WorkItemAhaTab: React.FC<Props> = ({
     const applyAhaData = async () => {
         if (!workItem?.aha_synced_data) return;
 
-        const confirmed = await showConfirm('Apply Aha! Data', 'This will overwrite the current name, description, baseline effort, and score with the values from Aha!. Are you sure?');
+        const confirmed = await showConfirm('Apply Aha! Data', 'This will overwrite the current name, description, baseline effort, and product value with the values from Aha!. Are you sure?');
         if (!confirmed) return;
 
         const updates: Partial<WorkItem> = {};
@@ -169,7 +169,7 @@ export const WorkItemAhaTab: React.FC<Props> = ({
                                         <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--accent-text)' }}>{workItem.aha_synced_data.total_effort_mds ?? '-'}</div>
                                     </div>
                                     <div>
-                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Score</div>
+                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Product Value</div>
                                         <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--accent-text)' }}>{workItem.aha_synced_data.score ?? '-'}</div>
                                     </div>
                                 </div>

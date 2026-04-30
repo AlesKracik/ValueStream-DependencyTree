@@ -3,6 +3,7 @@ import { screen, act, waitFor, fireEvent, within } from '@testing-library/react'
 import { SupportPage } from '../SupportPage';
 import { renderWithProviders } from '../../test/testUtils';
 import type { ValueStreamData, SupportIssue } from '@valuestream/shared-types';
+import { SUPPORT_DONE_RETENTION_DAYS } from '../../utils/businessLogic';
 
 const mockUpdateCustomer = vi.fn();
 const mockedNavigate = vi.fn();
@@ -590,13 +591,13 @@ describe('SupportPage', () => {
             const edited = (editCall![1].support_issues as SupportIssue[])
                 .find((i: SupportIssue) => i.id === 'i1');
             expect(edited?.status).toBe('done');
-            // Expiration date should be set (today + 5d) — exact value computed by the helper.
+            // Expiration date should be set today + SUPPORT_DONE_RETENTION_DAYS — exact value computed by the helper.
             expect(edited?.expiration_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
             const expiry = new Date(edited!.expiration_date!);
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const diffDays = Math.round((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-            expect(diffDays).toBe(5);
+            expect(diffDays).toBe(SUPPORT_DONE_RETENTION_DAYS);
         });
     });
 

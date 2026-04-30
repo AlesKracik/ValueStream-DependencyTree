@@ -114,7 +114,7 @@ The detail page uses a tabbed interface to organise complex data sets:
     *   Blue: Blocked / Pending issues.
 *   **Manual Tracking:** Add localised support issues with descriptions, statuses, and expiration dates.
     *   **Available Statuses:** To Do, Work in Progress, No-op, Waiting for Customer, Waiting for Other Party, Done.
-    *   **Auto-Expiration:** Moving an issue to **"Done"** automatically sets an expiration date 5 days in the future, after which the issue is automatically archived.
+    *   **Auto-Expiration:** Moving an issue to **"Done"** automatically sets an expiration date 1 day in the future, after which the issue is automatically archived.
 *   **Jira Integration:** Automatically sync tickets from Jira matching the customer's JQL (defined in Settings).
     *   **Linking:** Discovered Jira tickets can be linked to manual Support Issues to provide a unified view.
 
@@ -163,9 +163,9 @@ Define exactly which accounts this initiative is for. Choose the TCV type (Exist
 ![Work Item Aha! Integration](images/workitem-detail-aha.png)
 
 *   **Link Feature:** Enter an Aha! Reference Number (e.g., `PROD-123`) and click **Sync from Aha!** to pull feature data.
-*   **Synced Information:** Displays the feature's Name, Description (HTML-rendered), Effort (MDs), and Score.
+*   **Synced Information:** Displays the feature's Name, Description (HTML-rendered), Effort (MDs), and Product Value (the Aha! "score" field).
 *   **Requirements:** Lists all requirements attached to the Aha! feature, each showing its reference number, name, and description.
-*   **Apply to Work Item:** Overwrites the current Work Item's name, description, baseline effort, and score with the values from Aha! (requires confirmation).
+*   **Apply to Work Item:** Overwrites the current Work Item's name, description, baseline effort, and product value with the values from Aha! (requires confirmation).
 
 ---
 
