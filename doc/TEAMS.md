@@ -51,7 +51,7 @@ graph TD
 ```
 
 ## Member Management
-The **Members** tab on the Team Detail page provides inline CRUD for team members.
+The **Members** tab on the Team Detail page provides inline CRUD for team members. Existing rows are always-editable inputs — edits are saved when the field loses focus (blur). New members are added through the bottom row's **Add** button.
 
 ### Fields
 | Field | Description |

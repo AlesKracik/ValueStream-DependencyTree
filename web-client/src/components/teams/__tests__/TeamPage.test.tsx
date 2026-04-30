@@ -286,7 +286,7 @@ describe('TeamPage', () => {
         });
     });
 
-    it('renders existing members and allows editing', () => {
+    it('renders existing members as always-editable inputs', () => {
         const dataWithMembers = {
             ...mockData,
             teams: [{
@@ -306,15 +306,10 @@ describe('TeamPage', () => {
 
         fireEvent.click(screen.getByText('Members'));
 
-        expect(screen.getByText('Alice')).toBeDefined();
-        expect(screen.getByText('alice')).toBeDefined();
-        expect(screen.getByText('100%')).toBeDefined();
-
-        fireEvent.click(screen.getByText('Edit'));
-
-        expect(screen.getByLabelText(/Edit member name/i)).toBeDefined();
-        expect(screen.getByText('Save')).toBeDefined();
-        expect(screen.getByText('Cancel')).toBeDefined();
+        expect(screen.getByLabelText(/Member name alice/i)).toHaveProperty('value', 'Alice');
+        expect(screen.getByLabelText(/Member username alice/i)).toHaveProperty('value', 'alice');
+        expect(screen.getByLabelText(/Member capacity alice/i)).toHaveProperty('value', '100');
+        expect(screen.queryByText('Edit')).toBeNull();
     });
 
     it('shows LDAP Team Name field when LDAP is configured', () => {
@@ -368,7 +363,7 @@ describe('TeamPage', () => {
         expect(screen.queryByLabelText(/LDAP Team Name/i)).toBeNull();
     });
 
-    it('saves edited member on Save click', () => {
+    it('saves edited member on blur', () => {
         const dataWithMembers = {
             ...mockData,
             teams: [{
@@ -387,24 +382,22 @@ describe('TeamPage', () => {
         renderTeamPage({ ...defaultProps, data: dataWithMembers });
 
         fireEvent.click(screen.getByText('Members'));
-        fireEvent.click(screen.getByText('Edit'));
 
-        fireEvent.change(screen.getByLabelText(/Edit member name/i), { target: { value: 'Alice Updated' } });
-        fireEvent.change(screen.getByLabelText(/Edit member username/i), { target: { value: 'alice2' } });
-        fireEvent.change(screen.getByLabelText(/Edit member capacity/i), { target: { value: '75' } });
-        fireEvent.click(screen.getByText('Save'));
+        const nameInput = screen.getByLabelText(/Member name alice/i);
+        fireEvent.change(nameInput, { target: { value: 'Alice Updated' } });
+        fireEvent.blur(nameInput);
 
         expect(updateTeamSpy).toHaveBeenCalledWith('t1', {
-            members: [{ name: 'Alice Updated', username: 'alice2', capacity_percentage: 75 }]
+            members: [{ name: 'Alice Updated', username: 'alice', capacity_percentage: 100 }]
         });
     });
 
-    it('cancels editing and restores add row', () => {
+    it('does not save when blur leaves an unchanged value', () => {
         const dataWithMembers = {
             ...mockData,
             teams: [{
                 ...mockData.teams[0],
-                members: [{ name: 'Bob', username: 'bob', capacity_percentage: 50 }]
+                members: [{ name: 'Alice', username: 'alice', capacity_percentage: 100 }]
             }]
         };
 
@@ -418,15 +411,45 @@ describe('TeamPage', () => {
         renderTeamPage({ ...defaultProps, data: dataWithMembers });
 
         fireEvent.click(screen.getByText('Members'));
-        fireEvent.click(screen.getByText('Edit'));
 
-        // Add row should be hidden during edit
-        expect(screen.queryByLabelText(/New member name/i)).toBeNull();
+        const nameInput = screen.getByLabelText(/Member name alice/i);
+        fireEvent.blur(nameInput);
 
-        fireEvent.click(screen.getByText('Cancel'));
+        const memberCalls = updateTeamSpy.mock.calls.filter(
+            (c: unknown[]) => Object.prototype.hasOwnProperty.call(c[1] as object, 'members')
+        );
+        expect(memberCalls).toHaveLength(0);
+    });
 
-        // Add row should reappear after cancel
-        expect(screen.getByLabelText(/New member name/i)).toBeDefined();
+    it('reverts to previous value when name is cleared then blurred', () => {
+        const dataWithMembers = {
+            ...mockData,
+            teams: [{
+                ...mockData.teams[0],
+                members: [{ name: 'Alice', username: 'alice', capacity_percentage: 100 }]
+            }]
+        };
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (useNotificationContext as any).mockReturnValue({
+            showConfirm: mockShowConfirm,
+            data: dataWithMembers,
+            updateIssue: vi.fn()
+        });
+
+        renderTeamPage({ ...defaultProps, data: dataWithMembers });
+
+        fireEvent.click(screen.getByText('Members'));
+
+        const nameInput = screen.getByLabelText(/Member name alice/i) as HTMLInputElement;
+        fireEvent.change(nameInput, { target: { value: '' } });
+        fireEvent.blur(nameInput);
+
+        expect(nameInput.value).toBe('Alice');
+        const memberCalls = updateTeamSpy.mock.calls.filter(
+            (c: unknown[]) => Object.prototype.hasOwnProperty.call(c[1] as object, 'members')
+        );
+        expect(memberCalls).toHaveLength(0);
     });
 
     it('removes a member after confirmation', async () => {

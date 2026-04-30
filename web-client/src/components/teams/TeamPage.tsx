@@ -34,7 +34,6 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
         sprint_capacity_overrides: {}
     });
 
-    const [editingMemberIndex, setEditingMemberIndex] = useState<number | null>(null);
     const [memberDraft, setMemberDraft] = useState<TeamMember>({ name: '', username: '', capacity_percentage: 100 });
     const [isSyncingLdap, setIsSyncingLdap] = useState(false);
     const [ldapSyncResult, setLdapSyncResult] = useState<{ success: boolean; message: string } | null>(null);
@@ -110,13 +109,10 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
         setMemberDraft({ name: '', username: '', capacity_percentage: 100 });
     };
 
-    const handleUpdateMember = (index: number) => {
-        if (!memberDraft.name || !memberDraft.username) return;
+    const handleUpdateMember = (index: number, updated: TeamMember) => {
         const members = [...(team.members || [])];
-        members[index] = { ...memberDraft };
+        members[index] = updated;
         handleFieldChange({ members });
-        setEditingMemberIndex(null);
-        setMemberDraft({ name: '', username: '', capacity_percentage: 100 });
     };
 
     const handleDeleteMember = async (index: number) => {
@@ -125,22 +121,7 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
         if (confirmed) {
             const members = (team.members || []).filter((_, i) => i !== index);
             handleFieldChange({ members });
-            if (editingMemberIndex === index) {
-                setEditingMemberIndex(null);
-                setMemberDraft({ name: '', username: '', capacity_percentage: 100 });
-            }
         }
-    };
-
-    const startEditMember = (index: number) => {
-        const member = (team.members || [])[index];
-        setEditingMemberIndex(index);
-        setMemberDraft({ ...member });
-    };
-
-    const cancelEditMember = () => {
-        setEditingMemberIndex(null);
-        setMemberDraft({ name: '', username: '', capacity_percentage: 100 });
     };
 
     const handleLdapSync = async () => {
@@ -382,92 +363,46 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
                         </thead>
                         <tbody>
                             {(team.members || []).map((member, index) => (
-                                <tr key={index}>
-                                    {editingMemberIndex === index ? (
-                                        <>
-                                            <td>
-                                                <input
-                                                    type="text"
-                                                    value={memberDraft.name}
-                                                    onChange={e => setMemberDraft(d => ({ ...d, name: e.target.value }))}
-                                                    aria-label="Edit member name"
-                                                />
-                                            </td>
-                                            <td>
-                                                <input
-                                                    type="text"
-                                                    value={memberDraft.username}
-                                                    onChange={e => setMemberDraft(d => ({ ...d, username: e.target.value }))}
-                                                    aria-label="Edit member username"
-                                                />
-                                            </td>
-                                            <td>
-                                                <input
-                                                    type="number"
-                                                    min="0"
-                                                    max="100"
-                                                    value={memberDraft.capacity_percentage}
-                                                    onChange={e => setMemberDraft(d => ({ ...d, capacity_percentage: parseFloat(e.target.value) || 0 }))}
-                                                    aria-label="Edit member capacity"
-                                                />
-                                            </td>
-                                            <td>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <button className="btn-primary" onClick={() => handleUpdateMember(index)}>Save</button>
-                                                    <button className="btn-secondary" onClick={cancelEditMember}>Cancel</button>
-                                                </div>
-                                            </td>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <td>{member.name}</td>
-                                            <td>{member.username}</td>
-                                            <td>{member.capacity_percentage}%</td>
-                                            <td>
-                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                    <button className="btn-secondary" onClick={() => startEditMember(index)}>Edit</button>
-                                                    <button className="btn-danger" onClick={() => handleDeleteMember(index)}>Remove</button>
-                                                </div>
-                                            </td>
-                                        </>
-                                    )}
-                                </tr>
+                                <MemberRow
+                                    key={index}
+                                    member={member}
+                                    onUpdate={updated => handleUpdateMember(index, updated)}
+                                    onRemove={() => handleDeleteMember(index)}
+                                />
                             ))}
-                            {editingMemberIndex === null && (
-                                <tr>
-                                    <td>
-                                        <input
-                                            type="text"
-                                            placeholder="Name"
-                                            value={memberDraft.name}
-                                            onChange={e => setMemberDraft(d => ({ ...d, name: e.target.value }))}
-                                            aria-label="New member name"
-                                        />
-                                    </td>
-                                    <td>
-                                        <input
-                                            type="text"
-                                            placeholder="Username"
-                                            value={memberDraft.username}
-                                            onChange={e => setMemberDraft(d => ({ ...d, username: e.target.value }))}
-                                            aria-label="New member username"
-                                        />
-                                    </td>
-                                    <td>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            value={memberDraft.capacity_percentage}
-                                            onChange={e => setMemberDraft(d => ({ ...d, capacity_percentage: parseFloat(e.target.value) || 0 }))}
-                                            aria-label="New member capacity"
-                                        />
-                                    </td>
-                                    <td>
-                                        <button className="btn-primary" onClick={handleAddMember}>Add</button>
-                                    </td>
-                                </tr>
-                            )}
+                            <tr>
+                                <td>
+                                    <input
+                                        type="text"
+                                        placeholder="Name"
+                                        value={memberDraft.name}
+                                        onChange={e => setMemberDraft(d => ({ ...d, name: e.target.value }))}
+                                        aria-label="New member name"
+                                    />
+                                </td>
+                                <td>
+                                    <input
+                                        type="text"
+                                        placeholder="Username"
+                                        value={memberDraft.username}
+                                        onChange={e => setMemberDraft(d => ({ ...d, username: e.target.value }))}
+                                        aria-label="New member username"
+                                    />
+                                </td>
+                                <td>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        value={memberDraft.capacity_percentage}
+                                        onChange={e => setMemberDraft(d => ({ ...d, capacity_percentage: parseFloat(e.target.value) || 0 }))}
+                                        aria-label="New member capacity"
+                                    />
+                                </td>
+                                <td>
+                                    <button className="btn-primary" onClick={handleAddMember}>Add</button>
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </>
@@ -494,5 +429,80 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
                 </div>
             }
         />
+    );
+};
+
+interface MemberRowProps {
+    member: TeamMember;
+    onUpdate: (updated: TeamMember) => void;
+    onRemove: () => void;
+}
+
+const MemberRow: React.FC<MemberRowProps> = ({ member, onUpdate, onRemove }) => {
+    const [prevMember, setPrevMember] = useState(member);
+    const [name, setName] = useState(member.name);
+    const [username, setUsername] = useState(member.username);
+    const [capacity, setCapacity] = useState(member.capacity_percentage);
+
+    if (
+        prevMember.name !== member.name ||
+        prevMember.username !== member.username ||
+        prevMember.capacity_percentage !== member.capacity_percentage
+    ) {
+        setPrevMember(member);
+        setName(member.name);
+        setUsername(member.username);
+        setCapacity(member.capacity_percentage);
+    }
+
+    const commitName = () => {
+        const trimmed = name.trim();
+        if (!trimmed) { setName(member.name); return; }
+        if (trimmed !== member.name) onUpdate({ ...member, name: trimmed });
+    };
+    const commitUsername = () => {
+        const trimmed = username.trim();
+        if (!trimmed) { setUsername(member.username); return; }
+        if (trimmed !== member.username) onUpdate({ ...member, username: trimmed });
+    };
+    const commitCapacity = () => {
+        if (capacity !== member.capacity_percentage) onUpdate({ ...member, capacity_percentage: capacity });
+    };
+
+    return (
+        <tr>
+            <td>
+                <input
+                    type="text"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    onBlur={commitName}
+                    aria-label={`Member name ${member.username}`}
+                />
+            </td>
+            <td>
+                <input
+                    type="text"
+                    value={username}
+                    onChange={e => setUsername(e.target.value)}
+                    onBlur={commitUsername}
+                    aria-label={`Member username ${member.username}`}
+                />
+            </td>
+            <td>
+                <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={capacity}
+                    onChange={e => setCapacity(parseFloat(e.target.value) || 0)}
+                    onBlur={commitCapacity}
+                    aria-label={`Member capacity ${member.username}`}
+                />
+            </td>
+            <td>
+                <button className="btn-danger" onClick={onRemove}>Remove</button>
+            </td>
+        </tr>
     );
 };
