@@ -24,7 +24,8 @@ interface SupportIssueWithCustomer {
     totalTcv: number;
     /** Max combined TCV across all customers (for tooltip context). */
     maxTcv: number;
-    /** totalTcv / maxTcv ∈ [0, 1]. Whale = 1.0 → 3 fully-visible bags; 0.5 → 1.5 bags worth. */
+    /** Log-scaled bag fill ∈ [0, 1]: log(1+totalTcv) / log(1+maxTcv). Log scaling keeps
+     *  low-TCV customers distinguishable; linear scaling crushes them all near 0. */
     tcvRatio: number;
     activity: 'new' | 'updated' | 'none';
     isJira: boolean;
@@ -530,7 +531,9 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
 
         data.customers.forEach(customer => {
             const combinedTcv = (customer.existing_tcv || 0) + (customer.potential_tcv || 0);
-            const tcvRatio = maxCombinedTcv > 0 ? combinedTcv / maxCombinedTcv : 0;
+            const tcvRatio = maxCombinedTcv > 0
+                ? Math.log1p(combinedTcv) / Math.log1p(maxCombinedTcv)
+                : 0;
 
             // Manual Support Issues
             (customer.support_issues || []).forEach(issue => {
@@ -594,11 +597,11 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             header: '💰',
             render: (d) => {
                 // Three-slot continuous fill: bags[i] = how much of slot i is filled (0..1).
-                // Whale (tcvRatio = 1) → all three slots fully visible. tcvRatio = 0.5 →
-                // slot 0 fully filled, slot 1 half-filled, slot 2 empty (faint).
+                // Bag fill is log-scaled (see tcvRatio doc) so small customers stay visible;
+                // tooltip % is intentionally linear so the raw $-share remains accurate.
                 const bags = d.tcvRatio * 3;
                 const slotFills = [0, 1, 2].map(i => Math.max(0, Math.min(1, bags - i)));
-                const pct = Math.round(d.tcvRatio * 100);
+                const pct = d.maxTcv > 0 ? Math.round((d.totalTcv / d.maxTcv) * 100) : 0;
                 const tooltip = d.maxTcv > 0
                     ? `TCV: $${d.totalTcv.toLocaleString()} (${pct}% of max $${d.maxTcv.toLocaleString()})`
                     : `TCV: $${d.totalTcv.toLocaleString()}`;
@@ -663,7 +666,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                             onKeyDown={e => e.stopPropagation()}
                             style={{
                                 width: '100%',
-                                padding: '4px 6px',
+                                padding: '8px 10px',
                                 borderRadius: '4px',
                                 border: '1px solid var(--border-hover)',
                                 backgroundColor: 'var(--bg-primary)',
@@ -671,6 +674,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                                 resize: 'vertical',
                                 fontFamily: 'inherit',
                                 fontSize: '13px',
+                                lineHeight: '1.5',
                                 whiteSpace: 'pre-wrap'
                             }}
                         />
@@ -714,7 +718,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                     </div>
                 );
             },
-            flex: 3,
+            flex: 3.2,
             sortKey: 'description'
         },
         {
@@ -749,7 +753,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                     </select>
                 );
             },
-            flex: 1,
+            flex: 0.8,
             sortKey: 'status'
         }
     ], [descriptionDrafts, commitDescription, handleStatusChange]);
