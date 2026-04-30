@@ -311,13 +311,24 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         setLocalFilters(prev => ({ ...prev, [key]: value }));
     };
 
+    // Count active *filters* (not visualization toggles) so the user can tell at a glance
+    // whether the diagram is filtered while the bar is collapsed.
+    const activeFilterCount =
+        (viewState.customerFilter ? 1 : 0) +
+        (viewState.workItemFilter ? 1 : 0) +
+        (viewState.teamFilter ? 1 : 0) +
+        (viewState.issueFilter ? 1 : 0) +
+        (viewState.releasedFilter !== 'all' ? 1 : 0) +
+        (viewState.minTcvFilter ? 1 : 0) +
+        (viewState.minScoreFilter ? 1 : 0);
+
     if (loading && !data) return <div>Loading ValueStream...</div>;
     if (error) return <div>Error loading data: {error.message}</div>;
     if (!data && !loading) return <div>No data available</div>;
 
     return (
         <div className={styles.ValueStreamContainer}>
-            <div className={styles.header}>
+            <div className={styles.header} style={{ position: 'relative' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
                         <h1>Value Stream</h1>
@@ -364,7 +375,8 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                         )}
                     </div>
                 </div>
-                <div className={styles.filterBar}>
+                {!viewState.filtersCollapsed ? (
+                <div id="value-stream-filter-bar" className={styles.filterBar}>
                     {/* Text Search Group */}
                     <div className={styles.filterGroup}>
                         <label>Search</label>
@@ -469,7 +481,55 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                             </label>
                         </div>
                     </div>
+                    <button
+                        onClick={() => setViewState(s => ({ ...s, filtersCollapsed: true }))}
+                        className="btn-secondary"
+                        aria-expanded={true}
+                        aria-controls="value-stream-filter-bar"
+                        title="Hide filters & visualization"
+                        style={{
+                            marginLeft: 'auto',
+                            alignSelf: 'flex-start',
+                            padding: '4px 16px',
+                            fontSize: '12px',
+                            lineHeight: 1.2
+                        }}
+                    >
+                        ▴
+                    </button>
                 </div>
+                ) : (
+                <div style={{
+                    // Pull-handle hanging off the bottom-right of the header. top: 100%
+                    // anchors the tab's top edge to the header's lower border so it
+                    // overlaps into the dashboard area below, like a real pull tab.
+                    position: 'absolute',
+                    top: '100%',
+                    right: '2rem',
+                    zIndex: 2
+                }}>
+                    <button
+                        onClick={() => setViewState(s => ({ ...s, filtersCollapsed: false }))}
+                        className="btn-secondary"
+                        aria-expanded={false}
+                        aria-controls="value-stream-filter-bar"
+                        title="Show filters & visualization"
+                        style={{
+                            padding: '4px 16px',
+                            fontSize: '12px',
+                            lineHeight: 1.2,
+                            // Square top corners + no top border so the tab visually
+                            // merges with the header's border-bottom; rounded bottom
+                            // corners give it the dangling-handle look.
+                            borderTopLeftRadius: 0,
+                            borderTopRightRadius: 0,
+                            borderTop: 'none'
+                        }}
+                    >
+                        ▾{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+                    </button>
+                </div>
+                )}
             </div>
 
             <div className={styles.flowWrapper}>

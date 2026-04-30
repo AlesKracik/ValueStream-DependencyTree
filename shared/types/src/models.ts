@@ -503,6 +503,9 @@ export interface ValueStreamViewState {
   selectedNodeId?: string | null;
   isInitialOffsetSet: boolean;
   viewport?: { x: number; y: number; zoom: number };
+  /** When true, the filters/visualization bar in the Value Stream view is hidden to
+   *  give the diagram more vertical room. The current filter values are preserved. */
+  filtersCollapsed: boolean;
 }
 
 export interface ValueStreamDataState {

@@ -91,7 +91,8 @@ const mockViewState: ValueStreamViewState = {
     showDependencies: true,
     disableHoverHighlight: false,
     prioritizationMetric: 'score',
-    isInitialOffsetSet: true
+    isInitialOffsetSet: true,
+    filtersCollapsed: false
 };
 
 describe('Value Stream', () => {

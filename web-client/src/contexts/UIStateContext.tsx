@@ -41,6 +41,7 @@ export const UIStateProvider: React.FC<{ children: React.ReactNode }> = ({ child
         disableHoverHighlight: true,
         prioritizationMetric: 'score',
         isInitialOffsetSet: false,
+        filtersCollapsed: false,
     });
 
     const updateUiState = useCallback((key: string, val: PageUiState) => {
