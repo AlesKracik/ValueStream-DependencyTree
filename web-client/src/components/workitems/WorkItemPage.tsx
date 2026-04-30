@@ -256,7 +256,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     ];
 
     if (data?.settings?.aha?.subdomain) {
-        const ahaCount = workItem?.aha_synced_data?.requirements?.length || 0;
+        const ahaCount = workItem?.aha_synced_data ? 1 : 0;
         tabs.push({
             id: 'aha',
             label: `Aha! Integration (${ahaCount})`,

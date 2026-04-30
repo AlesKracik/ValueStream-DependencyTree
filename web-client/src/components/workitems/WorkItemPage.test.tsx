@@ -656,7 +656,7 @@ describe('WorkItemPage', () => {
         await waitFor(() => {
             expect(api.syncAhaFeature).toHaveBeenCalledWith('PROD-1', expect.any(Object));
             
-            // Tab label should now show count (1 requirement in mockFeature)
+            // Tab label should now show count of linked Aha features (1 once a feature is synced).
             ahaTab = screen.getByText(/Aha! Integration/i);
             expect(ahaTab.textContent).toBe('Aha! Integration (1)');
 
