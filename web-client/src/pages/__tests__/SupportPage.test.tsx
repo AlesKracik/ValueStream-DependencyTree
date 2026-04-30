@@ -329,9 +329,9 @@ describe('SupportPage', () => {
             return within(row as HTMLElement).getByTestId('tcv-bags') as HTMLElement;
         };
 
-        // Max TCV is 100. Bag fill is log-scaled: ratio = log(1+tcv)/log(1+100), so
-        // tcv=10 → 0.520, tcv=50 → 0.852, tcv=100 → 1.000. Linear-scaled small customers
-        // would otherwise be indistinguishable from each other.
+        // Max TCV is 100. Bag fill is sqrt-scaled: ratio = sqrt(tcv/100), so
+        // tcv=10 → 0.316, tcv=50 → 0.707, tcv=100 → 1.000. Sqrt sits between linear
+        // (crushes small customers) and log (crushes everyone near the whale).
         const lowBags = bagsFor('Low Issue');
         const midBags = bagsFor('Mid Issue');
         const highBags = bagsFor('High Issue');
@@ -342,16 +342,16 @@ describe('SupportPage', () => {
         expect(within(highBags).getByTestId('tcv-bag-slot-1').getAttribute('data-fill')).toBe('1.000');
         expect(within(highBags).getByTestId('tcv-bag-slot-2').getAttribute('data-fill')).toBe('1.000');
 
-        // Mid (log-ratio 0.852) → bags 2.556: slots 0 & 1 fully filled, slot 2 ~56% filled.
-        expect(midBags.getAttribute('data-tcv-ratio')).toBe('0.852');
+        // Mid (sqrt-ratio 0.707) → bags 2.121: slots 0 & 1 fully filled, slot 2 ~12% filled.
+        expect(midBags.getAttribute('data-tcv-ratio')).toBe('0.707');
         expect(within(midBags).getByTestId('tcv-bag-slot-0').getAttribute('data-fill')).toBe('1.000');
         expect(within(midBags).getByTestId('tcv-bag-slot-1').getAttribute('data-fill')).toBe('1.000');
-        expect(within(midBags).getByTestId('tcv-bag-slot-2').getAttribute('data-fill')).toBe('0.556');
+        expect(within(midBags).getByTestId('tcv-bag-slot-2').getAttribute('data-fill')).toBe('0.121');
 
-        // Low (log-ratio 0.520) → bags 1.559: slot 0 fully filled, slot 1 ~56% filled, slot 2 empty.
-        expect(lowBags.getAttribute('data-tcv-ratio')).toBe('0.520');
-        expect(within(lowBags).getByTestId('tcv-bag-slot-0').getAttribute('data-fill')).toBe('1.000');
-        expect(within(lowBags).getByTestId('tcv-bag-slot-1').getAttribute('data-fill')).toBe('0.559');
+        // Low (sqrt-ratio 0.316) → bags 0.949: slot 0 ~95% filled, slots 1 & 2 empty.
+        expect(lowBags.getAttribute('data-tcv-ratio')).toBe('0.316');
+        expect(within(lowBags).getByTestId('tcv-bag-slot-0').getAttribute('data-fill')).toBe('0.949');
+        expect(within(lowBags).getByTestId('tcv-bag-slot-1').getAttribute('data-fill')).toBe('0.000');
         expect(within(lowBags).getByTestId('tcv-bag-slot-2').getAttribute('data-fill')).toBe('0.000');
 
         // Tooltip exposes the actual TCV and percentage of max.

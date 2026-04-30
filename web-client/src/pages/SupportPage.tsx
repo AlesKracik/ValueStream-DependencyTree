@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState, useCallback } from 'react';
+import React, { useMemo, useEffect, useState, useCallback, useLayoutEffect, useRef } from 'react';
 import type { ValueStreamData, Customer, SupportIssue } from '@valuestream/shared-types';
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption, ListColumn } from '../components/common/GenericListPage';
@@ -24,8 +24,9 @@ interface SupportIssueWithCustomer {
     totalTcv: number;
     /** Max combined TCV across all customers (for tooltip context). */
     maxTcv: number;
-    /** Log-scaled bag fill ∈ [0, 1]: log(1+totalTcv) / log(1+maxTcv). Log scaling keeps
-     *  low-TCV customers distinguishable; linear scaling crushes them all near 0. */
+    /** Sqrt-scaled bag fill ∈ [0, 1]: sqrt(totalTcv / maxTcv). Sqrt sits between linear
+     *  (which crushes small customers near 0) and log (which crushes everyone near max),
+     *  giving a usable spread across all three bag slots even with wide TCV ranges. */
     tcvRatio: number;
     activity: 'new' | 'updated' | 'none';
     isJira: boolean;
@@ -87,6 +88,21 @@ const statusBadgeColor = (status: string): string => {
     if (s === 'to do' || s === 'new' || s === 'open') return 'var(--status-danger)';
     if (s === 'work in progress' || s === 'in progress' || s === 'in_progress' || s === 'active') return 'var(--status-warning)';
     return 'var(--accent-primary)';
+};
+
+// Textarea that resizes itself to fit its content. Using `rows` would only count
+// explicit "\n" — it can't see word-wrapped lines, so long single-line descriptions
+// got clipped. scrollHeight reflects the actual rendered content height (including
+// wrapped lines) so the textarea grows to show everything.
+const AutoGrowTextarea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement>> = (props) => {
+    const ref = useRef<HTMLTextAreaElement>(null);
+    useLayoutEffect(() => {
+        const el = ref.current;
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = `${el.scrollHeight}px`;
+    }, [props.value]);
+    return <textarea ref={ref} {...props} />;
 };
 
 export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) => {
@@ -532,7 +548,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         data.customers.forEach(customer => {
             const combinedTcv = (customer.existing_tcv || 0) + (customer.potential_tcv || 0);
             const tcvRatio = maxCombinedTcv > 0
-                ? Math.log1p(combinedTcv) / Math.log1p(maxCombinedTcv)
+                ? Math.sqrt(combinedTcv / maxCombinedTcv)
                 : 0;
 
             // Manual Support Issues
@@ -597,7 +613,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
             header: '💰',
             render: (d) => {
                 // Three-slot continuous fill: bags[i] = how much of slot i is filled (0..1).
-                // Bag fill is log-scaled (see tcvRatio doc) so small customers stay visible;
+                // Bag fill is sqrt-scaled (see tcvRatio doc) so all three slots get used;
                 // tooltip % is intentionally linear so the raw $-share remains accurate.
                 const bags = d.tcvRatio * 3;
                 const slotFills = [0, 1, 2].map(i => Math.max(0, Math.min(1, bags - i)));
@@ -655,10 +671,9 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                 const value = draftValue !== undefined ? draftValue : d.description;
                 return (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <textarea
+                        <AutoGrowTextarea
                             aria-label={`Description for issue ${d.id}`}
                             value={value}
-                            rows={Math.min(4, Math.max(1, value.split('\n').length))}
                             onChange={e => setDescriptionDrafts(prev => ({ ...prev, [d.id]: e.target.value }))}
                             onBlur={() => commitDescription(d.customerId, d.id, d.description)}
                             onClick={e => e.stopPropagation()}
@@ -671,7 +686,9 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                                 border: '1px solid var(--border-hover)',
                                 backgroundColor: 'var(--bg-primary)',
                                 color: 'var(--text-primary)',
-                                resize: 'vertical',
+                                resize: 'none',
+                                overflow: 'hidden',
+                                boxSizing: 'border-box',
                                 fontFamily: 'inherit',
                                 fontSize: '13px',
                                 lineHeight: '1.5',
