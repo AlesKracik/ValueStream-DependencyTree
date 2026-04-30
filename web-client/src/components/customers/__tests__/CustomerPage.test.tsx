@@ -5,6 +5,7 @@ import { CustomerPage } from '../CustomerPage';
 import { useNotificationContext } from '../../../contexts/NotificationContext';
 import type { ValueStreamData, SupportIssue } from '@valuestream/shared-types';
 import * as api from '../../../utils/api';
+import { SUPPORT_DONE_RETENTION_DAYS } from '../../../utils/businessLogic';
 
 // Mock the context
 vi.mock('../../../contexts/NotificationContext', () => ({
@@ -701,7 +702,7 @@ describe('CustomerPage', () => {
         });
 
         const expectedExpiry = new Date();
-        expectedExpiry.setDate(expectedExpiry.getDate() + 5);
+        expectedExpiry.setDate(expectedExpiry.getDate() + SUPPORT_DONE_RETENTION_DAYS);
         const expectedExpiryStr = expectedExpiry.toISOString().split('T')[0];
 
         expect(defaultProps.updateCustomer).toHaveBeenCalledWith('c1', expect.objectContaining({
