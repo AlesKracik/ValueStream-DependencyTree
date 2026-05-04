@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import type { ValueStreamData, Customer, WorkItem, TcvHistoryEntry } from '@valuestream/shared-types';
 import { useNotificationContext } from '../../contexts/NotificationContext';
@@ -104,25 +104,30 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         }
     }, [customer, isNew, loading, updateCustomer]);
 
-    // Handle scrolling to a focused support issue
+    // Scroll-and-highlight the support issue named by ?issueId=. The route wrapper fetches
+    // data fresh, so on the first render `customer` is undefined and the issue row isn't in
+    // the DOM yet. We re-evaluate when the target row actually exists, then fire exactly
+    // once (guarded by a ref) so subsequent edits to support_issues don't re-scroll.
+    const focusFiredFor = useRef<string | null>(null);
+    const targetIssueRendered = !!focusedIssueId &&
+        !!customer?.support_issues?.some(si => si.id === focusedIssueId);
     useEffect(() => {
-        if (focusedIssueId) {
-            const timer = setTimeout(() => {
-                const element = document.getElementById(`issue-${focusedIssueId}`);
-                if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    // Visual highlight
-                    const originalOutline = element.style.outline;
-                    element.style.outline = '2px solid var(--accent-primary)';
-                    element.style.outlineOffset = '4px';
-                    setTimeout(() => {
-                        element.style.outline = originalOutline;
-                    }, 3000);
-                }
-            }, 300);
-            return () => clearTimeout(timer);
-        }
-    }, [focusedIssueId]);
+        if (!focusedIssueId || !targetIssueRendered) return;
+        if (focusFiredFor.current === focusedIssueId) return;
+        const timer = setTimeout(() => {
+            const element = document.getElementById(`issue-${focusedIssueId}`);
+            if (!element) return;
+            focusFiredFor.current = focusedIssueId;
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const originalOutline = element.style.outline;
+            element.style.outline = '2px solid var(--accent-primary)';
+            element.style.outlineOffset = '4px';
+            setTimeout(() => {
+                element.style.outline = originalOutline;
+            }, 3000);
+        }, 100);
+        return () => clearTimeout(timer);
+    }, [focusedIssueId, targetIssueRendered]);
 
     if (!customer && !loading) {
         return <GenericDetailPage entityTitle="Customer Not Found" onBack={onBack} mainDetails={<div>Customer not found.</div>} loading={loading} data={data} />;

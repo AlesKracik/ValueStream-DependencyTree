@@ -12,8 +12,28 @@ interface Props {
     customFields: CustomFieldsState;
 }
 
+const isUrl = (s: string): boolean => /^https?:\/\/\S+$/i.test(s.trim());
+
+const renderString = (s: string): React.ReactNode => {
+    const trimmed = s.trim();
+    if (isUrl(trimmed)) {
+        return (
+            <a
+                href={trimmed}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'var(--link-color, #0969da)', textDecoration: 'underline', wordBreak: 'break-all' }}
+            >
+                {s}
+            </a>
+        );
+    }
+    return s;
+};
+
 const renderValue = (val: unknown): React.ReactNode => {
     if (val === null || val === undefined) return <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>null</span>;
+    if (typeof val === 'string') return renderString(val);
     if (Array.isArray(val)) {
         if (val.length === 0) return <span style={{ color: 'var(--text-muted)' }}>[]</span>;
         return (
