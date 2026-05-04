@@ -254,15 +254,19 @@ export const CustomerSupportTab: React.FC<Props> = ({ customer, data, updateCust
 
                                     {!isLinked && (
                                         <select
-                                            style={{ width: '160px', fontSize: '12px' }}
+                                            style={{ width: '420px', maxWidth: '50%', fontSize: '12px' }}
                                             value=""
                                             onChange={(e) => handleLinkJira(issue, e.target.value)}
                                         >
                                             <option value="" disabled>Link to...</option>
                                             <option value="NEW">+ Create New Support Issue</option>
-                                            {customer?.support_issues?.map(si => (
-                                                <option key={si.id} value={si.id}>Link to: {si.description.substring(0, 20)}...</option>
-                                            ))}
+                                            {customer?.support_issues?.map(si => {
+                                                const desc = (si.description || '').replace(/\s+/g, ' ').trim();
+                                                const label = desc.length > 80 ? `${desc.slice(0, 80)}…` : (desc || '(no description)');
+                                                return (
+                                                    <option key={si.id} value={si.id} title={si.description}>Link to: {label}</option>
+                                                );
+                                            })}
                                         </select>
                                     )}
                                     {isLinked && (
