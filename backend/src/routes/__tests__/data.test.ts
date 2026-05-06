@@ -79,6 +79,101 @@ describe('Data Routes', () => {
     expect(json.metrics.maxRoi).toBeGreaterThanOrEqual(0.0001);
   });
 
+  it('GET /api/data/workItems forwards minPriority + priorityMetric to the Mongo query', async () => {
+    // Capture the actual filter object passed to collection.find().
+    let observedFilter: any = undefined;
+    let observedSort: any = undefined;
+
+    const createSpyCollection = () => ({
+      countDocuments: vi.fn().mockResolvedValue(1),
+      find: vi.fn().mockImplementation((filter: any) => {
+        observedFilter = filter;
+        return {
+          sort: vi.fn().mockImplementation((sort: any) => {
+            observedSort = sort;
+            return { toArray: vi.fn().mockResolvedValue([]) };
+          }),
+          toArray: vi.fn().mockResolvedValue([]),
+        };
+      }),
+    });
+
+    mockDb.collection = vi.fn((colName: string) => {
+      if (colName === 'workItems') return createSpyCollection();
+      return { find: vi.fn().mockReturnValue({ sort: vi.fn().mockReturnThis(), toArray: vi.fn().mockResolvedValue([]) }) };
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/data/workItems?minPriority=10&maxPriority=100&priorityMetric=score&sortBy=priority&sortOrder=desc',
+    });
+
+    expect(response.statusCode).toBe(200);
+    // Default metric = score → calculated_score field. Range produces $gte/$lte.
+    expect(observedFilter).toEqual({ calculated_score: { $gte: 10, $lte: 100 } });
+    expect(observedSort).toEqual({ calculated_score: -1 });
+  });
+
+  it('GET /api/data/workItems preserves priorityMetric in request.query through Fastify schema validation', async () => {
+    // Spy what the route hands to buildMongoQuery — the integration test above only
+    // checks the resulting Mongo filter, so a stripped param that defaults to 'score'
+    // could pass it. This pins the raw query.
+    const observed: any[] = [];
+    mockDb.collection = vi.fn((colName: string) => {
+      if (colName === 'workItems') {
+        return {
+          countDocuments: vi.fn().mockResolvedValue(0),
+          find: vi.fn().mockImplementation((filter: any) => {
+            observed.push(filter);
+            return {
+              sort: vi.fn().mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) }),
+              toArray: vi.fn().mockResolvedValue([]),
+            };
+          }),
+        };
+      }
+      return { find: vi.fn().mockReturnValue({ sort: vi.fn().mockReturnThis(), toArray: vi.fn().mockResolvedValue([]) }) };
+    });
+
+    // Hit with stackrank metric — if priorityMetric were dropped, the filter would
+    // route to calculated_score, NOT stackrank, and this test would fail.
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/data/workItems?minPriority=42&priorityMetric=stackrank',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(observed[0]).toEqual({ stackrank: { $gte: 42 } });
+  });
+
+  it('GET /api/data/workItems routes priority filter to aha_synced_data.score for priorityMetric=aha_score', async () => {
+    let observedFilter: any = undefined;
+
+    mockDb.collection = vi.fn((colName: string) => {
+      if (colName === 'workItems') {
+        return {
+          countDocuments: vi.fn().mockResolvedValue(0),
+          find: vi.fn().mockImplementation((filter: any) => {
+            observedFilter = filter;
+            return {
+              sort: vi.fn().mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) }),
+              toArray: vi.fn().mockResolvedValue([]),
+            };
+          }),
+        };
+      }
+      return { find: vi.fn().mockReturnValue({ sort: vi.fn().mockReturnThis(), toArray: vi.fn().mockResolvedValue([]) }) };
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/data/workItems?minPriority=5&priorityMetric=aha_score',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(observedFilter).toEqual({ 'aha_synced_data.score': { $gte: 5 } });
+  });
+
   it('should compute maxScore and maxRoi from pre-computed fields', async () => {
     const createMockCollection = (data: any[]) => ({
       find: vi.fn().mockReturnValue({

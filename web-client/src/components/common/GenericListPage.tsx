@@ -51,6 +51,52 @@ interface GenericListPageProps<T> {
     renderAboveList?: () => React.ReactNode;
     loadingMessage?: string;
     emptyMessage?: string;
+    /**
+     * When true, the filter region (search box, additionalControls, renderBelowControls)
+     * is rendered inside a collapsible container with a chevron toggle. The collapsed
+     * state is persisted per page in `uiState[pageId].filtersCollapsed`.
+     */
+    collapsible?: boolean;
+    /**
+     * Number of active filters to surface on the collapsed pull-tab so the user
+     * can tell at a glance whether the list is filtered while the bar is hidden.
+     * Counted by the parent (1 per active field, not per value).
+     */
+    activeFilterCount?: number;
+    /**
+     * When true, the page does NOT sort items in-memory — it just tracks the active
+     * sortBy/sortOrder for column-header indicators and notifies via onSortChange.
+     * Use when sorting is delegated to the backend.
+     */
+    disableClientSort?: boolean;
+    /**
+     * Fires whenever the active sort changes (column-header click or initial mount).
+     * Pages doing backend sort use this to drive the request params.
+     */
+    onSortChange?: (sortBy: string | undefined, sortOrder: 'asc' | 'desc') => void;
+    /**
+     * Fires whenever the built-in text filter input changes. Pages doing backend
+     * filtering use this to drive the request params (and typically pair it with
+     * a no-op `filterPredicate` since the backend has already filtered).
+     */
+    onFilterChange?: (filter: string) => void;
+    /**
+     * Returns additional inline filter groups that flow IN THE SAME ROW as the
+     * built-in name filter. Each child should be a labeled "group" (e.g. label
+     * stacked over an input/dropdown). Use this for per-attribute filters.
+     * GenericListPage owns the wrapping flex container — return only the groups.
+     */
+    renderFilterGroups?: () => React.ReactNode;
+    /**
+     * Returns content rendered above the filter row inside the same band.
+     * Use for visualization / sort toggles that govern how the filters apply
+     * (e.g. a "Prioritize by" metric toggle).
+     */
+    renderFilterBarHeader?: () => React.ReactNode;
+    /**
+     * Label rendered above the built-in name filter input. Defaults to "Filter".
+     */
+    nameFilterLabel?: string;
 }
 
 export function GenericListPage<T extends { id: string }>({
@@ -74,7 +120,15 @@ export function GenericListPage<T extends { id: string }>({
     renderBelowControls,
     renderAboveList,
     loadingMessage = "Loading...",
-    emptyMessage = "No items found."
+    emptyMessage = "No items found.",
+    collapsible,
+    activeFilterCount = 0,
+    disableClientSort,
+    onSortChange,
+    onFilterChange,
+    renderFilterGroups,
+    renderFilterBarHeader,
+    nameFilterLabel = 'Filter',
 }: GenericListPageProps<T>) {
     const { uiState, updateUiState } = useUIStateContext();
     const listRef = useRef<HTMLDivElement>(null);
@@ -97,6 +151,11 @@ export function GenericListPage<T extends { id: string }>({
         savedState?.sortBy || defaultSortKey || (sortOptions.length > 0 ? sortOptions[0].key : undefined)
     );
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(savedState?.sortOrder || 'asc');
+    const [filtersCollapsed, setFiltersCollapsed] = useState<boolean>(savedState?.filtersCollapsed || false);
+
+    // Toggling only sets local state — persistence into uiState happens in the
+    // sync effect below that watches filter/sort/filtersCollapsed.
+    const toggleFiltersCollapsed = () => setFiltersCollapsed(prev => !prev);
 
     // Helper to find the scrollable parent
     const getScrollContainer = () => {
@@ -178,11 +237,12 @@ export function GenericListPage<T extends { id: string }>({
 
         const handleScroll = () => {
             if (isRestored.current) {
-                updateUiState(pageId, { 
-                    filter, 
-                    sortBy, 
-                    sortOrder, 
-                    scrollPosition: container.scrollTop 
+                updateUiState(pageId, {
+                    filter,
+                    sortBy,
+                    sortOrder,
+                    scrollPosition: container.scrollTop,
+                    filtersCollapsed,
                 });
             }
         };
@@ -191,20 +251,34 @@ export function GenericListPage<T extends { id: string }>({
         
         // Also update once on mount/parameter change to sync current state
         if (isRestored.current) {
-            updateUiState(pageId, { filter, sortBy, sortOrder, scrollPosition: container.scrollTop });
+            updateUiState(pageId, { filter, sortBy, sortOrder, scrollPosition: container.scrollTop, filtersCollapsed });
         }
 
         return () => container.removeEventListener('scroll', handleScroll);
-    }, [pageId, filter, sortBy, sortOrder, updateUiState, loading]);
+    }, [pageId, filter, sortBy, sortOrder, filtersCollapsed, updateUiState, loading]);
 
     const toggleSort = (key: string) => {
+        let nextOrder: 'asc' | 'desc' = 'asc';
         if (sortBy === key) {
-            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+            nextOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+            setSortOrder(nextOrder);
         } else {
             setSortBy(key);
             setSortOrder('asc');
         }
+        onSortChange?.(key, nextOrder);
     };
+
+    // Notify parent of the initial sort + filter state on mount so backend-driven
+    // callers don't need to duplicate the restore-from-uiState logic. Fires once.
+    const initialReportedRef = useRef(false);
+    useEffect(() => {
+        if (initialReportedRef.current) return;
+        initialReportedRef.current = true;
+        if (onSortChange) onSortChange(sortBy, sortOrder);
+        if (onFilterChange && filter) onFilterChange(filter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleItemClick = (item: T) => {
         const container = getScrollContainer();
@@ -217,7 +291,8 @@ export function GenericListPage<T extends { id: string }>({
                 filter,
                 sortBy,
                 sortOrder,
-                scrollPosition: container.scrollTop
+                scrollPosition: container.scrollTop,
+                filtersCollapsed,
             });
         }
         onItemClick(item);
@@ -226,27 +301,27 @@ export function GenericListPage<T extends { id: string }>({
     const filteredAndSortedItems = useMemo(() => {
         let result = items ? items.filter(item => filterPredicate(item, filter)) : [];
 
-        if (sortBy) {
+        if (sortBy && !disableClientSort) {
             const option = sortOptions.find(o => o.key === sortBy);
             if (option) {
                 result = [...result].sort((a, b) => {
                     const valA = option.getValue(a);
                     const valB = option.getValue(b);
-                    
+
                     let comparison = 0;
                     if (typeof valA === 'string' && typeof valB === 'string') {
                         comparison = valA.localeCompare(valB);
                     } else {
                         comparison = (Number(valA) || 0) - (Number(valB) || 0);
                     }
-                    
+
                     return sortOrder === 'asc' ? comparison : -comparison;
                 });
             }
         }
 
         return result;
-    }, [items, filter, filterPredicate, sortBy, sortOrder, sortOptions]);
+    }, [items, filter, filterPredicate, sortBy, sortOrder, sortOptions, disableClientSort]);
 
     const gridTemplateColumns = columns 
         ? columns.map(c => typeof c.flex === 'number' ? `${c.flex}fr` : (c.flex || '1fr')).join(' ')
@@ -260,41 +335,170 @@ export function GenericListPage<T extends { id: string }>({
             loadingMessage={loadingMessage}
             emptyMessage={emptyMessage}
         >
-            <div className={styles.header}>
-                <h1>{title}</h1>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    {secondaryActions?.map((action, i) => (
-                        <button
-                            key={i}
-                            type="button"
-                            onClick={action.onClick}
-                            title={action.title}
-                            disabled={action.disabled}
-                            className="btn-primary"
-                        >
-                            {action.label}
-                        </button>
-                    ))}
-                    {actionButton && (
-                        <button onClick={actionButton.onClick} className="btn-primary">
-                            {actionButton.label}
-                        </button>
-                    )}
+            {/*
+              Title row + filter region rendered as one continuous --bg-secondary band,
+              mirroring Value Stream's header. The two are visually separated by a
+              border-top on the filter region (same pattern as ValueStream.module.css
+              `.filterBar`). Outer .header class provides the bottom border / spacing
+              against the list below; we override its margin-bottom to 0 and pull the
+              filter region into the same band.
+            */}
+            <div style={{
+                background: 'var(--bg-secondary)',
+                // Break out of the page wrapper's 32px padding so the header band
+                // spans edge-to-edge, like Value Stream's header.
+                margin: '-32px -32px 32px -32px',
+                borderBottom: '1px solid var(--border-secondary)',
+            }}>
+                <div
+                    className={styles.header}
+                    style={{
+                        // Override List.module.css defaults so the title row sits inside
+                        // the band: no own border-bottom, no margin-bottom, padding instead.
+                        borderBottom: 'none',
+                        marginBottom: 0,
+                        paddingBottom: 0,
+                        padding: '1rem 2rem',
+                    }}
+                >
+                    <h1>{title}</h1>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {secondaryActions?.map((action, i) => (
+                            <button
+                                key={i}
+                                type="button"
+                                onClick={action.onClick}
+                                title={action.title}
+                                disabled={action.disabled}
+                                className="btn-primary"
+                            >
+                                {action.label}
+                            </button>
+                        ))}
+                        {actionButton && (
+                            <button onClick={actionButton.onClick} className="btn-primary">
+                                {actionButton.label}
+                            </button>
+                        )}
+                    </div>
                 </div>
-            </div>
 
-            <div className={styles.controls} style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <input
-                    type="text"
-                    placeholder={filterPlaceholder}
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                    className={styles.filterInput}
-                    style={{ flex: 1, minWidth: '200px' }}
-                />
-                {additionalControls}
+                {(!collapsible || !filtersCollapsed) && (
+                    <div
+                        id={`${pageId || 'list'}-filter-region`}
+                        style={{
+                            position: 'relative',
+                            // border-top divider mirrors ValueStream.module.css `.filterBar`
+                            borderTop: '1px solid var(--border-primary)',
+                            padding: '1rem 2rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '14px',
+                        }}
+                    >
+                        {/* Top-right chevron when collapsible. Absolutely positioned so it
+                            doesn't shift the filter row layout. */}
+                        {collapsible && (
+                            <button
+                                type="button"
+                                onClick={toggleFiltersCollapsed}
+                                className="btn-secondary"
+                                aria-expanded={true}
+                                aria-controls={`${pageId || 'list'}-filter-region`}
+                                title="Hide filters"
+                                style={{
+                                    position: 'absolute',
+                                    top: '0.5rem',
+                                    right: '0.75rem',
+                                    padding: '4px 16px',
+                                    fontSize: '12px',
+                                    lineHeight: 1.2,
+                                }}
+                            >
+                                ▴
+                            </button>
+                        )}
+
+                        {/* Optional header content above the filter row (e.g. visualization
+                            toggle). Visually separated from the filter row by a divider. */}
+                        {renderFilterBarHeader && (
+                            <div style={{ paddingBottom: '12px', borderBottom: '1px solid var(--border-primary)' }}>
+                                {renderFilterBarHeader()}
+                            </div>
+                        )}
+
+                        {/* Filter row: built-in name filter + page-provided filter groups,
+                            laid out as labeled groups in a single wrapping flex container so
+                            they all read as one cohesive set. */}
+                        <div style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: '16px 24px',
+                            alignItems: 'flex-start',
+                        }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <label style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                                    {nameFilterLabel}
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder={filterPlaceholder}
+                                    value={filter}
+                                    onChange={(e) => {
+                                        setFilter(e.target.value);
+                                        onFilterChange?.(e.target.value);
+                                    }}
+                                    style={{
+                                        // Stand out against the band's --bg-secondary
+                                        // background by using --bg-tertiary on the input.
+                                        // The other inline filter inputs use the same.
+                                        width: '320px',
+                                        padding: '6px 8px',
+                                        borderRadius: '4px',
+                                        border: '1px solid var(--border-primary)',
+                                        background: 'var(--bg-tertiary)',
+                                        color: 'var(--text-primary)',
+                                        fontSize: '13px',
+                                    }}
+                                />
+                            </div>
+                            {renderFilterGroups && renderFilterGroups()}
+                            {additionalControls}
+                        </div>
+
+                        {renderBelowControls && renderBelowControls()}
+                    </div>
+                )}
+                {collapsible && filtersCollapsed && (
+                    <div style={{
+                        // Pull-tab hangs off the bottom of the header band, like ValueStream.
+                        position: 'relative',
+                        height: 0,
+                    }}>
+                        <button
+                            type="button"
+                            onClick={toggleFiltersCollapsed}
+                            className="btn-secondary"
+                            aria-expanded={false}
+                            aria-controls={`${pageId || 'list'}-filter-region`}
+                            title="Show filters"
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                right: '2rem',
+                                padding: '4px 16px',
+                                fontSize: '12px',
+                                lineHeight: 1.2,
+                                borderTopLeftRadius: 0,
+                                borderTopRightRadius: 0,
+                                borderTop: 'none',
+                            }}
+                        >
+                            ▾{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+                        </button>
+                    </div>
+                )}
             </div>
-            {renderBelowControls && renderBelowControls()}
 
             <div className={styles.list} ref={listRef}>
                 {columns && (

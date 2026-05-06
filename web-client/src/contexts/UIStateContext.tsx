@@ -7,6 +7,12 @@ export interface PageUiState {
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
     scrollPosition?: number;
+    /**
+     * Whether the list page's filter bar is collapsed. Pages that pass
+     * `collapsible` to GenericListPage persist this here so the choice
+     * survives in-app navigation (it resets on a full page refresh).
+     */
+    filtersCollapsed?: boolean;
 }
 
 interface UIStateContextType {

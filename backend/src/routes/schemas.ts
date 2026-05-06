@@ -120,3 +120,46 @@ export const LlmGenerateBody = Type.Object({
   config: Type.Optional(Type.Object({}, { additionalProperties: true }))
 });
 export type LlmGenerateBodyType = Static<typeof LlmGenerateBody>;
+
+// ── Work Item list query ────────────────────────────────────────────────────
+// Querystring schema for GET /api/data/workItems. All fields optional.
+// Array params (status, releasedSprintIds) accept either a single string or
+// repeated query params (?status=Backlog&status=Planning) — Fastify normalizes
+// repeated params to arrays. Numbers arrive as strings and are coerced by the
+// query builder.
+export const WorkItemListQuery = Type.Object({
+  // Free-text filter on name (case-insensitive substring)
+  name: Type.Optional(Type.String()),
+
+  // Range filters (strings so empty values pass; coerced numerically downstream)
+  minScore: Type.Optional(Type.String()),
+  maxScore: Type.Optional(Type.String()),
+  minEffort: Type.Optional(Type.String()),
+  maxEffort: Type.Optional(Type.String()),
+  minTcv: Type.Optional(Type.String()),
+  maxTcv: Type.Optional(Type.String()),
+
+  // Priority range targets the field selected by priorityMetric (default: 'score' →
+  // calculated_score). Lets the UI's prioritization toggle drive both filter + sort.
+  minPriority: Type.Optional(Type.String()),
+  maxPriority: Type.Optional(Type.String()),
+  priorityMetric: Type.Optional(Type.Union([
+    Type.Literal('score'),
+    Type.Literal('aha_score'),
+    Type.Literal('stackrank'),
+  ])),
+
+  // Multi-select filters: accept array OR single string (repeated query params)
+  status: Type.Optional(Type.Union([Type.Array(Type.String()), Type.String()])),
+  releasedSprintIds: Type.Optional(Type.Union([Type.Array(Type.String()), Type.String()])),
+
+  // Sort
+  sortBy: Type.Optional(Type.String()),
+  sortOrder: Type.Optional(Type.Union([Type.Literal('asc'), Type.Literal('desc')])),
+
+  // Legacy params kept for backward compatibility with workspace endpoint callers
+  releasedFilter: Type.Optional(Type.String()),
+  minScoreFilter: Type.Optional(Type.String()),
+  customerId: Type.Optional(Type.String()),
+}, { additionalProperties: true });
+export type WorkItemListQueryType = Static<typeof WorkItemListQuery>;

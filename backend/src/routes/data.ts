@@ -3,7 +3,8 @@ import { maskSettings, augmentConfig, logQuery } from '../utils/configHelpers';
 import { getDb } from '../utils/mongoServer';
 import { computeMetricsFromPrecomputed, recomputeScoresForWorkItems } from '../services/metricsService';
 import { assignMissingQuarters } from '../services/sprintService';
-import { fetchWithThreshold, buildMongoQuery, applyValueStreamFilters, buildWorkspaceQueries } from '../utils/dbHelpers';
+import { fetchWithThreshold, buildMongoQuery, applyValueStreamFilters, buildWorkspaceQueries, buildWorkItemSort } from '../utils/dbHelpers';
+import { WorkItemListQuery, WorkItemListQueryType } from './schemas';
 
 export const dataRoutes: FastifyPluginAsync = async (fastify) => {
 
@@ -64,11 +65,14 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
     return reply.send(docsWithQuarters);
   });
 
-  fastify.get('/api/data/workItems', async (request, reply) => {
+  fastify.get<{ Querystring: WorkItemListQueryType }>('/api/data/workItems', {
+    schema: { querystring: WorkItemListQuery }
+  }, async (request, reply) => {
     const db = await getAppDb();
     // Scores are pre-computed on WorkItem documents — no need to join with customers/issues
     const query = buildMongoQuery(request.query || {}, 'workItems');
-    const docs = await fetchWithThreshold(db.collection('workItems'), query, 'workItems');
+    const sort = buildWorkItemSort(request.query || {});
+    const docs = await fetchWithThreshold(db.collection('workItems'), query, 'workItems', sort);
     const workItems = docs.map(({ _id, ...rest }) => rest);
     const metrics = computeMetricsFromPrecomputed(workItems);
 

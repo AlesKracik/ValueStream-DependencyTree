@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fetchWithThreshold, buildMongoQuery, applyValueStreamFilters, buildWorkspaceQueries, DATA_THRESHOLD } from '../dbHelpers';
+import { fetchWithThreshold, buildMongoQuery, applyValueStreamFilters, buildWorkspaceQueries, buildWorkItemSort, DATA_THRESHOLD } from '../dbHelpers';
 
 describe('dbHelpers', () => {
 
@@ -52,6 +52,41 @@ describe('dbHelpers', () => {
 
       await expect(fetchWithThreshold(collection, {}, 'huge'))
         .rejects.toMatchObject({ statusCode: 413 });
+    });
+
+    it('applies sort to the cursor when sort spec is provided', async () => {
+      // Verify the sort spec is forwarded to the cursor's .sort() call.
+      let sortArg: any = undefined;
+      const collection = {
+        countDocuments: async () => 3,
+        find: () => ({
+          sort: (spec: any) => {
+            sortArg = spec;
+            return { toArray: async () => [{ id: 'a' }, { id: 'b' }, { id: 'c' }] };
+          },
+          toArray: async () => [{ id: 'unsorted' }],
+        }),
+      } as any;
+
+      const result = await fetchWithThreshold(collection, {}, 'sorted', { name: 1 });
+      expect(sortArg).toEqual({ name: 1 });
+      expect(result).toHaveLength(3);
+      expect(result[0].id).toBe('a');
+    });
+
+    it('skips .sort() when no sort spec is provided', async () => {
+      let sortCalled = false;
+      const collection = {
+        countDocuments: async () => 1,
+        find: () => ({
+          sort: () => { sortCalled = true; return { toArray: async () => [] }; },
+          toArray: async () => [{ id: 'x' }],
+        }),
+      } as any;
+
+      const result = await fetchWithThreshold(collection, {}, 'unsorted');
+      expect(sortCalled).toBe(false);
+      expect(result[0].id).toBe('x');
     });
   });
 
@@ -127,6 +162,201 @@ describe('dbHelpers', () => {
       const query = buildMongoQuery({ releasedFilter: 'released', customerId: 'c1' }, 'workItems');
       expect(query['customer_targets.customer_id']).toBe('c1');
       expect(query.released_in_sprint_id).toEqual({ $exists: true, $ne: '' });
+    });
+
+    // ── Work-items list-page filters ────────────────────────────────────────
+    describe('workItems list-page filters', () => {
+      it('builds case-insensitive name regex with regex special chars escaped', () => {
+        // A name like "v2.0 (alpha)" must not be interpreted as a regex.
+        const q = buildMongoQuery({ name: 'v2.0 (alpha)' }, 'workItems');
+        expect(q.name.$options).toBe('i');
+        // The dot, parens are escaped — the produced pattern matches the literal text.
+        expect(new RegExp(q.name.$regex).test('v2.0 (alpha)')).toBe(true);
+        expect(new RegExp(q.name.$regex).test('v2X0 (alpha)')).toBe(false);
+      });
+
+      it('ignores empty / whitespace-only name', () => {
+        expect(buildMongoQuery({ name: '' }, 'workItems').name).toBeUndefined();
+        expect(buildMongoQuery({ name: '   ' }, 'workItems').name).toBeUndefined();
+      });
+
+      it('builds min/max ranges for score, effort, tcv', () => {
+        const q = buildMongoQuery({
+          minScore: '10', maxScore: '100',
+          minEffort: '5',
+          maxTcv: '5000',
+        }, 'workItems');
+        expect(q.calculated_score).toEqual({ $gte: 10, $lte: 100 });
+        expect(q.calculated_effort).toEqual({ $gte: 5 });
+        expect(q.calculated_tcv).toEqual({ $lte: 5000 });
+      });
+
+      it('ignores empty range values', () => {
+        const q = buildMongoQuery({ minScore: '', maxScore: '' }, 'workItems');
+        expect(q.calculated_score).toBeUndefined();
+      });
+
+      it('merges new minScore with legacy minScoreFilter on the same field', () => {
+        // Legacy minScoreFilter sets $gte; the new max should add $lte without losing it.
+        const q = buildMongoQuery({ minScoreFilter: '50', maxScore: '200' }, 'workItems');
+        expect(q.calculated_score).toEqual({ $gte: 50, $lte: 200 });
+      });
+
+      it('builds $in for status array (no Backlog → simple $in)', () => {
+        const q = buildMongoQuery({ status: ['Planning', 'Done'] }, 'workItems');
+        expect(q.status).toEqual({ $in: ['Planning', 'Done'] });
+        expect(q.$or).toBeUndefined();
+      });
+
+      it('accepts a single status string and wraps it in $in', () => {
+        const q = buildMongoQuery({ status: 'Done' }, 'workItems');
+        expect(q.status).toEqual({ $in: ['Done'] });
+      });
+
+      it('expands Backlog selection to also match docs with missing/null/empty status', () => {
+        // The UI renders `w.status || 'Backlog'`, so legacy items with no stored
+        // status display as Backlog. Selecting Backlog must include them too.
+        const q = buildMongoQuery({ status: ['Backlog'] }, 'workItems');
+        expect(q.status).toBeUndefined();
+        expect(q.$or).toEqual([
+          { status: { $in: ['Backlog'] } },
+          { status: { $exists: false } },
+          { status: null },
+          { status: '' },
+        ]);
+      });
+
+      it('Backlog + another status keeps both real values AND missing-status docs', () => {
+        const q = buildMongoQuery({ status: ['Backlog', 'Planning'] }, 'workItems');
+        expect(q.$or).toEqual([
+          { status: { $in: ['Backlog', 'Planning'] } },
+          { status: { $exists: false } },
+          { status: null },
+          { status: '' },
+        ]);
+      });
+
+      it('combines Backlog status + sprint multi-select via $and so each $or stays independent', () => {
+        // Without $and, the second filter would overwrite $or and one of the
+        // selections would silently stop applying.
+        const q = buildMongoQuery({
+          status: ['Backlog'],
+          releasedSprintIds: ['s1'],
+        }, 'workItems');
+        expect(q.$or).toBeUndefined();
+        expect(q.$and).toHaveLength(2);
+        expect(q.$and).toContainEqual({ $or: [
+          { status: { $in: ['Backlog'] } },
+          { status: { $exists: false } },
+          { status: null },
+          { status: '' },
+        ]});
+        expect(q.$and).toContainEqual({ $or: [{ released_in_sprint_id: { $in: ['s1'] } }] });
+      });
+
+      it('builds $or for releasedSprintIds with real ids only', () => {
+        const q = buildMongoQuery({ releasedSprintIds: ['s1', 's2'] }, 'workItems');
+        expect(q.$or).toEqual([{ released_in_sprint_id: { $in: ['s1', 's2'] } }]);
+      });
+
+      it('builds $or that includes unreleased branches when "unreleased" is in the list', () => {
+        const q = buildMongoQuery({ releasedSprintIds: ['s1', 'unreleased'] }, 'workItems');
+        expect(q.$or).toHaveLength(3);
+        expect(q.$or).toContainEqual({ released_in_sprint_id: { $in: ['s1'] } });
+        expect(q.$or).toContainEqual({ released_in_sprint_id: { $exists: false } });
+        expect(q.$or).toContainEqual({ released_in_sprint_id: '' });
+      });
+
+      it('builds $or with only unreleased branches when "unreleased" alone is selected', () => {
+        const q = buildMongoQuery({ releasedSprintIds: ['unreleased'] }, 'workItems');
+        expect(q.$or).toHaveLength(2);
+        expect(q.$or).toContainEqual({ released_in_sprint_id: { $exists: false } });
+        expect(q.$or).toContainEqual({ released_in_sprint_id: '' });
+      });
+
+      it('releasedSprintIds supersedes legacy releasedFilter when both are set', () => {
+        // Without this rule, the two would fight — released_in_sprint_id { $exists: true } AND $or { not exists }.
+        const q = buildMongoQuery({ releasedFilter: 'released', releasedSprintIds: ['s1'] }, 'workItems');
+        expect(q.released_in_sprint_id).toBeUndefined();
+        expect(q.$or).toEqual([{ released_in_sprint_id: { $in: ['s1'] } }]);
+      });
+
+      // ── Priority range tied to active metric ─────────────────────────
+      it('priority range targets calculated_score when priorityMetric defaults', () => {
+        const q = buildMongoQuery({ minPriority: '10', maxPriority: '100' }, 'workItems');
+        expect(q.calculated_score).toEqual({ $gte: 10, $lte: 100 });
+      });
+
+      it('priority range targets aha_synced_data.score when priorityMetric=aha_score', () => {
+        const q = buildMongoQuery({ minPriority: '10', priorityMetric: 'aha_score' }, 'workItems');
+        expect(q['aha_synced_data.score']).toEqual({ $gte: 10 });
+      });
+
+      it('priority range targets stackrank when priorityMetric=stackrank', () => {
+        const q = buildMongoQuery({ maxPriority: '500', priorityMetric: 'stackrank' }, 'workItems');
+        expect(q.stackrank).toEqual({ $lte: 500 });
+      });
+
+      it('falls back to calculated_score for an unknown priorityMetric', () => {
+        const q = buildMongoQuery({ minPriority: '5', priorityMetric: 'bogus' }, 'workItems');
+        expect(q.calculated_score).toEqual({ $gte: 5 });
+      });
+
+      it('combines name + ranges + status + sprints', () => {
+        const q = buildMongoQuery({
+          name: 'auth',
+          minScore: '50',
+          status: ['Planning', 'Development'],
+          releasedSprintIds: ['s1'],
+        }, 'workItems');
+        expect(q.name).toEqual({ $regex: 'auth', $options: 'i' });
+        expect(q.calculated_score).toEqual({ $gte: 50 });
+        expect(q.status).toEqual({ $in: ['Planning', 'Development'] });
+        expect(q.$or).toEqual([{ released_in_sprint_id: { $in: ['s1'] } }]);
+      });
+
+      it('does not apply work-item filters to other collections', () => {
+        // Customers uses customerFilter for name; the work-item-specific `name`, `minScore`,
+        // and `status` params should be ignored here.
+        const q = buildMongoQuery({ name: 'foo', minScore: '10', status: ['Backlog'] }, 'customers');
+        expect(q.name).toBeUndefined();
+        expect(q.calculated_score).toBeUndefined();
+        expect(q.status).toBeUndefined();
+      });
+    });
+  });
+
+  describe('buildWorkItemSort', () => {
+    it('returns null when sortBy is missing or empty', () => {
+      expect(buildWorkItemSort({})).toBeNull();
+      expect(buildWorkItemSort({ sortBy: '' })).toBeNull();
+      expect(buildWorkItemSort(null)).toBeNull();
+    });
+
+    it('returns null for unsupported sort keys (e.g. released)', () => {
+      // 'released' would sort by raw sprint id which is meaningless; intentionally unsupported.
+      expect(buildWorkItemSort({ sortBy: 'released' })).toBeNull();
+      expect(buildWorkItemSort({ sortBy: 'unknown' })).toBeNull();
+    });
+
+    it('maps known sort keys to MongoDB fields with default asc direction', () => {
+      expect(buildWorkItemSort({ sortBy: 'name' })).toEqual({ name: 1 });
+      expect(buildWorkItemSort({ sortBy: 'priority' })).toEqual({ calculated_score: 1 });
+      expect(buildWorkItemSort({ sortBy: 'score' })).toEqual({ calculated_score: 1 });
+      expect(buildWorkItemSort({ sortBy: 'effort' })).toEqual({ calculated_effort: 1 });
+      expect(buildWorkItemSort({ sortBy: 'tcv' })).toEqual({ calculated_tcv: 1 });
+      expect(buildWorkItemSort({ sortBy: 'status' })).toEqual({ status: 1 });
+    });
+
+    it('honors sortOrder=desc', () => {
+      expect(buildWorkItemSort({ sortBy: 'priority', sortOrder: 'desc' })).toEqual({ calculated_score: -1 });
+    });
+
+    it('priority sort routes to the active metric field', () => {
+      expect(buildWorkItemSort({ sortBy: 'priority', priorityMetric: 'aha_score' }))
+        .toEqual({ 'aha_synced_data.score': 1 });
+      expect(buildWorkItemSort({ sortBy: 'priority', priorityMetric: 'stackrank', sortOrder: 'desc' }))
+        .toEqual({ stackrank: -1 });
     });
   });
 

@@ -5,17 +5,20 @@ export const DATA_THRESHOLD = 500;
 export async function fetchWithThreshold<T extends Document>(
     collection: Collection<T>,
     query: any,
-    collectionName: string
+    collectionName: string,
+    sort?: Record<string, 1 | -1> | null
 ): Promise<WithId<T>[]> {
     // Check if countDocuments is available (it might be mocked out in tests)
     let count = 0;
     if (typeof collection.countDocuments === 'function') {
         count = await collection.countDocuments(query);
     } else {
-        // Fallback for tests or mocks that only implement find().toArray()
+        // Fallback for tests or mocks that only implement find().toArray().
+        // The unsorted fast-path returns the items directly so we don't double-fetch.
+        // With sort, we still need a second fetch so the cursor is ordered.
         const items = await collection.find(query).toArray();
         count = items.length;
-        if (count <= DATA_THRESHOLD) {
+        if (count <= DATA_THRESHOLD && !sort) {
             return items;
         }
     }
@@ -26,7 +29,64 @@ export async function fetchWithThreshold<T extends Document>(
         throw err;
     }
 
-    return await collection.find(query).toArray();
+    const cursor = collection.find(query);
+    return sort ? await cursor.sort(sort).toArray() : await cursor.toArray();
+}
+
+/**
+ * Coerces a query param that may arrive as a single string, an array of strings,
+ * or be missing entirely, into a clean string[]. Empty entries are dropped.
+ */
+function toArray(value: unknown): string[] {
+    if (value === undefined || value === null || value === '') return [];
+    if (Array.isArray(value)) return value.filter(v => typeof v === 'string' && v !== '') as string[];
+    if (typeof value === 'string') return [value];
+    return [];
+}
+
+/**
+ * Maps the user-facing prioritization metric to its underlying MongoDB field.
+ * Mirrors the metric toggle in WorkItemListPage so filter + sort + the displayed
+ * column all reference the same value.
+ */
+const PRIORITY_METRIC_FIELD: Record<string, string> = {
+    score: 'calculated_score',
+    aha_score: 'aha_synced_data.score',
+    stackrank: 'stackrank',
+};
+
+function priorityField(query: any): string {
+    return PRIORITY_METRIC_FIELD[String(query?.priorityMetric || 'score')] || 'calculated_score';
+}
+
+/**
+ * Maps a list-page sortBy key to the underlying MongoDB field. Returns null
+ * for keys that can't be sorted at the DB level (e.g. 'released' would order
+ * by raw sprint id, which is meaningless to the user — kept client-side).
+ *
+ * 'priority' is special: it routes to whichever field the active priorityMetric
+ * selects (see priorityField).
+ */
+const WORK_ITEM_SORT_FIELDS: Record<string, string> = {
+    name: 'name',
+    score: 'calculated_score',
+    effort: 'calculated_effort',
+    tcv: 'calculated_tcv',
+    status: 'status',
+};
+
+/**
+ * Builds a MongoDB sort spec for the work-items list endpoint. Returns null
+ * when no sort is requested or when sortBy maps to an unsupported field, in
+ * which case the caller should leave the cursor unsorted.
+ */
+export function buildWorkItemSort(query: any): Record<string, 1 | -1> | null {
+    if (!query) return null;
+    const sortBy = String(query.sortBy || '');
+    const field = sortBy === 'priority' ? priorityField(query) : WORK_ITEM_SORT_FIELDS[sortBy];
+    if (!field) return null;
+    const direction: 1 | -1 = query.sortOrder === 'desc' ? -1 : 1;
+    return { [field]: direction };
 }
 
 /**
@@ -49,6 +109,7 @@ export function buildMongoQuery(query: any, collection: string): any {
     }
 
     if (collection === 'workItems') {
+        // Legacy released filter (kept for workspace endpoint + other existing callers)
         if (query.releasedFilter && query.releasedFilter !== 'all') {
             if (query.releasedFilter === 'released') {
                 mongoQuery.released_in_sprint_id = { $exists: true, $ne: '' };
@@ -59,9 +120,107 @@ export function buildMongoQuery(query: any, collection: string): any {
                 ];
             }
         }
-        const minScore = Number(query.minScoreFilter) || 0;
-        if (minScore > 0) {
-            mongoQuery.calculated_score = { $gte: minScore };
+
+        // Legacy minScoreFilter (kept; new callers use minScore)
+        const legacyMinScore = Number(query.minScoreFilter) || 0;
+        if (legacyMinScore > 0) {
+            mongoQuery.calculated_score = { $gte: legacyMinScore };
+        }
+
+        // --- Work-items list-page filters ---
+        if (typeof query.name === 'string' && query.name.trim() !== '') {
+            // Escape regex special chars so users don't accidentally type a regex.
+            const safe = query.name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            mongoQuery.name = { $regex: safe, $options: 'i' };
+        }
+
+        // Range filters on pre-computed scalar fields. Min and max may both be set.
+        // If a previous block already wrote { $gte } for the same field (e.g. legacy
+        // minScoreFilter), merge instead of overwrite.
+        const applyRange = (field: string, minRaw: any, maxRaw: any) => {
+            const min = minRaw !== undefined && minRaw !== '' ? Number(minRaw) : NaN;
+            const max = maxRaw !== undefined && maxRaw !== '' ? Number(maxRaw) : NaN;
+            if (Number.isNaN(min) && Number.isNaN(max)) return;
+            const existing = mongoQuery[field] && typeof mongoQuery[field] === 'object' ? mongoQuery[field] : {};
+            if (!Number.isNaN(min)) existing.$gte = min;
+            if (!Number.isNaN(max)) existing.$lte = max;
+            mongoQuery[field] = existing;
+        };
+        applyRange('calculated_score', query.minScore, query.maxScore);
+        applyRange('calculated_effort', query.minEffort, query.maxEffort);
+        applyRange('calculated_tcv', query.minTcv, query.maxTcv);
+
+        // Priority range targets the active metric's field (calculated_score by default).
+        // Lets the UI's metric toggle apply consistently to filter + sort + displayed value.
+        applyRange(priorityField(query), query.minPriority, query.maxPriority);
+
+        // Filter blocks below may each need their own $or (legacy releasedFilter
+        // ↔ "unreleased", status ↔ "Backlog includes missing", sprints ↔ "unreleased").
+        // Top-level $or can only be assigned once, so we collect each block's
+        // branches and combine them at the end via $and (or a single $or when
+        // there's only one block).
+        const orGroups: any[][] = [];
+
+        // Move any $or set by the legacy releasedFilter branch above into the
+        // collection so it survives potential combination with new filters.
+        if (Array.isArray(mongoQuery.$or)) {
+            orGroups.push(mongoQuery.$or);
+            delete mongoQuery.$or;
+        }
+
+        // Multi-select status. Fastify gives us either a single string or an array
+        // depending on whether ?status=X appeared once or many times.
+        // Special case: 'Backlog' is the UI default for items with no stored status
+        // (WorkItemListPage renders `w.status || 'Backlog'`), so selecting Backlog
+        // must also include docs whose status field is missing / empty / null —
+        // otherwise legacy items show in the list but get filtered out by their
+        // own filter chip.
+        const statusList = toArray(query.status);
+        if (statusList.length > 0) {
+            const includesBacklog = statusList.includes('Backlog');
+            if (includesBacklog) {
+                orGroups.push([
+                    { status: { $in: statusList } },
+                    { status: { $exists: false } },
+                    { status: null },
+                    { status: '' },
+                ]);
+            } else {
+                mongoQuery.status = { $in: statusList };
+            }
+        }
+
+        // Multi-select released sprints. The literal 'unreleased' is a sentinel
+        // meaning "matches docs without a released_in_sprint_id".
+        const sprintIdList = toArray(query.releasedSprintIds);
+        if (sprintIdList.length > 0) {
+            const includesUnreleased = sprintIdList.includes('unreleased');
+            const realIds = sprintIdList.filter(s => s !== 'unreleased');
+            const branches: any[] = [];
+            if (realIds.length > 0) branches.push({ released_in_sprint_id: { $in: realIds } });
+            if (includesUnreleased) {
+                branches.push({ released_in_sprint_id: { $exists: false } });
+                branches.push({ released_in_sprint_id: '' });
+            }
+            // Drop any released_in_sprint_id constraint already set by the legacy
+            // releasedFilter=released branch — the new releasedSprintIds is more
+            // specific and supersedes it. (The legacy unreleased branch already had
+            // its $or moved into orGroups; we drop it here so the new selection wins.)
+            delete mongoQuery.released_in_sprint_id;
+            // The new selection supersedes the legacy unreleased branch — pop the
+            // legacy group we collected at the top so we don't double-OR.
+            const legacyIdx = orGroups.findIndex(g => g.some(b => b.released_in_sprint_id?.$exists === false));
+            if (legacyIdx >= 0) orGroups.splice(legacyIdx, 1);
+            orGroups.push(branches);
+        }
+
+        // Combine the per-block $or groups: a single one goes into $or directly;
+        // multiple are AND-ed together so each block's "OR" semantics are preserved
+        // independently.
+        if (orGroups.length === 1) {
+            mongoQuery.$or = orGroups[0];
+        } else if (orGroups.length > 1) {
+            mongoQuery.$and = orGroups.map(branches => ({ $or: branches }));
         }
     }
 
