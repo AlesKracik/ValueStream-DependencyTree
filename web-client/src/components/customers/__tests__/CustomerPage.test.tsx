@@ -662,6 +662,7 @@ describe('CustomerPage', () => {
             { value: 'noop', label: 'Noop' },
             { value: 'waiting for customer', label: 'Waiting for Customer' },
             { value: 'waiting for other party', label: 'Waiting for Other Party' },
+            { value: 'waiting for release', label: 'Waiting for Release' },
             { value: 'done', label: 'Done' }
         ];
 

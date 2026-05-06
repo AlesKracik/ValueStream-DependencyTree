@@ -159,6 +159,7 @@ export const CustomerSupportTab: React.FC<Props> = ({ customer, data, updateCust
                                                 <option value="noop">Noop</option>
                                                 <option value="waiting for customer">Waiting for Customer</option>
                                                 <option value="waiting for other party">Waiting for Other Party</option>
+                                                <option value="waiting for release">Waiting for Release</option>
                                                 <option value="done">Done</option>
                                             </select>
                                         </div>

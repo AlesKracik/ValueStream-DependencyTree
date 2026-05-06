@@ -113,7 +113,7 @@ The detail page uses a tabbed interface to organise complex data sets:
     *   Yellow: Active Work in progress.
     *   Blue: Blocked / Pending issues.
 *   **Manual Tracking:** Add localised support issues with descriptions, statuses, and expiration dates.
-    *   **Available Statuses:** To Do, Work in Progress, No-op, Waiting for Customer, Waiting for Other Party, Done.
+    *   **Available Statuses:** To Do, Work in Progress, No-op, Waiting for Customer, Waiting for Other Party, Waiting for Release, Done.
     *   **Auto-Expiration:** Moving an issue to **"Done"** automatically sets an expiration date 1 day in the future, after which the issue is automatically archived.
 *   **Jira Integration:** Automatically sync tickets from Jira matching the customer's JQL (defined in Settings).
     *   **Linking:** Discovered Jira tickets can be linked to manual Support Issues to provide a unified view.

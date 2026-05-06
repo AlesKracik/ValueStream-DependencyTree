@@ -62,9 +62,10 @@ const STATUS_ORDER: Record<string, number> = {
     'noop': 2,
     'waiting for customer': 3,
     'waiting for other party': 4,
-    'done': 5,
-    'resolved': 5,
-    'closed': 5
+    'waiting for release': 5,
+    'done': 6,
+    'resolved': 6,
+    'closed': 6
 };
 
 const ACTIVITY_ORDER: Record<string, number> = {
@@ -79,6 +80,7 @@ const STATUS_OPTIONS: { value: SupportIssue['status']; label: string }[] = [
     { value: 'noop', label: 'No-op' },
     { value: 'waiting for customer', label: 'Waiting for Customer' },
     { value: 'waiting for other party', label: 'Waiting for Other Party' },
+    { value: 'waiting for release', label: 'Waiting for Release' },
     { value: 'done', label: 'Done' },
 ];
 
@@ -967,6 +969,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                         <option value="noop">No-op</option>
                         <option value="waiting for customer">Waiting for Customer</option>
                         <option value="waiting for other party">Waiting for Other Party</option>
+                        <option value="waiting for release">Waiting for Release</option>
                         <option value="done">Done</option>
                     </select>
                 </div>
