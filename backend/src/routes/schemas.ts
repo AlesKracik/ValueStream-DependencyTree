@@ -157,6 +157,12 @@ export const WorkItemListQuery = Type.Object({
   sortBy: Type.Optional(Type.String()),
   sortOrder: Type.Optional(Type.Union([Type.Literal('asc'), Type.Literal('desc')])),
 
+  // Pagination (1-based page index). Both must be set to enable pagination;
+  // when omitted, the legacy unpaginated behaviour (with the 500-item threshold)
+  // is preserved for backward compatibility.
+  page: Type.Optional(Type.String()),
+  pageSize: Type.Optional(Type.String()),
+
   // Legacy params kept for backward compatibility with workspace endpoint callers
   releasedFilter: Type.Optional(Type.String()),
   minScoreFilter: Type.Optional(Type.String()),

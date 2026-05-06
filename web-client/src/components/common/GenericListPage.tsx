@@ -49,6 +49,11 @@ interface GenericListPageProps<T> {
     additionalControls?: React.ReactNode;
     renderBelowControls?: () => React.ReactNode;
     renderAboveList?: () => React.ReactNode;
+    /**
+     * Returns content rendered immediately AFTER the list rows (and the empty-
+     * state placeholder). Use for pagination controls.
+     */
+    renderBelowList?: () => React.ReactNode;
     loadingMessage?: string;
     emptyMessage?: string;
     /**
@@ -119,6 +124,7 @@ export function GenericListPage<T extends { id: string }>({
     additionalControls,
     renderBelowControls,
     renderAboveList,
+    renderBelowList,
     loadingMessage = "Loading...",
     emptyMessage = "No items found.",
     collapsible,
@@ -576,6 +582,7 @@ export function GenericListPage<T extends { id: string }>({
                 {filteredAndSortedItems.length === 0 && (
                     <div className={styles.empty}>{emptyMessage}</div>
                 )}
+                {renderBelowList && renderBelowList()}
             </div>
         </PageWrapper>
     );

@@ -57,10 +57,11 @@ const mockData: ValueStreamData = {
 };
 
 /** Helper: install a mock for useFilteredWorkItems that just returns the items it was given. */
-function mockHook(items = mockData.workItems, opts: { loading?: boolean; refetching?: boolean; error?: string | null } = {}) {
+function mockHook(items = mockData.workItems, opts: { loading?: boolean; refetching?: boolean; error?: string | null; total?: number } = {}) {
     useFilteredWorkItemsMock.mockReturnValue({
         workItems: items,
         metrics: { maxScore: 100, maxRoi: 10 },
+        total: opts.total ?? items.length,
         loading: opts.loading ?? false,
         refetching: opts.refetching ?? false,
         error: opts.error ?? null,
@@ -383,6 +384,76 @@ describe('WorkItemListPage', () => {
                 expect(filters.status).toBeUndefined();
             });
             expect(screen.queryByRole('button', { name: /Clear filters/i })).toBeNull();
+        });
+    });
+
+    describe('pagination', () => {
+        const buildItems = (count: number) =>
+            Array.from({ length: count }, (_, i) => ({
+                id: `w${i}`,
+                name: `Item ${i}`,
+                score: i,
+                calculated_score: i,
+                calculated_tcv: 0,
+                calculated_effort: 0,
+                total_effort_mds: 0,
+                status: 'Backlog' as const,
+                customer_targets: [],
+            }));
+
+        it('passes the user-configured items_per_page from settings to the hook', () => {
+            mockHook(buildItems(10), { total: 80 });
+            const data = { ...mockData, settings: { ...mockData.settings, general: { ...mockData.settings.general, items_per_page: 10 } } };
+            renderWithProviders(<WorkItemListPage data={data} loading={false} />);
+            const [, , pagination] = lastHookCall();
+            expect(pagination).toEqual({ page: 1, pageSize: 10 });
+        });
+
+        it('defaults to page size 25 when items_per_page is not set', () => {
+            mockHook();
+            renderWithProviders(<WorkItemListPage data={mockData} loading={false} />);
+            const [, , pagination] = lastHookCall();
+            expect(pagination).toEqual({ page: 1, pageSize: 25 });
+        });
+
+        it('renders Next/Prev controls when there are multiple pages and advances the page on Next', async () => {
+            mockHook(buildItems(10), { total: 80 });
+            const data = { ...mockData, settings: { ...mockData.settings, general: { ...mockData.settings.general, items_per_page: 10 } } };
+            renderWithProviders(<WorkItemListPage data={data} loading={false} />);
+
+            expect(screen.getByText(/Page 1 of 8/)).toBeDefined();
+            fireEvent.click(screen.getByRole('button', { name: /Next page/i }));
+
+            await waitFor(() => {
+                const [, , pagination] = lastHookCall();
+                expect(pagination?.page).toBe(2);
+            });
+            expect(screen.getByText(/Page 2 of 8/)).toBeDefined();
+        });
+
+        it('hides pagination controls when total fits on a single page', () => {
+            mockHook(mockData.workItems, { total: mockData.workItems.length });
+            renderWithProviders(<WorkItemListPage data={mockData} loading={false} />);
+            expect(screen.queryByRole('button', { name: /Next page/i })).toBeNull();
+        });
+
+        it('resets to page 1 when filters change', async () => {
+            mockHook(buildItems(10), { total: 80 });
+            const data = { ...mockData, settings: { ...mockData.settings, general: { ...mockData.settings.general, items_per_page: 10 } } };
+            renderWithProviders(<WorkItemListPage data={data} loading={false} />);
+
+            fireEvent.click(screen.getByRole('button', { name: /Next page/i }));
+            await waitFor(() => {
+                const [, , pagination] = lastHookCall();
+                expect(pagination?.page).toBe(2);
+            });
+
+            // Type a filter — page should snap back to 1.
+            fireEvent.change(screen.getByPlaceholderText(/Filter by name.../i), { target: { value: 'Foo' } });
+            await waitFor(() => {
+                const [, , pagination] = lastHookCall();
+                expect(pagination?.page).toBe(1);
+            });
         });
     });
 

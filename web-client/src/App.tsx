@@ -172,9 +172,10 @@ const SprintListRouteWrapper = createRouteWrapper({
   render: ({ state }) => <SprintPageRouteWrapper valueStreamState={state} />,
 });
 
-// WorkItems list needs sprints so the "Released" column can resolve sprint names
+// WorkItems list needs sprints so the "Released" column can resolve sprint names,
+// and settings so the page-size from general.items_per_page drives pagination.
 const WorkItemListRouteWrapper = createRouteWrapper({
-  collections: ['workItems', 'sprints'],
+  collections: ['workItems', 'sprints', 'settings'],
   render: ({ state }) => <WorkItemListPage data={state.data} loading={state.loading} updateWorkItem={state.updateWorkItem} />,
 });
 

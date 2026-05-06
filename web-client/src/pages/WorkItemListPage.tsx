@@ -4,10 +4,13 @@ import type { ValueStreamData, WorkItem, WorkItemPriorityMetric, Issue } from '@
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption, ListColumn } from '../components/common/GenericListPage';
 import { MultiSelectDropdown } from '../components/common/MultiSelectDropdown';
+import { Pagination } from '../components/common/Pagination';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { useUIStateContext } from '../contexts/UIStateContext';
 import { calculateWorkItemEffort } from '../utils/businessLogic';
 import { useFilteredWorkItems, type WorkItemFilters, type WorkItemSort } from '../hooks/useFilteredWorkItems';
+
+const DEFAULT_PAGE_SIZE = 25;
 
 interface Props {
     data: ValueStreamData | null;
@@ -83,6 +86,13 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
     const [filters, setFilters] = useState<WorkItemFilters>({});
     const [sort, setSort] = useState<WorkItemSort>({ sortBy: 'name', sortOrder: 'asc' });
 
+    // --- Pagination state ---
+    // pageSize comes from the user's "Items per page" setting (general.items_per_page).
+    // page is reset to 1 whenever filters or sort change so the user doesn't end up
+    // on an out-of-range page.
+    const pageSize = data?.settings?.general?.items_per_page ?? DEFAULT_PAGE_SIZE;
+    const [page, setPage] = useState(1);
+
     const setFilterField = <K extends keyof WorkItemFilters>(key: K, value: WorkItemFilters[K]) => {
         setFilters(prev => ({ ...prev, [key]: value }));
     };
@@ -109,8 +119,23 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
         () => ({ ...filters, priorityMetric: metric }),
         [filters, metric]
     );
-    const { workItems, loading: hookLoading, error } = useFilteredWorkItems(filtersWithMetric, sort);
+    const { workItems, total, loading: hookLoading, error } = useFilteredWorkItems(
+        filtersWithMetric,
+        sort,
+        { page, pageSize }
+    );
     const loading = outerLoading || hookLoading;
+
+    // When filters/sort/pageSize change, snap back to the first page so the user
+    // doesn't see "Page 5 of 1" after narrowing the result set.
+    // We use the "adjust state during render" pattern (tracked via a previous-key
+    // ref) instead of useEffect, per react-hooks/set-state-in-effect lint rule.
+    const resetKey = `${JSON.stringify(filtersWithMetric)}|${sort.sortBy ?? ''}|${sort.sortOrder ?? ''}|${pageSize}`;
+    const [prevResetKey, setPrevResetKey] = useState(resetKey);
+    if (resetKey !== prevResetKey) {
+        setPrevResetKey(resetKey);
+        if (page !== 1) setPage(1);
+    }
 
     const setMetric = (m: WorkItemPriorityMetric) => {
         setViewState(s => ({ ...s, prioritizationMetric: m }));
@@ -362,6 +387,9 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
             nameFilterLabel="Name"
             renderFilterBarHeader={renderFilterBarHeader}
             renderFilterGroups={renderFilterGroups}
+            renderBelowList={() => (
+                <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />
+            )}
             onItemClick={(w) => navigate(`/workitem/${w.id}`)}
             columns={columns}
             actionButton={{

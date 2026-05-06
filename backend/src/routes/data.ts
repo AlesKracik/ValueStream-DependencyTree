@@ -70,13 +70,42 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
   }, async (request, reply) => {
     const db = await getAppDb();
     // Scores are pre-computed on WorkItem documents — no need to join with customers/issues
-    const query = buildMongoQuery(request.query || {}, 'workItems');
-    const sort = buildWorkItemSort(request.query || {});
+    const q = request.query || {};
+    const query = buildMongoQuery(q, 'workItems');
+    const sort = buildWorkItemSort(q);
+
+    // Parse pagination. Both page and pageSize must be valid positive numbers
+    // for pagination to engage; otherwise we fall back to the legacy threshold-
+    // protected fetch so existing callers (and the workspace endpoint upstream)
+    // are unaffected.
+    const pageNum = Number(q.page);
+    const pageSizeNum = Number(q.pageSize);
+    const paginate =
+      Number.isFinite(pageNum) && pageNum >= 1 &&
+      Number.isFinite(pageSizeNum) && pageSizeNum >= 1;
+
+    if (paginate) {
+      const collection = db.collection('workItems');
+      // Metrics are computed across ALL matching docs so node-size scaling
+      // stays stable as the user pages.
+      const allDocs = await collection.find(query).toArray();
+      const total = allDocs.length;
+      const metrics = computeMetricsFromPrecomputed(allDocs.map(({ _id, ...rest }) => rest));
+
+      let cursor = collection.find(query);
+      if (sort) cursor = cursor.sort(sort);
+      cursor = cursor.skip((pageNum - 1) * pageSizeNum).limit(pageSizeNum);
+      const pageDocs = await cursor.toArray();
+      const workItems = pageDocs.map(({ _id, ...rest }) => rest);
+
+      return reply.send({ workItems, metrics, total, page: pageNum, pageSize: pageSizeNum });
+    }
+
     const docs = await fetchWithThreshold(db.collection('workItems'), query, 'workItems', sort);
     const workItems = docs.map(({ _id, ...rest }) => rest);
     const metrics = computeMetricsFromPrecomputed(workItems);
 
-    return reply.send({ workItems, metrics });
+    return reply.send({ workItems, metrics, total: workItems.length });
   });
 
   // Migration: backfill pre-computed scores on existing WorkItem documents

@@ -132,6 +132,8 @@ export interface GeneralSettings {
   fiscal_year_start_month: number;
   sprint_duration_days: number;
   theme?: 'dark' | 'filips';
+  /** Per-user page size for paginated list views. */
+  items_per_page?: number;
 }
 
 export interface JiraSettings {
@@ -331,6 +333,7 @@ export const SETTINGS_SCOPE: Record<string, SettingsScope> = {
   'general.fiscal_year_start_month': 'server',
   'general.sprint_duration_days': 'server',
   'general.theme': 'client',
+  'general.items_per_page': 'client',
   // persistence
   'persistence': 'server',
   // persistence — SSO config is per-user (client), credentials are shared (server)

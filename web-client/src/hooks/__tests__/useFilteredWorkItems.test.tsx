@@ -10,8 +10,8 @@ vi.mock('../../utils/api', () => ({
 import { authorizedFetch } from '../../utils/api';
 const fetchMock = vi.mocked(authorizedFetch);
 
-const ok = (workItems: unknown[]) =>
-    new Response(JSON.stringify({ workItems, metrics: { maxScore: 100, maxRoi: 10 } }), { status: 200 });
+const ok = (workItems: unknown[], extra: Record<string, unknown> = {}) =>
+    new Response(JSON.stringify({ workItems, metrics: { maxScore: 100, maxRoi: 10 }, ...extra }), { status: 200 });
 
 // Wait long enough for the 250ms debounce + the resolved fetch to flush.
 const flushDebounce = () => new Promise(r => setTimeout(r, 350));
@@ -93,6 +93,27 @@ describe('useFilteredWorkItems', () => {
         // Only one fetch should fire for the final value.
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(fetchMock.mock.calls[0][0]).toContain('name=abcd');
+    });
+
+    it('appends page/pageSize to the URL when pagination is provided and surfaces total', async () => {
+        fetchMock.mockResolvedValue(ok([{ id: 'w1' }], { total: 42 }));
+        const { result } = renderHook(() =>
+            useFilteredWorkItems({}, {}, { page: 2, pageSize: 25 })
+        );
+        await act(flushDebounce);
+        const url = fetchMock.mock.calls[0][0] as string;
+        expect(url).toContain('page=2');
+        expect(url).toContain('pageSize=25');
+        expect(result.current.total).toBe(42);
+    });
+
+    it('omits page/pageSize when pagination is not provided', async () => {
+        fetchMock.mockResolvedValue(ok([]));
+        renderHook(() => useFilteredWorkItems({}, {}));
+        await act(flushDebounce);
+        const url = fetchMock.mock.calls[0][0] as string;
+        expect(url).not.toContain('page=');
+        expect(url).not.toContain('pageSize=');
     });
 
     it('discards out-of-order responses (latest-request guard)', async () => {

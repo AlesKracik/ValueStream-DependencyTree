@@ -426,6 +426,73 @@ describe('Data Routes', () => {
     expect(json.metrics.maxRoi).toBe(500); // 5000 / 10
   });
 
+  it('GET /api/data/workItems paginates and returns total when page+pageSize are provided', async () => {
+    // 30 docs total — pageSize=10 page=2 should yield items 10..19 and total=30.
+    const allDocs = Array.from({ length: 30 }, (_, i) => ({
+      id: `w${i}`, calculated_score: i, calculated_tcv: 0, calculated_effort: 0,
+    }));
+
+    let observedSkip: number | undefined;
+    let observedLimit: number | undefined;
+
+    mockDb.collection = vi.fn((colName: string) => {
+      if (colName !== 'workItems') {
+        return { find: vi.fn().mockReturnValue({ sort: vi.fn().mockReturnThis(), toArray: vi.fn().mockResolvedValue([]) }) };
+      }
+      return {
+        countDocuments: vi.fn().mockResolvedValue(allDocs.length),
+        find: vi.fn().mockReturnValue({
+          // Used both for the "metrics over all matching" pre-fetch and the paginated cursor.
+          sort: vi.fn().mockReturnThis(),
+          skip: vi.fn().mockImplementation((n: number) => { observedSkip = n; return {
+            limit: vi.fn().mockImplementation((m: number) => { observedLimit = m; return {
+              toArray: vi.fn().mockResolvedValue(allDocs.slice(observedSkip!, observedSkip! + m)),
+            }; }),
+          }; }),
+          toArray: vi.fn().mockResolvedValue(allDocs),
+        }),
+      };
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/data/workItems?page=2&pageSize=10',
+    });
+
+    expect(response.statusCode).toBe(200);
+    const json = JSON.parse(response.payload);
+    expect(json.total).toBe(30);
+    expect(json.page).toBe(2);
+    expect(json.pageSize).toBe(10);
+    expect(json.workItems).toHaveLength(10);
+    expect(json.workItems[0].id).toBe('w10');
+    expect(json.workItems[9].id).toBe('w19');
+    expect(observedSkip).toBe(10);
+    expect(observedLimit).toBe(10);
+  });
+
+  it('GET /api/data/workItems without pagination returns full set with total', async () => {
+    const allDocs = Array.from({ length: 5 }, (_, i) => ({ id: `w${i}`, calculated_score: i }));
+    mockDb.collection = vi.fn((colName: string) => {
+      if (colName !== 'workItems') {
+        return { find: vi.fn().mockReturnValue({ sort: vi.fn().mockReturnThis(), toArray: vi.fn().mockResolvedValue([]) }) };
+      }
+      return {
+        countDocuments: vi.fn().mockResolvedValue(allDocs.length),
+        find: vi.fn().mockReturnValue({
+          sort: vi.fn().mockReturnThis(),
+          toArray: vi.fn().mockResolvedValue(allDocs),
+        }),
+      };
+    });
+
+    const response = await app.inject({ method: 'GET', url: '/api/data/workItems' });
+    expect(response.statusCode).toBe(200);
+    const json = JSON.parse(response.payload);
+    expect(json.workItems).toHaveLength(5);
+    expect(json.total).toBe(5);
+  });
+
   it('should handle unconfigured App database gracefully', async () => {
     app.getSettings = vi.fn().mockResolvedValue({ persistence: { mongo: { app: { uri: '' } } } });
 

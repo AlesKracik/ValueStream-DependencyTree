@@ -32,9 +32,17 @@ export interface WorkItemSort {
     sortOrder?: 'asc' | 'desc';
 }
 
+export interface WorkItemPagination {
+    /** 1-based page index. When omitted (alongside pageSize), the backend returns the full unpaginated set. */
+    page?: number;
+    pageSize?: number;
+}
+
 export interface FilteredWorkItemsResult {
     workItems: WorkItem[];
     metrics: { maxScore: number; maxRoi: number };
+    /** Total number of items matching filters across all pages. */
+    total: number;
     /**
      * True only for the *initial* load, before any data has arrived. Refetches
      * triggered by changing filters/sort do NOT flip this back to true — that
@@ -53,7 +61,7 @@ export interface FilteredWorkItemsResult {
  * params (?status=A&status=B) so Fastify normalizes them back into arrays
  * server-side. Empty / undefined values are omitted.
  */
-function buildQueryString(filters: WorkItemFilters, sort: WorkItemSort): string {
+function buildQueryString(filters: WorkItemFilters, sort: WorkItemSort, pagination: WorkItemPagination): string {
     const params = new URLSearchParams();
     const appendIfSet = (key: string, value: string | undefined) => {
         if (value !== undefined && value !== '') params.append(key, value);
@@ -76,6 +84,11 @@ function buildQueryString(filters: WorkItemFilters, sort: WorkItemSort): string 
     appendIfSet('sortBy', sort.sortBy);
     appendIfSet('sortOrder', sort.sortOrder);
 
+    if (pagination.page !== undefined && pagination.pageSize !== undefined) {
+        params.append('page', String(pagination.page));
+        params.append('pageSize', String(pagination.pageSize));
+    }
+
     return params.toString();
 }
 
@@ -88,9 +101,14 @@ const DEBOUNCE_MS = 250;
  * Stringifies filters/sort for the effect dependency so callers can pass fresh
  * object literals without causing extra fetches.
  */
-export function useFilteredWorkItems(filters: WorkItemFilters, sort: WorkItemSort): FilteredWorkItemsResult {
+export function useFilteredWorkItems(
+    filters: WorkItemFilters,
+    sort: WorkItemSort,
+    pagination: WorkItemPagination = {}
+): FilteredWorkItemsResult {
     const [workItems, setWorkItems] = useState<WorkItem[]>([]);
     const [metrics, setMetrics] = useState<{ maxScore: number; maxRoi: number }>({ maxScore: 1, maxRoi: 1 });
+    const [total, setTotal] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
     const [refetching, setRefetching] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
@@ -103,7 +121,7 @@ export function useFilteredWorkItems(filters: WorkItemFilters, sort: WorkItemSor
     // user keeps typing.
     const hasFetchedRef = useRef(false);
 
-    const queryString = buildQueryString(filters, sort);
+    const queryString = buildQueryString(filters, sort, pagination);
 
     useEffect(() => {
         let cancelled = false;
@@ -119,12 +137,15 @@ export function useFilteredWorkItems(filters: WorkItemFilters, sort: WorkItemSor
                 if (!response.ok) {
                     throw new Error(json?.error || `Request failed (${response.status})`);
                 }
-                setWorkItems(json.workItems || []);
+                const items = json.workItems || [];
+                setWorkItems(items);
                 setMetrics(json.metrics || { maxScore: 1, maxRoi: 1 });
+                setTotal(typeof json.total === 'number' ? json.total : items.length);
             } catch (e) {
                 if (cancelled || seq !== requestSeqRef.current) return;
                 setError(e instanceof Error ? e.message : 'Failed to load work items');
                 setWorkItems([]);
+                setTotal(0);
             } finally {
                 if (!cancelled && seq === requestSeqRef.current) {
                     hasFetchedRef.current = true;
@@ -144,6 +165,7 @@ export function useFilteredWorkItems(filters: WorkItemFilters, sort: WorkItemSor
     return {
         workItems,
         metrics,
+        total,
         loading,
         refetching,
         error,

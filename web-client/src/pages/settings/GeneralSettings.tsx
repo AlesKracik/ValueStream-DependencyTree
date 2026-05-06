@@ -31,6 +31,24 @@ export const GeneralSettings: React.FC<SettingsTabProps> = ({
       />
 
       <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "var(--text-primary)", borderBottom: "1px solid var(--border-secondary)", paddingBottom: "4px" }}>
+        Lists
+      </h3>
+      <FormNumberField
+        label="Items per page:"
+        labelSuffix={<ScopeIndicator path="general.items_per_page" />}
+        helperText="Page size for list views (Work Items, etc.)."
+        value={localFormData.general?.items_per_page ?? 25}
+        onChange={v => {
+            const val = v ?? 25;
+            updateFormData('general.items_per_page', val);
+            onUpdateSettings({ general: { ...localFormData.general, items_per_page: val } });
+        }}
+        min={5}
+        max={200}
+        style={{ ...settingsFieldStyle, marginBottom: "20px" }}
+      />
+
+      <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "var(--text-primary)", borderBottom: "1px solid var(--border-secondary)", paddingBottom: "4px" }}>
         Time
       </h3>
       <FormSelectField
