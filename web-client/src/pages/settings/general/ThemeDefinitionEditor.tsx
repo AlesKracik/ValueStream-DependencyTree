@@ -300,16 +300,66 @@ interface ColorRowProps {
   onReset: () => void;
 }
 
+interface ParsedColor { r: number; g: number; b: number; a: number }
+
+const HEX6_RE = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i;
+const HEX3_RE = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i;
+const RGB_RE = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)$/i;
+
+function parseColor(value: string): ParsedColor | null {
+  const v = value.trim();
+  const h6 = HEX6_RE.exec(v);
+  if (h6) return { r: parseInt(h6[1], 16), g: parseInt(h6[2], 16), b: parseInt(h6[3], 16), a: 1 };
+  const h3 = HEX3_RE.exec(v);
+  if (h3) return { r: parseInt(h3[1] + h3[1], 16), g: parseInt(h3[2] + h3[2], 16), b: parseInt(h3[3] + h3[3], 16), a: 1 };
+  const rgb = RGB_RE.exec(v);
+  if (rgb) {
+    const a = rgb[4] !== undefined ? parseFloat(rgb[4]) : 1;
+    return { r: clamp255(parseInt(rgb[1], 10)), g: clamp255(parseInt(rgb[2], 10)), b: clamp255(parseInt(rgb[3], 10)), a: clampUnit(a) };
+  }
+  return null;
+}
+
+function clamp255(n: number): number { return Math.max(0, Math.min(255, n)); }
+function clampUnit(n: number): number { return Math.max(0, Math.min(1, n)); }
+
+function toHex2(n: number): string { return Math.round(clamp255(n)).toString(16).padStart(2, '0'); }
+
+function rgbToHex({ r, g, b }: ParsedColor): string {
+  return `#${toHex2(r)}${toHex2(g)}${toHex2(b)}`;
+}
+
+function formatColor(c: ParsedColor): string {
+  if (c.a >= 1) return rgbToHex(c);
+  // Round alpha to two decimals to keep saved values tidy.
+  const a = Math.round(clampUnit(c.a) * 100) / 100;
+  return `rgba(${Math.round(c.r)}, ${Math.round(c.g)}, ${Math.round(c.b)}, ${a})`;
+}
+
 const ColorRow: React.FC<ColorRowProps> = ({ varDef, base, value, onChange, onReset }) => {
   const defaultValue = varDef.defaults[base];
   const effective = value ?? defaultValue;
   const isOverridden = value !== undefined;
-  const isColor = varDef.kind === 'color' && /^#[0-9a-f]{6}$/i.test(effective);
+  const parsed = parseColor(effective);
+  // Show alpha slider when the current value carries alpha < 1. Hex colours hide it.
+  const showAlpha = parsed !== null && parsed.a < 1;
+
+  const updateRGB = (hex: string) => {
+    const next = parseColor(hex);
+    if (!next) return;
+    const a = parsed?.a ?? 1;
+    onChange(formatColor({ ...next, a }));
+  };
+
+  const updateAlpha = (a: number) => {
+    if (!parsed) return;
+    onChange(formatColor({ ...parsed, a }));
+  };
 
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: 'minmax(220px, 1fr) auto auto auto',
+      gridTemplateColumns: 'minmax(220px, 1fr) auto auto auto auto',
       alignItems: 'center',
       gap: 8,
       fontSize: 13,
@@ -323,11 +373,11 @@ const ColorRow: React.FC<ColorRowProps> = ({ varDef, base, value, onChange, onRe
         <code style={{ fontSize: 11, color: 'var(--text-muted)' }}>{varDef.name}</code>
       </div>
 
-      {isColor ? (
+      {parsed ? (
         <input
           type="color"
-          value={effective}
-          onChange={e => onChange(e.target.value)}
+          value={rgbToHex(parsed)}
+          onChange={e => updateRGB(e.target.value)}
           style={{ width: 36, height: 28, padding: 0, border: '1px solid var(--border-secondary)', background: 'transparent' }}
           aria-label={`${varDef.label} color`}
         />
@@ -343,6 +393,22 @@ const ColorRow: React.FC<ColorRowProps> = ({ varDef, base, value, onChange, onRe
           }}
           aria-hidden="true"
         />
+      )}
+
+      {showAlpha ? (
+        <input
+          type="range"
+          min={0}
+          max={100}
+          step={1}
+          value={Math.round((parsed?.a ?? 1) * 100)}
+          onChange={e => updateAlpha(parseInt(e.target.value, 10) / 100)}
+          aria-label={`${varDef.label} alpha`}
+          title={`Alpha: ${(parsed?.a ?? 1).toFixed(2)}`}
+          style={{ width: 80 }}
+        />
+      ) : (
+        <span style={{ width: 80 }} aria-hidden="true" />
       )}
 
       <input
