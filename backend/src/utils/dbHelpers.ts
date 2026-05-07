@@ -278,6 +278,21 @@ export function buildMongoQuery(query: any, collection: string): any {
             orGroups.push(branches);
         }
 
+        // Hierarchy: direct children of a chosen work item.
+        if (typeof query.parentId === 'string' && query.parentId.trim() !== '') {
+            mongoQuery.parent_id = query.parentId.trim();
+        }
+
+        // Hierarchy: roots only (no parent). Treat missing field, null, and empty
+        // string as root, mirroring how unset values can show up after migrations.
+        if (query.rootsOnly === 'true' || query.rootsOnly === true) {
+            orGroups.push([
+                { parent_id: { $exists: false } },
+                { parent_id: null },
+                { parent_id: '' },
+            ]);
+        }
+
         // Combine the per-block $or groups: a single one goes into $or directly;
         // multiple are AND-ed together so each block's "OR" semantics are preserved
         // independently.

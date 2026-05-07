@@ -325,6 +325,38 @@ describe('dbHelpers', () => {
         // Sanity: `name` is honored by the customer branch as a regex filter.
         expect(q.name?.$regex).toBe('foo');
       });
+
+      it('parentId narrows to direct children (parent_id equality)', () => {
+        const q = buildMongoQuery({ parentId: 'wi-parent' }, 'workItems');
+        expect(q.parent_id).toBe('wi-parent');
+      });
+
+      it('rootsOnly=true matches missing/null/empty parent_id via $or', () => {
+        const q = buildMongoQuery({ rootsOnly: 'true' }, 'workItems');
+        expect(q.$or).toEqual([
+          { parent_id: { $exists: false } },
+          { parent_id: null },
+          { parent_id: '' },
+        ]);
+      });
+
+      it('ignores rootsOnly when not the literal "true"', () => {
+        expect(buildMongoQuery({ rootsOnly: '' }, 'workItems').$or).toBeUndefined();
+        expect(buildMongoQuery({ rootsOnly: 'false' }, 'workItems').$or).toBeUndefined();
+      });
+
+      it('combines rootsOnly with status Backlog via $and so each $or stays independent', () => {
+        const q = buildMongoQuery({ rootsOnly: 'true', status: ['Backlog'] }, 'workItems');
+        // Two $or groups (status's Backlog-includes-missing branch, and the rootsOnly
+        // branch) must each remain a self-contained alternation under a top-level $and.
+        expect(q.$and).toBeDefined();
+        expect(q.$and).toHaveLength(2);
+      });
+
+      it('does not apply hierarchy filters to other collections', () => {
+        expect(buildMongoQuery({ parentId: 'x' }, 'customers').parent_id).toBeUndefined();
+        expect(buildMongoQuery({ rootsOnly: 'true' }, 'customers').$or).toBeUndefined();
+      });
     });
   });
 

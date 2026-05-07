@@ -471,6 +471,82 @@ describe('Data Routes', () => {
     expect(observedLimit).toBe(10);
   });
 
+  it('GET /api/data/workItems?subtreeOf=X resolves descendants via $graphLookup and ANDs id $in', async () => {
+    let observedFilter: any = undefined;
+    let observedAggregatePipeline: any = undefined;
+
+    mockDb.collection = vi.fn((colName: string) => {
+      if (colName !== 'workItems') {
+        return { find: vi.fn().mockReturnValue({ sort: vi.fn().mockReturnThis(), toArray: vi.fn().mockResolvedValue([]) }) };
+      }
+      return {
+        createIndex: vi.fn().mockResolvedValue(true),
+        aggregate: vi.fn().mockImplementation((pipeline: any) => {
+          observedAggregatePipeline = pipeline;
+          return {
+            toArray: vi.fn().mockResolvedValue([
+              { descendants: [{ id: 'w-child' }, { id: 'w-grandchild' }] },
+            ]),
+          };
+        }),
+        countDocuments: vi.fn().mockResolvedValue(0),
+        find: vi.fn().mockImplementation((filter: any) => {
+          observedFilter = filter;
+          return {
+            sort: vi.fn().mockReturnThis(),
+            toArray: vi.fn().mockResolvedValue([]),
+          };
+        }),
+      };
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/data/workItems?subtreeOf=w-root',
+    });
+
+    expect(response.statusCode).toBe(200);
+    // Pipeline must $match the requested root and $graphLookup using parent_id.
+    expect(observedAggregatePipeline[0]).toEqual({ $match: { id: 'w-root' } });
+    expect(observedAggregatePipeline[1].$graphLookup).toMatchObject({
+      from: 'workItems',
+      connectFromField: 'id',
+      connectToField: 'parent_id',
+    });
+    // Final find filter narrows to the resolved descendant ids.
+    expect(observedFilter.id).toEqual({ $in: ['w-child', 'w-grandchild'] });
+  });
+
+  it('GET /api/data/workItems?subtreeOf=X with no descendants returns empty result', async () => {
+    mockDb.collection = vi.fn((colName: string) => {
+      if (colName !== 'workItems') {
+        return { find: vi.fn().mockReturnValue({ sort: vi.fn().mockReturnThis(), toArray: vi.fn().mockResolvedValue([]) }) };
+      }
+      return {
+        createIndex: vi.fn().mockResolvedValue(true),
+        aggregate: vi.fn().mockReturnValue({
+          // No matching root → graphLookup returns empty array.
+          toArray: vi.fn().mockResolvedValue([]),
+        }),
+        countDocuments: vi.fn().mockResolvedValue(0),
+        find: vi.fn().mockReturnValue({
+          sort: vi.fn().mockReturnThis(),
+          toArray: vi.fn().mockResolvedValue([]),
+        }),
+      };
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/data/workItems?subtreeOf=missing-root',
+    });
+
+    expect(response.statusCode).toBe(200);
+    const json = JSON.parse(response.payload);
+    expect(json.workItems).toHaveLength(0);
+    expect(json.total).toBe(0);
+  });
+
   it('GET /api/data/workItems without pagination returns full set with total', async () => {
     const allDocs = Array.from({ length: 5 }, (_, i) => ({ id: `w${i}`, calculated_score: i }));
     mockDb.collection = vi.fn((colName: string) => {

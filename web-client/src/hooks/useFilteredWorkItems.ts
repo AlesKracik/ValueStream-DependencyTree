@@ -25,6 +25,12 @@ export interface WorkItemFilters {
     status?: string[];
     /** May contain real sprint IDs and/or the literal 'unreleased' sentinel. */
     releasedSprintIds?: string[];
+    /** Narrow to direct children of a specific work item. Mutually exclusive with `subtreeOf` and `rootsOnly`. */
+    parentId?: string;
+    /** Narrow to the entire subtree below a specific work item (descendants only, root excluded). */
+    subtreeOf?: string;
+    /** Narrow to top-level work items (no parent). Mutually exclusive with `parentId` / `subtreeOf`. */
+    rootsOnly?: boolean;
 }
 
 export interface WorkItemSort {
@@ -80,6 +86,10 @@ function buildQueryString(filters: WorkItemFilters, sort: WorkItemSort, paginati
 
     (filters.status || []).forEach(s => params.append('status', s));
     (filters.releasedSprintIds || []).forEach(s => params.append('releasedSprintIds', s));
+
+    appendIfSet('parentId', filters.parentId);
+    appendIfSet('subtreeOf', filters.subtreeOf);
+    if (filters.rootsOnly) params.append('rootsOnly', 'true');
 
     appendIfSet('sortBy', sort.sortBy);
     appendIfSet('sortOrder', sort.sortOrder);

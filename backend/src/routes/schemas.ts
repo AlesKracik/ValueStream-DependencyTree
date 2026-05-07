@@ -163,6 +163,15 @@ export const WorkItemListQuery = Type.Object({
   page: Type.Optional(Type.String()),
   pageSize: Type.Optional(Type.String()),
 
+  // Hierarchy filters. The three are mutually exclusive on the UI side; the
+  // backend simply ANDs whatever it receives.
+  //   parentId   — direct children of <id> (parent_id === <id>)
+  //   subtreeOf  — entire subtree below <id>: descendants only (root excluded)
+  //   rootsOnly  — top-level items (no parent_id)
+  parentId: Type.Optional(Type.String()),
+  subtreeOf: Type.Optional(Type.String()),
+  rootsOnly: Type.Optional(Type.String()),
+
   // Legacy params kept for backward compatibility with workspace endpoint callers
   releasedFilter: Type.Optional(Type.String()),
   minScoreFilter: Type.Optional(Type.String()),

@@ -4,6 +4,7 @@ import type { ValueStreamData, WorkItem, WorkItemPriorityMetric, Issue } from '@
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption, ListColumn } from '../components/common/GenericListPage';
 import { MultiSelectDropdown } from '../components/common/MultiSelectDropdown';
+import { SearchableDropdown } from '../components/common/SearchableDropdown';
 import { Pagination } from '../components/common/Pagination';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { useUIStateContext } from '../contexts/UIStateContext';
@@ -123,8 +124,27 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
         if (filters.minTcv || filters.maxTcv) n++;
         if (filters.status && filters.status.length > 0) n++;
         if (filters.releasedSprintIds && filters.releasedSprintIds.length > 0) n++;
+        if (filters.parentId || filters.subtreeOf || filters.rootsOnly) n++;
         return n;
     }, [filters]);
+
+    // Hierarchy filter has two scopes: 'direct' children only, or 'subtree' (descendants).
+    // We keep the picker state unified: `pickedParent` is whichever ID is set, and
+    // `parentScope` flags which mode is active. Backend wiring picks the right query param.
+    const pickedParent = filters.parentId ?? filters.subtreeOf ?? '';
+    const parentScope: 'direct' | 'subtree' = filters.subtreeOf ? 'subtree' : 'direct';
+    const setHierarchyParent = (id: string | undefined, scope: 'direct' | 'subtree' = parentScope) => {
+        setFilters(prev => ({
+            ...prev,
+            parentId: id && scope === 'direct' ? id : undefined,
+            subtreeOf: id && scope === 'subtree' ? id : undefined,
+            rootsOnly: undefined,
+        }));
+    };
+    const setParentScope = (scope: 'direct' | 'subtree') => {
+        if (!pickedParent) return; // toggle is moot until something is picked
+        setHierarchyParent(pickedParent, scope);
+    };
 
     // --- Data ---
     // Splat the active metric into the filter object so the backend uses the right
@@ -284,6 +304,20 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
         ];
     }, [data]);
 
+    // Parent picker options: every other work item, sorted by name. Sourced from
+    // `data?.workItems` (the unfiltered workspace) so the dropdown is stable
+    // regardless of the current filtered view.
+    const parentOptions = useMemo(() => {
+        return (data?.workItems ?? [])
+            .slice()
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map(w => ({ id: w.id, label: w.name }));
+    }, [data?.workItems]);
+    const selectedParentLabel = useMemo(
+        () => (pickedParent ? (data?.workItems ?? []).find(w => w.id === pickedParent)?.name ?? '' : ''),
+        [pickedParent, data?.workItems],
+    );
+
     const handleSortChange = useCallback((sortBy: string | undefined, sortOrder: 'asc' | 'desc') => {
         setSort({ sortBy, sortOrder });
     }, []);
@@ -367,6 +401,88 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
                     onChange={(next) => setArrayField('releasedSprintIds', next)}
                     width={220}
                 />
+            </div>
+
+            <div style={groupStyle}>
+                <label style={labelStyle}>Hierarchy</label>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <div style={{ width: 220, opacity: filters.rootsOnly ? 0.5 : 1, pointerEvents: filters.rootsOnly ? 'none' : 'auto' }}>
+                        <SearchableDropdown
+                            options={parentOptions}
+                            onSelect={(id) => setHierarchyParent(id || undefined)}
+                            placeholder="Children of..."
+                            initialValue={selectedParentLabel}
+                            clearOnSelect={false}
+                        />
+                    </div>
+
+                    {/* Scope toggle — only meaningful while a parent is picked. */}
+                    <div
+                        role="radiogroup"
+                        aria-label="Hierarchy scope"
+                        style={{
+                            display: 'inline-flex',
+                            border: '1px solid var(--border-primary)',
+                            borderRadius: 4,
+                            overflow: 'hidden',
+                            opacity: pickedParent ? 1 : 0.5,
+                            pointerEvents: pickedParent ? 'auto' : 'none',
+                        }}
+                    >
+                        {(['direct', 'subtree'] as const).map((scope, i) => {
+                            const active = parentScope === scope;
+                            return (
+                                <button
+                                    key={scope}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={active}
+                                    aria-label={scope === 'direct' ? 'Direct children only' : 'Entire subtree'}
+                                    onClick={() => setParentScope(scope)}
+                                    style={{
+                                        padding: '4px 10px',
+                                        fontSize: '12px',
+                                        background: active ? 'var(--accent-primary)' : 'transparent',
+                                        color: active ? 'white' : 'var(--text-primary)',
+                                        border: 'none',
+                                        borderLeft: i === 0 ? 'none' : '1px solid var(--border-primary)',
+                                        cursor: 'pointer',
+                                        fontWeight: active ? 600 : 400,
+                                    }}
+                                    title={scope === 'direct' ? 'Direct children only' : 'Entire subtree (all descendants)'}
+                                >
+                                    {scope === 'direct' ? 'Direct' : 'Subtree'}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {pickedParent && (
+                        <button
+                            type="button"
+                            onClick={() => setHierarchyParent(undefined)}
+                            className="btn-secondary"
+                            style={{ padding: '4px 8px', fontSize: '11px' }}
+                            title="Clear parent filter"
+                        >
+                            ×
+                        </button>
+                    )}
+
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                        <input
+                            type="checkbox"
+                            checked={!!filters.rootsOnly}
+                            onChange={(e) => setFilters(prev => ({
+                                ...prev,
+                                rootsOnly: e.target.checked || undefined,
+                                parentId: e.target.checked ? undefined : prev.parentId,
+                                subtreeOf: e.target.checked ? undefined : prev.subtreeOf,
+                            }))}
+                        />
+                        Roots only
+                    </label>
+                </div>
             </div>
 
             {activeFilterCount > 0 && (

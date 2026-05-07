@@ -5,6 +5,7 @@ import { computeMetricsFromPrecomputed, recomputeScoresForWorkItems } from '../s
 import { assignMissingQuarters } from '../services/sprintService';
 import { fetchWithThreshold, buildMongoQuery, applyValueStreamFilters, buildWorkspaceQueries, buildWorkItemSort, buildCustomerSort } from '../utils/dbHelpers';
 import { WorkItemListQuery, WorkItemListQueryType, CustomerListQuery, CustomerListQueryType } from './schemas';
+import { getDescendantIds, ensureHierarchyIndex } from '../utils/workItemHierarchy';
 
 export const dataRoutes: FastifyPluginAsync = async (fastify) => {
 
@@ -101,6 +102,16 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
     const q = request.query || {};
     const query = buildMongoQuery(q, 'workItems');
     const sort = buildWorkItemSort(q);
+
+    // Subtree filter: resolve all descendant IDs of `subtreeOf` via $graphLookup
+    // and AND that into the query. The root is intentionally excluded — users
+    // typically want "everything under X", not the X itself. An empty subtree
+    // forces an unsatisfiable id match so the response is correctly empty.
+    if (typeof q.subtreeOf === 'string' && q.subtreeOf.trim() !== '') {
+      await ensureHierarchyIndex(db);
+      const descendants = await getDescendantIds(db, q.subtreeOf.trim());
+      query.id = { $in: descendants };
+    }
 
     // Parse pagination. Both page and pageSize must be valid positive numbers
     // for pagination to engage; otherwise we fall back to the legacy threshold-

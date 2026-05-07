@@ -1,6 +1,38 @@
 import type { Db } from 'mongodb';
 
 /**
+ * Resolves every descendant of `rootId` (children, grandchildren, …) via a single
+ * MongoDB `$graphLookup` aggregation. The root itself is NOT included — callers
+ * that want a "subtree including the root" should add `rootId` themselves.
+ *
+ * Relies on an index on `parent_id` for fast traversal; if it does not exist the
+ * caller should ensure one is created (see `ensureHierarchyIndex`).
+ */
+export async function getDescendantIds(db: Db, rootId: string): Promise<string[]> {
+  const result = await db.collection('workItems').aggregate<{ descendants: { id: string }[] }>([
+    { $match: { id: rootId } },
+    {
+      $graphLookup: {
+        from: 'workItems',
+        startWith: '$id',
+        connectFromField: 'id',
+        connectToField: 'parent_id',
+        as: 'descendants',
+      },
+    },
+    { $project: { _id: 0, descendants: { id: 1 } } },
+  ]).toArray();
+
+  if (result.length === 0) return [];
+  return result[0].descendants.map(d => d.id);
+}
+
+/** Creates the `parent_id` index if missing. Idempotent — Mongo no-ops if it exists. */
+export async function ensureHierarchyIndex(db: Db): Promise<void> {
+  await db.collection('workItems').createIndex({ parent_id: 1 });
+}
+
+/**
  * Walks ancestors of a candidate parent to determine whether assigning it to
  * `childId` would create a cycle. Returns `true` if the assignment is safe.
  *

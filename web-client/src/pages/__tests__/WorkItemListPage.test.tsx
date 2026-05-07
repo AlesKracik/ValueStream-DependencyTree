@@ -334,6 +334,70 @@ describe('WorkItemListPage', () => {
             });
         });
 
+        it('Roots only checkbox forwards rootsOnly: true into the hook filters', async () => {
+            renderWithProviders(<WorkItemListPage data={mockData} loading={false} />);
+
+            fireEvent.click(screen.getByLabelText('Roots only'));
+
+            await waitFor(() => {
+                const [filters] = lastHookCall();
+                expect(filters.rootsOnly).toBe(true);
+                expect(filters.parentId).toBeUndefined();
+            });
+        });
+
+        it('selecting a parent in the Hierarchy picker forwards parentId and clears rootsOnly', async () => {
+            renderWithProviders(<WorkItemListPage data={mockData} loading={false} />);
+
+            // Pre-set rootsOnly so we can verify the picker clears it.
+            fireEvent.click(screen.getByLabelText('Roots only'));
+            await waitFor(() => expect(lastHookCall()[0].rootsOnly).toBe(true));
+            // Toggle off so the picker isn't disabled.
+            fireEvent.click(screen.getByLabelText('Roots only'));
+
+            const picker = screen.getByPlaceholderText(/Children of/i);
+            fireEvent.focus(picker);
+            // 'Alpha Item' appears both in the row list and in the dropdown — match
+            // the dropdown's <li> by element name to disambiguate.
+            const alphaOption = screen.getAllByText('Alpha Item').find(el => el.tagName === 'LI');
+            expect(alphaOption).toBeDefined();
+            fireEvent.click(alphaOption!);
+
+            await waitFor(() => {
+                const [filters] = lastHookCall();
+                expect(filters.parentId).toBe('w1');
+                expect(filters.rootsOnly).toBeUndefined();
+            });
+        });
+
+        it('switching the Hierarchy scope to Subtree forwards subtreeOf and clears parentId', async () => {
+            renderWithProviders(<WorkItemListPage data={mockData} loading={false} />);
+
+            // Pick a parent so the scope toggle is enabled.
+            const picker = screen.getByPlaceholderText(/Children of/i);
+            fireEvent.focus(picker);
+            const alphaOption = screen.getAllByText('Alpha Item').find(el => el.tagName === 'LI');
+            fireEvent.click(alphaOption!);
+            await waitFor(() => expect(lastHookCall()[0].parentId).toBe('w1'));
+
+            // Click the "Subtree" segment of the scope toggle.
+            fireEvent.click(screen.getByRole('radio', { name: /Entire subtree/i }));
+
+            await waitFor(() => {
+                const [filters] = lastHookCall();
+                expect(filters.subtreeOf).toBe('w1');
+                expect(filters.parentId).toBeUndefined();
+            });
+
+            // Switching back to Direct restores parentId.
+            fireEvent.click(screen.getByRole('radio', { name: /Direct children only/i }));
+            await waitFor(() => {
+                const [filters] = lastHookCall();
+                expect(filters.parentId).toBe('w1');
+                expect(filters.subtreeOf).toBeUndefined();
+            });
+        });
+
         it('Released column is no longer sortable (server-side sort intentionally unsupported)', () => {
             const { container } = renderWithProviders(<WorkItemListPage data={mockData} loading={false} />);
             // The Released column header is rendered as a non-button div (sortKey omitted)
