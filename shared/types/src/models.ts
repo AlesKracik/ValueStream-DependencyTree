@@ -513,76 +513,46 @@ export interface ThemeVariableDef {
 }
 
 /**
- * Canonical list of CSS variables editable per theme. Mirrors the values defined for
- * `:root` (dark) and `[data-theme='filips']` in `web-client/src/index.css`.
+ * Canonical list of CSS variables editable per theme. Mirrors the canonical block
+ * defined for `:root` (dark) and `[data-theme='filips']` in `web-client/src/index.css`.
  *
- * If you add or rename a variable in the CSS, update this list in lockstep so the
- * settings UI stays accurate and `applyThemeOverrides` continues to round-trip values.
+ * Many CSS variables are *aliases* derived from these canonicals via `var()` /
+ * `color-mix()` and are intentionally not listed here — they update automatically
+ * when the user edits the canonical they derive from.
+ *
+ * If you add a canonical CSS variable in `index.css`, add it here in lockstep so
+ * the settings UI stays accurate and `applyThemeOverrides` continues to round-trip.
  */
 export const THEME_VARIABLES: ThemeVariableDef[] = [
-  // Backgrounds
-  { name: '--bg-primary', label: 'Background — primary', group: 'Backgrounds', kind: 'color', defaults: { dark: '#0f172a', filips: '#f3f4f6' } },
+  // Backgrounds (3)
+  { name: '--bg-primary', label: 'Background — primary (panels)', group: 'Backgrounds', kind: 'color', defaults: { dark: '#0f172a', filips: '#f3f4f6' } },
   { name: '--bg-secondary', label: 'Background — secondary', group: 'Backgrounds', kind: 'color', defaults: { dark: '#1e293b', filips: '#e5e7eb' } },
-  { name: '--bg-tertiary', label: 'Background — tertiary', group: 'Backgrounds', kind: 'color', defaults: { dark: '#111827', filips: '#ffffff' } },
-  { name: '--bg-input-focus', label: 'Input background — focused', group: 'Backgrounds', kind: 'color', defaults: { dark: '#0f172a', filips: '#ffffff' } },
-  { name: '--bg-input-disabled', label: 'Input background — disabled', group: 'Backgrounds', kind: 'color', defaults: { dark: '#1f2937', filips: '#e5e7eb' } },
   { name: '--bg-page', label: 'Page background', group: 'Backgrounds', kind: 'color', defaults: { dark: '#242424', filips: '#f9fafb' } },
-  { name: '--bg-page-muted', label: 'Page background — muted overlay', group: 'Backgrounds', kind: 'css', defaults: { dark: 'rgba(255, 255, 255, 0.01)', filips: 'rgba(0, 0, 0, 0.02)' } },
-  { name: '--bg-shadow', label: 'Drop-shadow color', group: 'Backgrounds', kind: 'css', defaults: { dark: 'rgba(0, 0, 0, 0.5)', filips: 'rgba(0, 0, 0, 0.08)' } },
 
-  // Text
+  // Text (2)
   { name: '--text-primary', label: 'Text — primary', group: 'Text', kind: 'color', defaults: { dark: '#f1f5f9', filips: '#0f172a' } },
-  { name: '--text-secondary', label: 'Text — secondary', group: 'Text', kind: 'color', defaults: { dark: '#cbd5e1', filips: '#1e293b' } },
   { name: '--text-muted', label: 'Text — muted', group: 'Text', kind: 'color', defaults: { dark: '#94a3b8', filips: '#1e293b' } },
-  { name: '--text-highlight', label: 'Text — highlight', group: 'Text', kind: 'color', defaults: { dark: '#e2e8f0', filips: '#000000' } },
-  { name: '--text-link', label: 'Link', group: 'Text', kind: 'color', defaults: { dark: '#646cff', filips: '#2563eb' } },
-  { name: '--text-link-hover', label: 'Link — hover', group: 'Text', kind: 'color', defaults: { dark: '#535bf2', filips: '#1d4ed8' } },
 
-  // Nodes
-  { name: '--node-customer-bg', label: 'Customer node — background', group: 'Nodes', kind: 'css', defaults: { dark: 'rgba(59, 130, 246, 0.15)', filips: '#7dd3fc' } },
-  { name: '--node-customer-border', label: 'Customer node — border', group: 'Nodes', kind: 'css', defaults: { dark: 'rgba(59, 130, 246, 0.6)', filips: '#38bdf8' } },
-  { name: '--node-customer-inner', label: 'Customer node — inner accent', group: 'Nodes', kind: 'color', defaults: { dark: '#3b82f6', filips: '#0284c7' } },
-  { name: '--node-workitem-bg', label: 'Work Item node — background', group: 'Nodes', kind: 'color', defaults: { dark: '#8b5cf6', filips: '#d8b4fe' } },
-  { name: '--node-frozen-bg', label: 'Frozen node — background', group: 'Nodes', kind: 'color', defaults: { dark: '#475569', filips: '#cbd5e1' } },
-  { name: '--node-team-bg', label: 'Team node — background', group: 'Nodes', kind: 'color', defaults: { dark: '#4b5563', filips: '#94a3b8' } },
+  // Nodes (3) — customer node derives from --accent-primary
+  { name: '--node-workitem-bg', label: 'Work Item node', group: 'Nodes', kind: 'color', defaults: { dark: '#8b5cf6', filips: '#d8b4fe' } },
+  { name: '--node-team-bg', label: 'Team node', group: 'Nodes', kind: 'color', defaults: { dark: '#4b5563', filips: '#94a3b8' } },
   { name: '--node-score', label: 'Score badge', group: 'Nodes', kind: 'color', defaults: { dark: '#fcd34d', filips: '#92400e' } },
 
-  // Sprint Nodes
-  { name: '--node-sprint-bg', label: 'Sprint — background', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#1f2937', filips: '#e2e8f0' } },
-  { name: '--node-sprint-border', label: 'Sprint — border', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#374151', filips: '#94a3b8' } },
-  { name: '--node-sprint-text', label: 'Sprint — text', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#f3f4f6', filips: '#0f172a' } },
-  { name: '--node-sprint-over-bg', label: 'Sprint over-allocated — background', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#7f1d1d', filips: '#fca5a5' } },
-  { name: '--node-sprint-over-border', label: 'Sprint over-allocated — border', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#ef4444', filips: '#f87171' } },
-  { name: '--node-sprint-over-text', label: 'Sprint over-allocated — text', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#fca5a5', filips: '#7f1d1d' } },
-  { name: '--node-sprint-allocated-bg', label: 'Sprint allocated — background', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#14532d', filips: '#86efac' } },
-  { name: '--node-sprint-allocated-border', label: 'Sprint allocated — border', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#22c55e', filips: '#4ade80' } },
-  { name: '--node-sprint-allocated-text', label: 'Sprint allocated — text', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#86efac', filips: '#064e3b' } },
+  // Sprint Nodes (3) — borders/text derive from border/text/status canonicals
+  { name: '--node-sprint-bg', label: 'Sprint — default', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#1f2937', filips: '#e2e8f0' } },
+  { name: '--node-sprint-over-bg', label: 'Sprint — over-allocated', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#7f1d1d', filips: '#fca5a5' } },
+  { name: '--node-sprint-allocated-bg', label: 'Sprint — allocated', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#14532d', filips: '#86efac' } },
 
-  // Borders & edges
-  { name: '--border-primary', label: 'Border — primary', group: 'Borders & Edges', kind: 'color', defaults: { dark: '#334155', filips: '#cbd5e1' } },
-  { name: '--border-secondary', label: 'Border — secondary', group: 'Borders & Edges', kind: 'color', defaults: { dark: '#374151', filips: '#94a3b8' } },
-  { name: '--border-hover', label: 'Border — hover', group: 'Borders & Edges', kind: 'color', defaults: { dark: '#4b5563', filips: '#64748b' } },
-  { name: '--edge-color', label: 'Graph edge color', group: 'Borders & Edges', kind: 'color', defaults: { dark: '#4b5563', filips: '#cbd5e1' } },
+  // Borders (1)
+  { name: '--border-primary', label: 'Border', group: 'Borders & Edges', kind: 'color', defaults: { dark: '#334155', filips: '#cbd5e1' } },
 
-  // Accents
-  { name: '--accent-primary', label: 'Accent — primary', group: 'Accents', kind: 'color', defaults: { dark: '#3b82f6', filips: '#93c5fd' } },
-  { name: '--accent-primary-bg', label: 'Accent — primary background', group: 'Accents', kind: 'css', defaults: { dark: 'rgba(59, 130, 246, 0.1)', filips: '#dbeafe' } },
-  { name: '--accent-secondary', label: 'Accent — secondary', group: 'Accents', kind: 'color', defaults: { dark: '#1d4ed8', filips: '#3b82f6' } },
-  { name: '--accent-focus', label: 'Accent — focus ring', group: 'Accents', kind: 'color', defaults: { dark: '#3b82f6', filips: '#2563eb' } },
-  { name: '--accent-text', label: 'Accent — text', group: 'Accents', kind: 'color', defaults: { dark: '#60a5fa', filips: '#3b82f6' } },
+  // Accents (1) — link, accent-text, customer node, accent-bg all derive from this
+  { name: '--accent-primary', label: 'Accent', group: 'Accents', kind: 'color', defaults: { dark: '#3b82f6', filips: '#2563eb' } },
 
-  // Status
+  // Status (3) — backgrounds and danger-text/border derive from these
   { name: '--status-success', label: 'Status — success', group: 'Status', kind: 'color', defaults: { dark: '#10b981', filips: '#16a34a' } },
-  { name: '--status-success-bg', label: 'Status — success background', group: 'Status', kind: 'css', defaults: { dark: 'rgba(16, 185, 129, 0.2)', filips: '#dcfce7' } },
   { name: '--status-warning', label: 'Status — warning', group: 'Status', kind: 'color', defaults: { dark: '#f59e0b', filips: '#d97706' } },
-  { name: '--status-warning-bg', label: 'Status — warning background', group: 'Status', kind: 'css', defaults: { dark: 'rgba(245, 158, 11, 0.1)', filips: '#fef3c7' } },
   { name: '--status-danger', label: 'Status — danger', group: 'Status', kind: 'color', defaults: { dark: '#ef4444', filips: '#dc2626' } },
-  { name: '--status-danger-bg', label: 'Status — danger background', group: 'Status', kind: 'css', defaults: { dark: 'rgba(239, 68, 68, 0.1)', filips: '#fee2e2' } },
-  { name: '--status-danger-text', label: 'Status — danger text', group: 'Status', kind: 'color', defaults: { dark: '#f87171', filips: '#991b1b' } },
-  { name: '--status-danger-border', label: 'Status — danger border', group: 'Status', kind: 'color', defaults: { dark: '#b91c1c', filips: '#f87171' } },
-
-  // Misc
-  { name: '--icon-filter', label: 'Icon CSS filter', group: 'Misc', kind: 'css', defaults: { dark: 'none', filips: 'brightness(0.6) contrast(1.2)' } },
 ];
 
 /**

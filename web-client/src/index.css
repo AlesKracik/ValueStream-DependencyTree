@@ -3,61 +3,78 @@
   line-height: 1.5;
   font-weight: 400;
 
-  /* Theme Variables - Default: Dark mode */
+  /*
+   * Canonical theme palette. The palette below is the default (dark) theme;
+   * other themes (e.g. [data-theme='filips']) only redeclare these canonical
+   * values — every alias further down inherits automatically via var().
+   *
+   * To add or change a theme color, edit a canonical here and (if needed) in
+   * the filips block. Aliases should never be redeclared per theme.
+   */
   --bg-primary: #0f172a;
   --bg-secondary: #1e293b;
-  --bg-tertiary: #111827;
-  --bg-input-focus: #0f172a;
-  --bg-input-disabled: #1f2937;
   --bg-page: #242424;
-  --bg-page-muted: rgba(255, 255, 255, 0.01);
-  --bg-shadow: rgba(0, 0, 0, 0.5);
-  
-  --text-primary: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
-  --text-highlight: #e2e8f0;
-  --text-link: #646cff;
-  --text-link-hover: #535bf2;
 
-  /* Node Specific Colors */
-  --node-customer-bg: rgba(59, 130, 246, 0.15);
-  --node-customer-border: rgba(59, 130, 246, 0.6);
-  --node-customer-inner: #3b82f6;
+  --text-primary: #f1f5f9;
+  --text-muted: #94a3b8;
+
+  --accent-primary: #3b82f6;
+  --border-primary: #334155;
+
   --node-workitem-bg: #8b5cf6;
-  --node-frozen-bg: #475569;
   --node-team-bg: #4b5563;
   --node-score: #fcd34d;
-  
+
   --node-sprint-bg: #1f2937;
-  --node-sprint-border: #374151;
-  --node-sprint-text: #f3f4f6;
   --node-sprint-over-bg: #7f1d1d;
-  --node-sprint-over-border: #ef4444;
-  --node-sprint-over-text: #fca5a5;
   --node-sprint-allocated-bg: #14532d;
-  --node-sprint-allocated-border: #22c55e;
-  --node-sprint-allocated-text: #86efac;
-  
-  --border-primary: #334155;
-  --border-secondary: #374151;
-  --border-hover: #4b5563;
-  --edge-color: #4b5563;
-  
-  --accent-primary: #3b82f6;
-  --accent-primary-bg: rgba(59, 130, 246, 0.1);
-  --accent-secondary: #1d4ed8;
-  --accent-focus: #3b82f6;
-  --accent-text: #60a5fa;
-  
+
   --status-success: #10b981;
-  --status-success-bg: rgba(16, 185, 129, 0.2);
   --status-warning: #f59e0b;
-  --status-warning-bg: rgba(245, 158, 11, 0.1);
   --status-danger: #ef4444;
-  --status-danger-bg: rgba(239, 68, 68, 0.1);
-  --status-danger-text: #f87171;
-  --status-danger-border: #b91c1c;
+
+  /* ────────────────────────────────────────────────────────────
+   * Aliases — derived from the canonicals above. Theme-agnostic
+   * (defined once, inherit through theme overrides via var()).
+   * ──────────────────────────────────────────────────────────── */
+  --bg-tertiary: var(--bg-primary);
+  --bg-input-focus: var(--bg-primary);
+  --bg-input-disabled: var(--bg-secondary);
+  --bg-page-muted: rgba(255, 255, 255, 0.02);
+  --bg-shadow: rgba(0, 0, 0, 0.4);
+
+  --text-secondary: var(--text-primary);
+  --text-highlight: var(--text-primary);
+  --text-link: var(--accent-primary);
+  --text-link-hover: var(--accent-primary);
+
+  --node-customer-bg: color-mix(in srgb, var(--accent-primary) 15%, transparent);
+  --node-customer-border: color-mix(in srgb, var(--accent-primary) 60%, transparent);
+  --node-customer-inner: var(--accent-primary);
+  --node-frozen-bg: var(--node-team-bg);
+
+  --node-sprint-border: var(--border-primary);
+  --node-sprint-text: var(--text-primary);
+  --node-sprint-over-border: var(--status-danger);
+  --node-sprint-over-text: var(--text-primary);
+  --node-sprint-allocated-border: var(--status-success);
+  --node-sprint-allocated-text: var(--text-primary);
+
+  --border-secondary: var(--border-primary);
+  --border-hover: var(--border-primary);
+  --edge-color: var(--border-primary);
+
+  --accent-primary-bg: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+  --accent-secondary: var(--accent-primary);
+  --accent-focus: var(--accent-primary);
+  --accent-text: var(--accent-primary);
+
+  --status-success-bg: color-mix(in srgb, var(--status-success) 20%, transparent);
+  --status-warning-bg: color-mix(in srgb, var(--status-warning) 15%, transparent);
+  --status-danger-bg: color-mix(in srgb, var(--status-danger) 15%, transparent);
+  --status-danger-text: var(--status-danger);
+  --status-danger-border: var(--status-danger);
+
   --icon-filter: none;
 
   /* Shared height for the top-level header band (sidebar logo box and the
@@ -77,60 +94,29 @@
 }
 
 [data-theme='filips'] {
-  --bg-primary: #f3f4f6;        /* Lighter Slate */
+  /* Only canonical values are redeclared per theme — aliases inherit via var(). */
+  --bg-primary: #f3f4f6;
   --bg-secondary: #e5e7eb;
-  --bg-tertiary: #ffffff;
-  --bg-input-focus: #ffffff;
-  --bg-input-disabled: #e5e7eb;
-  --bg-page: #f9fafb;           /* Bright Off-white base */
-  --bg-page-muted: rgba(0, 0, 0, 0.02);
-  --bg-shadow: rgba(0, 0, 0, 0.08);
-  
-  --text-primary: #0f172a;      /* Near Black */
-  --text-secondary: #1e293b;    /* Very Dark Slate */
-  --text-muted: #1e293b;        /* Darkened from #334155 for visibility */
-  --text-highlight: #000000;
-  --text-link: #2563eb;
-  --text-link-hover: #1d4ed8;
+  --bg-page: #f9fafb;
 
-  /* Node Specific Colors - Muted Pastel (Something in between) */
-  --node-customer-bg: #7dd3fc;        /* Defined Pastel Blue */
-  --node-customer-border: #38bdf8;
-  --node-customer-inner: #0284c7;
-  --node-workitem-bg: #d8b4fe;        /* Defined Pastel Purple */
-  --node-frozen-bg: #cbd5e1;
-  --node-team-bg: #94a3b8;            /* Defined Muted Slate */
-  --node-score: #92400e;              /* Deep readable gold */
+  --text-primary: #0f172a;
+  --text-muted: #1e293b;
+
+  --accent-primary: #2563eb;
+  --border-primary: #cbd5e1;
+
+  --node-workitem-bg: #d8b4fe;
+  --node-team-bg: #94a3b8;
+  --node-score: #92400e;
 
   --node-sprint-bg: #e2e8f0;
-  --node-sprint-border: #94a3b8;
-  --node-sprint-text: #0f172a;        /* Matched to text-primary */
-  --node-sprint-over-bg: #fca5a5;     /* Muted Pastel Red */
-  --node-sprint-over-border: #f87171;
-  --node-sprint-over-text: #7f1d1d;
-  --node-sprint-allocated-bg: #86efac;  /* Muted Pastel Green */
-  --node-sprint-allocated-border: #4ade80;
-  --node-sprint-allocated-text: #064e3b;
-  
-  --border-primary: #cbd5e1;
-  --border-secondary: #94a3b8;
-  --border-hover: #64748b;
-  --edge-color: #cbd5e1;
-  
-  --accent-primary: #93c5fd;          /* Stronger Pastel Blue */
-  --accent-primary-bg: #dbeafe;
-  --accent-secondary: #3b82f6;
-  --accent-focus: #2563eb;
-  --accent-text: #3b82f6;        /* Aligned with dark mode blue but readable on light */
-  
+  --node-sprint-over-bg: #fca5a5;
+  --node-sprint-allocated-bg: #86efac;
+
   --status-success: #16a34a;
-  --status-success-bg: #dcfce7;
-  --status-warning: #d97706;    /* Darkened for visibility on light bg */
-  --status-warning-bg: #fef3c7;
+  --status-warning: #d97706;
   --status-danger: #dc2626;
-  --status-danger-bg: #fee2e2;
-  --status-danger-text: #991b1b;
-  --status-danger-border: #f87171;
+
   --icon-filter: brightness(0.6) contrast(1.2);
 
   color-scheme: light;
