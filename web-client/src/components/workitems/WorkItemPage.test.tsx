@@ -788,6 +788,97 @@ describe('WorkItemPage', () => {
             stackrank: 6000
         }));
     });
+
+    describe('Hierarchy tab', () => {
+        const switchToHierarchy = () => {
+            const tab = screen.getByText(/^Hierarchy /);
+            fireEvent.click(tab);
+        };
+
+        it('shows a parent picker excluding self when the item has no parent', () => {
+            const dataWithSibling: ValueStreamData = {
+                ...mockData,
+                workItems: [
+                    mockData.workItems[0], // f1
+                    { id: 'f2', name: 'Sibling Work Item', total_effort_mds: 0, score: 0, status: 'Backlog', customer_targets: [] }
+                ]
+            };
+            renderPage({ ...defaultProps, data: dataWithSibling });
+            switchToHierarchy();
+
+            expect(screen.getByPlaceholderText(/Pick a parent work item/i)).toBeDefined();
+        });
+
+        it('renders the existing parent and removes it via Remove parent', () => {
+            const dataWithParent: ValueStreamData = {
+                ...mockData,
+                workItems: [
+                    { ...mockData.workItems[0], parent_id: 'f-parent' },
+                    { id: 'f-parent', name: 'Parent Work Item', total_effort_mds: 0, score: 0, status: 'Backlog', customer_targets: [] }
+                ]
+            };
+            const updateWorkItem = vi.fn();
+            renderPage({ ...defaultProps, data: dataWithParent, updateWorkItem });
+            switchToHierarchy();
+
+            expect(screen.getByText('Parent Work Item')).toBeDefined();
+
+            fireEvent.click(screen.getByText('Remove parent'));
+
+            expect(updateWorkItem).toHaveBeenCalledWith('f1', { parent_id: undefined }, true);
+        });
+
+        it('lists children and detaches one via Remove', () => {
+            const dataWithChildren: ValueStreamData = {
+                ...mockData,
+                workItems: [
+                    mockData.workItems[0], // f1
+                    { id: 'f-child-1', name: 'Child One', total_effort_mds: 0, score: 0, status: 'Backlog', customer_targets: [], parent_id: 'f1' },
+                    { id: 'f-child-2', name: 'Child Two', total_effort_mds: 0, score: 0, status: 'Backlog', customer_targets: [], parent_id: 'f1' }
+                ]
+            };
+            const updateWorkItem = vi.fn();
+            renderPage({ ...defaultProps, data: dataWithChildren, updateWorkItem });
+            switchToHierarchy();
+
+            expect(screen.getByText('Child One')).toBeDefined();
+            expect(screen.getByText('Child Two')).toBeDefined();
+
+            // Click the Remove button on the first child row
+            const removeButtons = screen.getAllByText('Remove');
+            fireEvent.click(removeButtons[0]);
+
+            expect(updateWorkItem).toHaveBeenCalledWith('f-child-1', { parent_id: undefined }, true);
+        });
+
+        it('omits descendants from the parent picker to prevent cycles', () => {
+            // f1 has a child f-child; f-child appears in the Children list but must NOT
+            // appear as a parent picker option (would create a cycle).
+            const dataWithChildren: ValueStreamData = {
+                ...mockData,
+                workItems: [
+                    mockData.workItems[0], // f1, no parent
+                    { id: 'f-child', name: 'Descendant Of f1', total_effort_mds: 0, score: 0, status: 'Backlog', customer_targets: [], parent_id: 'f1' }
+                ]
+            };
+            renderPage({ ...defaultProps, data: dataWithChildren });
+            switchToHierarchy();
+
+            const picker = screen.getByPlaceholderText(/Pick a parent work item/i) as HTMLInputElement;
+            fireEvent.focus(picker);
+            fireEvent.change(picker, { target: { value: 'Descendant' } });
+
+            // Exactly one occurrence — the row in the Children list. The picker dropdown
+            // would render a second copy if the descendant were a valid parent option.
+            expect(screen.getAllByText('Descendant Of f1')).toHaveLength(1);
+        });
+
+        it('shows "Save first" message for new work items in the children section', () => {
+            renderPage(defaultProps, 'new');
+            switchToHierarchy();
+            expect(screen.getByText(/Save this work item before adding children/i)).toBeDefined();
+        });
+    });
 });
 
 

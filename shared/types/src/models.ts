@@ -49,6 +49,12 @@ export interface WorkItem {
   released_in_sprint_id?: string;
   score: number;
   stackrank?: number;
+  /**
+   * Parent work item in the hierarchy. Optional; absent for root-level items.
+   * Children are *derived* by querying `workItems` where `parent_id === this.id` —
+   * the relationship is stored only on the child to keep the data single-sourced.
+   */
+  parent_id?: string;
   all_customers_target?: {
     tcv_type: 'existing' | 'potential';
     priority?: 'Must-have' | 'Should-have' | 'Nice-to-have';

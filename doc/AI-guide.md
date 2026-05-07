@@ -10,7 +10,7 @@ Defined in: `web-client/src/types/models.ts`
 
 ### Entities
 - **Customer**: Root nodes. Have TCV (Total Contract Value), TCV History, and Support Issues.
-- **WorkItem**: Strategy nodes. Linked to multiple Customers via `customer_targets` or a global `all_customers_target`.
+- **WorkItem**: Strategy nodes. Linked to multiple Customers via `customer_targets` or a global `all_customers_target`. Optional `parent_id` puts a work item in a tree (children derived by querying `parent_id`); cycles are blocked by `backend/src/utils/workItemHierarchy.ts` on POST and the `Hierarchy` tab on `WorkItemPage`.
 - **Issue**: Execution nodes. Linked to ONE WorkItem and ONE Team. Contains Effort (man-days) and Dependencies (FS/FF).
 - **Team**: Capacity nodes. Have total capacity, per-sprint overrides, and optional team members with capacity percentages. Can sync members from LDAP.
 - **Sprint**: Time nodes. Define the Gantt scale and release targets.

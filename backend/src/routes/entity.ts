@@ -11,6 +11,7 @@ import {
 import { ALLOWED_COLLECTIONS } from '../utils/constants';
 import { AppError } from '../utils/errors';
 import { requireRole } from '../utils/roleGuard';
+import { wouldCreateCycle } from '../utils/workItemHierarchy';
 // Collections whose mutations affect RICE scores and trigger recomputation
 const SCORE_AFFECTING_COLLECTIONS = ['workItems', 'customers', 'issues'];
 
@@ -39,6 +40,14 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
+
+    // Hierarchy cycle guard for workItems.
+    if (collection === 'workItems') {
+      const parentId = (data as unknown as { parent_id?: unknown }).parent_id;
+      if (typeof parentId === 'string' && await wouldCreateCycle(db, entityId, parentId)) {
+        throw new AppError('parent_id would create a cycle in the work item hierarchy', 400);
+      }
+    }
 
     await db.collection(collection).createIndex({ id: 1 }, { unique: true });
     await db.collection(collection).replaceOne({ id: entityId }, data, { upsert: true });
@@ -70,6 +79,14 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
+
+    // Hierarchy cycle guard for workItems.
+    if (collection === 'workItems') {
+      const parentId = (data as unknown as { parent_id?: unknown }).parent_id;
+      if (typeof parentId === 'string' && await wouldCreateCycle(db, entityId, parentId)) {
+        throw new AppError('parent_id would create a cycle in the work item hierarchy', 400);
+      }
+    }
 
     await db.collection(collection).createIndex({ id: 1 }, { unique: true });
     await db.collection(collection).replaceOne({ id: entityId }, data, { upsert: true });
@@ -112,11 +129,18 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
       if (result.modifiedCount > 0) cascaded.workItems = result.modifiedCount;
     } else if (collection === 'workItems') {
       // Clear work_item_id from ALL issues referencing this workItem
-      const result = await db.collection('issues').updateMany(
+      const issuesResult = await db.collection('issues').updateMany(
         { work_item_id: id },
         { $unset: { work_item_id: '' } }
       );
-      if (result.modifiedCount > 0) cascaded.issues = result.modifiedCount;
+      if (issuesResult.modifiedCount > 0) cascaded.issues = issuesResult.modifiedCount;
+
+      // Detach children: clear parent_id on every workItem that pointed to this one.
+      const childrenResult = await db.collection('workItems').updateMany(
+        { parent_id: id },
+        { $unset: { parent_id: '' } }
+      );
+      if (childrenResult.modifiedCount > 0) cascaded.workItems = childrenResult.modifiedCount;
     } else if (collection === 'teams') {
       // Clear team_id from ALL issues referencing this team
       const result = await db.collection('issues').updateMany(

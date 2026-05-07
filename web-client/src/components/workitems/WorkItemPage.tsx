@@ -9,6 +9,7 @@ import { FormTextField, FormNumberField, FormSelectField, FormTextArea } from '.
 import { WorkItemCustomersTab } from './tabs/WorkItemCustomersTab';
 import { WorkItemIssuesTab } from './tabs/WorkItemIssuesTab';
 import { WorkItemAhaTab } from './tabs/WorkItemAhaTab';
+import { WorkItemHierarchyTab } from './tabs/WorkItemHierarchyTab';
 
 export interface WorkItemPageProps {
     workItemId: string;
@@ -76,6 +77,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     total_effort_mds: newWorkItemDraft.total_effort_mds || 0,
                     score: newWorkItemDraft.score || 0,
                     stackrank: newWorkItemDraft.stackrank,
+                    parent_id: newWorkItemDraft.parent_id,
                     customer_targets: newWorkItemCustomers.map(c => ({
                         customer_id: c.customerId,
                         tcv_type: c.tcv_type,
@@ -250,6 +252,23 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     addIssue={addIssue}
                     deleteIssue={deleteIssue}
                     setNewWorkItemIssues={setNewWorkItemIssues}
+                />
+            )
+        },
+        {
+            id: 'hierarchy',
+            label: (() => {
+                const childCount = isNew ? 0 : (data?.workItems ?? []).filter(w => w.parent_id === workItemId).length;
+                return `Hierarchy (${childCount})`;
+            })(),
+            content: (
+                <WorkItemHierarchyTab
+                    workItem={workItem}
+                    isNew={isNew}
+                    workItemId={workItemId}
+                    data={data}
+                    setNewWorkItemDraft={setNewWorkItemDraft}
+                    updateWorkItem={updateWorkItem}
                 />
             )
         }

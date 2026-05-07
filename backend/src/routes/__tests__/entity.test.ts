@@ -30,6 +30,7 @@ describe('Entity Routes', () => {
       replaceOne: vi.fn().mockResolvedValue({ acknowledged: true }),
       deleteOne: vi.fn().mockResolvedValue({ acknowledged: true }),
       updateMany: vi.fn().mockResolvedValue({ modifiedCount: 0 }),
+      findOne: vi.fn().mockResolvedValue(null),
       find: vi.fn().mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) }),
       bulkWrite: vi.fn().mockResolvedValue({ ok: 1 }),
     };
@@ -142,8 +143,11 @@ describe('Entity Routes', () => {
     );
   });
 
-  it('should cascade-clear work_item_id when deleting a workItem', async () => {
-    mockCollection.updateMany.mockResolvedValue({ modifiedCount: 2 });
+  it('should cascade-clear work_item_id from issues and parent_id from child workItems when deleting a workItem', async () => {
+    // First updateMany call (issues) returns 2; second (workItems children) returns 4.
+    mockCollection.updateMany
+      .mockResolvedValueOnce({ modifiedCount: 2 })
+      .mockResolvedValueOnce({ modifiedCount: 4 });
 
     const response = await app.inject({
       method: 'DELETE',
@@ -153,12 +157,66 @@ describe('Entity Routes', () => {
     expect(response.statusCode).toBe(200);
     const json = JSON.parse(response.payload);
     expect(json.success).toBe(true);
-    expect(json.cascaded).toEqual({ issues: 2 });
+    expect(json.cascaded).toEqual({ issues: 2, workItems: 4 });
 
-    expect(mockDb.collection).toHaveBeenCalledWith('issues');
     expect(mockCollection.updateMany).toHaveBeenCalledWith(
       { work_item_id: 'wi-1' },
       { $unset: { work_item_id: '' } }
+    );
+    expect(mockCollection.updateMany).toHaveBeenCalledWith(
+      { parent_id: 'wi-1' },
+      { $unset: { parent_id: '' } }
+    );
+  });
+
+  it('should reject a workItem upsert whose parent_id is itself', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/entity/workItems',
+      payload: { id: 'wi-cycle', name: 'Self-parent', parent_id: 'wi-cycle' }
+    });
+
+    expect(response.statusCode).toBe(400);
+    const json = JSON.parse(response.payload);
+    expect(json.success).toBe(false);
+    expect(json.error).toMatch(/cycle/i);
+    expect(mockCollection.replaceOne).not.toHaveBeenCalled();
+  });
+
+  it('should reject a workItem upsert whose parent_id chain reaches itself (cycle)', async () => {
+    // Chain: candidate parent wi-B  ->  wi-A  ->  (would be) wi-self.
+    // findOne walks up: ask for wi-B's parent (wi-A), then wi-A's parent (wi-self) → cycle detected.
+    mockCollection.findOne
+      .mockResolvedValueOnce({ parent_id: 'wi-A' })   // wi-B
+      .mockResolvedValueOnce({ parent_id: 'wi-self' }); // wi-A
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/entity/workItems',
+      payload: { id: 'wi-self', name: 'Cycle child', parent_id: 'wi-B' }
+    });
+
+    expect(response.statusCode).toBe(400);
+    const json = JSON.parse(response.payload);
+    expect(json.error).toMatch(/cycle/i);
+    expect(mockCollection.replaceOne).not.toHaveBeenCalled();
+  });
+
+  it('should accept a workItem upsert with a valid (non-cyclic) parent_id', async () => {
+    // wi-B has no parent — chain terminates harmlessly.
+    mockCollection.findOne.mockResolvedValueOnce({ parent_id: undefined });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/entity/workItems',
+      payload: { id: 'wi-child', name: 'Valid child', parent_id: 'wi-B' }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(mockCollection.replaceOne).toHaveBeenCalledWith(
+      { id: 'wi-child' },
+      { id: 'wi-child', name: 'Valid child', parent_id: 'wi-B' },
+      { upsert: true }
     );
   });
 
