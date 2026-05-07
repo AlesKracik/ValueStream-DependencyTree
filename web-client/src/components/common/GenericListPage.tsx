@@ -360,11 +360,14 @@ export function GenericListPage<T extends { id: string }>({
                     className={styles.header}
                     style={{
                         // Override List.module.css defaults so the title row sits inside
-                        // the band: no own border-bottom, no margin-bottom, padding instead.
+                        // the band: no own border-bottom, no margin-bottom. Explicit height
+                        // ties the title-row bottom (i.e. the divider under it) to the same
+                        // Y as the sidebar logo's border-bottom — see --header-band-height.
                         borderBottom: 'none',
                         marginBottom: 0,
-                        paddingBottom: 0,
-                        padding: '1rem 2rem',
+                        height: 'var(--header-band-height)',
+                        boxSizing: 'border-box',
+                        padding: '0 2rem',
                     }}
                 >
                     <h1>{title}</h1>

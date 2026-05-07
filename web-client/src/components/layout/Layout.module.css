@@ -13,12 +13,21 @@
     border-right: 1px solid var(--border-primary);
     display: flex;
     flex-direction: column;
-    padding: 20px 0;
+    /* Top padding is 0 so the .logo box (with explicit height) determines the
+       Y of the sidebar divider, matching the page-header divider exactly. */
+    padding: 0 0 20px 0;
     flex-shrink: 0;
 }
 
 .logo {
-    padding: 0 12px 20px;
+    /* Explicit height shared with the page-header title row (see --header-band-height
+       in index.css) so the border-bottom sits at the same Y as the divider under
+       list-page titles. Flex-centers the h2 within the box. */
+    height: var(--header-band-height);
+    box-sizing: border-box;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
     border-bottom: 1px solid var(--border-primary);
     margin-bottom: 20px;
 }

@@ -7,6 +7,10 @@ import styles from '../../pages/List.module.css';
 import { generateId } from '../../utils/security';
 import { PageWrapper } from '../layout/PageWrapper';
 
+// Shared grid template for the listHeader row + every item/draft row, so the
+// Name / Dates / Status / Action columns line up vertically across the page.
+const SPRINT_GRID_COLUMNS = '2fr 1.5fr 1fr 1fr';
+
 export interface SprintPageProps {
     data: ValueStreamData | null;
     loading: boolean;
@@ -124,12 +128,51 @@ export const SprintPage: React.FC<SprintPageProps> = ({
         >
             {data && (
                 <>
-                    <header className={styles.header}>
-                        <h1>Sprint Management</h1>
-                        <button onClick={handleStartCreate} className="btn-primary">+ Create Next Sprint</button>
-                    </header>
+                    {/*
+                      Mirrors the title-band header rendered by GenericListPage so this
+                      page reads visually as the same family as Teams / Customers / Work
+                      Items. The outer div breaks out of PageWrapper's 32px padding
+                      (negative margins) to span edge-to-edge as a --bg-secondary band;
+                      the inner title row uses --header-band-height so its bottom
+                      divider lines up with the sidebar's "Value Stream" divider.
+                    */}
+                    <div style={{
+                        background: 'var(--bg-secondary)',
+                        margin: '-32px -32px 32px -32px',
+                        borderBottom: '1px solid var(--border-secondary)',
+                    }}>
+                        <div
+                            className={styles.header}
+                            style={{
+                                borderBottom: 'none',
+                                marginBottom: 0,
+                                height: 'var(--header-band-height)',
+                                boxSizing: 'border-box',
+                                padding: '0 2rem',
+                            }}
+                        >
+                            <h1>Sprint Management</h1>
+                            <button onClick={handleStartCreate} className="btn-primary">+ Create Next Sprint</button>
+                        </div>
+                    </div>
 
                     <div className={styles.list} style={{ paddingBottom: '100px' }}>
+                        {/*
+                          Column-grid layout mirrors the Team list (rendered via
+                          GenericListPage with columns). The grid template is shared
+                          between the listHeader row and every item row so the
+                          Name / Dates / Status / Action columns line up vertically.
+                        */}
+                        <div
+                            className={styles.listHeader}
+                            style={{ display: 'grid', gridTemplateColumns: SPRINT_GRID_COLUMNS, gap: '16px', padding: '0 16px 8px 16px' }}
+                        >
+                            <div className={styles.columnHeader}>Name</div>
+                            <div className={styles.columnHeader}>Dates</div>
+                            <div className={styles.columnHeader}>Status</div>
+                            <div className={styles.columnHeader}>Action</div>
+                        </div>
+
                         {sortedQuarters.map(q => (
                             <React.Fragment key={q}>
                                 <div className={styles.sectionHeader}>{q}</div>
@@ -137,121 +180,141 @@ export const SprintPage: React.FC<SprintPageProps> = ({
                                     const status = getSprintStatus(s);
                                     const isLast = data.sprints[data.sprints.length - 1].id === s.id;
                                     const isFirst = data.sprints[0].id === s.id;
-                                    
+
                                     return (
-                                        <div key={s.id} className={styles.listItem} style={{ 
-                                            cursor: 'default',
-                                            borderLeft: `4px solid ${getStatusColor(status)}`,
-                                            backgroundColor: status === 'active' ? 'var(--accent-primary-bg)' : undefined
-                                        }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <div style={{ flex: 1 }}>
-                                                    <input 
-                                                        type="text" 
-                                                        value={s.name} 
-                                                        onChange={e => updateSprint(s.id, { name: e.target.value })}
-                                                        style={{ 
-                                                            background: 'none', 
-                                                            border: 'none', 
-                                                            color: 'var(--text-primary)', 
-                                                            fontWeight: 'bold', 
-                                                            fontSize: '16px',
-                                                            outline: 'none', 
-                                                            width: '100%',
-                                                            marginBottom: '4px'
-                                                        }}
-                                                    />
-                                                    <div className={styles.itemDetails}>
-                                                        {s.start_date} to {s.end_date}
-                                                    </div>
-                                                </div>
-                                                
-                                                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                                                    <span style={{ 
-                                                        fontSize: '11px', 
-                                                        textTransform: 'uppercase', 
-                                                        fontWeight: 'bold',
-                                                        padding: '2px 8px',
-                                                        borderRadius: '10px',
-                                                        backgroundColor: getStatusColor(status),
-                                                        color: 'white'
-                                                    }}>
-                                                        {status}
+                                        <div
+                                            key={s.id}
+                                            className={styles.listItem}
+                                            style={{
+                                                cursor: 'default',
+                                                display: 'grid',
+                                                gridTemplateColumns: SPRINT_GRID_COLUMNS,
+                                                gap: '16px',
+                                                alignItems: 'center',
+                                                // Subtle highlight for the active sprint — status is already
+                                                // shown via the badge column, so the colored left border was
+                                                // dropped to match the Team list's flat row look.
+                                                backgroundColor: status === 'active' ? 'var(--accent-primary-bg)' : undefined,
+                                            }}
+                                        >
+                                            <div className={styles.itemColumn}>
+                                                <input
+                                                    type="text"
+                                                    value={s.name}
+                                                    onChange={e => updateSprint(s.id, { name: e.target.value })}
+                                                    style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        color: 'var(--text-highlight)',
+                                                        fontWeight: 600,
+                                                        fontSize: '14px',
+                                                        outline: 'none',
+                                                        width: '100%',
+                                                        padding: 0,
+                                                    }}
+                                                />
+                                            </div>
+                                            <div className={styles.itemColumn}>
+                                                {s.start_date} to {s.end_date}
+                                            </div>
+                                            <div className={styles.itemColumn}>
+                                                <span style={{
+                                                    display: 'inline-block',
+                                                    fontSize: '11px',
+                                                    textTransform: 'uppercase',
+                                                    fontWeight: 'bold',
+                                                    padding: '2px 8px',
+                                                    borderRadius: '10px',
+                                                    backgroundColor: getStatusColor(status),
+                                                    color: 'white',
+                                                }}>
+                                                    {status}
+                                                </span>
+                                            </div>
+                                            <div className={styles.itemColumn}>
+                                                {isLast ? (
+                                                    <button
+                                                        onClick={() => handleDelete(s.id, s.name)}
+                                                        className="btn-danger"
+                                                        style={{ padding: '4px 12px', fontSize: '12px' }}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                ) : (isFirst && status === 'past') ? (
+                                                    <button
+                                                        onClick={() => handleArchive(s.id, s.name)}
+                                                        className="btn-danger"
+                                                        style={{ padding: '4px 12px', fontSize: '12px' }}
+                                                    >
+                                                        Archive
+                                                    </button>
+                                                ) : (
+                                                    <span
+                                                        title="Only the first past sprint or the last sprint can be managed."
+                                                        style={{ color: 'var(--text-muted)', fontSize: '12px', cursor: 'help' }}
+                                                    >
+                                                        Locked
                                                     </span>
-                                                    
-                                                    <div style={{ display: 'flex', gap: '8px' }}>
-                                                        {isLast ? (
-                                                            <button 
-                                                                onClick={() => handleDelete(s.id, s.name)} 
-                                                                className="btn-danger" 
-                                                                style={{ padding: '4px 12px', fontSize: '12px' }}
-                                                            >
-                                                                Delete
-                                                            </button>
-                                                        ) : (isFirst && status === 'past') ? (
-                                                            <button 
-                                                                onClick={() => handleArchive(s.id, s.name)} 
-                                                                className="btn-danger" 
-                                                                style={{ padding: '4px 12px', fontSize: '12px' }}
-                                                            >
-                                                                Archive
-                                                            </button>
-                                                        ) : (
-                                                            <span title="Only the first past sprint or the last sprint can be managed." style={{ color: 'var(--text-muted)', fontSize: '12px', cursor: 'help', width: '55px', textAlign: 'center' }}>Locked</span>
-                                                        )}
-                                                    </div>
-                                                </div>
+                                                )}
                                             </div>
                                         </div>
                                     );
-                                    })}
-                                    </React.Fragment>
-                                    ))}
+                                })}
+                            </React.Fragment>
+                        ))}
+
                         {isCreating && (
-                            <div className={styles.listItem} style={{ 
-                                border: '2px dashed var(--accent-primary)', 
-                                backgroundColor: 'var(--accent-primary-bg)',
-                                marginTop: '12px'
-                            }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <input 
-                                            autoFocus
-                                            type="text" 
-                                            value={newSprintDraft.name} 
-                                            onChange={e => setNewSprintDraft({ ...newSprintDraft, name: e.target.value })}
-                                            style={{ 
-                                                background: 'none', 
-                                                border: 'none', 
-                                                color: 'var(--accent-text)', 
-                                                fontWeight: 'bold', 
-                                                fontSize: '16px',
-                                                outline: 'none', 
-                                                width: '100%',
-                                                marginBottom: '4px'
-                                            }}
-                                        />
-                                        <div className={styles.itemDetails} style={{ color: 'var(--accent-text)' }}>
-                                            {newSprintDraft.start_date} to {newSprintDraft.end_date} (Draft)
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                                        <span style={{ 
-                                            fontSize: '11px', 
-                                            textTransform: 'uppercase', 
-                                            fontWeight: 'bold',
-                                            padding: '2px 8px',
-                                            borderRadius: '10px',
-                                            backgroundColor: 'var(--accent-primary)',
-                                            color: 'white'
-                                        }}>
-                                            NEW
-                                        </span>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <button onClick={handleCreate} className="btn-primary">Save</button>
-                                            <button onClick={() => setIsCreating(false)} className="btn-secondary">Cancel</button>
-                                        </div>
-                                    </div>
+                            <div
+                                className={styles.listItem}
+                                style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: SPRINT_GRID_COLUMNS,
+                                    gap: '16px',
+                                    alignItems: 'center',
+                                    // Dashed accent border calls out the unsaved draft row.
+                                    border: '2px dashed var(--accent-primary)',
+                                    backgroundColor: 'var(--accent-primary-bg)',
+                                    marginTop: '12px',
+                                }}
+                            >
+                                <div className={styles.itemColumn}>
+                                    <input
+                                        autoFocus
+                                        type="text"
+                                        value={newSprintDraft.name}
+                                        onChange={e => setNewSprintDraft({ ...newSprintDraft, name: e.target.value })}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            color: 'var(--accent-text)',
+                                            fontWeight: 600,
+                                            fontSize: '14px',
+                                            outline: 'none',
+                                            width: '100%',
+                                            padding: 0,
+                                        }}
+                                    />
+                                </div>
+                                <div className={styles.itemColumn} style={{ color: 'var(--accent-text)' }}>
+                                    {newSprintDraft.start_date} to {newSprintDraft.end_date} (Draft)
+                                </div>
+                                <div className={styles.itemColumn}>
+                                    <span style={{
+                                        display: 'inline-block',
+                                        fontSize: '11px',
+                                        textTransform: 'uppercase',
+                                        fontWeight: 'bold',
+                                        padding: '2px 8px',
+                                        borderRadius: '10px',
+                                        backgroundColor: 'var(--accent-primary)',
+                                        color: 'white',
+                                    }}>
+                                        NEW
+                                    </span>
+                                </div>
+                                <div className={styles.itemColumn} style={{ display: 'flex', gap: '8px' }}>
+                                    <button onClick={handleCreate} className="btn-primary" style={{ padding: '4px 12px', fontSize: '12px' }}>Save</button>
+                                    <button onClick={() => setIsCreating(false)} className="btn-secondary" style={{ padding: '4px 12px', fontSize: '12px' }}>Cancel</button>
                                 </div>
                             </div>
                         )}

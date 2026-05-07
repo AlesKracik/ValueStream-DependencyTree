@@ -60,6 +60,12 @@
   --status-danger-border: #b91c1c;
   --icon-filter: none;
 
+  /* Shared height for the top-level header band (sidebar logo box and the
+     title row inside list pages). Both apply this as an explicit box height
+     so their bottom dividing lines sit at the same Y from the top of the
+     screen, regardless of h1/h2 font-metric differences. */
+  --header-band-height: 64px;
+
   color-scheme: light dark;
   color: var(--text-primary);
   background-color: var(--bg-page);
