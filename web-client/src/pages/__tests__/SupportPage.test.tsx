@@ -159,7 +159,9 @@ describe('SupportPage', () => {
         );
 
         // Find the "Status" sort button by its text within the "Sort by:" container or just by role
-        const statusSortBtn = screen.getByRole('button', { name: /Status/i });
+        // Anchored regex avoids matching the new "Status filter" multi-select trigger
+        // in the filter bar (also a button containing "Status" in its accessible name).
+        const statusSortBtn = screen.getByRole('button', { name: /^Status$/i });
         await act(async () => {
             fireEvent.click(statusSortBtn);
         });
@@ -201,7 +203,9 @@ describe('SupportPage', () => {
             <SupportPage data={sortingData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
-        const statusSortBtn = screen.getByRole('button', { name: /Status/i });
+        // Anchored regex avoids matching the new "Status filter" multi-select trigger
+        // in the filter bar (also a button containing "Status" in its accessible name).
+        const statusSortBtn = screen.getByRole('button', { name: /^Status$/i });
         await act(async () => {
             fireEvent.click(statusSortBtn);
         });
@@ -232,7 +236,9 @@ describe('SupportPage', () => {
             <SupportPage data={sortingData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
-        const statusSortBtn = screen.getByRole('button', { name: /Status/i });
+        // Anchored regex avoids matching the new "Status filter" multi-select trigger
+        // in the filter bar (also a button containing "Status" in its accessible name).
+        const statusSortBtn = screen.getByRole('button', { name: /^Status$/i });
         // Click once for ascending (Todo -> Done)
         await act(async () => {
             fireEvent.click(statusSortBtn);
@@ -278,7 +284,9 @@ describe('SupportPage', () => {
             <SupportPage data={multiCustomerData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
-        const statusSortBtn = screen.getByRole('button', { name: /Status/i });
+        // Anchored regex avoids matching the new "Status filter" multi-select trigger
+        // in the filter bar (also a button containing "Status" in its accessible name).
+        const statusSortBtn = screen.getByRole('button', { name: /^Status$/i });
         // Click once for ascending (Waiting -> Done)
         await act(async () => {
             fireEvent.click(statusSortBtn);
@@ -441,7 +449,8 @@ describe('SupportPage', () => {
             <SupportPage data={activityData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
-        const activitySortBtn = screen.getByRole('button', { name: /Activity/i });
+        // Anchored regex avoids matching the new "Activity filter" multi-select trigger.
+        const activitySortBtn = screen.getByRole('button', { name: /^Activity$/i });
         await act(async () => {
             fireEvent.click(activitySortBtn);
         });
@@ -1143,6 +1152,105 @@ describe('SupportPage', () => {
             expect(upsertCall).toBeDefined();
             // Should have matched to customer 'c1' (Customer A)
             expect(upsertCall![0]).toBe('c1');
+        });
+    });
+
+    // ── New filter / collapse / pagination wiring ─────────────────────────
+    describe('filter, collapse and pagination wiring', () => {
+        // Mounts the page with two customers (different TCV) and several
+        // support issues so each new filter has at least one in/out match.
+        const filterData: ValueStreamData = {
+            ...mockData,
+            customers: [
+                {
+                    id: 'c1',
+                    name: 'Acme Corp',
+                    existing_tcv: 5000,
+                    potential_tcv: 1000,
+                    support_issues: [
+                        { id: 'a1', description: 'Login broken', status: 'to do' },
+                        { id: 'a2', description: 'Slow report', status: 'work in progress' },
+                        { id: 'a3', description: 'Crash on save', status: 'done' },
+                    ],
+                },
+                {
+                    id: 'c2',
+                    name: 'Beta LLC',
+                    existing_tcv: 100,
+                    potential_tcv: 50,
+                    support_issues: [
+                        { id: 'b1', description: 'Tiny customer issue', status: 'to do' },
+                    ],
+                },
+            ],
+        };
+
+        it('filters by Customer TCV range', async () => {
+            renderWithProviders(<SupportPage data={filterData} loading={false} updateCustomer={mockUpdateCustomer} />);
+
+            // All four issues visible initially.
+            expect(screen.getByDisplayValue('Login broken')).toBeDefined();
+            expect(screen.getByDisplayValue('Tiny customer issue')).toBeDefined();
+
+            // Min TCV = 1000 → Beta LLC (combined TCV 150) drops out.
+            fireEvent.change(screen.getByLabelText('Min TCV'), { target: { value: '1000' } });
+            await waitFor(() => {
+                expect(screen.queryByDisplayValue('Tiny customer issue')).toBeNull();
+            });
+            expect(screen.getByDisplayValue('Login broken')).toBeDefined();
+        });
+
+        it('filters by Status via the multi-select dropdown', async () => {
+            renderWithProviders(<SupportPage data={filterData} loading={false} updateCustomer={mockUpdateCustomer} />);
+
+            // Open the filter dropdown and pick "Done". Scope the option lookup
+            // to the listbox panel — the per-row status <select>s also expose
+            // <option name="Done"> elements with the same accessible name.
+            fireEvent.click(screen.getByLabelText('Status filter'));
+            const listbox = screen.getByRole('listbox');
+            fireEvent.click(within(listbox).getByRole('option', { name: 'Done' }));
+
+            await waitFor(() => {
+                expect(screen.getByDisplayValue('Crash on save')).toBeDefined();
+            });
+            expect(screen.queryByDisplayValue('Login broken')).toBeNull();
+            expect(screen.queryByDisplayValue('Slow report')).toBeNull();
+        });
+
+        it('shows the active filter count on the collapsed pull-tab', async () => {
+            renderWithProviders(<SupportPage data={filterData} loading={false} updateCustomer={mockUpdateCustomer} />);
+
+            // Apply two filters: name + min TCV.
+            fireEvent.change(screen.getByPlaceholderText(/Filter issues/i), { target: { value: 'login' } });
+            fireEvent.change(screen.getByLabelText('Min TCV'), { target: { value: '100' } });
+
+            // Collapse the filter region.
+            fireEvent.click(screen.getByTitle('Hide filters'));
+
+            const tab = screen.getByTitle('Show filters');
+            expect(tab.textContent).toContain('(2)');
+        });
+
+        it('paginates when the per-user items_per_page setting fits multiple pages', async () => {
+            // Force pageSize = 1 so even a tiny dataset paginates.
+            const pagedData: ValueStreamData = {
+                ...filterData,
+                settings: { ...filterData.settings, general: { ...filterData.settings.general, items_per_page: 1 } },
+            };
+            renderWithProviders(<SupportPage data={pagedData} loading={false} updateCustomer={mockUpdateCustomer} />);
+
+            // Pagination control should render (multiple pages).
+            const next = screen.getByRole('button', { name: /Next page/i });
+            expect(next).toBeDefined();
+
+            // Page 1 shows the first issue (sort defaults to customerName asc).
+            expect(screen.queryByDisplayValue('Tiny customer issue')).toBeNull();
+
+            // Advancing pages eventually surfaces the Beta LLC issue.
+            for (let i = 0; i < 5 && !screen.queryByDisplayValue('Tiny customer issue'); i++) {
+                fireEvent.click(screen.getByRole('button', { name: /Next page/i }));
+            }
+            expect(screen.getByDisplayValue('Tiny customer issue')).toBeDefined();
         });
     });
 });

@@ -495,9 +495,30 @@ export interface ValueStreamViewState {
   sprintOffset: number;
   customerFilter: string;
   workItemFilter: string;
+  /** Legacy single-select. Kept on the type so existing callers / saved view-state
+   *  shapes still parse. The dashboard UI now drives `releasedSprintIds` instead. */
   releasedFilter: 'all' | 'released' | 'unreleased';
+  /** Multi-select of sprint IDs the work item was released in. The literal
+   *  'unreleased' is a sentinel that matches work items with no
+   *  `released_in_sprint_id`. Mirrors the WorkItems list page contract. */
+  releasedSprintIds?: string[];
+  /** Customer combined-TCV range (existing + potential). */
   minTcvFilter: string;
+  maxTcvFilter?: string;
+  /** Legacy lower bound on work-item `calculated_score`. Kept on the type so
+   *  saved value-stream baseParams still apply this constraint. The dashboard
+   *  filter UI exposes the metric-aware Priority range instead. */
   minScoreFilter: string;
+  /** Range against the field selected by `prioritizationMetric`
+   *  (calculated_score / aha_synced_data.score / stackrank). */
+  minPriorityFilter?: string;
+  maxPriorityFilter?: string;
+  /** Work-item `calculated_effort` range. */
+  minEffortFilter?: string;
+  maxEffortFilter?: string;
+  /** Work-item status multi-select. Selecting "Backlog" also matches docs with
+   *  missing/empty status (matches the WorkItems list page Backlog semantics). */
+  statusFilter?: string[];
   teamFilter: string;
   issueFilter: string;
   showDependencies: boolean;

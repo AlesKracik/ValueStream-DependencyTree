@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { parseISO } from 'date-fns';
-import type { ValueStreamData, ValueStreamParameters } from '@valuestream/shared-types';
+import type { ValueStreamData, ValueStreamParameters, WorkItemPriorityMetric } from '@valuestream/shared-types';
 
 export interface GraphFilterResult {
     visibleCustomers: ReadonlySet<string>;
@@ -13,6 +13,40 @@ export interface GraphFilterResult {
     isAnyFilterActive: boolean;
 }
 
+/**
+ * Extra dashboard filters added on top of the legacy positional ones, mirroring
+ * the WorkItems list page filter set. Passed as a single object so the hook's
+ * signature doesn't grow another seven positional params.
+ *
+ * All ranges are post-coerced to numbers; pass NaN (or omit) for "no bound".
+ */
+export interface DashboardFilters {
+    /** Upper bound for combined customer TCV (existing + potential). */
+    maxTcv?: number;
+    /** Range against the field selected by `priorityMetric`. */
+    minPriority?: number;
+    maxPriority?: number;
+    /** Range against work-item `calculated_effort`. */
+    minEffort?: number;
+    maxEffort?: number;
+    /** Work-item status multi-select. Selecting "Backlog" also matches docs with
+     *  missing/empty status (mirrors the WorkItems list page semantics). */
+    statuses?: string[];
+    /** Multi-select of sprint IDs that the work item was released in. The literal
+     *  'unreleased' is a sentinel that matches docs with no `released_in_sprint_id`. */
+    releasedSprintIds?: string[];
+    /** Drives which field the `minPriority`/`maxPriority` range targets. */
+    priorityMetric?: WorkItemPriorityMetric;
+}
+
+const PRIORITY_FIELD = (metric: WorkItemPriorityMetric | undefined): 'calculated_score' | 'aha_synced_data.score' | 'stackrank' => {
+    if (metric === 'aha_score') return 'aha_synced_data.score';
+    if (metric === 'stackrank') return 'stackrank';
+    return 'calculated_score';
+};
+
+const STANDARD_STATUSES = new Set(['Backlog', 'Planning', 'Development', 'Done']);
+
 export function useGraphFilters(
     data: ValueStreamData | null,
     customerFilter: string,
@@ -24,7 +58,8 @@ export function useGraphFilters(
     minScore: number,
     selectedNodeId: string | null,
     baseParams: ValueStreamParameters | null,
-    showDependencies: boolean
+    showDependencies: boolean,
+    dashboardFilters?: DashboardFilters
 ): GraphFilterResult {
     return useMemo(() => {
         if (!data) return {
@@ -55,6 +90,31 @@ export function useGraphFilters(
 
         const bRel = baseParams?.releasedFilter || 'all';
 
+        // Dashboard filters (the WorkItems list-style additions). All optional —
+        // missing or NaN bounds mean "no constraint". `getPriorityValue` reads the
+        // field that matches the active metric so a single range applies to
+        // calculated_score / aha_synced_data.score / stackrank consistently.
+        const df = dashboardFilters || {};
+        const maxTcv = (df.maxTcv !== undefined && Number.isFinite(df.maxTcv)) ? df.maxTcv : Infinity;
+        const minEffort = (df.minEffort !== undefined && Number.isFinite(df.minEffort)) ? df.minEffort : -Infinity;
+        const maxEffort = (df.maxEffort !== undefined && Number.isFinite(df.maxEffort)) ? df.maxEffort : Infinity;
+        const minPriority = (df.minPriority !== undefined && Number.isFinite(df.minPriority)) ? df.minPriority : -Infinity;
+        const maxPriority = (df.maxPriority !== undefined && Number.isFinite(df.maxPriority)) ? df.maxPriority : Infinity;
+        const priorityField = PRIORITY_FIELD(df.priorityMetric);
+        const statusList = df.statuses && df.statuses.length > 0 ? df.statuses : null;
+        const statusSet = statusList ? new Set(statusList) : null;
+        const includesBacklog = !!statusSet?.has('Backlog');
+        const releasedSprintList = df.releasedSprintIds && df.releasedSprintIds.length > 0 ? df.releasedSprintIds : null;
+        const releasedSprintSet = releasedSprintList ? new Set(releasedSprintList.filter(s => s !== 'unreleased')) : null;
+        const includesUnreleased = !!releasedSprintList?.includes('unreleased');
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const getPriorityValue = (workItem: any): number => {
+            if (priorityField === 'calculated_score') return Number(workItem.calculated_score) || 0;
+            if (priorityField === 'stackrank') return Number(workItem.stackrank) || 0;
+            return Number(workItem.aha_synced_data?.score) || 0;
+        };
+
         // Sprint Range persistent filter logic
         const rangeStartSprint = baseParams?.startSprintId ? data.sprints.find(s => s.id === baseParams.startSprintId) : null;
         const rangeEndSprint = baseParams?.endSprintId ? data.sprints.find(s => s.id === baseParams.endSprintId) : null;
@@ -69,9 +129,16 @@ export function useGraphFilters(
             return true;
         };
 
+        const hasDashboardConstraint =
+            Number.isFinite(maxTcv) ||
+            Number.isFinite(minPriority) || Number.isFinite(maxPriority) ||
+            Number.isFinite(minEffort) || Number.isFinite(maxEffort) ||
+            !!statusSet || !!releasedSprintList;
+
         const isFilterActive = cf || bcf || ff || bff || tf || btf || ef || bef ||
                              releasedFilter !== 'all' || bRel !== 'all' ||
                              combinedMinTcv > 0 || combinedMinScore > 0 ||
+                             hasDashboardConstraint ||
                              !!baseParams?.startSprintId || !!baseParams?.endSprintId;
 
         const visibleCustomers = new Set<string>();
@@ -88,9 +155,11 @@ export function useGraphFilters(
                 const baseTextMatch = !bcf || c.name.toLowerCase().includes(bcf);
                 if (!transientTextMatch || !baseTextMatch) return false;
 
-                // Also respect Min TCV for standalone visibility
+                // Min TCV for standalone visibility, plus the new Max TCV bound.
                 const totalTcv = (c.existing_tcv || 0) + (c.potential_tcv || 0);
-                return totalTcv >= combinedMinTcv;
+                if (totalTcv < combinedMinTcv) return false;
+                if (totalTcv > maxTcv) return false;
+                return true;
             }).map(c => c.id)
         );
 
@@ -103,9 +172,41 @@ export function useGraphFilters(
 
                 if (!passRelease(!!workItem.released_in_sprint_id)) return false;
 
-                // Use pre-computed RICE score for filtering
+                // Score lower bound merged from transient minScore + base param.
+                // The dashboard exposes a metric-aware Priority range instead of
+                // a raw score range, so there's no upper-bound on calculated_score.
                 const score = workItem.calculated_score !== undefined ? workItem.calculated_score : 0;
-                return score >= combinedMinScore;
+                if (score < combinedMinScore) return false;
+
+                // Effort range (calculated_effort).
+                const effort = workItem.calculated_effort !== undefined ? workItem.calculated_effort : 0;
+                if (effort < minEffort || effort > maxEffort) return false;
+
+                // Priority range against whichever metric the user selected.
+                const priorityVal = getPriorityValue(workItem);
+                if (priorityVal < minPriority || priorityVal > maxPriority) return false;
+
+                // Status multi-select. Selecting "Backlog" also includes docs
+                // with missing/empty status — matches the WorkItems list UI's
+                // `w.status || 'Backlog'` rendering.
+                if (statusSet) {
+                    const ws = workItem.status || '';
+                    const inSet = statusSet.has(ws);
+                    const treatedAsBacklog = includesBacklog && (!ws || !STANDARD_STATUSES.has(ws));
+                    if (!inSet && !treatedAsBacklog) return false;
+                }
+
+                // Released-sprint multi-select. The 'unreleased' sentinel matches
+                // work items with no released_in_sprint_id; explicit IDs match a
+                // direct equality on the field.
+                if (releasedSprintList) {
+                    const rid = workItem.released_in_sprint_id;
+                    const isReleasedToSelected = !!rid && releasedSprintSet?.has(rid);
+                    const isUnreleasedAndAllowed = !rid && includesUnreleased;
+                    if (!isReleasedToSelected && !isUnreleasedAndAllowed) return false;
+                }
+
+                return true;
             }).map(workItem => workItem.id)
         );
 
@@ -140,8 +241,13 @@ export function useGraphFilters(
             }).map(issue => issue.id)
         );
 
-        const hasCustomerFilter = cf !== '' || bcf !== '' || combinedMinTcv > 0;
-        const hasWorkItemFilter = ff !== '' || bff !== '' || combinedMinScore > 0 || releasedFilter !== 'all' || bRel !== 'all';
+        const hasCustomerFilter = cf !== '' || bcf !== '' || combinedMinTcv > 0 || Number.isFinite(maxTcv);
+        const hasWorkItemFilter =
+            ff !== '' || bff !== '' || combinedMinScore > 0 ||
+            releasedFilter !== 'all' || bRel !== 'all' ||
+            Number.isFinite(minEffort) || Number.isFinite(maxEffort) ||
+            Number.isFinite(minPriority) || Number.isFinite(maxPriority) ||
+            !!statusSet || !!releasedSprintList;
         const hasTeamIssueFilter = tf !== '' || btf !== '' || ef !== '' || bef !== '' || hasRangeFilter;
 
         if (!isFilterActive && !selectedNodeId) {
@@ -351,8 +457,10 @@ export function useGraphFilters(
         }
 
         const isAnyFilterActive = !!(customerFilter || workItemFilter || teamFilter || issueFilter ||
-            minTcv > 0 || minScore > 0 || selectedNodeId);
+            minTcv > 0 || minScore > 0 || selectedNodeId || hasDashboardConstraint);
 
         return { visibleCustomers, visibleWorkItems, visibleTeams, visibleIssues, combinedMinTcv, combinedMinScore, isAnyFilterActive };
-    }, [data, customerFilter, workItemFilter, releasedFilter, teamFilter, issueFilter, minTcv, minScore, selectedNodeId, baseParams, showDependencies]);
+    // dashboardFilters is the only object dep — the caller is expected to memoize
+    // it so re-renders don't trigger spurious recompute. Stringifying is overkill.
+    }, [data, customerFilter, workItemFilter, releasedFilter, teamFilter, issueFilter, minTcv, minScore, selectedNodeId, baseParams, showDependencies, dashboardFilters]);
 }

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ValueStreamData, WorkItem, WorkItemPriorityMetric, Issue } from '@valuestream/shared-types';
 import { GenericListPage } from '../components/common/GenericListPage';
@@ -9,6 +9,8 @@ import { useNotificationContext } from '../contexts/NotificationContext';
 import { useUIStateContext } from '../contexts/UIStateContext';
 import { calculateWorkItemEffort } from '../utils/businessLogic';
 import { useFilteredWorkItems, type WorkItemFilters, type WorkItemSort } from '../hooks/useFilteredWorkItems';
+
+const PAGE_ID = 'workItems';
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -77,21 +79,33 @@ const numberInputStyle: React.CSSProperties = {
 export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading, updateWorkItem }) => {
     const navigate = useNavigate();
     const { showAlert, showConfirm } = useNotificationContext();
-    const { viewState, setViewState } = useUIStateContext();
+    const { viewState, setViewState, uiState, updateUiState } = useUIStateContext();
     const metric = viewState.prioritizationMetric;
 
-    // --- Filter & sort state ---
-    // Held in component state — not yet persisted across full-page refreshes.
-    // Per-page collapse state still survives via uiState[pageId].filtersCollapsed.
-    const [filters, setFilters] = useState<WorkItemFilters>({});
-    const [sort, setSort] = useState<WorkItemSort>({ sortBy: 'name', sortOrder: 'asc' });
+    // --- Filter, sort, and page state ---
+    // Seeded once from uiState so returning to this page (e.g. via back button
+    // from a detail page) restores the user's spot. uiState lives in memory only,
+    // so a browser refresh / new tab still gets a fresh page.
+    const savedState = uiState[PAGE_ID];
+    const [filters, setFilters] = useState<WorkItemFilters>(
+        () => (savedState?.pageFilters as WorkItemFilters | undefined) || {}
+    );
+    const [sort, setSort] = useState<WorkItemSort>(() => ({
+        sortBy: savedState?.sortBy ?? 'name',
+        sortOrder: savedState?.sortOrder ?? 'asc',
+    }));
 
-    // --- Pagination state ---
     // pageSize comes from the user's "Items per page" setting (general.items_per_page).
     // page is reset to 1 whenever filters or sort change so the user doesn't end up
     // on an out-of-range page.
     const pageSize = data?.settings?.general?.items_per_page ?? DEFAULT_PAGE_SIZE;
-    const [page, setPage] = useState(1);
+    const [page, setPage] = useState<number>(() => savedState?.page ?? 1);
+
+    // Persist filters + page back into uiState so subsequent in-app remounts
+    // (i.e. coming back from a detail page) restore them.
+    useEffect(() => {
+        updateUiState(PAGE_ID, { pageFilters: filters, page });
+    }, [filters, page, updateUiState]);
 
     const setFilterField = <K extends keyof WorkItemFilters>(key: K, value: WorkItemFilters[K]) => {
         setFilters(prev => ({ ...prev, [key]: value }));

@@ -13,11 +13,29 @@ export interface PageUiState {
      * survives in-app navigation (it resets on a full page refresh).
      */
     filtersCollapsed?: boolean;
+    /**
+     * 1-based page index for paginated list pages. Stored here (in-memory)
+     * so that returning to a list (e.g. via the back button from a detail
+     * page) restores the user's spot. Resets on browser refresh / new tab.
+     */
+    page?: number;
+    /**
+     * Page-specific filter state object — shape is owned by each list page
+     * (e.g. WorkItemFilters, CustomerFilters, SupportFilters). Same in-memory
+     * persistence rules as the rest of PageUiState.
+     */
+    pageFilters?: unknown;
 }
 
 interface UIStateContextType {
     uiState: Record<string, PageUiState>;
-    updateUiState: (key: string, value: PageUiState) => void;
+    /**
+     * Merge `value` into the existing `uiState[key]` entry. Callers may pass
+     * just the fields they own (e.g. GenericListPage writes filter/sort/scroll;
+     * the list page itself writes pageFilters/page) without stomping each
+     * other's slots.
+     */
+    updateUiState: (key: string, value: Partial<PageUiState>) => void;
     viewState: ValueStreamViewState;
     setViewState: React.Dispatch<React.SetStateAction<ValueStreamViewState>>;
 }
@@ -50,8 +68,8 @@ export const UIStateProvider: React.FC<{ children: React.ReactNode }> = ({ child
         filtersCollapsed: false,
     });
 
-    const updateUiState = useCallback((key: string, val: PageUiState) => {
-        setUiState(prev => ({ ...prev, [key]: val }));
+    const updateUiState = useCallback((key: string, val: Partial<PageUiState>) => {
+        setUiState(prev => ({ ...prev, [key]: { ...(prev[key] || {}), ...val } }));
     }, []);
 
     const contextValue = useMemo(() => ({

@@ -1,12 +1,14 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ValueStreamData, Customer } from '@valuestream/shared-types';
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption, ListColumn } from '../components/common/GenericListPage';
 import { Pagination } from '../components/common/Pagination';
+import { useUIStateContext } from '../contexts/UIStateContext';
 import { useFilteredCustomers, type CustomerFilters, type CustomerSort } from '../hooks/useFilteredCustomers';
 
 const DEFAULT_PAGE_SIZE = 25;
+const PAGE_ID = 'customers';
 
 interface Props {
     data: ValueStreamData | null;
@@ -25,16 +27,31 @@ const numberInputStyle: React.CSSProperties = {
 
 export const CustomerListPage: React.FC<Props> = ({ data, loading: outerLoading }) => {
     const navigate = useNavigate();
+    const { uiState, updateUiState } = useUIStateContext();
 
-    // --- Filter & sort state ---
-    const [filters, setFilters] = useState<CustomerFilters>({});
-    const [sort, setSort] = useState<CustomerSort>({ sortBy: 'name', sortOrder: 'asc' });
+    // --- Filter, sort, and page state ---
+    // Seeded once from uiState so coming back to the page (e.g. via back button
+    // from a detail page) restores the user's spot. uiState lives in memory only,
+    // so a browser refresh / new tab still gets a fresh page.
+    const savedState = uiState[PAGE_ID];
+    const [filters, setFilters] = useState<CustomerFilters>(
+        () => (savedState?.pageFilters as CustomerFilters | undefined) || {}
+    );
+    const [sort, setSort] = useState<CustomerSort>(() => ({
+        sortBy: savedState?.sortBy ?? 'name',
+        sortOrder: savedState?.sortOrder ?? 'asc',
+    }));
 
-    // --- Pagination state ---
     // pageSize comes from the user's "Items per page" setting (general.items_per_page).
     // page is reset to 1 whenever filters or sort change (see resetKey snap below).
     const pageSize = data?.settings?.general?.items_per_page ?? DEFAULT_PAGE_SIZE;
-    const [page, setPage] = useState(1);
+    const [page, setPage] = useState<number>(() => savedState?.page ?? 1);
+
+    // Persist filters + page back into uiState so subsequent in-app remounts
+    // (i.e. coming back from a detail page) restore them.
+    useEffect(() => {
+        updateUiState(PAGE_ID, { pageFilters: filters, page });
+    }, [filters, page, updateUiState]);
 
     const setFilterField = <K extends keyof CustomerFilters>(key: K, value: CustomerFilters[K]) => {
         setFilters(prev => ({ ...prev, [key]: value }));

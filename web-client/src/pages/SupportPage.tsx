@@ -2,11 +2,34 @@ import React, { useMemo, useEffect, useState, useCallback, useLayoutEffect, useR
 import type { ValueStreamData, Customer, SupportIssue } from '@valuestream/shared-types';
 import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption, ListColumn } from '../components/common/GenericListPage';
+import { MultiSelectDropdown } from '../components/common/MultiSelectDropdown';
+import { Pagination } from '../components/common/Pagination';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { llmGenerate, gleanAuthLogin, gleanAuthStatus, gleanChat } from '../utils/api';
 import { generateId } from '../utils/security';
 import { useNotificationContext } from '../contexts/NotificationContext';
+import { useUIStateContext } from '../contexts/UIStateContext';
 import { extractFirstJSONObject, buildSupportStatusPatch } from '../utils/businessLogic';
+
+const DEFAULT_PAGE_SIZE = 25;
+const SUPPORT_PAGE_ID = 'support';
+
+interface SupportFilters {
+    /** Free-text substring matched against the issue description AND the customer name. */
+    name?: string;
+    /** Customer combined-TCV range. */
+    minTcv?: string;
+    maxTcv?: string;
+    /** Issue status (raw values from STATUS_OPTIONS). */
+    status?: string[];
+    /** 'new' | 'updated' | 'none' */
+    activity?: string[];
+}
+
+interface SupportSort {
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+}
 
 interface Props {
     data: ValueStreamData | null;
@@ -111,6 +134,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
     const navigate = useNavigate();
     const location = useLocation();
     const { showAlert } = useNotificationContext();
+    const { uiState: uiStateForSupport, updateUiState: updateUiStateForSupport } = useUIStateContext();
     const [isAISearching, setIsAISearching] = useState(false);
     const [searchProgress, setSearchProgress] = useState<string | null>(null);
     const [streamingText, setStreamingText] = useState<string>('');
@@ -600,6 +624,183 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         }
     ], []);
 
+    // ── Filter / sort / pagination state ────────────────────────────────────
+    // Source data is derived from data.customers (workspace endpoint), so all
+    // three concerns are handled client-side here — no backend round-trip like
+    // Customers / WorkItems list pages.
+    //
+    // Initial values come from uiState['support'] when the page is being remounted
+    // mid-session (e.g. user clicked a row, went to the customer page, hit back).
+    // uiState lives in memory only, so a browser refresh / new tab still gets a
+    // fresh page.
+    const savedSupportState = uiStateForSupport[SUPPORT_PAGE_ID];
+    const [filters, setFilters] = useState<SupportFilters>(
+        () => (savedSupportState?.pageFilters as SupportFilters | undefined) || {}
+    );
+    const [sort, setSort] = useState<SupportSort>(() => ({
+        sortBy: savedSupportState?.sortBy ?? 'customerName',
+        sortOrder: savedSupportState?.sortOrder ?? 'asc',
+    }));
+    const pageSize = data?.settings?.general?.items_per_page ?? DEFAULT_PAGE_SIZE;
+    const [page, setPage] = useState<number>(() => savedSupportState?.page ?? 1);
+
+    // Sync filters + page back into uiState so subsequent in-app remounts
+    // restore them. (sortBy/sortOrder + the built-in name filter are persisted
+    // by GenericListPage already.)
+    useEffect(() => {
+        updateUiStateForSupport(SUPPORT_PAGE_ID, { pageFilters: filters, page });
+    }, [filters, page, updateUiStateForSupport]);
+
+    const setFilterField = <K extends keyof SupportFilters>(key: K, value: SupportFilters[K]) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
+    };
+    const setArrayField = (key: 'status' | 'activity', next: string[]) => {
+        setFilters(prev => ({ ...prev, [key]: next.length > 0 ? next : undefined }));
+    };
+
+    // 1 per active field — matches the WorkItem / Customer pages.
+    const activeFilterCount = useMemo(() => {
+        let n = 0;
+        if (filters.name) n++;
+        if (filters.minTcv || filters.maxTcv) n++;
+        if (filters.status && filters.status.length > 0) n++;
+        if (filters.activity && filters.activity.length > 0) n++;
+        return n;
+    }, [filters]);
+
+    // Apply filters → sort → paginate. Each step is its own memo so paging
+    // changes don't recompute the filter pass.
+    const filteredIssues = useMemo(() => {
+        const name = (filters.name || '').toLowerCase().trim();
+        const minTcv = filters.minTcv && filters.minTcv !== '' ? Number(filters.minTcv) : -Infinity;
+        const maxTcv = filters.maxTcv && filters.maxTcv !== '' ? Number(filters.maxTcv) : Infinity;
+        const statusSet = filters.status && filters.status.length > 0 ? new Set(filters.status) : null;
+        const activitySet = filters.activity && filters.activity.length > 0 ? new Set(filters.activity) : null;
+
+        return allIssues.filter(d => {
+            if (name) {
+                const desc = (d.description || '').toLowerCase();
+                const cust = (d.customerName || '').toLowerCase();
+                if (!desc.includes(name) && !cust.includes(name)) return false;
+            }
+            if (d.totalTcv < minTcv || d.totalTcv > maxTcv) return false;
+            if (statusSet && !statusSet.has(d.status)) return false;
+            if (activitySet && !activitySet.has(d.activity)) return false;
+            return true;
+        });
+    }, [allIssues, filters]);
+
+    const sortedIssues = useMemo(() => {
+        if (!sort.sortBy) return filteredIssues;
+        const opt = sortOptions.find(o => o.key === sort.sortBy);
+        if (!opt) return filteredIssues;
+        const arr = [...filteredIssues].sort((a, b) => {
+            const va = opt.getValue(a);
+            const vb = opt.getValue(b);
+            let cmp = 0;
+            if (typeof va === 'string' && typeof vb === 'string') cmp = va.localeCompare(vb);
+            else cmp = (Number(va) || 0) - (Number(vb) || 0);
+            return sort.sortOrder === 'desc' ? -cmp : cmp;
+        });
+        return arr;
+    }, [filteredIssues, sort, sortOptions]);
+
+    const total = sortedIssues.length;
+    const pagedIssues = useMemo(
+        () => sortedIssues.slice((page - 1) * pageSize, page * pageSize),
+        [sortedIssues, page, pageSize]
+    );
+
+    // Snap back to page 1 when filters / sort / pageSize change. Same
+    // "adjust state during render" pattern the other list pages use.
+    const resetKey = `${JSON.stringify(filters)}|${sort.sortBy ?? ''}|${sort.sortOrder ?? ''}|${pageSize}`;
+    const [prevResetKey, setPrevResetKey] = useState(resetKey);
+    if (resetKey !== prevResetKey) {
+        setPrevResetKey(resetKey);
+        if (page !== 1) setPage(1);
+    }
+
+    const handleSortChange = useCallback((sortBy: string | undefined, sortOrder: 'asc' | 'desc') => {
+        setSort({ sortBy, sortOrder });
+    }, []);
+    const handleFilterChange = useCallback((name: string) => {
+        setFilters(prev => ({ ...prev, name: name || undefined }));
+    }, []);
+
+    // Inline styles shared with the filter groups (mirrors WorkItem / Customer
+    // list pages so the bar reads as the same family).
+    const labelStyle: React.CSSProperties = {
+        fontSize: '11px',
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        color: 'var(--text-muted)',
+    };
+    const groupStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '4px' };
+    const rangeRowStyle: React.CSSProperties = { display: 'flex', gap: '6px', alignItems: 'center' };
+    const numberInputStyle: React.CSSProperties = {
+        width: '90px',
+        padding: '6px 8px',
+        borderRadius: '4px',
+        border: '1px solid var(--border-primary)',
+        background: 'var(--bg-tertiary)',
+        color: 'var(--text-primary)',
+        fontSize: '13px',
+    };
+
+    const renderFilterGroups = () => (
+        <>
+            <div style={groupStyle}>
+                <label style={labelStyle}>Customer TCV ($)</label>
+                <div style={rangeRowStyle}>
+                    <input aria-label="Min TCV" type="number" placeholder="min" value={filters.minTcv || ''}
+                        onChange={(e) => setFilterField('minTcv', e.target.value || undefined)} style={numberInputStyle} />
+                    <span style={{ color: 'var(--text-muted)' }}>–</span>
+                    <input aria-label="Max TCV" type="number" placeholder="max" value={filters.maxTcv || ''}
+                        onChange={(e) => setFilterField('maxTcv', e.target.value || undefined)} style={numberInputStyle} />
+                </div>
+            </div>
+
+            <div style={groupStyle}>
+                <label style={labelStyle}>Status</label>
+                <MultiSelectDropdown
+                    ariaLabel="Status filter"
+                    placeholder="All statuses"
+                    options={STATUS_OPTIONS.map(s => ({ value: s.value, label: s.label }))}
+                    selected={filters.status || []}
+                    onChange={(next) => setArrayField('status', next)}
+                    width={200}
+                />
+            </div>
+
+            <div style={groupStyle}>
+                <label style={labelStyle}>Activity</label>
+                <MultiSelectDropdown
+                    ariaLabel="Activity filter"
+                    placeholder="All"
+                    options={[
+                        { value: 'new', label: 'New' },
+                        { value: 'updated', label: 'Updated' },
+                        { value: 'none', label: 'Other' },
+                    ]}
+                    selected={filters.activity || []}
+                    onChange={(next) => setArrayField('activity', next)}
+                    width={160}
+                />
+            </div>
+
+            {activeFilterCount > 0 && (
+                <button
+                    type="button"
+                    onClick={() => setFilters({})}
+                    className="btn-secondary"
+                    style={{ alignSelf: 'flex-end', padding: '4px 12px', fontSize: '12px' }}
+                >
+                    Clear filters
+                </button>
+            )}
+        </>
+    );
+
     const columns: ListColumn<SupportIssueWithCustomer>[] = useMemo(() => [
         { 
             header: 'Customer', 
@@ -1052,16 +1253,23 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         <GenericListPage<SupportIssueWithCustomer>
             pageId="support"
             title="Support Issues"
-            items={allIssues}
+            // Items are already filtered/sorted/paged here in the page so the
+            // pagination total reflects the full filtered set, not the page slice.
+            items={pagedIssues}
             loading={loading}
             filterPlaceholder="Filter issues by description or customer..."
-            filterPredicate={(d, query) =>
-                d.description.toLowerCase().includes(query.toLowerCase()) ||
-                d.customerName.toLowerCase().includes(query.toLowerCase()) ||
-                (d.priority || '').toLowerCase().includes(query.toLowerCase()) ||
-                (d.status || '').toLowerCase().includes(query.toLowerCase())
-            }
+            // Filter + sort are owned by SupportPage (see filteredIssues / sortedIssues
+            // memos above) — GenericListPage just passes the input/header events
+            // through to onFilterChange / onSortChange.
+            filterPredicate={() => true}
             sortOptions={sortOptions}
+            disableClientSort
+            onSortChange={handleSortChange}
+            onFilterChange={handleFilterChange}
+            collapsible
+            activeFilterCount={activeFilterCount}
+            nameFilterLabel="Filter"
+            renderFilterGroups={renderFilterGroups}
             onItemClick={(d) => {
                 if (d.isJira && d.url) {
                     window.open(d.url, '_blank');
@@ -1098,8 +1306,18 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                     : []
                 )
             ]}
-            renderBelowControls={renderAIResults}
-            renderAboveList={renderCreateForm}
+            // Create form + AI results render ABOVE the list (outside the
+            // collapsible filter region) so they remain visible when filters
+            // are hidden via the chevron / pull-tab.
+            renderAboveList={() => (
+                <>
+                    {renderCreateForm()}
+                    {renderAIResults()}
+                </>
+            )}
+            renderBelowList={() => (
+                <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />
+            )}
             emptyMessage="No support issues tracked."
             loadingMessage="Loading support issues..."
         />

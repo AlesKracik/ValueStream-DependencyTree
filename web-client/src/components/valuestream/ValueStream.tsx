@@ -4,7 +4,8 @@ import type { Node } from '@xyflow/react';
 import { parseISO, differenceInDays } from 'date-fns';
 import '@xyflow/react/dist/style.css';
 
-import { useGraphLayout } from '../../hooks/useGraphLayout';
+import { useGraphLayout, type DashboardFilters } from '../../hooks/useGraphLayout';
+import { MultiSelectDropdown } from '../common/MultiSelectDropdown';
 import type { ValueStreamData, Customer, WorkItem, Team, ValueStreamViewState, ValueStreamParameters, Issue } from '@valuestream/shared-types';
 import { CustomerNode } from '../nodes/CustomerNode';
 import { WorkItemNode } from '../nodes/WorkItemNode';
@@ -116,6 +117,29 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         endSprintId: currentValueStream?.parameters?.endSprintId || ''
     }), [currentValueStream]);
 
+    // Pack the new WorkItems-list-style filters into a single object so the
+    // useGraphLayout signature stays manageable. NaN means "no bound" — the
+    // hook treats !Number.isFinite as unset.
+    const dashboardFilters = useMemo<DashboardFilters>(() => {
+        const num = (s: string | undefined): number => (s !== undefined && s !== '' ? Number(s) : NaN);
+        return {
+            maxTcv: num(viewState.maxTcvFilter),
+            minPriority: num(viewState.minPriorityFilter),
+            maxPriority: num(viewState.maxPriorityFilter),
+            minEffort: num(viewState.minEffortFilter),
+            maxEffort: num(viewState.maxEffortFilter),
+            statuses: viewState.statusFilter,
+            releasedSprintIds: viewState.releasedSprintIds,
+            priorityMetric: viewState.prioritizationMetric,
+        };
+    }, [
+        viewState.maxTcvFilter,
+        viewState.minPriorityFilter, viewState.maxPriorityFilter,
+        viewState.minEffortFilter, viewState.maxEffortFilter,
+        viewState.statusFilter, viewState.releasedSprintIds,
+        viewState.prioritizationMetric,
+    ]);
+
     const { nodes, edges } = useGraphLayout(
         data,
         hoveredNodeId,
@@ -130,7 +154,8 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         viewState.minScoreFilter ? Number(viewState.minScoreFilter) : 0,
         viewState.selectedNodeId || null,
         baseParams,
-        viewState.prioritizationMetric
+        viewState.prioritizationMetric,
+        dashboardFilters
     );
 
     const handleFitView = useCallback(() => {
@@ -268,16 +293,38 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         handleFitView();
     }, [handleFitView]);
 
-    const [localFilters, setLocalFilters] = useState({
+    // localFilters holds the debounced text + numeric inputs. Every value the
+    // user types into a free-text or range input is staged here first, then
+    // pushed to viewState 500ms after the last keystroke. Multi-selects (status,
+    // released sprints) and the metric toggle update viewState directly.
+    type LocalFilters = {
+        customerFilter: string;
+        workItemFilter: string;
+        teamFilter: string;
+        issueFilter: string;
+        minTcvFilter: string;
+        maxTcvFilter: string;
+        minPriorityFilter: string;
+        maxPriorityFilter: string;
+        minEffortFilter: string;
+        maxEffortFilter: string;
+    };
+    const [localFilters, setLocalFilters] = useState<LocalFilters>(() => ({
         customerFilter: viewState.customerFilter,
         workItemFilter: viewState.workItemFilter,
         teamFilter: viewState.teamFilter,
         issueFilter: viewState.issueFilter,
         minTcvFilter: viewState.minTcvFilter,
-        minScoreFilter: viewState.minScoreFilter
-    });
+        maxTcvFilter: viewState.maxTcvFilter ?? '',
+        minPriorityFilter: viewState.minPriorityFilter ?? '',
+        maxPriorityFilter: viewState.maxPriorityFilter ?? '',
+        minEffortFilter: viewState.minEffortFilter ?? '',
+        maxEffortFilter: viewState.maxEffortFilter ?? '',
+    }));
 
     useEffect(() => {
+        // Sync local (debounced) state from external viewState changes — e.g. when
+        // a saved value-stream parameter set is loaded.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setLocalFilters({
             customerFilter: viewState.customerFilter,
@@ -285,7 +332,11 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
             teamFilter: viewState.teamFilter,
             issueFilter: viewState.issueFilter,
             minTcvFilter: viewState.minTcvFilter,
-            minScoreFilter: viewState.minScoreFilter
+            maxTcvFilter: viewState.maxTcvFilter ?? '',
+            minPriorityFilter: viewState.minPriorityFilter ?? '',
+            maxPriorityFilter: viewState.maxPriorityFilter ?? '',
+            minEffortFilter: viewState.minEffortFilter ?? '',
+            maxEffortFilter: viewState.maxEffortFilter ?? '',
         });
     }, [
         viewState.customerFilter,
@@ -293,7 +344,11 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         viewState.teamFilter,
         viewState.issueFilter,
         viewState.minTcvFilter,
-        viewState.minScoreFilter
+        viewState.maxTcvFilter,
+        viewState.minPriorityFilter,
+        viewState.maxPriorityFilter,
+        viewState.minEffortFilter,
+        viewState.maxEffortFilter,
     ]);
 
     // Debounce effect to update global viewState
@@ -307,8 +362,37 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         return () => clearTimeout(timer);
     }, [localFilters, setViewState]);
 
-    const handleFilterChange = (key: string, value: string) => {
+    const handleFilterChange = (key: keyof LocalFilters, value: string) => {
         setLocalFilters(prev => ({ ...prev, [key]: value }));
+    };
+
+    const setStatusFilter = (next: string[]) => {
+        setViewState(s => ({ ...s, statusFilter: next.length > 0 ? next : undefined }));
+    };
+    const setReleasedSprintFilter = (next: string[]) => {
+        setViewState(s => ({ ...s, releasedSprintIds: next.length > 0 ? next : undefined }));
+    };
+
+    // Multi-select options that depend on data come from the loaded sprints.
+    const releasedOptions = useMemo(() => {
+        const sprints = (data?.sprints || []).filter(s => !s.is_archived);
+        return [
+            { value: 'unreleased', label: 'Unreleased' },
+            ...sprints.map(s => ({ value: s.id, label: s.name })),
+        ];
+    }, [data]);
+
+    const STATUS_OPTIONS = [
+        { value: 'Backlog', label: 'Backlog' },
+        { value: 'Planning', label: 'Planning' },
+        { value: 'Development', label: 'Development' },
+        { value: 'Done', label: 'Done' },
+    ];
+
+    const METRIC_LABEL: Record<ValueStreamViewState['prioritizationMetric'], string> = {
+        score: 'Score',
+        aha_score: 'Product Value',
+        stackrank: 'Stack Rank',
     };
 
     // Count active *filters* (not visualization toggles) so the user can tell at a glance
@@ -319,8 +403,11 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         (viewState.teamFilter ? 1 : 0) +
         (viewState.issueFilter ? 1 : 0) +
         (viewState.releasedFilter !== 'all' ? 1 : 0) +
-        (viewState.minTcvFilter ? 1 : 0) +
-        (viewState.minScoreFilter ? 1 : 0);
+        (viewState.releasedSprintIds && viewState.releasedSprintIds.length > 0 ? 1 : 0) +
+        (viewState.statusFilter && viewState.statusFilter.length > 0 ? 1 : 0) +
+        (viewState.minTcvFilter || viewState.maxTcvFilter ? 1 : 0) +
+        (viewState.minPriorityFilter || viewState.maxPriorityFilter ? 1 : 0) +
+        (viewState.minEffortFilter || viewState.maxEffortFilter ? 1 : 0);
 
     if (loading && !data) return <div>Loading ValueStream...</div>;
     if (error) return <div>Error loading data: {error.message}</div>;
@@ -412,39 +499,82 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                         </div>
                     </div>
 
-                    {/* Status & Metrics Group */}
+                    {/*
+                      Work-item filters mirroring the WorkItems list page:
+                      Priority / Effort / Score / TCV ranges, plus Status and
+                      Released multi-selects. Each range is a min–max pair; the
+                      Priority range targets the field selected by the metric
+                      toggle (in the Visualization group).
+                    */}
                     <div className={styles.filterGroup}>
-                        <label>Status & Metrics</label>
-                        <div style={{ display: 'flex', gap: '12px' }}>
-                            <select
-                                value={viewState.releasedFilter}
-                                onChange={e => setViewState((s: ValueStreamViewState) => ({ ...s, releasedFilter: e.target.value as 'all' | 'released' | 'unreleased' }))}
-                                style={{ width: '150px' }}
-                            >
-                                <option value="all">Release: All</option>
-                                <option value="released">Release: Yes</option>
-                                <option value="unreleased">Release: No</option>
-                            </select>
-                            
-                            <input
-                                type="number"
-                                placeholder="Min TCV"
-                                value={viewState.minTcvFilter}
-                                onChange={e => setViewState(s => ({ ...s, minTcvFilter: e.target.value }))}
-                                style={{ width: '100px' }}
-                                min="0"
-                            />
-                            
-                            <input
-                                type="number"
-                                placeholder="Min Score"
-                                value={viewState.minScoreFilter}
-                                onChange={e => setViewState(s => ({ ...s, minScoreFilter: e.target.value }))}
-                                style={{ width: '100px' }}
-                                min="0"
-                                step="0.1"
-                            />
+                        <label>{METRIC_LABEL[viewState.prioritizationMetric]}</label>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <input aria-label={`Min ${METRIC_LABEL[viewState.prioritizationMetric]}`}
+                                type="number" placeholder="min"
+                                value={localFilters.minPriorityFilter}
+                                onChange={e => handleFilterChange('minPriorityFilter', e.target.value)}
+                                style={{ width: '90px' }} />
+                            <span style={{ color: 'var(--text-muted)' }}>–</span>
+                            <input aria-label={`Max ${METRIC_LABEL[viewState.prioritizationMetric]}`}
+                                type="number" placeholder="max"
+                                value={localFilters.maxPriorityFilter}
+                                onChange={e => handleFilterChange('maxPriorityFilter', e.target.value)}
+                                style={{ width: '90px' }} />
                         </div>
+                    </div>
+
+                    <div className={styles.filterGroup}>
+                        <label>Effort (MDs)</label>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <input aria-label="Min effort" type="number" placeholder="min"
+                                value={localFilters.minEffortFilter}
+                                onChange={e => handleFilterChange('minEffortFilter', e.target.value)}
+                                style={{ width: '90px' }} />
+                            <span style={{ color: 'var(--text-muted)' }}>–</span>
+                            <input aria-label="Max effort" type="number" placeholder="max"
+                                value={localFilters.maxEffortFilter}
+                                onChange={e => handleFilterChange('maxEffortFilter', e.target.value)}
+                                style={{ width: '90px' }} />
+                        </div>
+                    </div>
+
+                    <div className={styles.filterGroup}>
+                        <label>TCV ($)</label>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <input aria-label="Min TCV" type="number" placeholder="min"
+                                value={localFilters.minTcvFilter}
+                                onChange={e => handleFilterChange('minTcvFilter', e.target.value)}
+                                style={{ width: '90px' }} min="0" />
+                            <span style={{ color: 'var(--text-muted)' }}>–</span>
+                            <input aria-label="Max TCV" type="number" placeholder="max"
+                                value={localFilters.maxTcvFilter}
+                                onChange={e => handleFilterChange('maxTcvFilter', e.target.value)}
+                                style={{ width: '90px' }} min="0" />
+                        </div>
+                    </div>
+
+                    <div className={styles.filterGroup}>
+                        <label>Status</label>
+                        <MultiSelectDropdown
+                            ariaLabel="Status filter"
+                            placeholder="All statuses"
+                            options={STATUS_OPTIONS}
+                            selected={viewState.statusFilter || []}
+                            onChange={setStatusFilter}
+                            width={170}
+                        />
+                    </div>
+
+                    <div className={styles.filterGroup}>
+                        <label>Released in</label>
+                        <MultiSelectDropdown
+                            ariaLabel="Released filter"
+                            placeholder="All sprints"
+                            options={releasedOptions}
+                            selected={viewState.releasedSprintIds || []}
+                            onChange={setReleasedSprintFilter}
+                            width={200}
+                        />
                     </div>
 
                     {/* Visualization Toggles */}

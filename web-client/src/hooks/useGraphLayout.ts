@@ -1,6 +1,8 @@
 import type { ValueStreamData, ValueStreamParameters, WorkItemPriorityMetric } from '@valuestream/shared-types';
-import { useGraphFilters } from './useGraphFilters';
+import { useGraphFilters, type DashboardFilters } from './useGraphFilters';
 import { useGraphBuilder } from './useGraphBuilder';
+
+export type { DashboardFilters } from './useGraphFilters';
 
 export function useGraphLayout(
     data: ValueStreamData | null,
@@ -16,7 +18,8 @@ export function useGraphLayout(
     minScore: number = 0,
     selectedNodeId: string | null = null,
     baseParams: ValueStreamParameters | null = null,
-    prioritizationMetric: WorkItemPriorityMetric = 'score'
+    prioritizationMetric: WorkItemPriorityMetric = 'score',
+    dashboardFilters?: DashboardFilters
 ) {
     const filters = useGraphFilters(
         data,
@@ -29,7 +32,8 @@ export function useGraphLayout(
         minScore,
         selectedNodeId,
         baseParams,
-        showDependencies
+        showDependencies,
+        dashboardFilters
     );
 
     return useGraphBuilder(data, filters, hoveredNodeId, sprintOffset, showDependencies, prioritizationMetric);
