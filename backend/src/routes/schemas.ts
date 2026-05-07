@@ -169,3 +169,35 @@ export const WorkItemListQuery = Type.Object({
   customerId: Type.Optional(Type.String()),
 }, { additionalProperties: true });
 export type WorkItemListQueryType = Static<typeof WorkItemListQuery>;
+
+// ── Customer list query ─────────────────────────────────────────────────────
+// Querystring schema for GET /api/data/customers. Mirrors WorkItemListQuery's
+// shape: free-text name filter, per-attribute range filters, sort, and optional
+// pagination. Numbers arrive as strings and are coerced by the query builder.
+export const CustomerListQuery = Type.Object({
+  // Free-text filter on name (case-insensitive substring, regex chars escaped)
+  name: Type.Optional(Type.String()),
+
+  // Per-attribute range filters on stored TCV fields
+  minExistingTcv: Type.Optional(Type.String()),
+  maxExistingTcv: Type.Optional(Type.String()),
+  minPotentialTcv: Type.Optional(Type.String()),
+  maxPotentialTcv: Type.Optional(Type.String()),
+  // Total = existing + potential, computed via $expr at query time
+  minTotalTcv: Type.Optional(Type.String()),
+  maxTotalTcv: Type.Optional(Type.String()),
+
+  // Sort
+  sortBy: Type.Optional(Type.String()),
+  sortOrder: Type.Optional(Type.Union([Type.Literal('asc'), Type.Literal('desc')])),
+
+  // Pagination (1-based page index). Both must be set to enable pagination;
+  // when omitted, the legacy unpaginated behaviour (with the 500-item threshold)
+  // is preserved.
+  page: Type.Optional(Type.String()),
+  pageSize: Type.Optional(Type.String()),
+
+  // Legacy
+  customerFilter: Type.Optional(Type.String()),
+}, { additionalProperties: true });
+export type CustomerListQueryType = Static<typeof CustomerListQuery>;

@@ -3,8 +3,8 @@ import { maskSettings, augmentConfig, logQuery } from '../utils/configHelpers';
 import { getDb } from '../utils/mongoServer';
 import { computeMetricsFromPrecomputed, recomputeScoresForWorkItems } from '../services/metricsService';
 import { assignMissingQuarters } from '../services/sprintService';
-import { fetchWithThreshold, buildMongoQuery, applyValueStreamFilters, buildWorkspaceQueries, buildWorkItemSort } from '../utils/dbHelpers';
-import { WorkItemListQuery, WorkItemListQueryType } from './schemas';
+import { fetchWithThreshold, buildMongoQuery, applyValueStreamFilters, buildWorkspaceQueries, buildWorkItemSort, buildCustomerSort } from '../utils/dbHelpers';
+import { WorkItemListQuery, WorkItemListQueryType, CustomerListQuery, CustomerListQueryType } from './schemas';
 
 export const dataRoutes: FastifyPluginAsync = async (fastify) => {
 
@@ -23,11 +23,39 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
     return reply.send({ success: true, settings: maskSettings(settings) });
   });
 
-  fastify.get('/api/data/customers', async (request, reply) => {
+  fastify.get<{ Querystring: CustomerListQueryType }>('/api/data/customers', {
+    schema: { querystring: CustomerListQuery }
+  }, async (request, reply) => {
     const db = await getAppDb();
-    const query = buildMongoQuery(request.query || {}, 'customers');
-    const docs = await fetchWithThreshold(db.collection('customers'), query, 'customers');
-    return reply.send(docs.map(({ _id, ...rest }) => rest));
+    const q = request.query || {};
+    const query = buildMongoQuery(q, 'customers');
+    const sort = buildCustomerSort(q);
+
+    // Mirror the workItems endpoint pagination contract: both page and pageSize
+    // must be valid positive numbers to engage; otherwise fall back to the
+    // legacy threshold-protected fetch so existing callers are unaffected.
+    const pageNum = Number(q.page);
+    const pageSizeNum = Number(q.pageSize);
+    const paginate =
+      Number.isFinite(pageNum) && pageNum >= 1 &&
+      Number.isFinite(pageSizeNum) && pageSizeNum >= 1;
+
+    if (paginate) {
+      const collection = db.collection('customers');
+      const total = await collection.countDocuments(query);
+
+      let cursor = collection.find(query);
+      if (sort) cursor = cursor.sort(sort);
+      cursor = cursor.skip((pageNum - 1) * pageSizeNum).limit(pageSizeNum);
+      const pageDocs = await cursor.toArray();
+      const customers = pageDocs.map(({ _id, ...rest }) => rest);
+
+      return reply.send({ customers, total, page: pageNum, pageSize: pageSizeNum });
+    }
+
+    const docs = await fetchWithThreshold(db.collection('customers'), query, 'customers', sort);
+    const customers = docs.map(({ _id, ...rest }) => rest);
+    return reply.send({ customers, total: customers.length });
   });
 
   fastify.get('/api/data/teams', async (request, reply) => {

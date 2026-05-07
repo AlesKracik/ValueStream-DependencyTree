@@ -232,6 +232,10 @@ export function useValueStreamData(
                     
                     if (collection === 'settings') return { settings: json.settings };
                     if (collection === 'workItems') return { workItems: json.workItems, metrics: json.metrics };
+                    // /api/data/customers returns { customers, total } since the list page got
+                    // backend filtering/paging. Tolerate both shapes so a stale backend or the
+                    // legacy collections (teams/issues/sprints/valueStreams) keep working.
+                    if (collection === 'customers') return { customers: Array.isArray(json) ? json : (json.customers || []) };
                     return { [collection]: json };
                 });
 

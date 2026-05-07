@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fetchWithThreshold, buildMongoQuery, applyValueStreamFilters, buildWorkspaceQueries, buildWorkItemSort, DATA_THRESHOLD } from '../dbHelpers';
+import { fetchWithThreshold, buildMongoQuery, applyValueStreamFilters, buildWorkspaceQueries, buildWorkItemSort, buildCustomerSort, DATA_THRESHOLD } from '../dbHelpers';
 
 describe('dbHelpers', () => {
 
@@ -315,14 +315,110 @@ describe('dbHelpers', () => {
         expect(q.$or).toEqual([{ released_in_sprint_id: { $in: ['s1'] } }]);
       });
 
-      it('does not apply work-item filters to other collections', () => {
-        // Customers uses customerFilter for name; the work-item-specific `name`, `minScore`,
-        // and `status` params should be ignored here.
+      it('does not apply work-item-only filters to other collections', () => {
+        // `name` is a shared list-page filter (both collections honor it), but
+        // the work-item-specific `minScore` and `status` params must not bleed
+        // into the customers query.
         const q = buildMongoQuery({ name: 'foo', minScore: '10', status: ['Backlog'] }, 'customers');
-        expect(q.name).toBeUndefined();
         expect(q.calculated_score).toBeUndefined();
         expect(q.status).toBeUndefined();
+        // Sanity: `name` is honored by the customer branch as a regex filter.
+        expect(q.name?.$regex).toBe('foo');
       });
+    });
+  });
+
+  describe('buildMongoQuery — customers list-page filters', () => {
+    it('builds case-insensitive name regex with regex special chars escaped', () => {
+      const q = buildMongoQuery({ name: 'A.B (test)' }, 'customers');
+      expect(q.name.$options).toBe('i');
+      expect(new RegExp(q.name.$regex).test('A.B (test)')).toBe(true);
+      // Dot is escaped — should not match arbitrary char.
+      expect(new RegExp(q.name.$regex).test('AXB (test)')).toBe(false);
+    });
+
+    it('list-page name overrides legacy customerFilter when both are set', () => {
+      const q = buildMongoQuery({ customerFilter: 'old', name: 'new' }, 'customers');
+      expect(q.name.$regex).toContain('new');
+    });
+
+    it('ignores empty / whitespace-only name', () => {
+      expect(buildMongoQuery({ name: '' }, 'customers').name).toBeUndefined();
+      expect(buildMongoQuery({ name: '   ' }, 'customers').name).toBeUndefined();
+    });
+
+    it('builds min/max range for existing_tcv', () => {
+      const q = buildMongoQuery({ minExistingTcv: '1000', maxExistingTcv: '5000' }, 'customers');
+      expect(q.existing_tcv).toEqual({ $gte: 1000, $lte: 5000 });
+    });
+
+    it('builds min-only range for potential_tcv', () => {
+      const q = buildMongoQuery({ minPotentialTcv: '500' }, 'customers');
+      expect(q.potential_tcv).toEqual({ $gte: 500 });
+    });
+
+    it('builds total_tcv via $expr summing existing_tcv + potential_tcv', () => {
+      const q = buildMongoQuery({ minTotalTcv: '2000', maxTotalTcv: '20000' }, 'customers');
+      expect(q.$expr).toBeDefined();
+      // Should be { $and: [{ $gte: [sum, 2000] }, { $lte: [sum, 20000] }] }
+      expect(q.$expr.$and).toHaveLength(2);
+      expect(q.$expr.$and[0].$gte[1]).toBe(2000);
+      expect(q.$expr.$and[1].$lte[1]).toBe(20000);
+      // Inner sum expression covers both fields with $ifNull guards.
+      const sumExpr = q.$expr.$and[0].$gte[0];
+      expect(sumExpr.$add).toBeDefined();
+    });
+
+    it('builds total_tcv with single bound (no $and wrapper)', () => {
+      const q = buildMongoQuery({ minTotalTcv: '2000' }, 'customers');
+      expect(q.$expr.$gte).toBeDefined();
+      expect(q.$expr.$gte[1]).toBe(2000);
+      expect(q.$expr.$and).toBeUndefined();
+    });
+
+    it('ignores empty range values', () => {
+      const q = buildMongoQuery({ minExistingTcv: '', maxPotentialTcv: '' }, 'customers');
+      expect(q.existing_tcv).toBeUndefined();
+      expect(q.potential_tcv).toBeUndefined();
+      expect(q.$expr).toBeUndefined();
+    });
+
+    it('does not apply customer filters to other collections', () => {
+      const q = buildMongoQuery({
+        name: 'foo',
+        minExistingTcv: '100',
+        minTotalTcv: '500',
+      }, 'workItems');
+      // 'name' on workItems is the work-item name filter — that's fine, but the
+      // tcv-range filters shouldn't bleed into workItems.
+      expect(q.existing_tcv).toBeUndefined();
+      expect(q.potential_tcv).toBeUndefined();
+      // No customer-specific $expr on workItems.
+      expect(q.$expr).toBeUndefined();
+    });
+  });
+
+  describe('buildCustomerSort', () => {
+    it('returns null when sortBy is missing or empty', () => {
+      expect(buildCustomerSort({})).toBeNull();
+      expect(buildCustomerSort({ sortBy: '' })).toBeNull();
+      expect(buildCustomerSort(null)).toBeNull();
+    });
+
+    it('returns null for unsupported sort keys', () => {
+      // 'total' would require an aggregation pipeline — intentionally unsupported.
+      expect(buildCustomerSort({ sortBy: 'total' })).toBeNull();
+      expect(buildCustomerSort({ sortBy: 'unknown' })).toBeNull();
+    });
+
+    it('maps known sort keys to MongoDB fields with default asc direction', () => {
+      expect(buildCustomerSort({ sortBy: 'name' })).toEqual({ name: 1 });
+      expect(buildCustomerSort({ sortBy: 'existing' })).toEqual({ existing_tcv: 1 });
+      expect(buildCustomerSort({ sortBy: 'potential' })).toEqual({ potential_tcv: 1 });
+    });
+
+    it('honors sortOrder=desc', () => {
+      expect(buildCustomerSort({ sortBy: 'existing', sortOrder: 'desc' })).toEqual({ existing_tcv: -1 });
     });
   });
 

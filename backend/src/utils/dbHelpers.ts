@@ -90,6 +90,28 @@ export function buildWorkItemSort(query: any): Record<string, 1 | -1> | null {
 }
 
 /**
+ * Sort-key → MongoDB field map for the customers list endpoint. Mirrors the
+ * shape of WORK_ITEM_SORT_FIELDS so the same calling pattern applies. 'total'
+ * is intentionally absent here — it would require an aggregation pipeline to
+ * sort by existing+potential. The list keeps name/existing/potential as the
+ * three sortable columns.
+ */
+const CUSTOMER_SORT_FIELDS: Record<string, string> = {
+    name: 'name',
+    existing: 'existing_tcv',
+    potential: 'potential_tcv',
+};
+
+export function buildCustomerSort(query: any): Record<string, 1 | -1> | null {
+    if (!query) return null;
+    const sortBy = String(query.sortBy || '');
+    const field = CUSTOMER_SORT_FIELDS[sortBy];
+    if (!field) return null;
+    const direction: 1 | -1 = query.sortOrder === 'desc' ? -1 : 1;
+    return { [field]: direction };
+}
+
+/**
  * Builds a MongoDB query from frontend query parameters.
  * Only maps filters that correspond to actual stored fields for a given collection.
  *
@@ -106,6 +128,48 @@ export function buildMongoQuery(query: any, collection: string): any {
 
     if (collection === 'teams' && query.teamFilter) {
         mongoQuery.name = { $regex: query.teamFilter, $options: 'i' };
+    }
+
+    // --- Customers list-page filters ---
+    // Mirror the work-items list-page contract: name (escaped regex), and per-
+    // attribute range filters on existing_tcv, potential_tcv, plus a synthetic
+    // total_tcv (existing + potential) expressed via $expr.
+    if (collection === 'customers') {
+        if (typeof query.name === 'string' && query.name.trim() !== '') {
+            const safe = query.name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            // If customerFilter already set name, prefer the more specific list-page name.
+            mongoQuery.name = { $regex: safe, $options: 'i' };
+        }
+
+        const applyRange = (field: string, minRaw: any, maxRaw: any) => {
+            const min = minRaw !== undefined && minRaw !== '' ? Number(minRaw) : NaN;
+            const max = maxRaw !== undefined && maxRaw !== '' ? Number(maxRaw) : NaN;
+            if (Number.isNaN(min) && Number.isNaN(max)) return;
+            const existing = mongoQuery[field] && typeof mongoQuery[field] === 'object' ? mongoQuery[field] : {};
+            if (!Number.isNaN(min)) existing.$gte = min;
+            if (!Number.isNaN(max)) existing.$lte = max;
+            mongoQuery[field] = existing;
+        };
+        applyRange('existing_tcv', query.minExistingTcv, query.maxExistingTcv);
+        applyRange('potential_tcv', query.minPotentialTcv, query.maxPotentialTcv);
+
+        // Total TCV (existing + potential). $expr lets us compare against the
+        // sum without materializing a stored field. $ifNull guards docs that
+        // omit one of the two TCV fields entirely.
+        const minTotal = query.minTotalTcv !== undefined && query.minTotalTcv !== '' ? Number(query.minTotalTcv) : NaN;
+        const maxTotal = query.maxTotalTcv !== undefined && query.maxTotalTcv !== '' ? Number(query.maxTotalTcv) : NaN;
+        if (!Number.isNaN(minTotal) || !Number.isNaN(maxTotal)) {
+            const sum = { $add: [{ $ifNull: ['$existing_tcv', 0] }, { $ifNull: ['$potential_tcv', 0] }] };
+            const exprs: any[] = [];
+            if (!Number.isNaN(minTotal)) exprs.push({ $gte: [sum, minTotal] });
+            if (!Number.isNaN(maxTotal)) exprs.push({ $lte: [sum, maxTotal] });
+            // If a $expr already exists (e.g. workspace minTcvFilter), AND-combine.
+            if (mongoQuery.$expr) {
+                mongoQuery.$expr = { $and: [mongoQuery.$expr, ...exprs] };
+            } else {
+                mongoQuery.$expr = exprs.length === 1 ? exprs[0] : { $and: exprs };
+            }
+        }
     }
 
     if (collection === 'workItems') {

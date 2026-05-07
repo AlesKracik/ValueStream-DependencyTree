@@ -152,7 +152,8 @@ const ValueStreamListRouteWrapper = createRouteWrapper({
 });
 
 const CustomerListRouteWrapper = createRouteWrapper({
-  collections: ['customers'],
+  // 'settings' is needed so the page-size from general.items_per_page drives pagination.
+  collections: ['customers', 'settings'],
   render: ({ state }) => <CustomerListPage data={state.data} loading={state.loading} />,
 });
 

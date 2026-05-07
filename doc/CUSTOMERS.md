@@ -59,6 +59,13 @@ erDiagram
 - **Min TCV Filter:** Global filter that hides customers (and their downstream trees) if their total TCV is below the threshold.
 - **Standalone Visibility:** Customers with no linked Work Items are only visible if no Work Item, Team, or Issue filters are active.
 
+### Customers List Page
+The Customers list page (`/customers`) is backend-filtered and paginated, mirroring the Work Items list:
+- **Filter bar (collapsible):** Name (case-insensitive substring), Existing TCV range, Potential TCV range, Total TCV range (`existing + potential`).
+- **Sort:** Name, Existing TCV, Potential TCV — server-side via `buildCustomerSort()` (the column-header click is forwarded to `/api/data/customers?sortBy=…&sortOrder=…`).
+- **Pagination:** `page` size comes from the per-user `general.items_per_page` setting (default 25). Page is reset to 1 whenever filters or sort change.
+- **Hook:** `web-client/src/hooks/useFilteredCustomers.ts` debounces filter changes, guards against out-of-order responses, and surfaces a separate `refetching` flag so the page stays mounted during background reloads (input focus is preserved while typing).
+
 ## Support Issues & Jira Integration
 The system allows tracking customer support health through both manual entries and Jira integration.
 

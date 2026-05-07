@@ -493,6 +493,139 @@ describe('Data Routes', () => {
     expect(json.total).toBe(5);
   });
 
+  it('GET /api/data/customers paginates and returns total when page+pageSize are provided', async () => {
+    const allDocs = Array.from({ length: 30 }, (_, i) => ({
+      id: `c${i}`, name: `Customer ${i}`, existing_tcv: i * 100, potential_tcv: 0,
+    }));
+
+    let observedSkip: number | undefined;
+    let observedLimit: number | undefined;
+
+    mockDb.collection = vi.fn((colName: string) => {
+      if (colName !== 'customers') {
+        return { find: vi.fn().mockReturnValue({ sort: vi.fn().mockReturnThis(), toArray: vi.fn().mockResolvedValue([]) }) };
+      }
+      return {
+        countDocuments: vi.fn().mockResolvedValue(allDocs.length),
+        find: vi.fn().mockReturnValue({
+          sort: vi.fn().mockReturnThis(),
+          skip: vi.fn().mockImplementation((n: number) => { observedSkip = n; return {
+            limit: vi.fn().mockImplementation((m: number) => { observedLimit = m; return {
+              toArray: vi.fn().mockResolvedValue(allDocs.slice(observedSkip!, observedSkip! + m)),
+            }; }),
+          }; }),
+          toArray: vi.fn().mockResolvedValue(allDocs),
+        }),
+      };
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/data/customers?page=2&pageSize=10',
+    });
+
+    expect(response.statusCode).toBe(200);
+    const json = JSON.parse(response.payload);
+    expect(json.total).toBe(30);
+    expect(json.page).toBe(2);
+    expect(json.pageSize).toBe(10);
+    expect(json.customers).toHaveLength(10);
+    expect(json.customers[0].id).toBe('c10');
+    expect(json.customers[9].id).toBe('c19');
+    expect(observedSkip).toBe(10);
+    expect(observedLimit).toBe(10);
+  });
+
+  it('GET /api/data/customers without pagination returns full set with total', async () => {
+    const allDocs = Array.from({ length: 5 }, (_, i) => ({ id: `c${i}`, name: `C${i}`, existing_tcv: i, potential_tcv: 0 }));
+    mockDb.collection = vi.fn((colName: string) => {
+      if (colName !== 'customers') {
+        return { find: vi.fn().mockReturnValue({ sort: vi.fn().mockReturnThis(), toArray: vi.fn().mockResolvedValue([]) }) };
+      }
+      return {
+        countDocuments: vi.fn().mockResolvedValue(allDocs.length),
+        find: vi.fn().mockReturnValue({
+          sort: vi.fn().mockReturnThis(),
+          toArray: vi.fn().mockResolvedValue(allDocs),
+        }),
+      };
+    });
+
+    const response = await app.inject({ method: 'GET', url: '/api/data/customers' });
+    expect(response.statusCode).toBe(200);
+    const json = JSON.parse(response.payload);
+    expect(json.customers).toHaveLength(5);
+    expect(json.total).toBe(5);
+  });
+
+  it('GET /api/data/customers forwards name + existing_tcv range to the Mongo query and sort', async () => {
+    let observedFilter: any = undefined;
+    let observedSort: any = undefined;
+
+    mockDb.collection = vi.fn((colName: string) => {
+      if (colName !== 'customers') {
+        return { find: vi.fn().mockReturnValue({ sort: vi.fn().mockReturnThis(), toArray: vi.fn().mockResolvedValue([]) }) };
+      }
+      return {
+        countDocuments: vi.fn().mockResolvedValue(0),
+        find: vi.fn().mockImplementation((filter: any) => {
+          observedFilter = filter;
+          return {
+            sort: vi.fn().mockImplementation((sort: any) => {
+              observedSort = sort;
+              return {
+                skip: vi.fn().mockReturnValue({
+                  limit: vi.fn().mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) }),
+                }),
+                toArray: vi.fn().mockResolvedValue([]),
+              };
+            }),
+            toArray: vi.fn().mockResolvedValue([]),
+          };
+        }),
+      };
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/data/customers?name=acme&minExistingTcv=1000&maxExistingTcv=10000&sortBy=existing&sortOrder=desc&page=1&pageSize=20',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(observedFilter.name.$regex).toBe('acme');
+    expect(observedFilter.existing_tcv).toEqual({ $gte: 1000, $lte: 10000 });
+    expect(observedSort).toEqual({ existing_tcv: -1 });
+  });
+
+  it('GET /api/data/customers forwards minTotalTcv to a $expr clause', async () => {
+    let observedFilter: any = undefined;
+
+    mockDb.collection = vi.fn((colName: string) => {
+      if (colName !== 'customers') {
+        return { find: vi.fn().mockReturnValue({ sort: vi.fn().mockReturnThis(), toArray: vi.fn().mockResolvedValue([]) }) };
+      }
+      return {
+        countDocuments: vi.fn().mockResolvedValue(0),
+        find: vi.fn().mockImplementation((filter: any) => {
+          observedFilter = filter;
+          return {
+            sort: vi.fn().mockReturnThis(),
+            toArray: vi.fn().mockResolvedValue([]),
+          };
+        }),
+      };
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/data/customers?minTotalTcv=2500',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(observedFilter.$expr).toBeDefined();
+    expect(observedFilter.$expr.$gte[1]).toBe(2500);
+  });
+
   it('should handle unconfigured App database gracefully', async () => {
     app.getSettings = vi.fn().mockResolvedValue({ persistence: { mongo: { app: { uri: '' } } } });
 
