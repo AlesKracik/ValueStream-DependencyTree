@@ -561,6 +561,35 @@ describe('dbHelpers', () => {
       expect(result.workItems.released_in_sprint_id).toBeDefined();
       expect(result.teams.name).toBeDefined();
     });
+
+    it('parentId narrows workItems to direct children', () => {
+      const result = buildWorkspaceQueries({ parentId: 'wi-parent' });
+      expect(result.workItems.parent_id).toBe('wi-parent');
+    });
+
+    it('rootsOnly=true matches missing/null/empty parent_id via $or', () => {
+      const result = buildWorkspaceQueries({ rootsOnly: true });
+      expect(result.workItems.$or).toEqual([
+        { parent_id: { $exists: false } },
+        { parent_id: null },
+        { parent_id: '' },
+      ]);
+    });
+
+    it('combines rootsOnly with releasedFilter=unreleased via $and so each $or stays independent', () => {
+      const result = buildWorkspaceQueries({ rootsOnly: true, releasedFilter: 'unreleased' });
+      // Two $or groups: unreleased + roots. Top-level $or is reserved for the
+      // single-group case, so we expect a $and-of-$or instead.
+      expect(result.workItems.$or).toBeUndefined();
+      expect(result.workItems.$and).toHaveLength(2);
+    });
+
+    it('ignores empty/falsy hierarchy filter values', () => {
+      const result = buildWorkspaceQueries({ parentId: '   ', rootsOnly: false });
+      expect(result.workItems.parent_id).toBeUndefined();
+      expect(result.workItems.$or).toBeUndefined();
+      expect(result.workItems.$and).toBeUndefined();
+    });
   });
 
   describe('applyValueStreamFilters', () => {

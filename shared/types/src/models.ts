@@ -580,6 +580,16 @@ export interface ValueStreamParameters {
   issueFilter: string;
   startSprintId?: string;
   endSprintId?: string;
+  /**
+   * Hierarchy filters. The three are mutually exclusive on the UI side; the
+   * backend simply ANDs whatever it receives.
+   *  - parentId: limit to direct children of this work item.
+   *  - subtreeOf: limit to every descendant of this work item (root excluded).
+   *  - rootsOnly: limit to top-level work items (no parent).
+   */
+  parentId?: string;
+  subtreeOf?: string;
+  rootsOnly?: boolean;
 }
 
 export interface ValueStreamEntity {
@@ -651,6 +661,15 @@ export interface ValueStreamViewState {
   /** When true, the filters/visualization bar in the Value Stream view is hidden to
    *  give the diagram more vertical room. The current filter values are preserved. */
   filtersCollapsed: boolean;
+  /**
+   * Live (non-persisted) hierarchy filters. Mutually exclusive on the UI side;
+   * mirrors the WorkItems list page contract. These narrow the already-loaded
+   * data on the client (the saved value-stream parameters drive server-side
+   * filtering separately).
+   */
+  parentId?: string;
+  subtreeOf?: string;
+  rootsOnly?: boolean;
 }
 
 export interface ValueStreamDataState {

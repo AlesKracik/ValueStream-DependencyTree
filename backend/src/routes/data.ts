@@ -187,6 +187,16 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
         // can now be pushed to the DB layer — no need to fetch everything.
         const queries = buildWorkspaceQueries(params);
 
+        // Subtree hierarchy filter — resolve all descendants of the chosen root
+        // via $graphLookup and AND that into the workItems query. Empty subtree
+        // (root not found) collapses to id $in [] so the workItems list is empty,
+        // which is the correct behaviour for "show only what's under X".
+        if (typeof params.subtreeOf === 'string' && params.subtreeOf.trim() !== '') {
+            await ensureHierarchyIndex(db);
+            const descendants = await getDescendantIds(db, params.subtreeOf.trim());
+            queries.workItems.id = { $in: descendants };
+        }
+
         const [customers, workItems, teams, issues] = await Promise.all([
           logQuery('Customers', 'customers', 'find', db.collection('customers').find(queries.customers).toArray()),
           logQuery('WorkItems', 'workItems', 'find', db.collection('workItems').find(queries.workItems).toArray()),

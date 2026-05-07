@@ -41,7 +41,10 @@ export const ValueStreamEditPage: React.FC<ValueStreamEditPageProps> = ({
             teamFilter: '',
             issueFilter: '',
             startSprintId: '',
-            endSprintId: ''
+            endSprintId: '',
+            parentId: '',
+            subtreeOf: '',
+            rootsOnly: false,
         }
     });
 
@@ -80,6 +83,35 @@ export const ValueStreamEditPage: React.FC<ValueStreamEditPageProps> = ({
         } else {
             updateValueStream(ValueStream.id, { parameters: newParams });
         }
+    };
+
+    /**
+     * Hierarchy filter is presented as a single picker + scope toggle, but
+     * stored as two mutually-exclusive fields (parentId / subtreeOf). Setting
+     * one always clears the other and clears rootsOnly so the three filters
+     * remain mutually exclusive on the server too.
+     */
+    const setHierarchyParent = (id: string, scope: 'direct' | 'subtree') => {
+        if (!ValueStream) return;
+        const newParams = {
+            ...ValueStream.parameters,
+            parentId: id && scope === 'direct' ? id : '',
+            subtreeOf: id && scope === 'subtree' ? id : '',
+            rootsOnly: false,
+        };
+        if (isNew) setDraft({ ...draft, parameters: newParams });
+        else updateValueStream(ValueStream.id, { parameters: newParams });
+    };
+    const setRootsOnly = (rootsOnly: boolean) => {
+        if (!ValueStream) return;
+        const newParams = {
+            ...ValueStream.parameters,
+            rootsOnly,
+            parentId: rootsOnly ? '' : ValueStream.parameters.parentId,
+            subtreeOf: rootsOnly ? '' : ValueStream.parameters.subtreeOf,
+        };
+        if (isNew) setDraft({ ...draft, parameters: newParams });
+        else updateValueStream(ValueStream.id, { parameters: newParams });
     };
 
     return (
@@ -208,6 +240,56 @@ export const ValueStreamEditPage: React.FC<ValueStreamEditPageProps> = ({
                                     <input type="number" value={ValueStream.parameters.minScoreFilter || ''} onChange={e => updateParam('minScoreFilter', e.target.value)} placeholder="0" />
                                 </label>
                             </div>
+
+                            {(() => {
+                                const params = ValueStream.parameters;
+                                const pickedParent = params.parentId || params.subtreeOf || '';
+                                const parentScope: 'direct' | 'subtree' = params.subtreeOf ? 'subtree' : 'direct';
+                                const sortedWorkItems = (data?.workItems ?? []).slice().sort((a, b) => a.name.localeCompare(b.name));
+                                const pickerDisabled = !!params.rootsOnly;
+                                return (
+                                    <div style={{ marginTop: '24px', borderTop: '1px solid var(--border-secondary)', paddingTop: '16px' }}>
+                                        <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', color: 'var(--text-primary)' }}>Hierarchy</h3>
+                                        <div style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '12px' }}>
+                                            Limit the dashboard to part of the work-item tree. The three controls are mutually exclusive.
+                                        </div>
+                                        <div className={styles.formGrid}>
+                                            <label>
+                                                Parent Work Item:
+                                                <select
+                                                    value={pickedParent}
+                                                    disabled={pickerDisabled}
+                                                    onChange={e => setHierarchyParent(e.target.value, parentScope)}
+                                                >
+                                                    <option value="">— None —</option>
+                                                    {sortedWorkItems.map(w => (
+                                                        <option key={w.id} value={w.id}>{w.name}</option>
+                                                    ))}
+                                                </select>
+                                            </label>
+                                            <label>
+                                                Scope:
+                                                <select
+                                                    value={parentScope}
+                                                    disabled={!pickedParent || pickerDisabled}
+                                                    onChange={e => setHierarchyParent(pickedParent, e.target.value as 'direct' | 'subtree')}
+                                                >
+                                                    <option value="direct">Direct children only</option>
+                                                    <option value="subtree">Entire subtree (all descendants)</option>
+                                                </select>
+                                            </label>
+                                            <label style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px' }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={!!params.rootsOnly}
+                                                    onChange={e => setRootsOnly(e.target.checked)}
+                                                />
+                                                Roots only (no parent)
+                                            </label>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </section>
 
                     </div>

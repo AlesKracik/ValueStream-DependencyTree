@@ -285,6 +285,59 @@ describe('Data Routes', () => {
     );
   });
 
+  it('GET /api/workspace resolves valueStream.subtreeOf via $graphLookup and ANDs id $in into the workItems query', async () => {
+    let observedWorkItemFilter: any = undefined;
+    let observedAggregatePipeline: any = undefined;
+
+    const createCollection = (data: any[]) => ({
+      find: vi.fn().mockReturnValue({
+        sort: vi.fn().mockReturnThis(),
+        toArray: vi.fn().mockResolvedValue(data),
+      }),
+      updateOne: vi.fn().mockResolvedValue(true),
+    });
+
+    mockDb.collection = vi.fn((colName: string) => {
+      if (colName === 'valueStreams') {
+        return createCollection([
+          { id: 'vs1', name: 'Subtree VS', parameters: { subtreeOf: 'wi-root' } }
+        ]);
+      }
+      if (colName === 'workItems') {
+        return {
+          createIndex: vi.fn().mockResolvedValue(true),
+          aggregate: vi.fn().mockImplementation((pipeline: any) => {
+            observedAggregatePipeline = pipeline;
+            return {
+              toArray: vi.fn().mockResolvedValue([
+                { descendants: [{ id: 'wi-child' }, { id: 'wi-grandchild' }] }
+              ]),
+            };
+          }),
+          find: vi.fn().mockImplementation((filter: any) => {
+            observedWorkItemFilter = filter;
+            return {
+              sort: vi.fn().mockReturnThis(),
+              toArray: vi.fn().mockResolvedValue([]),
+            };
+          }),
+        };
+      }
+      return createCollection([]);
+    });
+
+    const response = await app.inject({ method: 'GET', url: '/api/workspace?valueStreamId=vs1' });
+    expect(response.statusCode).toBe(200);
+
+    expect(observedAggregatePipeline[0]).toEqual({ $match: { id: 'wi-root' } });
+    expect(observedAggregatePipeline[1].$graphLookup).toMatchObject({
+      from: 'workItems',
+      connectFromField: 'id',
+      connectToField: 'parent_id',
+    });
+    expect(observedWorkItemFilter.id).toEqual({ $in: ['wi-child', 'wi-grandchild'] });
+  });
+
   it('should return all data when valueStreamId has no parameters', async () => {
     const createMockCollection = (data: any[]) => ({
       find: vi.fn().mockReturnValue({

@@ -6,6 +6,7 @@ import '@xyflow/react/dist/style.css';
 
 import { useGraphLayout, type DashboardFilters } from '../../hooks/useGraphLayout';
 import { MultiSelectDropdown } from '../common/MultiSelectDropdown';
+import { SearchableDropdown } from '../common/SearchableDropdown';
 import type { ValueStreamData, Customer, WorkItem, Team, ValueStreamViewState, ValueStreamParameters, Issue } from '@valuestream/shared-types';
 import { CustomerNode } from '../nodes/CustomerNode';
 import { WorkItemNode } from '../nodes/WorkItemNode';
@@ -114,7 +115,10 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         teamFilter: currentValueStream?.parameters?.teamFilter || '',
         issueFilter: currentValueStream?.parameters?.issueFilter || '',
         startSprintId: currentValueStream?.parameters?.startSprintId || '',
-        endSprintId: currentValueStream?.parameters?.endSprintId || ''
+        endSprintId: currentValueStream?.parameters?.endSprintId || '',
+        parentId: currentValueStream?.parameters?.parentId || '',
+        subtreeOf: currentValueStream?.parameters?.subtreeOf || '',
+        rootsOnly: currentValueStream?.parameters?.rootsOnly || false,
     }), [currentValueStream]);
 
     // Pack the new WorkItems-list-style filters into a single object so the
@@ -131,6 +135,9 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
             statuses: viewState.statusFilter,
             releasedSprintIds: viewState.releasedSprintIds,
             priorityMetric: viewState.prioritizationMetric,
+            parentId: viewState.parentId,
+            subtreeOf: viewState.subtreeOf,
+            rootsOnly: viewState.rootsOnly,
         };
     }, [
         viewState.maxTcvFilter,
@@ -138,6 +145,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         viewState.minEffortFilter, viewState.maxEffortFilter,
         viewState.statusFilter, viewState.releasedSprintIds,
         viewState.prioritizationMetric,
+        viewState.parentId, viewState.subtreeOf, viewState.rootsOnly,
     ]);
 
     const { nodes, edges } = useGraphLayout(
@@ -373,6 +381,28 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         setViewState(s => ({ ...s, releasedSprintIds: next.length > 0 ? next : undefined }));
     };
 
+    // Hierarchy filter helpers — mirror the WorkItems list page contract.
+    // The three fields (parentId / subtreeOf / rootsOnly) are mutually exclusive;
+    // setting one clears the others so the merge with saved baseParams stays clean.
+    const setHierarchyParent = (id: string | undefined, scope: 'direct' | 'subtree') => {
+        setViewState(s => ({
+            ...s,
+            parentId: id && scope === 'direct' ? id : undefined,
+            subtreeOf: id && scope === 'subtree' ? id : undefined,
+            rootsOnly: undefined,
+        }));
+    };
+    const liveParentId = viewState.parentId ?? viewState.subtreeOf ?? '';
+    const liveParentScope: 'direct' | 'subtree' = viewState.subtreeOf ? 'subtree' : 'direct';
+    const sortedWorkItemsForPicker = useMemo(
+        () => (data?.workItems ?? []).slice().sort((a, b) => a.name.localeCompare(b.name)).map(w => ({ id: w.id, label: w.name })),
+        [data?.workItems],
+    );
+    const liveParentLabel = useMemo(
+        () => (liveParentId ? (data?.workItems ?? []).find(w => w.id === liveParentId)?.name ?? '' : ''),
+        [liveParentId, data?.workItems],
+    );
+
     // Multi-select options that depend on data come from the loaded sprints.
     const releasedOptions = useMemo(() => {
         const sprints = (data?.sprints || []).filter(s => !s.is_archived);
@@ -575,6 +605,84 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                             onChange={setReleasedSprintFilter}
                             width={200}
                         />
+                    </div>
+
+                    <div className={styles.filterGroup}>
+                        <label>Hierarchy</label>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <div style={{ width: 200, opacity: viewState.rootsOnly ? 0.5 : 1, pointerEvents: viewState.rootsOnly ? 'none' : 'auto' }}>
+                                <SearchableDropdown
+                                    options={sortedWorkItemsForPicker}
+                                    onSelect={(id) => setHierarchyParent(id || undefined, liveParentScope)}
+                                    placeholder="Children of..."
+                                    initialValue={liveParentLabel}
+                                    clearOnSelect={false}
+                                />
+                            </div>
+                            <div
+                                role="radiogroup"
+                                aria-label="Hierarchy scope"
+                                style={{
+                                    display: 'inline-flex',
+                                    border: '1px solid var(--border-primary)',
+                                    borderRadius: 4,
+                                    overflow: 'hidden',
+                                    opacity: liveParentId ? 1 : 0.5,
+                                    pointerEvents: liveParentId ? 'auto' : 'none',
+                                }}
+                            >
+                                {(['direct', 'subtree'] as const).map((scope, i) => {
+                                    const active = liveParentScope === scope;
+                                    return (
+                                        <button
+                                            key={scope}
+                                            type="button"
+                                            role="radio"
+                                            aria-checked={active}
+                                            aria-label={scope === 'direct' ? 'Direct children only' : 'Entire subtree'}
+                                            onClick={() => setHierarchyParent(liveParentId, scope)}
+                                            style={{
+                                                padding: '4px 10px',
+                                                fontSize: 12,
+                                                background: active ? 'var(--accent-primary)' : 'transparent',
+                                                color: active ? 'white' : 'var(--text-primary)',
+                                                border: 'none',
+                                                borderLeft: i === 0 ? 'none' : '1px solid var(--border-primary)',
+                                                cursor: 'pointer',
+                                                fontWeight: active ? 600 : 400,
+                                            }}
+                                            title={scope === 'direct' ? 'Direct children only' : 'Entire subtree (all descendants)'}
+                                        >
+                                            {scope === 'direct' ? 'Direct' : 'Subtree'}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            {liveParentId && (
+                                <button
+                                    type="button"
+                                    onClick={() => setHierarchyParent(undefined, liveParentScope)}
+                                    className="btn-secondary"
+                                    style={{ padding: '4px 8px', fontSize: 11 }}
+                                    title="Clear hierarchy filter"
+                                >
+                                    ×
+                                </button>
+                            )}
+                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={!!viewState.rootsOnly}
+                                    onChange={e => setViewState(s => ({
+                                        ...s,
+                                        rootsOnly: e.target.checked || undefined,
+                                        parentId: e.target.checked ? undefined : s.parentId,
+                                        subtreeOf: e.target.checked ? undefined : s.subtreeOf,
+                                    }))}
+                                />
+                                Roots only
+                            </label>
+                        </div>
                     </div>
 
                     {/* Visualization Toggles */}

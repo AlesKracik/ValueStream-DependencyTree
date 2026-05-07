@@ -353,14 +353,39 @@ export function buildWorkspaceQueries(params: any): { customers: any; workItems:
     if (minScore > 0) {
         workItems.calculated_score = { $gte: minScore };
     }
+
+    // Each filter that needs OR semantics contributes an alternation to this
+    // collection; we combine them at the end via $and so they remain independent.
+    const workItemOrGroups: any[][] = [];
+
     const rel = params.releasedFilter || 'all';
     if (rel === 'released') {
         workItems.released_in_sprint_id = { $exists: true, $ne: '' };
     } else if (rel === 'unreleased') {
-        workItems.$or = [
+        workItemOrGroups.push([
             { released_in_sprint_id: { $exists: false } },
-            { released_in_sprint_id: '' }
-        ];
+            { released_in_sprint_id: '' },
+        ]);
+    }
+
+    // Hierarchy: direct children of a chosen work item.
+    if (typeof params.parentId === 'string' && params.parentId.trim() !== '') {
+        workItems.parent_id = params.parentId.trim();
+    }
+
+    // Hierarchy: roots only (no parent_id). Treat missing/null/empty as root.
+    if (params.rootsOnly === true || params.rootsOnly === 'true') {
+        workItemOrGroups.push([
+            { parent_id: { $exists: false } },
+            { parent_id: null },
+            { parent_id: '' },
+        ]);
+    }
+
+    if (workItemOrGroups.length === 1) {
+        workItems.$or = workItemOrGroups[0];
+    } else if (workItemOrGroups.length > 1) {
+        workItems.$and = workItemOrGroups.map(branches => ({ $or: branches }));
     }
 
     // Team filters

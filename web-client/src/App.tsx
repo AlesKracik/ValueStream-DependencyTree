@@ -116,7 +116,8 @@ const TeamPageRouteWrapper = createRouteWrapper({
 });
 
 const ValueStreamEditPageRouteWrapper = createRouteWrapper({
-  collections: ['valueStreams', 'sprints'],
+  // workItems is needed so the Hierarchy filter parent dropdown can be populated.
+  collections: ['valueStreams', 'sprints', 'workItems'],
   render: ({ state, id, navigate }) =>
     <ValueStreamEditPage valueStreamId={id!} onBack={() => navigate(-1)} {...state} />,
 });
@@ -182,7 +183,8 @@ const WorkItemListRouteWrapper = createRouteWrapper({
 });
 
 const ValueStreamNewRouteWrapper = createRouteWrapper({
-  collections: ['valueStreams', 'sprints'],
+  // workItems is needed so the Hierarchy filter parent dropdown can be populated.
+  collections: ['valueStreams', 'sprints', 'workItems'],
   render: ({ state }) =>
     <ValueStreamEditPage valueStreamId="new" onBack={() => window.history.back()} {...state} />,
 });

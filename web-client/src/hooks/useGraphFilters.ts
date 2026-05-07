@@ -37,6 +37,12 @@ export interface DashboardFilters {
     releasedSprintIds?: string[];
     /** Drives which field the `minPriority`/`maxPriority` range targets. */
     priorityMetric?: WorkItemPriorityMetric;
+    /** Live hierarchy: limit to direct children of this work item (parent_id equality). */
+    parentId?: string;
+    /** Live hierarchy: limit to every descendant of this work item (root excluded). */
+    subtreeOf?: string;
+    /** Live hierarchy: limit to top-level work items (no parent). */
+    rootsOnly?: boolean;
 }
 
 const PRIORITY_FIELD = (metric: WorkItemPriorityMetric | undefined): 'calculated_score' | 'aha_synced_data.score' | 'stackrank' => {
@@ -108,6 +114,37 @@ export function useGraphFilters(
         const releasedSprintSet = releasedSprintList ? new Set(releasedSprintList.filter(s => s !== 'unreleased')) : null;
         const includesUnreleased = !!releasedSprintList?.includes('unreleased');
 
+        // Hierarchy filters — merge live (df) with saved (baseParams). Both sides
+        // are mutually exclusive on the UI, but the AND across sides means the
+        // active constraint from each must be satisfied.
+        const liveParentId = df.parentId && df.parentId.trim() !== '' ? df.parentId.trim() : null;
+        const liveSubtreeOf = df.subtreeOf && df.subtreeOf.trim() !== '' ? df.subtreeOf.trim() : null;
+        const liveRootsOnly = df.rootsOnly === true;
+        const baseParentId = baseParams?.parentId && baseParams.parentId.trim() !== '' ? baseParams.parentId.trim() : null;
+        const baseSubtreeOf = baseParams?.subtreeOf && baseParams.subtreeOf.trim() !== '' ? baseParams.subtreeOf.trim() : null;
+        const baseRootsOnly = baseParams?.rootsOnly === true;
+
+        // Subtree expansion: BFS over loaded workItems to compute the descendant
+        // set. The lookup is an `any` Map so we don't need a custom WorkItem type
+        // import here. Returns null when no subtree filter is active.
+        const computeDescendants = (rootId: string): Set<string> => {
+            const out = new Set<string>();
+            const queue = [rootId];
+            while (queue.length) {
+                const id = queue.shift()!;
+                for (const w of data.workItems) {
+                    if (w.parent_id === id && !out.has(w.id)) {
+                        out.add(w.id);
+                        queue.push(w.id);
+                    }
+                }
+            }
+            return out;
+        };
+        const liveSubtreeIds = liveSubtreeOf ? computeDescendants(liveSubtreeOf) : null;
+        const baseSubtreeIds = baseSubtreeOf ? computeDescendants(baseSubtreeOf) : null;
+        const hasHierarchyConstraint = !!(liveParentId || liveSubtreeOf || liveRootsOnly || baseParentId || baseSubtreeOf || baseRootsOnly);
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const getPriorityValue = (workItem: any): number => {
             if (priorityField === 'calculated_score') return Number(workItem.calculated_score) || 0;
@@ -133,7 +170,8 @@ export function useGraphFilters(
             Number.isFinite(maxTcv) ||
             Number.isFinite(minPriority) || Number.isFinite(maxPriority) ||
             Number.isFinite(minEffort) || Number.isFinite(maxEffort) ||
-            !!statusSet || !!releasedSprintList;
+            !!statusSet || !!releasedSprintList ||
+            hasHierarchyConstraint;
 
         const isFilterActive = cf || bcf || ff || bff || tf || btf || ef || bef ||
                              releasedFilter !== 'all' || bRel !== 'all' ||
@@ -206,6 +244,17 @@ export function useGraphFilters(
                     if (!isReleasedToSelected && !isUnreleasedAndAllowed) return false;
                 }
 
+                // Hierarchy filters. AND across saved + live, but each side's three
+                // sub-filters are mutually exclusive on the UI so at most one of
+                // {parentId, subtreeOf, rootsOnly} is set per side.
+                const pid = workItem.parent_id;
+                if (liveRootsOnly && pid) return false;
+                if (baseRootsOnly && pid) return false;
+                if (liveParentId && pid !== liveParentId) return false;
+                if (baseParentId && pid !== baseParentId) return false;
+                if (liveSubtreeIds && !liveSubtreeIds.has(workItem.id)) return false;
+                if (baseSubtreeIds && !baseSubtreeIds.has(workItem.id)) return false;
+
                 return true;
             }).map(workItem => workItem.id)
         );
@@ -247,7 +296,8 @@ export function useGraphFilters(
             releasedFilter !== 'all' || bRel !== 'all' ||
             Number.isFinite(minEffort) || Number.isFinite(maxEffort) ||
             Number.isFinite(minPriority) || Number.isFinite(maxPriority) ||
-            !!statusSet || !!releasedSprintList;
+            !!statusSet || !!releasedSprintList ||
+            hasHierarchyConstraint;
         const hasTeamIssueFilter = tf !== '' || btf !== '' || ef !== '' || bef !== '' || hasRangeFilter;
 
         if (!isFilterActive && !selectedNodeId) {
