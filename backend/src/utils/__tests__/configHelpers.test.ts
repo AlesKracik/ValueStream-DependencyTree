@@ -344,6 +344,10 @@ describe('configHelpers', () => {
       expect(resolveScope('general.theme')).toBe('client');
       expect(resolveScope('general.fiscal_year_start_month')).toBe('server');
     });
+
+    it('should keep theme_definitions on the server', () => {
+      expect(resolveScope('general.theme_definitions')).toBe('server');
+    });
   });
 
   describe('partitionSettings', () => {
@@ -406,6 +410,30 @@ describe('configHelpers', () => {
       const { server, client } = partitionSettings({});
       expect(server).toEqual({});
       expect(client).toEqual({});
+    });
+
+    it('should keep theme_definitions on the server while theme stays client-side', () => {
+      const settings = {
+        general: {
+          fiscal_year_start_month: 1,
+          sprint_duration_days: 14,
+          theme: 'dark' as const,
+          theme_definitions: [
+            { id: 'dark', label: 'Dark mode', builtin: true, colors: { '--bg-page': '#000000' } },
+          ],
+        },
+      };
+
+      const { server, client } = partitionSettings(settings);
+
+      expect(server).toEqual({
+        general: {
+          fiscal_year_start_month: 1,
+          sprint_duration_days: 14,
+          theme_definitions: settings.general.theme_definitions,
+        },
+      });
+      expect(client).toEqual({ general: { theme: 'dark' } });
     });
   });
 

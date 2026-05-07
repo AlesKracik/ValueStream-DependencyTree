@@ -1,96 +1,56 @@
+import { useSearchParams } from 'react-router-dom';
 import type { SettingsTabProps } from './types';
-import { FormSelectField, FormNumberField } from '../../components/common/FormFields';
-import { ScopeIndicator } from '../../components/common/ScopeIndicator';
+import { UserSubsection } from './general/UserSubsection';
+import { TimeSubsection } from './general/TimeSubsection';
+import { ThemeDefinitionEditor } from './general/ThemeDefinitionEditor';
+import styles from '../List.module.css';
 
-const settingsFieldStyle = { display: "flex" as const, flexDirection: "column" as const, gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" };
+type GeneralSubtab = 'user' | 'time' | 'theme-definition';
 
-export const GeneralSettings: React.FC<SettingsTabProps> = ({
-  localFormData,
-  updateFormData,
-  onUpdateSettings,
-}) => {
+const SUBTABS: { id: GeneralSubtab; label: string }[] = [
+  { id: 'user', label: 'User' },
+  { id: 'time', label: 'Time' },
+  { id: 'theme-definition', label: 'Theme Definition' },
+];
+
+const isValidSubtab = (v: string | null): v is GeneralSubtab =>
+  v === 'user' || v === 'time' || v === 'theme-definition';
+
+export const GeneralSettings: React.FC<SettingsTabProps> = (props) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const param = searchParams.get('subtab');
+  const active: GeneralSubtab = isValidSubtab(param) ? param : 'user';
+
+  const setActive = (subtab: GeneralSubtab) => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('subtab', subtab);
+      return next;
+    });
+  };
+
   return (
-    <>
-      <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "var(--text-primary)", borderBottom: "1px solid var(--border-secondary)", paddingBottom: "4px" }}>
-        Theme
-      </h3>
-      <FormSelectField
-        label="Color Palette:"
-        labelSuffix={<ScopeIndicator path="general.theme" />}
-        value={localFormData.general?.theme || 'dark'}
-        onChange={v => {
-            const val = v as 'dark' | 'filips';
-            updateFormData('general.theme', val);
-            onUpdateSettings({ general: { ...localFormData.general, theme: val } });
-        }}
-        options={[
-            { value: 'dark', label: 'Dark mode' },
-            { value: 'filips', label: 'Filips mode' },
-        ]}
-        style={{ ...settingsFieldStyle, marginBottom: "20px" }}
-      />
+    <div className={styles.tabContainer}>
+      <nav className={styles.tabHeader} role="tablist" aria-label="General settings sections">
+        {SUBTABS.map(t => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={active === t.id}
+            onClick={() => setActive(t.id)}
+            className={`${styles.tabButton} ${active === t.id ? styles.activeTab : ''}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
 
-      <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "var(--text-primary)", borderBottom: "1px solid var(--border-secondary)", paddingBottom: "4px" }}>
-        Lists
-      </h3>
-      <FormNumberField
-        label="Items per page:"
-        labelSuffix={<ScopeIndicator path="general.items_per_page" />}
-        helperText="Page size for list views (Work Items, etc.)."
-        value={localFormData.general?.items_per_page ?? 25}
-        onChange={v => {
-            const val = v ?? 25;
-            updateFormData('general.items_per_page', val);
-            onUpdateSettings({ general: { ...localFormData.general, items_per_page: val } });
-        }}
-        min={5}
-        max={200}
-        style={{ ...settingsFieldStyle, marginBottom: "20px" }}
-      />
-
-      <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "var(--text-primary)", borderBottom: "1px solid var(--border-secondary)", paddingBottom: "4px" }}>
-        Time
-      </h3>
-      <FormSelectField
-        label="Fiscal Year Start Month:"
-        labelSuffix={<ScopeIndicator path="general.fiscal_year_start_month" />}
-        value={localFormData.general?.fiscal_year_start_month || 1}
-        onChange={v => {
-            const val = parseInt(v);
-            updateFormData('general.fiscal_year_start_month', val);
-            onUpdateSettings({ general: { ...localFormData.general, fiscal_year_start_month: val } });
-        }}
-        options={[
-            { value: 1, label: 'January (Calendar Year)' },
-            { value: 2, label: 'February' },
-            { value: 3, label: 'March' },
-            { value: 4, label: 'April' },
-            { value: 5, label: 'May' },
-            { value: 6, label: 'June' },
-            { value: 7, label: 'July' },
-            { value: 8, label: 'August' },
-            { value: 9, label: 'September' },
-            { value: 10, label: 'October' },
-            { value: 11, label: 'November' },
-            { value: 12, label: 'December' },
-        ]}
-        style={settingsFieldStyle}
-      />
-
-      <FormNumberField
-        label="Sprint Duration (Days):"
-        labelSuffix={<ScopeIndicator path="general.sprint_duration_days" />}
-        helperText="Defines the default end date when creating new sprints. Does not affect existing sprints."
-        value={localFormData.general?.sprint_duration_days || 14}
-        onChange={v => {
-            const val = v ?? 14;
-            updateFormData('general.sprint_duration_days', val);
-            onUpdateSettings({ general: { ...localFormData.general, sprint_duration_days: val } });
-        }}
-        min={1}
-        max={365}
-        style={settingsFieldStyle}
-      />
-    </>
+      <div className={styles.tabContent}>
+        {active === 'user' && <UserSubsection {...props} />}
+        {active === 'time' && <TimeSubsection {...props} />}
+        {active === 'theme-definition' && <ThemeDefinitionEditor {...props} />}
+      </div>
+    </div>
   );
 };

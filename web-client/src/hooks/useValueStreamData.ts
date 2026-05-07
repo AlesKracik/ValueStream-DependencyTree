@@ -3,6 +3,7 @@ import type { ValueStreamData, Customer, WorkItem, Team, Issue, Settings, Sprint
 import { partitionSettings } from '@valuestream/shared-types';
 import { authorizedFetch, debounce, getUserRole } from '../utils/api';
 import { calculateQuarter } from '../utils/dateHelpers';
+import { applyTheme } from '../utils/themeApply';
 
 const CLIENT_SETTINGS_FALLBACK_KEY = 'vst-client-settings-pending';
 
@@ -290,10 +291,10 @@ export function useValueStreamData(
             }
 
             // Apply theme from settings
-            const theme = finalData.settings?.general?.theme;
-            if (theme) {
-                localStorage.setItem('vst-theme', theme);
-                document.documentElement.setAttribute('data-theme', theme);
+            const general = finalData.settings?.general;
+            if (general?.theme) {
+                localStorage.setItem('vst-theme', general.theme);
+                applyTheme(general.theme, general.theme_definitions);
             }
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
@@ -411,10 +412,15 @@ export function useValueStreamData(
             };
 
             const newSettings = deepMerge(prev.settings || {}, updates);
-            
-            if (updates.general?.theme) {
-                localStorage.setItem('vst-theme', updates.general.theme);
-                document.documentElement.setAttribute('data-theme', updates.general.theme);
+
+            // Re-apply theme whenever the active selection or theme_definitions change.
+            const themeChanged = updates.general?.theme !== undefined;
+            const definitionsChanged = updates.general?.theme_definitions !== undefined;
+            if (themeChanged || definitionsChanged) {
+                if (updates.general?.theme) {
+                    localStorage.setItem('vst-theme', updates.general.theme);
+                }
+                applyTheme(newSettings.general?.theme, newSettings.general?.theme_definitions);
             }
 
             let newSprints = prev.sprints || [];

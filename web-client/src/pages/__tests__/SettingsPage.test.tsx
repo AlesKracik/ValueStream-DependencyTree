@@ -385,8 +385,8 @@ describe('SettingsPage', () => {
     it('renders correctly with empty settings using defaults', () => {
         render(
             <MemoryRouter initialEntries={['/settings?tab=general']}>
-                <SettingsPage 
-                    settings={DEFAULT_SETTINGS} 
+                <SettingsPage
+                    settings={DEFAULT_SETTINGS}
                     onUpdateSettings={onUpdateSettings}
                     data={mockData}
                     updateIssue={updateIssue}
@@ -398,6 +398,8 @@ describe('SettingsPage', () => {
             </MemoryRouter>
         );
 
+        // Fiscal Year Start Month lives under the Time subtab of General.
+        fireEvent.click(screen.getByRole('tab', { name: 'Time' }));
         expect(screen.getByLabelText(/Fiscal Year Start Month:/i)).toBeDefined();
         const select = screen.getByLabelText(/Fiscal Year Start Month:/i) as HTMLSelectElement;
         expect(select.value).toBe('1');
@@ -819,7 +821,7 @@ describe('SettingsPage', () => {
             </MemoryRouter>
         );
 
-        const themeSelect = screen.getByLabelText(/Color Palette:/i) as HTMLSelectElement;
+        const themeSelect = screen.getByLabelText(/Active theme:/i) as HTMLSelectElement;
         expect(themeSelect.value).toBe('dark');
 
         await act(async () => {

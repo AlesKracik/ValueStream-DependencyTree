@@ -28,6 +28,7 @@ import { ValueStreamProvider, NotificationProvider, useNotificationContext } fro
 import { UIStateProvider, useUIStateContext } from './contexts/UIStateContext';
 import { getAdminSecret, setAdminSecret, setUserRole } from './utils/api';
 import { deepMerge } from './utils/businessLogic';
+import { applyTheme } from './utils/themeApply';
 import type { ValueStreamDataState } from '@valuestream/shared-types';
 import './App.css';
 
@@ -191,12 +192,13 @@ function MainAppContent() {
   // Lightweight settings-only fetch for theme initialization
   const settingsState = useValueStreamData(undefined, undefined, 1000, showAlert, ['settings']);
 
+  const activeTheme = settingsState.data?.settings?.general?.theme;
+  const themeDefs = settingsState.data?.settings?.general?.theme_definitions;
   useEffect(() => {
-    const theme = settingsState.data?.settings?.general?.theme;
-    if (theme) {
-      document.documentElement.setAttribute('data-theme', theme);
+    if (activeTheme) {
+      applyTheme(activeTheme, themeDefs);
     }
-  }, [settingsState.data?.settings?.general?.theme]);
+  }, [activeTheme, themeDefs]);
 
   return (
     <UIStateProvider>

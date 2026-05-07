@@ -101,6 +101,13 @@ Centralized in `backend/src/utils/businessLogic.ts`:
 - **Layout/Rendering**: Update `useGraphBuilder.ts` (node/edge construction, coordinates, highlights).
 - **Visuals**: Update node components in `src/components/nodes/` or CSS variables in `index.css`.
 
+### Theme System
+- **Built-in CSS palettes**: defined in `web-client/src/index.css` under `:root` (dark) and `[data-theme='filips']` (light).
+- **Variable catalog**: `THEME_VARIABLES` in `shared/types/src/models.ts` — single source of truth for editable CSS vars and their per-built-in defaults. Keep this list in sync whenever you add or rename a `--var` in `index.css`.
+- **Settings**: `general.theme` (client scope, per-user) selects the active theme; `general.theme_definitions` (server scope) stores customisations of built-in palettes plus any user-defined custom themes layered on a built-in `base`.
+- **Runtime apply**: `web-client/src/utils/themeApply.ts` (`applyTheme()`) sets the `data-theme` attribute and upserts a single `<style id="theme-overrides">` block; called from `App.tsx` and `useValueStreamData.ts`.
+- **Editor UI**: `web-client/src/pages/settings/general/ThemeDefinitionEditor.tsx`, reachable via Settings → General → Theme Definition.
+
 ## 5. Key Constants & Locations
 - **Layout X-Coordinates**: `COL_CUSTOMER_X`, `COL_WORKITEM_X`, etc., in `useGraphBuilder.ts`.
 - **Types**: `shared/types/src/models.ts` (single source of truth, imported as `@valuestream/shared-types`).

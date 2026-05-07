@@ -128,12 +128,44 @@ export interface Sprint {
   is_archived?: boolean;
 }
 
+/** IDs of the built-in CSS themes shipped with the app (defined in web-client/src/index.css). */
+export type BuiltinThemeId = 'dark' | 'filips';
+
+/**
+ * A theme entry editable in Settings. Built-in themes (`dark`, `filips`) may have a sparse
+ * `colors` map that overrides specific CSS variables on top of the values in `index.css`.
+ * Custom themes specify a `base` built-in theme to use as their CSS foundation, then layer
+ * their own `colors` on top.
+ */
+export interface ThemeDefinition {
+  /** Stable identifier — used as the `data-theme` attribute and as the `general.theme` value. */
+  id: string;
+  /** Display name shown in the theme dropdown. */
+  label: string;
+  /** Whether this is one of the built-in themes (`dark`/`filips`). */
+  builtin: boolean;
+  /** For custom themes: which built-in theme's CSS palette to start from. Required when `builtin === false`. */
+  base?: BuiltinThemeId;
+  /** Sparse map of CSS variable name (e.g. `--bg-page`) to value. Empty entries fall through to defaults. */
+  colors: Record<string, string>;
+}
+
 export interface GeneralSettings {
   fiscal_year_start_month: number;
   sprint_duration_days: number;
-  theme?: 'dark' | 'filips';
+  /**
+   * The active theme ID. May be a built-in (`'dark'`, `'filips'`) or the ID of any
+   * custom theme defined in `theme_definitions`.
+   */
+  theme?: string;
   /** Per-user page size for paginated list views. */
   items_per_page?: number;
+  /**
+   * Server-scope: customisations of built-in themes plus any user-defined custom themes.
+   * Built-in themes only need entries here if they have overrides; their absence means
+   * "use CSS defaults from index.css".
+   */
+  theme_definitions?: ThemeDefinition[];
 }
 
 export interface JiraSettings {
@@ -334,6 +366,8 @@ export const SETTINGS_SCOPE: Record<string, SettingsScope> = {
   'general.sprint_duration_days': 'server',
   'general.theme': 'client',
   'general.items_per_page': 'client',
+  // Theme color customisations + custom themes are shared by the whole instance.
+  'general.theme_definitions': 'server',
   // persistence
   'persistence': 'server',
   // persistence — SSO config is per-user (client), credentials are shared (server)
@@ -447,6 +481,117 @@ export function partitionSettings(settings: Partial<Settings>): {
     server: result.server || {},
     client: result.client || {},
   };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Theme variable catalog                                            */
+/* ------------------------------------------------------------------ */
+
+/** Logical grouping shown in the Theme Definition editor. */
+export type ThemeVariableGroup =
+  | 'Backgrounds'
+  | 'Text'
+  | 'Nodes'
+  | 'Sprint Nodes'
+  | 'Borders & Edges'
+  | 'Accents'
+  | 'Status'
+  | 'Misc';
+
+/** Whether the variable accepts a free-form CSS value (e.g. a `filter`) instead of a color. */
+export type ThemeVariableKind = 'color' | 'css';
+
+export interface ThemeVariableDef {
+  /** CSS custom property name including the `--` prefix. */
+  name: string;
+  /** Human-readable label for the editor row. */
+  label: string;
+  group: ThemeVariableGroup;
+  kind: ThemeVariableKind;
+  /** Default value for each built-in theme — kept in sync with `web-client/src/index.css`. */
+  defaults: Record<BuiltinThemeId, string>;
+}
+
+/**
+ * Canonical list of CSS variables editable per theme. Mirrors the values defined for
+ * `:root` (dark) and `[data-theme='filips']` in `web-client/src/index.css`.
+ *
+ * If you add or rename a variable in the CSS, update this list in lockstep so the
+ * settings UI stays accurate and `applyThemeOverrides` continues to round-trip values.
+ */
+export const THEME_VARIABLES: ThemeVariableDef[] = [
+  // Backgrounds
+  { name: '--bg-primary', label: 'Background — primary', group: 'Backgrounds', kind: 'color', defaults: { dark: '#0f172a', filips: '#f3f4f6' } },
+  { name: '--bg-secondary', label: 'Background — secondary', group: 'Backgrounds', kind: 'color', defaults: { dark: '#1e293b', filips: '#e5e7eb' } },
+  { name: '--bg-tertiary', label: 'Background — tertiary', group: 'Backgrounds', kind: 'color', defaults: { dark: '#111827', filips: '#ffffff' } },
+  { name: '--bg-input-focus', label: 'Input background — focused', group: 'Backgrounds', kind: 'color', defaults: { dark: '#0f172a', filips: '#ffffff' } },
+  { name: '--bg-input-disabled', label: 'Input background — disabled', group: 'Backgrounds', kind: 'color', defaults: { dark: '#1f2937', filips: '#e5e7eb' } },
+  { name: '--bg-page', label: 'Page background', group: 'Backgrounds', kind: 'color', defaults: { dark: '#242424', filips: '#f9fafb' } },
+  { name: '--bg-page-muted', label: 'Page background — muted overlay', group: 'Backgrounds', kind: 'css', defaults: { dark: 'rgba(255, 255, 255, 0.01)', filips: 'rgba(0, 0, 0, 0.02)' } },
+  { name: '--bg-shadow', label: 'Drop-shadow color', group: 'Backgrounds', kind: 'css', defaults: { dark: 'rgba(0, 0, 0, 0.5)', filips: 'rgba(0, 0, 0, 0.08)' } },
+
+  // Text
+  { name: '--text-primary', label: 'Text — primary', group: 'Text', kind: 'color', defaults: { dark: '#f1f5f9', filips: '#0f172a' } },
+  { name: '--text-secondary', label: 'Text — secondary', group: 'Text', kind: 'color', defaults: { dark: '#cbd5e1', filips: '#1e293b' } },
+  { name: '--text-muted', label: 'Text — muted', group: 'Text', kind: 'color', defaults: { dark: '#94a3b8', filips: '#1e293b' } },
+  { name: '--text-highlight', label: 'Text — highlight', group: 'Text', kind: 'color', defaults: { dark: '#e2e8f0', filips: '#000000' } },
+  { name: '--text-link', label: 'Link', group: 'Text', kind: 'color', defaults: { dark: '#646cff', filips: '#2563eb' } },
+  { name: '--text-link-hover', label: 'Link — hover', group: 'Text', kind: 'color', defaults: { dark: '#535bf2', filips: '#1d4ed8' } },
+
+  // Nodes
+  { name: '--node-customer-bg', label: 'Customer node — background', group: 'Nodes', kind: 'css', defaults: { dark: 'rgba(59, 130, 246, 0.15)', filips: '#7dd3fc' } },
+  { name: '--node-customer-border', label: 'Customer node — border', group: 'Nodes', kind: 'css', defaults: { dark: 'rgba(59, 130, 246, 0.6)', filips: '#38bdf8' } },
+  { name: '--node-customer-inner', label: 'Customer node — inner accent', group: 'Nodes', kind: 'color', defaults: { dark: '#3b82f6', filips: '#0284c7' } },
+  { name: '--node-workitem-bg', label: 'Work Item node — background', group: 'Nodes', kind: 'color', defaults: { dark: '#8b5cf6', filips: '#d8b4fe' } },
+  { name: '--node-frozen-bg', label: 'Frozen node — background', group: 'Nodes', kind: 'color', defaults: { dark: '#475569', filips: '#cbd5e1' } },
+  { name: '--node-team-bg', label: 'Team node — background', group: 'Nodes', kind: 'color', defaults: { dark: '#4b5563', filips: '#94a3b8' } },
+  { name: '--node-score', label: 'Score badge', group: 'Nodes', kind: 'color', defaults: { dark: '#fcd34d', filips: '#92400e' } },
+
+  // Sprint Nodes
+  { name: '--node-sprint-bg', label: 'Sprint — background', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#1f2937', filips: '#e2e8f0' } },
+  { name: '--node-sprint-border', label: 'Sprint — border', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#374151', filips: '#94a3b8' } },
+  { name: '--node-sprint-text', label: 'Sprint — text', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#f3f4f6', filips: '#0f172a' } },
+  { name: '--node-sprint-over-bg', label: 'Sprint over-allocated — background', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#7f1d1d', filips: '#fca5a5' } },
+  { name: '--node-sprint-over-border', label: 'Sprint over-allocated — border', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#ef4444', filips: '#f87171' } },
+  { name: '--node-sprint-over-text', label: 'Sprint over-allocated — text', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#fca5a5', filips: '#7f1d1d' } },
+  { name: '--node-sprint-allocated-bg', label: 'Sprint allocated — background', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#14532d', filips: '#86efac' } },
+  { name: '--node-sprint-allocated-border', label: 'Sprint allocated — border', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#22c55e', filips: '#4ade80' } },
+  { name: '--node-sprint-allocated-text', label: 'Sprint allocated — text', group: 'Sprint Nodes', kind: 'color', defaults: { dark: '#86efac', filips: '#064e3b' } },
+
+  // Borders & edges
+  { name: '--border-primary', label: 'Border — primary', group: 'Borders & Edges', kind: 'color', defaults: { dark: '#334155', filips: '#cbd5e1' } },
+  { name: '--border-secondary', label: 'Border — secondary', group: 'Borders & Edges', kind: 'color', defaults: { dark: '#374151', filips: '#94a3b8' } },
+  { name: '--border-hover', label: 'Border — hover', group: 'Borders & Edges', kind: 'color', defaults: { dark: '#4b5563', filips: '#64748b' } },
+  { name: '--edge-color', label: 'Graph edge color', group: 'Borders & Edges', kind: 'color', defaults: { dark: '#4b5563', filips: '#cbd5e1' } },
+
+  // Accents
+  { name: '--accent-primary', label: 'Accent — primary', group: 'Accents', kind: 'color', defaults: { dark: '#3b82f6', filips: '#93c5fd' } },
+  { name: '--accent-primary-bg', label: 'Accent — primary background', group: 'Accents', kind: 'css', defaults: { dark: 'rgba(59, 130, 246, 0.1)', filips: '#dbeafe' } },
+  { name: '--accent-secondary', label: 'Accent — secondary', group: 'Accents', kind: 'color', defaults: { dark: '#1d4ed8', filips: '#3b82f6' } },
+  { name: '--accent-focus', label: 'Accent — focus ring', group: 'Accents', kind: 'color', defaults: { dark: '#3b82f6', filips: '#2563eb' } },
+  { name: '--accent-text', label: 'Accent — text', group: 'Accents', kind: 'color', defaults: { dark: '#60a5fa', filips: '#3b82f6' } },
+
+  // Status
+  { name: '--status-success', label: 'Status — success', group: 'Status', kind: 'color', defaults: { dark: '#10b981', filips: '#16a34a' } },
+  { name: '--status-success-bg', label: 'Status — success background', group: 'Status', kind: 'css', defaults: { dark: 'rgba(16, 185, 129, 0.2)', filips: '#dcfce7' } },
+  { name: '--status-warning', label: 'Status — warning', group: 'Status', kind: 'color', defaults: { dark: '#f59e0b', filips: '#d97706' } },
+  { name: '--status-warning-bg', label: 'Status — warning background', group: 'Status', kind: 'css', defaults: { dark: 'rgba(245, 158, 11, 0.1)', filips: '#fef3c7' } },
+  { name: '--status-danger', label: 'Status — danger', group: 'Status', kind: 'color', defaults: { dark: '#ef4444', filips: '#dc2626' } },
+  { name: '--status-danger-bg', label: 'Status — danger background', group: 'Status', kind: 'css', defaults: { dark: 'rgba(239, 68, 68, 0.1)', filips: '#fee2e2' } },
+  { name: '--status-danger-text', label: 'Status — danger text', group: 'Status', kind: 'color', defaults: { dark: '#f87171', filips: '#991b1b' } },
+  { name: '--status-danger-border', label: 'Status — danger border', group: 'Status', kind: 'color', defaults: { dark: '#b91c1c', filips: '#f87171' } },
+
+  // Misc
+  { name: '--icon-filter', label: 'Icon CSS filter', group: 'Misc', kind: 'css', defaults: { dark: 'none', filips: 'brightness(0.6) contrast(1.2)' } },
+];
+
+/**
+ * Look up the default value for a CSS variable in a given built-in theme.
+ * Returns `undefined` if the variable is unknown.
+ */
+export function getThemeVariableDefault(varName: string, theme: BuiltinThemeId): string | undefined {
+  const def = THEME_VARIABLES.find(v => v.name === varName);
+  return def?.defaults[theme];
 }
 
 export interface ValueStreamParameters {

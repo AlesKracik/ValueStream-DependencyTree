@@ -30,7 +30,7 @@ interface SettingsPageProps {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  general: { fiscal_year_start_month: 1, sprint_duration_days: 14, theme: 'dark', items_per_page: 25 },
+  general: { fiscal_year_start_month: 1, sprint_duration_days: 14, theme: 'dark', items_per_page: 25, theme_definitions: [] },
   persistence: {
     app_provider: 'mongo',
     customer_provider: 'mongo',
