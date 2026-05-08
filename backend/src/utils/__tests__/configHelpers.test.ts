@@ -74,6 +74,48 @@ describe('configHelpers', () => {
       expect(unmasked.uri).toBe('mongodb://newuser:newpass@newhost');
       expect(unmasked.general.name).toBe('New App Name');
     });
+
+    it('replaces arrays wholesale so deletions actually delete (no index-merge from existing)', () => {
+      // Regression: unmaskSettings used to add back missing array indices from
+      // the existing payload, which silently undid array element deletions
+      // (e.g. removing a custom theme from general.theme_definitions).
+      const existing = {
+        general: {
+          theme_definitions: [
+            { id: 'dark', label: 'Dark', builtin: true, colors: {} },
+            { id: 'mybrand', label: 'My Brand', builtin: false, base: 'dark', colors: { '--bg-page': '#000' } },
+          ],
+        },
+      };
+
+      const newData = {
+        general: {
+          theme_definitions: [
+            { id: 'dark', label: 'Dark', builtin: true, colors: {} },
+          ],
+        },
+      };
+
+      const unmasked = unmaskSettings(newData, existing);
+
+      expect(unmasked.general.theme_definitions).toHaveLength(1);
+      expect(unmasked.general.theme_definitions[0].id).toBe('dark');
+      // The deleted custom theme must NOT be re-added.
+      expect(unmasked.general.theme_definitions.find((t: { id: string }) => t.id === 'mybrand')).toBeUndefined();
+    });
+
+    it('still rehydrates masked secrets nested inside an array element', () => {
+      // Sanity: even though arrays no longer index-merge, the per-element recursion
+      // must still unmask sensitive fields that the FE blanked out with the mask.
+      const existing = {
+        items: [{ id: 'a', api_token: 'real-secret' }],
+      };
+      const newData = {
+        items: [{ id: 'a', api_token: '********' }],
+      };
+      const unmasked = unmaskSettings(newData, existing);
+      expect(unmasked.items[0].api_token).toBe('real-secret');
+    });
   });
 
   describe('splitDotPath', () => {

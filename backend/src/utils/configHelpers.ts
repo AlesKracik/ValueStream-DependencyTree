@@ -89,9 +89,22 @@ export function unmaskSettings(newData: any, existingSettings: any): any {
   if (!newData || typeof newData !== 'object') return newData;
   if (!existingSettings || typeof existingSettings !== 'object') return newData;
 
-  const unmasked = Array.isArray(newData) ? [...newData] : { ...newData };
-  
-  // First, bring in any keys from existingSettings that aren't in newData
+  // Arrays are replaced wholesale — never merged index-by-index — so a shorter
+  // incoming array (e.g. after deleting an entry) actually deletes. Only nested
+  // OBJECTS within array elements are recursed into for masked-secret rehydration.
+  if (Array.isArray(newData)) {
+    if (!Array.isArray(existingSettings)) return [...newData];
+    return newData.map((item, i) =>
+      typeof item === 'object' && item !== null
+        ? unmaskSettings(item, existingSettings[i])
+        : item,
+    );
+  }
+
+  const unmasked = { ...newData };
+
+  // For objects, bring in any keys from existingSettings that aren't in newData
+  // so the FE can save a partial section without erasing other fields.
   Object.keys(existingSettings).forEach(key => {
     if (!(key in unmasked)) {
       unmasked[key] = existingSettings[key];
