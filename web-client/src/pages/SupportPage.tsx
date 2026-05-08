@@ -112,6 +112,9 @@ const statusBadgeColor = (status: string): string => {
     if (s === 'done' || s === 'resolved' || s === 'closed') return 'var(--status-success)';
     if (s === 'to do' || s === 'new' || s === 'open') return 'var(--status-danger)';
     if (s === 'work in progress' || s === 'in progress' || s === 'in_progress' || s === 'active') return 'var(--status-warning)';
+    // 'noop' and the three 'waiting for ...' statuses are also non-actionable holds —
+    // surface them as warnings rather than a neutral accent so they stand out.
+    if (s === 'noop' || s.startsWith('waiting')) return 'var(--status-warning)';
     return 'var(--accent-primary)';
 };
 
