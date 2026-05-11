@@ -7,6 +7,7 @@ import { useNotificationContext } from '../../../contexts/NotificationContext';
 import { useDeleteWithConfirm } from '../../../hooks/useDeleteWithConfirm';
 import { generateId } from '../../../utils/security';
 import { parseJiraIssue } from '../../../utils/businessLogic';
+import { SettingsLink } from '../../common/SettingsLink';
 import customerStyles from '../../customers/CustomerPage.module.css';
 
 interface Props {
@@ -245,7 +246,10 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
 
             <div className={customerStyles.addWorkItemBox}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h3 style={{ margin: 0 }}>Associated Issues</h3>
+                    <h3 style={{ margin: 0, display: 'flex', alignItems: 'center' }}>
+                        Associated Issues
+                        <SettingsLink tab="jira" subtab="work-items" title="Configure Jira import/sync for Work Items" />
+                    </h3>
                     <button className="btn-primary" onClick={handleAddIssue}>+ New Issue</button>
                 </div>
 

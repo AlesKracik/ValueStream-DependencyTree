@@ -4,6 +4,7 @@ import { GenericListPage } from '../components/common/GenericListPage';
 import type { SortOption, ListColumn } from '../components/common/GenericListPage';
 import { MultiSelectDropdown } from '../components/common/MultiSelectDropdown';
 import { Pagination } from '../components/common/Pagination';
+import { SettingsLink } from '../components/common/SettingsLink';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { llmGenerate, gleanAuthLogin, gleanAuthStatus, gleanChat } from '../utils/api';
 import { generateId } from '../utils/security';
@@ -1256,6 +1257,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         <GenericListPage<SupportIssueWithCustomer>
             pageId="support"
             title="Support Issues"
+            titleAction={<SettingsLink tab="jira" subtab="customer" title="Configure Jira support sync (JQLs)" />}
             // Items are already filtered/sorted/paged here in the page so the
             // pagination total reflects the full filtered set, not the page slice.
             items={pagedIssues}

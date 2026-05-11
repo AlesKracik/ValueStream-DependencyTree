@@ -3,6 +3,7 @@ import type { WorkItem, ValueStreamData } from '@valuestream/shared-types';
 import { syncAhaFeature } from '../../../utils/api';
 import { parseAhaFeature } from '../../../utils/businessLogic';
 import { useNotificationContext } from '../../../contexts/NotificationContext';
+import { SettingsLink } from '../../common/SettingsLink';
 
 interface Props {
     workItem: WorkItem | undefined;
@@ -90,7 +91,10 @@ export const WorkItemAhaTab: React.FC<Props> = ({
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div style={{ padding: '16px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-secondary)' }}>
-                <h3 style={{ margin: '0 0 12px 0', fontSize: '15px' }}>Link to Aha! Feature</h3>
+                <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', display: 'flex', alignItems: 'center' }}>
+                    Link to Aha! Feature
+                    <SettingsLink tab="aha" title="Configure Aha! integration" />
+                </h3>
                 <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
                     Enter the Aha! Reference Number (e.g., <code>PROD-123</code>) to link this work item and sync its details.
                 </p>

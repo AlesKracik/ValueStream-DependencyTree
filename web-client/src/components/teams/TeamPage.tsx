@@ -8,6 +8,7 @@ import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers'
 import { estimateTeamCapacityMds, TEAM_CAPACITY_PTO_FACTOR } from '../../utils/businessLogic';
 import { GenericDetailPage, type DetailTab } from '../common/GenericDetailPage';
 import { FormTextField, FormNumberField, FormSelectField } from '../common/FormFields';
+import { SettingsLink } from '../common/SettingsLink';
 import customerStyles from '../customers/CustomerPage.module.css';
 
 interface TeamPageProps {
@@ -317,7 +318,10 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
                     {ldapConfigured && (
                         <div style={{ marginBottom: '16px', maxWidth: '32rem' }}>
                             <label style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '14px', color: 'var(--text-secondary)' }}>
-                                LDAP Team Name
+                                <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                    LDAP Team Name
+                                    <SettingsLink tab="ldap" title="Configure LDAP server / team search" />
+                                </span>
                                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                     <input
                                         type="text"

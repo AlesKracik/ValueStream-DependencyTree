@@ -102,6 +102,12 @@ interface GenericListPageProps<T> {
      * Label rendered above the built-in name filter input. Defaults to "Filter".
      */
     nameFilterLabel?: string;
+    /**
+     * Optional inline node rendered immediately after the page title (inside the
+     * <h1>). Use for small affordances like a SettingsLink that points to the
+     * related Settings subtab.
+     */
+    titleAction?: React.ReactNode;
 }
 
 export function GenericListPage<T extends { id: string }>({
@@ -135,6 +141,7 @@ export function GenericListPage<T extends { id: string }>({
     renderFilterGroups,
     renderFilterBarHeader,
     nameFilterLabel = 'Filter',
+    titleAction,
 }: GenericListPageProps<T>) {
     const { uiState, updateUiState } = useUIStateContext();
     const listRef = useRef<HTMLDivElement>(null);
@@ -370,7 +377,10 @@ export function GenericListPage<T extends { id: string }>({
                         padding: '0 2rem',
                     }}
                 >
-                    <h1>{title}</h1>
+                    <h1 style={{ display: 'flex', alignItems: 'center' }}>
+                        {title}
+                        {titleAction}
+                    </h1>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         {secondaryActions?.map((action, i) => (
                             <button

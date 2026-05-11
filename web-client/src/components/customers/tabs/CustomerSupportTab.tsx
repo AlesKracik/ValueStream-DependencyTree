@@ -3,6 +3,7 @@ import type { Customer, SupportIssue, JiraIssue, ValueStreamData } from '@values
 import type { CustomerHealthData } from '../../../hooks/useCustomerHealth';
 import { generateId } from '../../../utils/security';
 import { buildSupportStatusPatch } from '../../../utils/businessLogic';
+import { SettingsLink } from '../../common/SettingsLink';
 import customerStyles from '../CustomerPage.module.css';
 
 interface JiraKeysInputProps {
@@ -101,7 +102,10 @@ export const CustomerSupportTab: React.FC<Props> = ({ customer, data, updateCust
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
             <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h2 style={{ border: 'none', margin: 0, fontSize: '18px', color: 'var(--text-highlight)' }}>Support Issues</h2>
+                    <h2 style={{ border: 'none', margin: 0, fontSize: '18px', color: 'var(--text-highlight)', display: 'flex', alignItems: 'center' }}>
+                        Support Issues
+                        <SettingsLink tab="jira" subtab="customer" title="Configure Jira support sync (JQLs)" />
+                    </h2>
                     <button
                         className="btn-primary"
                         onClick={() => {
