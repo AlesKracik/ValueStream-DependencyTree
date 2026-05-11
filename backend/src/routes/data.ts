@@ -5,7 +5,7 @@ import { computeMetricsFromPrecomputed, recomputeScoresForWorkItems } from '../s
 import { assignMissingQuarters } from '../services/sprintService';
 import { fetchWithThreshold, buildMongoQuery, applyValueStreamFilters, buildWorkspaceQueries, buildWorkItemSort, buildCustomerSort } from '../utils/dbHelpers';
 import { WorkItemListQuery, WorkItemListQueryType, CustomerListQuery, CustomerListQueryType } from './schemas';
-import { getDescendantIds, ensureHierarchyIndex } from '../utils/workItemHierarchy';
+import { getDescendantIdsForRoots, ensureHierarchyIndex } from '../utils/workItemHierarchy';
 
 export const dataRoutes: FastifyPluginAsync = async (fastify) => {
 
@@ -103,13 +103,19 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
     const query = buildMongoQuery(q, 'workItems');
     const sort = buildWorkItemSort(q);
 
-    // Subtree filter: resolve all descendant IDs of `subtreeOf` via $graphLookup
-    // and AND that into the query. The root is intentionally excluded — users
-    // typically want "everything under X", not the X itself. An empty subtree
-    // forces an unsatisfiable id match so the response is correctly empty.
-    if (typeof q.subtreeOf === 'string' && q.subtreeOf.trim() !== '') {
+    // Subtree filter: resolve every descendant of any `subtreeOf` root via
+    // $graphLookup and AND the union into the query. The roots themselves are
+    // intentionally excluded — users typically want "everything under X", not
+    // the X itself. An empty union forces an unsatisfiable id match so the
+    // response is correctly empty.
+    // `subtreeOf` accepts a single value or repeated query params; both shapes
+    // are normalized to a list.
+    const subtreeRoots = (Array.isArray(q.subtreeOf) ? q.subtreeOf : (typeof q.subtreeOf === 'string' ? [q.subtreeOf] : []))
+      .map(s => s.trim())
+      .filter(Boolean);
+    if (subtreeRoots.length > 0) {
       await ensureHierarchyIndex(db);
-      const descendants = await getDescendantIds(db, q.subtreeOf.trim());
+      const descendants = await getDescendantIdsForRoots(db, subtreeRoots);
       query.id = { $in: descendants };
     }
 
@@ -187,13 +193,25 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
         // can now be pushed to the DB layer — no need to fetch everything.
         const queries = buildWorkspaceQueries(params);
 
-        // Subtree hierarchy filter — resolve all descendants of the chosen root
-        // via $graphLookup and AND that into the workItems query. Empty subtree
-        // (root not found) collapses to id $in [] so the workItems list is empty,
-        // which is the correct behaviour for "show only what's under X".
+        // Subtree hierarchy filter — resolve all descendants of every chosen
+        // root via $graphLookup and AND the union into the workItems query.
+        // Reads `subtreeOfIds` (new array shape) and `subtreeOf` (legacy single
+        // string from saved ValueStream documents) and unions them. Empty union
+        // collapses to id $in [] so the workItems list is empty, which is the
+        // correct behaviour for "show only what's under X".
+        const subtreeRootList: string[] = [];
+        if (Array.isArray(params.subtreeOfIds)) {
+            for (const r of params.subtreeOfIds) {
+                if (typeof r === 'string' && r.trim() !== '') subtreeRootList.push(r.trim());
+            }
+        }
         if (typeof params.subtreeOf === 'string' && params.subtreeOf.trim() !== '') {
+            subtreeRootList.push(params.subtreeOf.trim());
+        }
+        const subtreeRoots = Array.from(new Set(subtreeRootList));
+        if (subtreeRoots.length > 0) {
             await ensureHierarchyIndex(db);
-            const descendants = await getDescendantIds(db, params.subtreeOf.trim());
+            const descendants = await getDescendantIdsForRoots(db, subtreeRoots);
             queries.workItems.id = { $in: descendants };
         }
 

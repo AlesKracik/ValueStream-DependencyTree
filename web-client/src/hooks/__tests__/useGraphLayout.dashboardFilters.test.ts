@@ -204,8 +204,8 @@ describe('useGraphLayout - hierarchy filters', () => {
         expect(visible.has('w4')).toBe(false);
     });
 
-    it('parentId narrows to direct children of the chosen work item', () => {
-        const { result } = runHierarchy({ parentId: 'w1' });
+    it('parentIds narrows to direct children of the chosen work item', () => {
+        const { result } = runHierarchy({ parentIds: ['w1'] });
         const visible = visibleWorkItemIds(result.current.nodes);
         // Direct children of w1 only: w2 and w4. Grandchild w3 is excluded.
         expect(visible.has('w2')).toBe(true);
@@ -214,8 +214,8 @@ describe('useGraphLayout - hierarchy filters', () => {
         expect(visible.has('w3')).toBe(false);
     });
 
-    it('subtreeOf includes every descendant of the chosen work item (root excluded)', () => {
-        const { result } = runHierarchy({ subtreeOf: 'w1' });
+    it('subtreeOfIds includes every descendant of the chosen work item (root excluded)', () => {
+        const { result } = runHierarchy({ subtreeOfIds: ['w1'] });
         const visible = visibleWorkItemIds(result.current.nodes);
         expect(visible.has('w2')).toBe(true);  // child
         expect(visible.has('w3')).toBe(true);  // grandchild
@@ -223,17 +223,38 @@ describe('useGraphLayout - hierarchy filters', () => {
         expect(visible.has('w1')).toBe(false); // the root itself is excluded
     });
 
-    it('subtreeOf returns nothing when the chosen root has no descendants', () => {
-        const { result } = runHierarchy({ subtreeOf: 'w3' });
+    it('subtreeOfIds returns nothing when the chosen root has no descendants', () => {
+        const { result } = runHierarchy({ subtreeOfIds: ['w3'] });
         const visible = visibleWorkItemIds(result.current.nodes);
         expect(visible.size).toBe(0);
     });
 
-    it('hierarchy filter ANDs with another dashboard filter (parentId + status)', () => {
-        // parentId=w1 → {w2, w4}; status=Planning → {w2}; intersection → only w2.
-        const { result } = runHierarchy({ parentId: 'w1', statuses: ['Planning'] });
+    it('hierarchy filter ANDs with another dashboard filter (parentIds + status)', () => {
+        // parentIds=[w1] → {w2, w4}; status=Planning → {w2}; intersection → only w2.
+        const { result } = runHierarchy({ parentIds: ['w1'], statuses: ['Planning'] });
         const visible = visibleWorkItemIds(result.current.nodes);
         expect(visible.has('w2')).toBe(true);
         expect(visible.has('w4')).toBe(false);
+    });
+
+    it('parentIds with multiple ids includes children of any of them (union)', () => {
+        // parentIds=[w1, w2] → direct children of w1 (w2, w4) PLUS direct children
+        // of w2 (w3) — the multi-select is a union.
+        const { result } = runHierarchy({ parentIds: ['w1', 'w2'] });
+        const visible = visibleWorkItemIds(result.current.nodes);
+        expect(visible.has('w2')).toBe(true);  // child of w1
+        expect(visible.has('w3')).toBe(true);  // child of w2
+        expect(visible.has('w4')).toBe(true);  // child of w1
+        expect(visible.has('w1')).toBe(false); // not a child of anything in the set
+    });
+
+    it('subtreeOfIds with multiple roots unions all descendants', () => {
+        // subtreeOfIds=[w2, w4] → descendants of w2 (w3) PLUS descendants of w4 (none) → {w3}.
+        const { result } = runHierarchy({ subtreeOfIds: ['w2', 'w4'] });
+        const visible = visibleWorkItemIds(result.current.nodes);
+        expect(visible.has('w3')).toBe(true);
+        expect(visible.has('w2')).toBe(false); // the roots themselves are excluded
+        expect(visible.has('w4')).toBe(false);
+        expect(visible.has('w1')).toBe(false);
     });
 });

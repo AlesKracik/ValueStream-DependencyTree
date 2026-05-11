@@ -6,7 +6,6 @@ import '@xyflow/react/dist/style.css';
 
 import { useGraphLayout, type DashboardFilters } from '../../hooks/useGraphLayout';
 import { MultiSelectDropdown } from '../common/MultiSelectDropdown';
-import { SearchableDropdown } from '../common/SearchableDropdown';
 import type { ValueStreamData, Customer, WorkItem, Team, ValueStreamViewState, ValueStreamParameters, Issue } from '@valuestream/shared-types';
 import { CustomerNode } from '../nodes/CustomerNode';
 import { WorkItemNode } from '../nodes/WorkItemNode';
@@ -106,20 +105,32 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         data?.valueStreams.find(d => d.id === currentValueStreamId),
     [data, currentValueStreamId]);
     
-    const baseParams: ValueStreamParameters = useMemo(() => ({
-        customerFilter: currentValueStream?.parameters?.customerFilter || '',
-        workItemFilter: currentValueStream?.parameters?.workItemFilter || '',
-        releasedFilter: currentValueStream?.parameters?.releasedFilter || 'all',
-        minTcvFilter: currentValueStream?.parameters?.minTcvFilter || '',
-        minScoreFilter: currentValueStream?.parameters?.minScoreFilter || '',
-        teamFilter: currentValueStream?.parameters?.teamFilter || '',
-        issueFilter: currentValueStream?.parameters?.issueFilter || '',
-        startSprintId: currentValueStream?.parameters?.startSprintId || '',
-        endSprintId: currentValueStream?.parameters?.endSprintId || '',
-        parentId: currentValueStream?.parameters?.parentId || '',
-        subtreeOf: currentValueStream?.parameters?.subtreeOf || '',
-        rootsOnly: currentValueStream?.parameters?.rootsOnly || false,
-    }), [currentValueStream]);
+    const baseParams: ValueStreamParameters = useMemo(() => {
+        // Hierarchy: prefer the new array fields, fall back to the legacy
+        // singular fields so saved value-streams created before the multi-
+        // select rollout keep working without a migration.
+        const p = currentValueStream?.parameters;
+        const parentIds = (p?.parentIds && p.parentIds.length > 0)
+            ? p.parentIds
+            : (p?.parentId ? [p.parentId] : []);
+        const subtreeOfIds = (p?.subtreeOfIds && p.subtreeOfIds.length > 0)
+            ? p.subtreeOfIds
+            : (p?.subtreeOf ? [p.subtreeOf] : []);
+        return {
+            customerFilter: p?.customerFilter || '',
+            workItemFilter: p?.workItemFilter || '',
+            releasedFilter: p?.releasedFilter || 'all',
+            minTcvFilter: p?.minTcvFilter || '',
+            minScoreFilter: p?.minScoreFilter || '',
+            teamFilter: p?.teamFilter || '',
+            issueFilter: p?.issueFilter || '',
+            startSprintId: p?.startSprintId || '',
+            endSprintId: p?.endSprintId || '',
+            parentIds,
+            subtreeOfIds,
+            rootsOnly: p?.rootsOnly || false,
+        };
+    }, [currentValueStream]);
 
     // Pack the new WorkItems-list-style filters into a single object so the
     // useGraphLayout signature stays manageable. NaN means "no bound" — the
@@ -135,8 +146,8 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
             statuses: viewState.statusFilter,
             releasedSprintIds: viewState.releasedSprintIds,
             priorityMetric: viewState.prioritizationMetric,
-            parentId: viewState.parentId,
-            subtreeOf: viewState.subtreeOf,
+            parentIds: viewState.parentIds,
+            subtreeOfIds: viewState.subtreeOfIds,
             rootsOnly: viewState.rootsOnly,
         };
     }, [
@@ -145,7 +156,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         viewState.minEffortFilter, viewState.maxEffortFilter,
         viewState.statusFilter, viewState.releasedSprintIds,
         viewState.prioritizationMetric,
-        viewState.parentId, viewState.subtreeOf, viewState.rootsOnly,
+        viewState.parentIds, viewState.subtreeOfIds, viewState.rootsOnly,
     ]);
 
     const { nodes, edges } = useGraphLayout(
@@ -382,26 +393,39 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
     };
 
     // Hierarchy filter helpers — mirror the WorkItems list page contract.
-    // The three fields (parentId / subtreeOf / rootsOnly) are mutually exclusive;
-    // setting one clears the others so the merge with saved baseParams stays clean.
-    const setHierarchyParent = (id: string | undefined, scope: 'direct' | 'subtree') => {
+    // `rootsOnly` is mutually exclusive with parentIds/subtreeOfIds; setting
+    // one clears the others so the merge with saved baseParams stays clean.
+    const setHierarchyParents = (ids: string[], scope: 'direct' | 'subtree') => {
+        const clean = ids.filter(Boolean);
         setViewState(s => ({
             ...s,
-            parentId: id && scope === 'direct' ? id : undefined,
-            subtreeOf: id && scope === 'subtree' ? id : undefined,
+            parentIds: clean.length > 0 && scope === 'direct' ? clean : undefined,
+            subtreeOfIds: clean.length > 0 && scope === 'subtree' ? clean : undefined,
             rootsOnly: undefined,
         }));
     };
-    const liveParentId = viewState.parentId ?? viewState.subtreeOf ?? '';
-    const liveParentScope: 'direct' | 'subtree' = viewState.subtreeOf ? 'subtree' : 'direct';
+    const liveParentIds = (viewState.parentIds && viewState.parentIds.length > 0)
+        ? viewState.parentIds
+        : (viewState.subtreeOfIds || []);
+    const liveParentScope: 'direct' | 'subtree' = (viewState.subtreeOfIds && viewState.subtreeOfIds.length > 0) ? 'subtree' : 'direct';
     const sortedWorkItemsForPicker = useMemo(
-        () => (data?.workItems ?? []).slice().sort((a, b) => a.name.localeCompare(b.name)).map(w => ({ id: w.id, label: w.name })),
+        () => (data?.workItems ?? []).slice().sort((a, b) => a.name.localeCompare(b.name)).map(w => ({ value: w.id, label: w.name })),
         [data?.workItems],
     );
-    const liveParentLabel = useMemo(
-        () => (liveParentId ? (data?.workItems ?? []).find(w => w.id === liveParentId)?.name ?? '' : ''),
-        [liveParentId, data?.workItems],
-    );
+
+    // The hierarchy filter renders with the same inline styles as the WorkItem
+    // list filter so the three places (WorkItem list, live dashboard, saved
+    // ValueStream definition) read as the same control. The dashboard's
+    // `.filterGroup label` CSS would otherwise add bold + letter-spacing and
+    // make this block visually heavier than the WorkItem list reference.
+    const hierarchyLabelStyle: React.CSSProperties = {
+        fontSize: '11px',
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        color: 'var(--text-muted)',
+        letterSpacing: 'normal',
+    };
+    const hierarchyGroupStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '4px' };
 
     // Multi-select options that depend on data come from the loaded sprints.
     const releasedOptions = useMemo(() => {
@@ -607,16 +631,17 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                         />
                     </div>
 
-                    <div className={styles.filterGroup}>
-                        <label>Hierarchy</label>
+                    <div style={hierarchyGroupStyle}>
+                        <label style={hierarchyLabelStyle}>Hierarchy</label>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <div style={{ width: 200, opacity: viewState.rootsOnly ? 0.5 : 1, pointerEvents: viewState.rootsOnly ? 'none' : 'auto' }}>
-                                <SearchableDropdown
-                                    options={sortedWorkItemsForPicker}
-                                    onSelect={(id) => setHierarchyParent(id || undefined, liveParentScope)}
+                            <div style={{ opacity: viewState.rootsOnly ? 0.5 : 1, pointerEvents: viewState.rootsOnly ? 'none' : 'auto' }}>
+                                <MultiSelectDropdown
+                                    ariaLabel="Hierarchy parents"
                                     placeholder="Children of..."
-                                    initialValue={liveParentLabel}
-                                    clearOnSelect={false}
+                                    options={sortedWorkItemsForPicker}
+                                    selected={liveParentIds}
+                                    onChange={(next) => setHierarchyParents(next, liveParentScope)}
+                                    width={200}
                                 />
                             </div>
                             <div
@@ -627,8 +652,8 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                                     border: '1px solid var(--border-primary)',
                                     borderRadius: 4,
                                     overflow: 'hidden',
-                                    opacity: liveParentId ? 1 : 0.5,
-                                    pointerEvents: liveParentId ? 'auto' : 'none',
+                                    opacity: liveParentIds.length > 0 ? 1 : 0.5,
+                                    pointerEvents: liveParentIds.length > 0 ? 'auto' : 'none',
                                 }}
                             >
                                 {(['direct', 'subtree'] as const).map((scope, i) => {
@@ -640,7 +665,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                                             role="radio"
                                             aria-checked={active}
                                             aria-label={scope === 'direct' ? 'Direct children only' : 'Entire subtree'}
-                                            onClick={() => setHierarchyParent(liveParentId, scope)}
+                                            onClick={() => setHierarchyParents(liveParentIds, scope)}
                                             style={{
                                                 padding: '4px 10px',
                                                 fontSize: 12,
@@ -658,10 +683,10 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                                     );
                                 })}
                             </div>
-                            {liveParentId && (
+                            {liveParentIds.length > 0 && (
                                 <button
                                     type="button"
-                                    onClick={() => setHierarchyParent(undefined, liveParentScope)}
+                                    onClick={() => setHierarchyParents([], liveParentScope)}
                                     className="btn-secondary"
                                     style={{ padding: '4px 8px', fontSize: 11 }}
                                     title="Clear hierarchy filter"
@@ -676,8 +701,8 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                                     onChange={e => setViewState(s => ({
                                         ...s,
                                         rootsOnly: e.target.checked || undefined,
-                                        parentId: e.target.checked ? undefined : s.parentId,
-                                        subtreeOf: e.target.checked ? undefined : s.subtreeOf,
+                                        parentIds: e.target.checked ? undefined : s.parentIds,
+                                        subtreeOfIds: e.target.checked ? undefined : s.subtreeOfIds,
                                     }))}
                                 />
                                 Roots only

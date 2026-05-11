@@ -163,13 +163,16 @@ export const WorkItemListQuery = Type.Object({
   page: Type.Optional(Type.String()),
   pageSize: Type.Optional(Type.String()),
 
-  // Hierarchy filters. The three are mutually exclusive on the UI side; the
-  // backend simply ANDs whatever it receives.
-  //   parentId   — direct children of <id> (parent_id === <id>)
-  //   subtreeOf  — entire subtree below <id>: descendants only (root excluded)
+  // Hierarchy filters. `rootsOnly` is mutually exclusive with parent/subtree
+  // on the UI side; the backend simply ANDs whatever it receives.
+  //   parentId   — direct children of any of these ids (parent_id ∈ ids)
+  //   subtreeOf  — entire subtree below any of these ids: descendants only (roots excluded)
   //   rootsOnly  — top-level items (no parent_id)
-  parentId: Type.Optional(Type.String()),
-  subtreeOf: Type.Optional(Type.String()),
+  // Both `parentId` and `subtreeOf` accept either a single value or repeated
+  // query params (?parentId=A&parentId=B) — Fastify normalizes repeated params
+  // to arrays.
+  parentId: Type.Optional(Type.Union([Type.Array(Type.String()), Type.String()])),
+  subtreeOf: Type.Optional(Type.Union([Type.Array(Type.String()), Type.String()])),
   rootsOnly: Type.Optional(Type.String()),
 
   // Legacy params kept for backward compatibility with workspace endpoint callers

@@ -329,7 +329,9 @@ describe('Data Routes', () => {
     const response = await app.inject({ method: 'GET', url: '/api/workspace?valueStreamId=vs1' });
     expect(response.statusCode).toBe(200);
 
-    expect(observedAggregatePipeline[0]).toEqual({ $match: { id: 'wi-root' } });
+    // Multi-root aggregation: even a single legacy `subtreeOf` string is now
+    // run through the multi-root helper, which starts with `{ id: { $in: [...] } }`.
+    expect(observedAggregatePipeline[0]).toEqual({ $match: { id: { $in: ['wi-root'] } } });
     expect(observedAggregatePipeline[1].$graphLookup).toMatchObject({
       from: 'workItems',
       connectFromField: 'id',
@@ -559,8 +561,8 @@ describe('Data Routes', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    // Pipeline must $match the requested root and $graphLookup using parent_id.
-    expect(observedAggregatePipeline[0]).toEqual({ $match: { id: 'w-root' } });
+    // Pipeline must $match the requested root(s) and $graphLookup using parent_id.
+    expect(observedAggregatePipeline[0]).toEqual({ $match: { id: { $in: ['w-root'] } } });
     expect(observedAggregatePipeline[1].$graphLookup).toMatchObject({
       from: 'workItems',
       connectFromField: 'id',
@@ -568,6 +570,50 @@ describe('Data Routes', () => {
     });
     // Final find filter narrows to the resolved descendant ids.
     expect(observedFilter.id).toEqual({ $in: ['w-child', 'w-grandchild'] });
+  });
+
+  it('GET /api/data/workItems with multiple subtreeOf params resolves a union of descendants', async () => {
+    let observedFilter: any = undefined;
+    let observedAggregatePipeline: any = undefined;
+
+    mockDb.collection = vi.fn((colName: string) => {
+      if (colName !== 'workItems') {
+        return { find: vi.fn().mockReturnValue({ sort: vi.fn().mockReturnThis(), toArray: vi.fn().mockResolvedValue([]) }) };
+      }
+      return {
+        createIndex: vi.fn().mockResolvedValue(true),
+        aggregate: vi.fn().mockImplementation((pipeline: any) => {
+          observedAggregatePipeline = pipeline;
+          // Two roots → two rows; their descendants overlap on w-shared so the
+          // union must dedup.
+          return {
+            toArray: vi.fn().mockResolvedValue([
+              { descendants: [{ id: 'w-a-child' }, { id: 'w-shared' }] },
+              { descendants: [{ id: 'w-b-child' }, { id: 'w-shared' }] },
+            ]),
+          };
+        }),
+        countDocuments: vi.fn().mockResolvedValue(0),
+        find: vi.fn().mockImplementation((filter: any) => {
+          observedFilter = filter;
+          return {
+            sort: vi.fn().mockReturnThis(),
+            toArray: vi.fn().mockResolvedValue([]),
+          };
+        }),
+      };
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/data/workItems?subtreeOf=w-a&subtreeOf=w-b',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(observedAggregatePipeline[0]).toEqual({ $match: { id: { $in: ['w-a', 'w-b'] } } });
+    // Final find filter narrows to the deduped union of descendants.
+    expect(observedFilter.id).toBeDefined();
+    expect(new Set(observedFilter.id.$in)).toEqual(new Set(['w-a-child', 'w-b-child', 'w-shared']));
   });
 
   it('GET /api/data/workItems?subtreeOf=X with no descendants returns empty result', async () => {

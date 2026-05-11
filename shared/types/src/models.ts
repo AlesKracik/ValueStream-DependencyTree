@@ -581,13 +581,22 @@ export interface ValueStreamParameters {
   startSprintId?: string;
   endSprintId?: string;
   /**
-   * Hierarchy filters. The three are mutually exclusive on the UI side; the
-   * backend simply ANDs whatever it receives.
-   *  - parentId: limit to direct children of this work item.
-   *  - subtreeOf: limit to every descendant of this work item (root excluded).
+   * Hierarchy filters. `rootsOnly` is mutually exclusive with the parent/subtree
+   * selection on the UI; the backend simply ANDs whatever it receives.
+   *  - parentIds: limit to direct children of any of these work items.
+   *  - subtreeOfIds: limit to every descendant of any of these work items (roots excluded).
    *  - rootsOnly: limit to top-level work items (no parent).
+   *
+   * `parentId` and `subtreeOf` (singular strings) are kept as legacy fields so
+   * existing saved ValueStream documents continue to work without a migration.
+   * Reading code should prefer the plural arrays; when only the singular is set
+   * it should be treated as a one-element array.
    */
+  parentIds?: string[];
+  subtreeOfIds?: string[];
+  /** @deprecated Use {@link parentIds}. Retained for back-compat reads of saved ValueStreams. */
   parentId?: string;
+  /** @deprecated Use {@link subtreeOfIds}. Retained for back-compat reads of saved ValueStreams. */
   subtreeOf?: string;
   rootsOnly?: boolean;
 }
@@ -662,13 +671,13 @@ export interface ValueStreamViewState {
    *  give the diagram more vertical room. The current filter values are preserved. */
   filtersCollapsed: boolean;
   /**
-   * Live (non-persisted) hierarchy filters. Mutually exclusive on the UI side;
-   * mirrors the WorkItems list page contract. These narrow the already-loaded
-   * data on the client (the saved value-stream parameters drive server-side
-   * filtering separately).
+   * Live (non-persisted) hierarchy filters. `rootsOnly` is mutually exclusive
+   * with the parent/subtree selection on the UI; mirrors the WorkItems list
+   * page contract. These narrow the already-loaded data on the client (the
+   * saved value-stream parameters drive server-side filtering separately).
    */
-  parentId?: string;
-  subtreeOf?: string;
+  parentIds?: string[];
+  subtreeOfIds?: string[];
   rootsOnly?: boolean;
 }
 

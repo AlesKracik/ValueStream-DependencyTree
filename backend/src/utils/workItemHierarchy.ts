@@ -27,6 +27,35 @@ export async function getDescendantIds(db: Db, rootId: string): Promise<string[]
   return result[0].descendants.map(d => d.id);
 }
 
+/**
+ * Like {@link getDescendantIds} but takes multiple roots and returns the union
+ * of all their descendants. Resolved in a single aggregation by starting with
+ * `{ id: { $in: rootIds } }` and unwinding each root's $graphLookup output.
+ * Returns an empty array when `rootIds` is empty.
+ */
+export async function getDescendantIdsForRoots(db: Db, rootIds: string[]): Promise<string[]> {
+  if (rootIds.length === 0) return [];
+  const result = await db.collection('workItems').aggregate<{ descendants: { id: string }[] }>([
+    { $match: { id: { $in: rootIds } } },
+    {
+      $graphLookup: {
+        from: 'workItems',
+        startWith: '$id',
+        connectFromField: 'id',
+        connectToField: 'parent_id',
+        as: 'descendants',
+      },
+    },
+    { $project: { _id: 0, descendants: { id: 1 } } },
+  ]).toArray();
+
+  const out = new Set<string>();
+  for (const row of result) {
+    for (const d of row.descendants) out.add(d.id);
+  }
+  return Array.from(out);
+}
+
 /** Creates the `parent_id` index if missing. Idempotent — Mongo no-ops if it exists. */
 export async function ensureHierarchyIndex(db: Db): Promise<void> {
   await db.collection('workItems').createIndex({ parent_id: 1 });

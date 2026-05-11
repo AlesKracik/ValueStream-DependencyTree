@@ -331,6 +331,21 @@ describe('dbHelpers', () => {
         expect(q.parent_id).toBe('wi-parent');
       });
 
+      it('parentId with multiple ids builds $in (multi-select)', () => {
+        const q = buildMongoQuery({ parentId: ['wi-a', 'wi-b'] }, 'workItems');
+        expect(q.parent_id).toEqual({ $in: ['wi-a', 'wi-b'] });
+      });
+
+      it('parentId with a single-element array still emits equality, not $in', () => {
+        const q = buildMongoQuery({ parentId: ['wi-only'] }, 'workItems');
+        expect(q.parent_id).toBe('wi-only');
+      });
+
+      it('parentId drops empty/whitespace-only entries in the array', () => {
+        const q = buildMongoQuery({ parentId: ['wi-a', '', '   ', 'wi-b'] }, 'workItems');
+        expect(q.parent_id).toEqual({ $in: ['wi-a', 'wi-b'] });
+      });
+
       it('rootsOnly=true matches missing/null/empty parent_id via $or', () => {
         const q = buildMongoQuery({ rootsOnly: 'true' }, 'workItems');
         expect(q.$or).toEqual([
@@ -565,6 +580,19 @@ describe('dbHelpers', () => {
     it('parentId narrows workItems to direct children', () => {
       const result = buildWorkspaceQueries({ parentId: 'wi-parent' });
       expect(result.workItems.parent_id).toBe('wi-parent');
+    });
+
+    it('parentIds (new array shape) narrows workItems via $in', () => {
+      const result = buildWorkspaceQueries({ parentIds: ['wi-a', 'wi-b'] });
+      expect(result.workItems.parent_id).toEqual({ $in: ['wi-a', 'wi-b'] });
+    });
+
+    it('merges legacy parentId with new parentIds for back-compat', () => {
+      // A saved ValueStream halfway through migration could in theory carry both.
+      // The merged query should treat them as a union with no duplicates.
+      const result = buildWorkspaceQueries({ parentId: 'wi-extra', parentIds: ['wi-a', 'wi-b'] });
+      expect(Array.isArray(result.workItems.parent_id.$in)).toBe(true);
+      expect(new Set(result.workItems.parent_id.$in)).toEqual(new Set(['wi-a', 'wi-b', 'wi-extra']));
     });
 
     it('rootsOnly=true matches missing/null/empty parent_id via $or', () => {

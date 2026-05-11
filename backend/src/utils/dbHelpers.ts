@@ -278,9 +278,13 @@ export function buildMongoQuery(query: any, collection: string): any {
             orGroups.push(branches);
         }
 
-        // Hierarchy: direct children of a chosen work item.
-        if (typeof query.parentId === 'string' && query.parentId.trim() !== '') {
-            mongoQuery.parent_id = query.parentId.trim();
+        // Hierarchy: direct children of any chosen work item. Accepts a single
+        // id (legacy) or repeated query params (?parentId=A&parentId=B).
+        const parentIdList = toArray(query.parentId).map(s => s.trim()).filter(Boolean);
+        if (parentIdList.length === 1) {
+            mongoQuery.parent_id = parentIdList[0];
+        } else if (parentIdList.length > 1) {
+            mongoQuery.parent_id = { $in: parentIdList };
         }
 
         // Hierarchy: roots only (no parent). Treat missing field, null, and empty
@@ -368,9 +372,17 @@ export function buildWorkspaceQueries(params: any): { customers: any; workItems:
         ]);
     }
 
-    // Hierarchy: direct children of a chosen work item.
-    if (typeof params.parentId === 'string' && params.parentId.trim() !== '') {
-        workItems.parent_id = params.parentId.trim();
+    // Hierarchy: direct children of any chosen work item. Reads `parentIds`
+    // (new array shape) and `parentId` (legacy single string from saved
+    // ValueStream documents). Both contribute to the same $in.
+    const parentIdList = [...toArray(params.parentIds), ...toArray(params.parentId)]
+        .map(s => s.trim())
+        .filter(Boolean);
+    const dedupedParentIds = Array.from(new Set(parentIdList));
+    if (dedupedParentIds.length === 1) {
+        workItems.parent_id = dedupedParentIds[0];
+    } else if (dedupedParentIds.length > 1) {
+        workItems.parent_id = { $in: dedupedParentIds };
     }
 
     // Hierarchy: roots only (no parent_id). Treat missing/null/empty as root.

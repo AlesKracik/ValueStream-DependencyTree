@@ -37,10 +37,10 @@ export interface DashboardFilters {
     releasedSprintIds?: string[];
     /** Drives which field the `minPriority`/`maxPriority` range targets. */
     priorityMetric?: WorkItemPriorityMetric;
-    /** Live hierarchy: limit to direct children of this work item (parent_id equality). */
-    parentId?: string;
-    /** Live hierarchy: limit to every descendant of this work item (root excluded). */
-    subtreeOf?: string;
+    /** Live hierarchy: limit to direct children of any of these work items. */
+    parentIds?: string[];
+    /** Live hierarchy: limit to every descendant of any of these work items (roots excluded). */
+    subtreeOfIds?: string[];
     /** Live hierarchy: limit to top-level work items (no parent). */
     rootsOnly?: boolean;
 }
@@ -115,21 +115,36 @@ export function useGraphFilters(
         const includesUnreleased = !!releasedSprintList?.includes('unreleased');
 
         // Hierarchy filters — merge live (df) with saved (baseParams). Both sides
-        // are mutually exclusive on the UI, but the AND across sides means the
-        // active constraint from each must be satisfied.
-        const liveParentId = df.parentId && df.parentId.trim() !== '' ? df.parentId.trim() : null;
-        const liveSubtreeOf = df.subtreeOf && df.subtreeOf.trim() !== '' ? df.subtreeOf.trim() : null;
+        // are mutually exclusive on the UI w.r.t. rootsOnly vs parent/subtree,
+        // but the AND across sides means the active constraint from each must
+        // be satisfied. `baseParams` may carry the legacy singular `parentId`
+        // / `subtreeOf` from old saved value-stream documents — we merge both
+        // shapes into a single id list for back-compat.
+        const cleanIds = (...lists: (string[] | string | undefined | null)[]): string[] => {
+            const out: string[] = [];
+            for (const v of lists) {
+                if (Array.isArray(v)) {
+                    for (const s of v) if (typeof s === 'string' && s.trim() !== '') out.push(s.trim());
+                } else if (typeof v === 'string' && v.trim() !== '') {
+                    out.push(v.trim());
+                }
+            }
+            return Array.from(new Set(out));
+        };
+        const liveParentIds = cleanIds(df.parentIds);
+        const liveSubtreeRoots = cleanIds(df.subtreeOfIds);
         const liveRootsOnly = df.rootsOnly === true;
-        const baseParentId = baseParams?.parentId && baseParams.parentId.trim() !== '' ? baseParams.parentId.trim() : null;
-        const baseSubtreeOf = baseParams?.subtreeOf && baseParams.subtreeOf.trim() !== '' ? baseParams.subtreeOf.trim() : null;
+        const baseParentIds = cleanIds(baseParams?.parentIds, baseParams?.parentId);
+        const baseSubtreeRoots = cleanIds(baseParams?.subtreeOfIds, baseParams?.subtreeOf);
         const baseRootsOnly = baseParams?.rootsOnly === true;
+        const liveParentSet = liveParentIds.length > 0 ? new Set(liveParentIds) : null;
+        const baseParentSet = baseParentIds.length > 0 ? new Set(baseParentIds) : null;
 
         // Subtree expansion: BFS over loaded workItems to compute the descendant
-        // set. The lookup is an `any` Map so we don't need a custom WorkItem type
-        // import here. Returns null when no subtree filter is active.
-        const computeDescendants = (rootId: string): Set<string> => {
+        // set across all chosen roots. Returns null when no subtree filter is active.
+        const computeDescendants = (rootIds: string[]): Set<string> => {
             const out = new Set<string>();
-            const queue = [rootId];
+            const queue = [...rootIds];
             while (queue.length) {
                 const id = queue.shift()!;
                 for (const w of data.workItems) {
@@ -141,9 +156,9 @@ export function useGraphFilters(
             }
             return out;
         };
-        const liveSubtreeIds = liveSubtreeOf ? computeDescendants(liveSubtreeOf) : null;
-        const baseSubtreeIds = baseSubtreeOf ? computeDescendants(baseSubtreeOf) : null;
-        const hasHierarchyConstraint = !!(liveParentId || liveSubtreeOf || liveRootsOnly || baseParentId || baseSubtreeOf || baseRootsOnly);
+        const liveSubtreeIds = liveSubtreeRoots.length > 0 ? computeDescendants(liveSubtreeRoots) : null;
+        const baseSubtreeIds = baseSubtreeRoots.length > 0 ? computeDescendants(baseSubtreeRoots) : null;
+        const hasHierarchyConstraint = !!(liveParentSet || liveSubtreeIds || liveRootsOnly || baseParentSet || baseSubtreeIds || baseRootsOnly);
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const getPriorityValue = (workItem: any): number => {
@@ -244,14 +259,17 @@ export function useGraphFilters(
                     if (!isReleasedToSelected && !isUnreleasedAndAllowed) return false;
                 }
 
-                // Hierarchy filters. AND across saved + live, but each side's three
-                // sub-filters are mutually exclusive on the UI so at most one of
-                // {parentId, subtreeOf, rootsOnly} is set per side.
+                // Hierarchy filters. AND across saved + live. `rootsOnly` is
+                // mutually exclusive with parent/subtree on the UI per side, so
+                // at most one of {parentIds, subtreeOfIds, rootsOnly} is set
+                // per side. Multi-select on the parent/subtree side widens to
+                // any-of (the workItem's parent_id is in the set, or it lives
+                // in the union of the chosen subtrees).
                 const pid = workItem.parent_id;
                 if (liveRootsOnly && pid) return false;
                 if (baseRootsOnly && pid) return false;
-                if (liveParentId && pid !== liveParentId) return false;
-                if (baseParentId && pid !== baseParentId) return false;
+                if (liveParentSet && (!pid || !liveParentSet.has(pid))) return false;
+                if (baseParentSet && (!pid || !baseParentSet.has(pid))) return false;
                 if (liveSubtreeIds && !liveSubtreeIds.has(workItem.id)) return false;
                 if (baseSubtreeIds && !baseSubtreeIds.has(workItem.id)) return false;
 
