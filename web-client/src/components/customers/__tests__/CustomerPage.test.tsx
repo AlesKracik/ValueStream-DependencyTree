@@ -854,6 +854,54 @@ describe('CustomerPage', () => {
         });
     });
 
+    it('preserves prior jira_support_issues for linked keys missing from the fetch, and drops unlinked stale entries', async () => {
+        // Default beforeEach mock returns { issues: [] } for every authorizedFetch call,
+        // simulating the case where the 3 JQLs + fetchByKeys all come back empty (e.g.
+        // transient Jira API failure or filters that don't currently match).
+        const dataWithPriorJira: ValueStreamData = {
+            ...mockData,
+            customers: [{
+                ...mockData.customers[0],
+                support_issues: [
+                    { id: 'si-1', description: 'Linked issue', status: 'to do', related_jiras: ['LINKED-1'] }
+                ],
+                jira_support_issues: [
+                    { key: 'LINKED-1', summary: 'Prior summary', status: 'In Progress', priority: 'High', url: 'https://jira.com/browse/LINKED-1', last_updated: '2026-05-10T00:00:00Z', category: 'in_progress' },
+                    { key: 'STALE-1',  summary: 'Stale orphan',  status: 'Done',        priority: 'Low',  url: 'https://jira.com/browse/STALE-1',  last_updated: '2026-05-10T00:00:00Z', category: 'noop' }
+                ]
+            }]
+        };
+
+        await act(async () => {
+            render(
+                <MemoryRouter>
+                    <CustomerPage {...defaultProps} data={dataWithPriorJira} />
+                </MemoryRouter>
+            );
+        });
+
+        // The effect should write back a merged array: LINKED-1 preserved (still referenced
+        // by support_issues.related_jiras), STALE-1 dropped (no longer linked, not in any
+        // predefined filter). The previous status 'In Progress' must be kept verbatim so
+        // the Support list doesn't fall back to 'Unknown'.
+        await waitFor(() => {
+            expect(defaultProps.updateCustomer).toHaveBeenCalledWith('c1', expect.objectContaining({
+                jira_support_issues: [
+                    expect.objectContaining({ key: 'LINKED-1', status: 'In Progress' })
+                ]
+            }), true);
+        });
+
+        // And the unlinked stale entry should not appear in any write.
+        const jiraWrites = defaultProps.updateCustomer.mock.calls.filter(
+            ([, updates]) => 'jira_support_issues' in (updates as object)
+        );
+        for (const [, updates] of jiraWrites) {
+            const arr = (updates as { jira_support_issues: { key: string }[] }).jira_support_issues;
+            expect(arr.some(i => i.key === 'STALE-1')).toBe(false);
+        }
+    });
+
     it('deletes a TCV history entry', async () => {
         const dataWithHistory: ValueStreamData = {
             ...mockData,

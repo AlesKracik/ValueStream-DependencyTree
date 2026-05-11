@@ -74,18 +74,32 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
 
         const existingJiraIssues = customer.jira_support_issues || [];
 
-        const hasChanged = allFetchedIssues.length !== existingJiraIssues.length ||
-            allFetchedIssues.some(fetched => {
+        // Preserve prior entries for Jira keys that are still referenced by a
+        // support_issue.related_jiras but did not come back from this fetch round
+        // (e.g. transient Jira API error, or temporary JQL miss). Without this,
+        // SupportPage falls back to status='Unknown' for that key until the next
+        // successful fetch.
+        const fetchedKeys = new Set(allFetchedIssues.map(i => i.key));
+        const linkedKeys = new Set(
+            (customer.support_issues || []).flatMap(si => si.related_jiras || [])
+        );
+        const preservedIssues = existingJiraIssues.filter(
+            prior => linkedKeys.has(prior.key) && !fetchedKeys.has(prior.key)
+        );
+        const mergedIssues = [...allFetchedIssues, ...preservedIssues];
+
+        const hasChanged = mergedIssues.length !== existingJiraIssues.length ||
+            mergedIssues.some(fetched => {
                 const existing = existingJiraIssues.find(e => e.key === fetched.key);
                 if (!existing) return true;
-                return existing.status !== fetched.status || 
-                       existing.summary !== fetched.summary || 
+                return existing.status !== fetched.status ||
+                       existing.summary !== fetched.summary ||
                        existing.priority !== fetched.priority ||
                        existing.category !== fetched.category;
             });
 
         if (hasChanged) {
-            updateCustomer(customer.id, { jira_support_issues: allFetchedIssues }, true);
+            updateCustomer(customer.id, { jira_support_issues: mergedIssues }, true);
         }
     }, [healthData.newIssues, healthData.inProgressIssues, healthData.noopIssues, healthData.linkedIssues, healthData.loading, healthData.error, customer, isNew, loading, updateCustomer]);
 
