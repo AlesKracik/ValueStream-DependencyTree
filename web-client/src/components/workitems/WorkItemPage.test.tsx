@@ -747,6 +747,68 @@ describe('WorkItemPage', () => {
         });
     });
 
+    it('Delete button on the Aha tab clears both the reference and the synced data (existing item)', async () => {
+        const dataWithLinkedAha: ValueStreamData = {
+            ...mockData,
+            workItems: [{
+                ...mockData.workItems[0],
+                aha_reference: { id: 'aha-1', reference_num: 'PROD-1', url: 'https://test.aha.io/features/PROD-1' },
+                aha_synced_data: { name: 'Synced Name', description: '<p>x</p>', total_effort_mds: 2, score: 50, requirements: [] }
+            }]
+        };
+        renderPage({ ...defaultProps, data: dataWithLinkedAha }, 'f1');
+
+        fireEvent.click(screen.getByText(/Aha! Integration/i));
+
+        await act(async () => {
+            fireEvent.click(screen.getByRole('button', { name: /^Delete$/i }));
+        });
+
+        expect(mockShowConfirm).toHaveBeenCalledWith('Unlink Aha!', expect.any(String));
+        expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', {
+            aha_reference: null,
+            aha_synced_data: undefined
+        });
+    });
+
+    it('Delete button is hidden when there is nothing to unlink', () => {
+        renderPage(defaultProps, 'new');
+        fireEvent.click(screen.getByText(/Aha! Integration/i));
+        expect(screen.queryByRole('button', { name: /^Delete$/i })).toBeNull();
+    });
+
+    it('clearing the Aha reference input also drops the synced data (treated like Delete)', async () => {
+        const mockFeature = {
+            id: 'aha-123',
+            reference_num: 'PROD-1',
+            name: 'Aha Feature Name',
+            description: { body: '<p>desc</p>' },
+            url: 'https://test.aha.io/features/PROD-1',
+            score: 50,
+            requirements: []
+        };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (api.syncAhaFeature as any).mockResolvedValueOnce(mockFeature);
+
+        renderPage(defaultProps, 'new');
+
+        fireEvent.click(screen.getByText(/Aha! Integration/i));
+        fireEvent.change(screen.getByPlaceholderText('PROD-123'), { target: { value: 'PROD-1' } });
+        await act(async () => {
+            fireEvent.click(screen.getByText('Sync from Aha!'));
+        });
+
+        // Synced section should now be visible.
+        await waitFor(() => expect(screen.getByText('Aha Feature Name')).toBeDefined());
+
+        // Emptying the input must remove the synced section too.
+        fireEvent.change(screen.getByPlaceholderText('PROD-123'), { target: { value: '' } });
+        await waitFor(() => expect(screen.queryByText('Aha Feature Name')).toBeNull());
+
+        // mockShowConfirm should NOT have been invoked — silent clear, no confirm.
+        expect(mockShowConfirm).not.toHaveBeenCalledWith('Unlink Aha!', expect.any(String));
+    });
+
     it('saves new work item with draft issues', () => {
         renderPage(defaultProps, 'new');
 

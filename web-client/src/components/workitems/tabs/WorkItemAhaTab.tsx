@@ -68,6 +68,25 @@ export const WorkItemAhaTab: React.FC<Props> = ({
         }
     };
 
+    const clearAhaLink = (silent: boolean) => {
+        const patch: Partial<WorkItem> = { aha_reference: null, aha_synced_data: undefined };
+        if (isNew) {
+            setNewWorkItemDraft(prev => ({ ...prev, ...patch }));
+        } else {
+            updateWorkItem(workItemId, patch);
+        }
+        if (!silent) {
+            // Defer to the next tick so the alert opens after the inputs visibly clear.
+            void showAlert('Aha! Unlinked', 'The Aha! reference and synced data have been removed.');
+        }
+    };
+
+    const handleDeleteAhaLink = async () => {
+        const confirmed = await showConfirm('Unlink Aha!', 'Remove the Aha! reference and clear all synced data?');
+        if (!confirmed) return;
+        clearAhaLink(false);
+    };
+
     const applyAhaData = async () => {
         if (!workItem?.aha_synced_data) return;
 
@@ -106,10 +125,17 @@ export const WorkItemAhaTab: React.FC<Props> = ({
                             placeholder="PROD-123"
                             value={workItem?.aha_reference?.reference_num || ''}
                             onChange={e => {
+                                const next = e.target.value;
+                                if (next === '') {
+                                    // Emptying the field is treated the same as the Delete button:
+                                    // a dangling synced_data without a reference would mislead the user.
+                                    clearAhaLink(true);
+                                    return;
+                                }
                                 const val = {
                                     id: workItem?.aha_reference?.id || '',
                                     url: workItem?.aha_reference?.url || '',
-                                    reference_num: e.target.value
+                                    reference_num: next
                                 };
                                 if (isNew) setNewWorkItemDraft(prev => ({ ...prev, aha_reference: val }));
                                 else updateWorkItem(workItemId, { aha_reference: val });
@@ -136,6 +162,16 @@ export const WorkItemAhaTab: React.FC<Props> = ({
                     >
                         {isSyncingAha ? 'Syncing...' : 'Sync from Aha!'}
                     </button>
+                    {(workItem?.aha_reference?.reference_num || workItem?.aha_synced_data) && (
+                        <button
+                            className="btn-danger"
+                            onClick={handleDeleteAhaLink}
+                            disabled={isSyncingAha}
+                            title="Remove the Aha! reference and synced data from this work item"
+                        >
+                            Delete
+                        </button>
+                    )}
                 </div>
             </div>
 

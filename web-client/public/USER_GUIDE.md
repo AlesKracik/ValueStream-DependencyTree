@@ -166,6 +166,7 @@ Define exactly which accounts this initiative is for. Choose the TCV type (Exist
 *   **Synced Information:** Displays the feature's Name, Description (HTML-rendered), Effort (MDs), and Product Value (the Aha! "score" field).
 *   **Requirements:** Lists all requirements attached to the Aha! feature, each showing its reference number, name, and description.
 *   **Apply to Work Item:** Overwrites the current Work Item's name, description, baseline effort, and product value with the values from Aha! (requires confirmation).
+*   **Delete:** Removes both the Aha! reference and any synced data from this work item (requires confirmation). Clearing the Reference Number input has the same effect.
 
 ---
 
