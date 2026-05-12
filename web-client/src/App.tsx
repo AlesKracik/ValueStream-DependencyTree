@@ -176,9 +176,11 @@ const SprintListRouteWrapper = createRouteWrapper({
 });
 
 // WorkItems list needs sprints so the "Released" column can resolve sprint names,
-// and settings so the page-size from general.items_per_page drives pagination.
+// settings so the page-size from general.items_per_page drives pagination, and
+// issues so the missing-estimate flag icon can consult underlying jiras the same
+// way the value stream dashboard does.
 const WorkItemListRouteWrapper = createRouteWrapper({
-  collections: ['workItems', 'sprints', 'settings'],
+  collections: ['workItems', 'sprints', 'settings', 'issues'],
   render: ({ state }) => <WorkItemListPage data={state.data} loading={state.loading} updateWorkItem={state.updateWorkItem} />,
 });
 

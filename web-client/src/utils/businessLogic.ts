@@ -200,6 +200,21 @@ export const calculateWorkItemEffort = (workItem: WorkItem, issues: Issue[] = []
 };
 
 /**
+ * Whether a work item should display the "missing estimate" warning icon. True
+ * when either the work item has no effort at all (own field is 0 AND no linked
+ * issue contributes effort) OR at least one linked issue itself lacks an
+ * estimate (effort_md = 0). Shared by the value stream dashboard
+ * (`useGraphBuilder`) and the Work Items list so the icon stays consistent.
+ * Both callers pass the full workspace issues set: the warning reflects the
+ * real estimation state of the underlying jiras, not the current view filters.
+ */
+export const hasUnestimatedWorkItemEffort = (workItem: WorkItem, issues: Issue[] = []): boolean => {
+    const issuesForWorkItem = (issues || []).filter(e => e.work_item_id === workItem.id);
+    const totalEffort = calculateWorkItemEffort(workItem, issues);
+    return totalEffort === 0 || issuesForWorkItem.some(e => (e.effort_md || 0) === 0);
+};
+
+/**
  * Calculates the total TCV impact for a work item based on its customer targets.
  * Must-have: 100% of Customer TCV
  * Should-have: Shared portion (Customer TCV / Count of all Should-have work items for that customer)

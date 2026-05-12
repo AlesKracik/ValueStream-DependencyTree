@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
     deepMerge,
     calculateWorkItemEffort,
+    hasUnestimatedWorkItemEffort,
     calculateWorkItemTcv,
     calculateWorkItemScore,
     calculateIssueEffortPerSprint,
@@ -174,6 +175,50 @@ describe('businessLogic', () => {
                 { id: 'e1', jira_key: 'J1', work_item_id: 'f2', team_id: 't1', effort_md: 50 }
             ];
             expect(calculateWorkItemEffort(mockWorkItem, issues)).toBe(10);
+        });
+    });
+
+    describe('hasUnestimatedWorkItemEffort', () => {
+        const baseWorkItem: WorkItem = {
+            id: 'f1',
+            name: 'Test Feature',
+            total_effort_mds: 0,
+            score: 0,
+            status: 'Backlog',
+            customer_targets: []
+        };
+
+        it('flags a workitem with no effort and no linked issues', () => {
+            expect(hasUnestimatedWorkItemEffort(baseWorkItem, [])).toBe(true);
+        });
+
+        it('does not flag a workitem with its own effort and no issues', () => {
+            const wi = { ...baseWorkItem, total_effort_mds: 5 };
+            expect(hasUnestimatedWorkItemEffort(wi, [])).toBe(false);
+        });
+
+        it('does not flag a workitem whose linked issues all have positive effort', () => {
+            const issues: Issue[] = [
+                { id: 'e1', jira_key: 'J1', work_item_id: 'f1', team_id: 't1', effort_md: 5 },
+                { id: 'e2', jira_key: 'J2', work_item_id: 'f1', team_id: 't2', effort_md: 3 }
+            ];
+            expect(hasUnestimatedWorkItemEffort(baseWorkItem, issues)).toBe(false);
+        });
+
+        it('flags a workitem when any linked issue has zero effort', () => {
+            const issues: Issue[] = [
+                { id: 'e1', jira_key: 'J1', work_item_id: 'f1', team_id: 't1', effort_md: 5 },
+                { id: 'e2', jira_key: 'J2', work_item_id: 'f1', team_id: 't2', effort_md: 0 }
+            ];
+            expect(hasUnestimatedWorkItemEffort(baseWorkItem, issues)).toBe(true);
+        });
+
+        it('ignores issues belonging to other work items', () => {
+            const issues: Issue[] = [
+                { id: 'e1', jira_key: 'J1', work_item_id: 'f2', team_id: 't1', effort_md: 0 }
+            ];
+            // The workitem has 0 own effort and no own issues — still unestimated.
+            expect(hasUnestimatedWorkItemEffort(baseWorkItem, issues)).toBe(true);
         });
     });
 

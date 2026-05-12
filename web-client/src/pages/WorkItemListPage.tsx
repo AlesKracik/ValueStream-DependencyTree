@@ -7,7 +7,7 @@ import { MultiSelectDropdown } from '../components/common/MultiSelectDropdown';
 import { Pagination } from '../components/common/Pagination';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { useUIStateContext } from '../contexts/UIStateContext';
-import { calculateWorkItemEffort } from '../utils/businessLogic';
+import { hasUnestimatedWorkItemEffort } from '../utils/businessLogic';
 import { useFilteredWorkItems, type WorkItemFilters, type WorkItemSort } from '../hooks/useFilteredWorkItems';
 
 const PAGE_ID = 'workItems';
@@ -43,10 +43,9 @@ function renderMetricCell(w: WorkItem, metric: WorkItemPriorityMetric): React.Re
  */
 function renderFlagIcons(w: WorkItem, issues: Issue[]): React.ReactNode {
     const issuesForWorkItem = issues.filter(i => i.work_item_id === w.id);
-    const totalEffort = calculateWorkItemEffort(w, issues);
     const isGlobal = !!w.all_customers_target;
     const hasDatelessIssues = issuesForWorkItem.some(i => !i.target_start || !i.target_end);
-    const hasUnestimatedEffort = totalEffort === 0 || issuesForWorkItem.some(i => (i.effort_md || 0) === 0);
+    const hasUnestimatedEffort = hasUnestimatedWorkItemEffort(w, issues);
 
     if (!isGlobal && !hasDatelessIssues && !hasUnestimatedEffort) return null;
 
