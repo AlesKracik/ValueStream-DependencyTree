@@ -694,7 +694,9 @@ describe('WorkItemPage', () => {
 
         expect(defaultProps.addWorkItem).toHaveBeenCalledWith(expect.objectContaining({
             name: 'Aha Feature Name',
-            score: 75
+            score: 75,
+            aha_reference: expect.objectContaining({ reference_num: 'PROD-1', id: 'aha-123' }),
+            aha_synced_data: expect.objectContaining({ name: 'Aha Feature Name' })
         }));
     });
 

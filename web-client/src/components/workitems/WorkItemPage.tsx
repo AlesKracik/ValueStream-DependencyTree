@@ -70,14 +70,13 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
             if (isNew) {
                 const newId = generateId('f');
                 const newFeat: WorkItem = {
+                    ...newWorkItemDraft,
                     id: newId,
                     name: newWorkItemDraft.name || 'New Work Item',
                     description: newWorkItemDraft.description || '',
                     status: (newWorkItemDraft.status as WorkItem['status']) || 'Backlog',
                     total_effort_mds: newWorkItemDraft.total_effort_mds || 0,
                     score: newWorkItemDraft.score || 0,
-                    stackrank: newWorkItemDraft.stackrank,
-                    parent_id: newWorkItemDraft.parent_id,
                     customer_targets: newWorkItemCustomers.map(c => ({
                         customer_id: c.customerId,
                         tcv_type: c.tcv_type,
