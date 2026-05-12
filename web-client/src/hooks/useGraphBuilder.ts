@@ -168,7 +168,13 @@ export function useGraphBuilder(
                 0
             ) || 1;
         }
-        const maxRoi = data.metrics?.maxRoi || 0.0001;
+        // Edge thickness for Customer→WorkItem is proportional to the TCV that
+        // customer brings on that edge — the biggest customer TCV in the
+        // workspace anchors the upper clamp, everyone else scales beneath it.
+        const maxCustomerTcv = data.customers.reduce(
+            (max, c) => Math.max(max, c.existing_tcv || 0, c.potential_tcv || 0),
+            0
+        ) || 1;
 
         // Sort descending by the active metric → highest priority on top.
         const sortedWorkItems = workItemsToProcess.sort(
@@ -207,8 +213,7 @@ export function useGraphBuilder(
                     const customer = data.customers.find(c => c.id === target.customer_id);
                     if (customer) {
                         const targetTcv = target.tcv_type === 'existing' ? customer.existing_tcv : customer.potential_tcv;
-                        const roi = targetTcv / (workItem.calculatedEffort || 1);
-                        const normalizedStrokeWidth = Math.min(10, Math.max(2, (roi / maxRoi) * 10));
+                        const normalizedStrokeWidth = Math.min(10, Math.max(2, ((targetTcv || 0) / maxCustomerTcv) * 10));
 
                         edges.push({
                             id: `edge-${target.customer_id}-${workItem.id}-${target.tcv_type}`,
