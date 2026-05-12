@@ -154,7 +154,7 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
         () => ({ ...filters, priorityMetric: metric }),
         [filters, metric]
     );
-    const { workItems, total, loading: hookLoading, error } = useFilteredWorkItems(
+    const { workItems, total, loading: hookLoading, error, reload } = useFilteredWorkItems(
         filtersWithMetric,
         sort,
         { page, pageSize }
@@ -195,12 +195,20 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
         );
         if (!confirmed || !updateWorkItem) return;
 
+        // immediate=true so each await actually blocks on the backend write —
+        // without it updateWorkItem returns after the optimistic local update
+        // and persistence is debounced ~1s, which would race the reload() below.
         for (let i = 0; i < ranked.length; i++) {
             const newRank = (i + 1) * RANK_STEP;
             if (ranked[i].stackrank !== newRank) {
-                await updateWorkItem(ranked[i].id, { stackrank: newRank });
+                await updateWorkItem(ranked[i].id, { stackrank: newRank }, true);
             }
         }
+
+        // The visible list is backed by a separate paginated query
+        // (useFilteredWorkItems) that doesn't share state with updateWorkItem's
+        // optimistic workspace update, so ask it to refetch.
+        reload();
     };
 
     // Sort options drive the column-header indicators and the sort-key→server mapping.

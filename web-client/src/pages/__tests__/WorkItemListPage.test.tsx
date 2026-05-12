@@ -522,6 +522,16 @@ describe('WorkItemListPage', () => {
     describe('Compact Ranks', () => {
         it('renumbers ranked items to multiples of 1000 in their current order, leaving unranked alone', async () => {
             const updateWorkItem = vi.fn().mockResolvedValue(undefined);
+            const reload = vi.fn();
+            useFilteredWorkItemsMock.mockReturnValue({
+                workItems: mockData.workItems,
+                metrics: { maxScore: 100, maxRoi: 10 },
+                total: mockData.workItems.length,
+                loading: false,
+                refetching: false,
+                error: null,
+                reload,
+            });
             renderWithProviders(
                 <WorkItemListPage data={mockData} loading={false} updateWorkItem={updateWorkItem} />
             );
@@ -534,11 +544,14 @@ describe('WorkItemListPage', () => {
 
             await waitFor(() => expect(updateWorkItem).toHaveBeenCalledTimes(2));
             // Lower current rank gets the lower new rank — Gamma (100) → 1000, Alpha (200) → 2000.
-            expect(updateWorkItem).toHaveBeenNthCalledWith(1, 'w2', { stackrank: 1000 });
-            expect(updateWorkItem).toHaveBeenNthCalledWith(2, 'w1', { stackrank: 2000 });
+            // immediate=true so we can refetch the list after the writes land.
+            expect(updateWorkItem).toHaveBeenNthCalledWith(1, 'w2', { stackrank: 1000 }, true);
+            expect(updateWorkItem).toHaveBeenNthCalledWith(2, 'w1', { stackrank: 2000 }, true);
 
             const updatedIds = updateWorkItem.mock.calls.map(c => c[0]);
             expect(updatedIds).not.toContain('w3');
+
+            await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
         });
 
         it('shows an alert (no update calls) when no work item has a stack rank', async () => {
