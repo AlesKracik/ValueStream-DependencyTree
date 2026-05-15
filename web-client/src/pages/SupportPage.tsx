@@ -44,7 +44,7 @@ interface SupportIssueWithCustomer {
     status: string;
     customerName: string;
     customerId: string;
-    /** Customer's combined TCV (existing + potential). Drives sort and visible bag fill. */
+    /** Customer's existing TCV (potentials excluded). Drives sort and visible bag fill. */
     totalTcv: number;
     /** Max combined TCV across all customers (for tooltip context). */
     maxTcv: number;
@@ -113,9 +113,7 @@ const statusBadgeColor = (status: string): string => {
     if (s === 'done' || s === 'resolved' || s === 'closed') return 'var(--status-success)';
     if (s === 'to do' || s === 'new' || s === 'open') return 'var(--status-danger)';
     if (s === 'work in progress' || s === 'in progress' || s === 'in_progress' || s === 'active') return 'var(--status-warning)';
-    // 'noop' and the three 'waiting for ...' statuses are also non-actionable holds —
-    // surface them as warnings rather than a neutral accent so they stand out.
-    if (s === 'noop' || s.startsWith('waiting')) return 'var(--status-warning)';
+    if (s === 'noop' || s.startsWith('waiting')) return 'var(--status-info)';
     return 'var(--accent-primary)';
 };
 
@@ -569,16 +567,17 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         const issues: SupportIssueWithCustomer[] = [];
         const today = new Date().toISOString().split('T')[0];
         
-        // Find customer with highest combined TCV
-        const maxCombinedTcv = Math.max(
-            ...data.customers.map(c => (c.existing_tcv || 0) + (c.potential_tcv || 0)),
+        // Money-bag fill is driven by existing TCV only — potentials are excluded
+        // so bags reflect realised contract value rather than pipeline upside.
+        const maxExistingTcv = Math.max(
+            ...data.customers.map(c => c.existing_tcv || 0),
             0
         );
 
         data.customers.forEach(customer => {
-            const combinedTcv = (customer.existing_tcv || 0) + (customer.potential_tcv || 0);
-            const tcvRatio = maxCombinedTcv > 0
-                ? Math.sqrt(combinedTcv / maxCombinedTcv)
+            const existingTcv = customer.existing_tcv || 0;
+            const tcvRatio = maxExistingTcv > 0
+                ? Math.sqrt(existingTcv / maxExistingTcv)
                 : 0;
 
             // Manual Support Issues
@@ -599,8 +598,8 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                     status: issue.status,
                     customerName: customer.name,
                     customerId: customer.id,
-                    totalTcv: combinedTcv,
-                    maxTcv: maxCombinedTcv,
+                    totalTcv: existingTcv,
+                    maxTcv: maxExistingTcv,
                     tcvRatio,
                     activity,
                     isJira: false,

@@ -1192,7 +1192,7 @@ describe('SupportPage', () => {
             expect(screen.getByDisplayValue('Login broken')).toBeDefined();
             expect(screen.getByDisplayValue('Tiny customer issue')).toBeDefined();
 
-            // Min TCV = 1000 → Beta LLC (combined TCV 150) drops out.
+            // Min TCV = 1000 → Beta LLC (existing TCV 100) drops out.
             fireEvent.change(screen.getByLabelText('Min TCV'), { target: { value: '1000' } });
             await waitFor(() => {
                 expect(screen.queryByDisplayValue('Tiny customer issue')).toBeNull();
