@@ -99,7 +99,7 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
                     border: '1px solid var(--border-secondary)'
                 }}>
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px' }}>
-                        <div style={{ width: '138px', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        <div style={{ width: '200px', display: 'flex', gap: '4px', alignItems: 'center' }}>
                             <input
                                 type="text"
                                 value={issue.jira_key}
@@ -167,7 +167,7 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
                                 {data?.teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                             </select>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '150px' }}>
                             <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Effort:</span>
                             <input
                                 type="number"
