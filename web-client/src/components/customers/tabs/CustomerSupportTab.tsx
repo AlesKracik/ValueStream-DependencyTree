@@ -247,7 +247,7 @@ export const CustomerSupportTab: React.FC<Props> = ({ customer, data, updateCust
                                                 fontSize: '10px',
                                                 padding: '2px 6px',
                                                 borderRadius: '4px',
-                                                backgroundColor: issue.category === 'new' ? 'var(--status-danger)' : (issue.category === 'in_progress' ? 'var(--status-warning)' : 'var(--accent-primary)'),
+                                                backgroundColor: issue.category === 'new' ? 'var(--status-danger)' : (issue.category === 'in_progress' ? 'var(--status-warning)' : 'var(--status-info)'),
                                                 color: 'white',
                                                 fontWeight: 'bold'
                                             }}>

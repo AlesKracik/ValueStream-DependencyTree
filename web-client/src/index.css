@@ -29,6 +29,7 @@
   --node-sprint-over-bg: #7f1d1d;
   --node-sprint-allocated-bg: #14532d;
 
+  --status-info: #6b7280;
   --status-success: #10b981;
   --status-warning: #f59e0b;
   --status-danger: #ef4444;
@@ -74,6 +75,7 @@
   --status-danger-bg: color-mix(in srgb, var(--status-danger) 15%, transparent);
   --status-danger-text: var(--status-danger);
   --status-danger-border: var(--status-danger);
+  --status-info-bg: color-mix(in srgb, var(--status-info) 15%, transparent);
 
   --icon-filter: none;
 
@@ -113,6 +115,7 @@
   --node-sprint-over-bg: #fca5a5;
   --node-sprint-allocated-bg: #86efac;
 
+  --status-info: #6b7280;
   --status-success: #16a34a;
   --status-warning: #d97706;
   --status-danger: #dc2626;

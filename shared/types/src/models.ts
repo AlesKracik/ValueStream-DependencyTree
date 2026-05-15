@@ -555,7 +555,8 @@ export const THEME_VARIABLES: ThemeVariableDef[] = [
   // Accents (1) — link, accent-text, customer node, accent-bg all derive from this
   { name: '--accent-primary', label: 'Accent', group: 'Accents', kind: 'color', defaults: { dark: '#3b82f6', filips: '#2563eb' } },
 
-  // Status (3) — backgrounds and danger-text/border derive from these
+  // Status (4) — backgrounds and danger-text/border derive from these
+  { name: '--status-info', label: 'Status — info', group: 'Status', kind: 'color', defaults: { dark: '#6b7280', filips: '#6b7280' } },
   { name: '--status-success', label: 'Status — success', group: 'Status', kind: 'color', defaults: { dark: '#10b981', filips: '#16a34a' } },
   { name: '--status-warning', label: 'Status — warning', group: 'Status', kind: 'color', defaults: { dark: '#f59e0b', filips: '#d97706' } },
   { name: '--status-danger', label: 'Status — danger', group: 'Status', kind: 'color', defaults: { dark: '#ef4444', filips: '#dc2626' } },
