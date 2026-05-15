@@ -266,25 +266,33 @@ describe('WorkItemListPage', () => {
             });
         });
 
+        it('defaults the status filter to all active statuses (everything except Done)', async () => {
+            renderWithProviders(<WorkItemListPage data={mockData} loading={false} />);
+
+            await waitFor(() => {
+                const [filters] = lastHookCall();
+                expect(filters.status).toEqual(['Backlog', 'Planning', 'Development']);
+            });
+        });
+
         it('toggles status checkboxes (multiselect dropdown) into the hook filters', async () => {
             renderWithProviders(<WorkItemListPage data={mockData} loading={false} />);
 
-            // Open the Status dropdown.
+            // Open the Status dropdown. The default selection is the three non-Done
+            // statuses; ticking Done adds it.
             fireEvent.click(screen.getByLabelText('Status filter'));
-            // Toggle two options on.
-            fireEvent.click(screen.getByRole('option', { name: 'Backlog' }));
-            fireEvent.click(screen.getByRole('option', { name: 'Planning' }));
+            fireEvent.click(screen.getByRole('option', { name: 'Done' }));
 
             await waitFor(() => {
                 const [filters] = lastHookCall();
-                expect(filters.status).toEqual(['Backlog', 'Planning']);
+                expect(filters.status).toEqual(['Backlog', 'Planning', 'Development', 'Done']);
             });
 
-            // Toggling Backlog off removes it but keeps Planning.
+            // Toggling Backlog off removes it but keeps the rest.
             fireEvent.click(screen.getByRole('option', { name: 'Backlog' }));
             await waitFor(() => {
                 const [filters] = lastHookCall();
-                expect(filters.status).toEqual(['Planning']);
+                expect(filters.status).toEqual(['Planning', 'Development', 'Done']);
             });
         });
 

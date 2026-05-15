@@ -14,6 +14,13 @@ interface Props {
     ariaLabel?: string;
     /** Trigger button width. Defaults to a sensible 200px. */
     width?: number | string;
+    /**
+     * Trigger sizing. 'standard' matches the global input style (8px/14px/6r),
+     * for pages whose other filter fields are native inputs (e.g. Value Stream
+     * dashboard). 'compact' (6px/13px/4r) matches the list-page custom input
+     * pattern used on Work Items / Support.
+     */
+    size?: 'standard' | 'compact';
 }
 
 /**
@@ -23,7 +30,11 @@ interface Props {
  */
 export const MultiSelectDropdown: React.FC<Props> = ({
     options, selected, onChange, placeholder = 'Select...', ariaLabel, width = 200,
+    size = 'standard',
 }) => {
+    const triggerPadding = size === 'compact' ? '6px 10px' : '8px 12px';
+    const triggerFontSize = size === 'compact' ? '13px' : '14px';
+    const triggerRadius = size === 'compact' ? '4px' : '6px';
     const [open, setOpen] = useState(false);
     const rootRef = useRef<HTMLDivElement>(null);
 
@@ -68,12 +79,12 @@ export const MultiSelectDropdown: React.FC<Props> = ({
                 onClick={() => setOpen(o => !o)}
                 style={{
                     width: '100%',
-                    padding: '6px 10px',
-                    borderRadius: '4px',
+                    padding: triggerPadding,
+                    borderRadius: triggerRadius,
                     border: '1px solid var(--border-primary)',
                     background: 'var(--bg-tertiary)',
                     color: selected.length === 0 ? 'var(--text-muted)' : 'var(--text-primary)',
-                    fontSize: '13px',
+                    fontSize: triggerFontSize,
                     textAlign: 'left',
                     cursor: 'pointer',
                     display: 'flex',

@@ -413,20 +413,6 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         [data?.workItems],
     );
 
-    // The hierarchy filter renders with the same inline styles as the WorkItem
-    // list filter so the three places (WorkItem list, live dashboard, saved
-    // ValueStream definition) read as the same control. The dashboard's
-    // `.filterGroup label` CSS would otherwise add bold + letter-spacing and
-    // make this block visually heavier than the WorkItem list reference.
-    const hierarchyLabelStyle: React.CSSProperties = {
-        fontSize: '11px',
-        fontWeight: 600,
-        textTransform: 'uppercase',
-        color: 'var(--text-muted)',
-        letterSpacing: 'normal',
-    };
-    const hierarchyGroupStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '4px' };
-
     // Multi-select options that depend on data come from the loaded sprints.
     const releasedOptions = useMemo(() => {
         const sprints = (data?.sprints || []).filter(s => !s.is_archived);
@@ -631,8 +617,8 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                         />
                     </div>
 
-                    <div style={hierarchyGroupStyle}>
-                        <label style={hierarchyLabelStyle}>Hierarchy</label>
+                    <div className={styles.filterGroup}>
+                        <label>Hierarchy</label>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                             <div style={{ opacity: viewState.rootsOnly ? 0.5 : 1, pointerEvents: viewState.rootsOnly ? 'none' : 'auto' }}>
                                 <MultiSelectDropdown
@@ -694,7 +680,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                                     ×
                                 </button>
                             )}
-                            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                            <label className={styles.toggleItem}>
                                 <input
                                     type="checkbox"
                                     checked={!!viewState.rootsOnly}

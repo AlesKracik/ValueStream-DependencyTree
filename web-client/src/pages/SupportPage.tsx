@@ -772,6 +772,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                     selected={filters.status || []}
                     onChange={(next) => setArrayField('status', next)}
                     width={200}
+                    size="compact"
                 />
             </div>
 
@@ -788,6 +789,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                     selected={filters.activity || []}
                     onChange={(next) => setArrayField('activity', next)}
                     width={160}
+                    size="compact"
                 />
             </div>
 

@@ -86,8 +86,12 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
     // from a detail page) restores the user's spot. uiState lives in memory only,
     // so a browser refresh / new tab still gets a fresh page.
     const savedState = uiState[PAGE_ID];
+    // First-visit default: show all active statuses (everything except Done) so the
+    // list opens focused on in-flight work. Once savedState.pageFilters exists (after
+    // any filter interaction or Clear), it is restored verbatim — including the
+    // explicit empty/undefined the user may have set via Clear filters.
     const [filters, setFilters] = useState<WorkItemFilters>(
-        () => (savedState?.pageFilters as WorkItemFilters | undefined) || {}
+        () => (savedState?.pageFilters as WorkItemFilters | undefined) || { status: ['Backlog', 'Planning', 'Development'] }
     );
     const [sort, setSort] = useState<WorkItemSort>(() => ({
         sortBy: savedState?.sortBy ?? 'name',
@@ -393,6 +397,7 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
                     selected={filters.status || []}
                     onChange={(next) => setArrayField('status', next)}
                     width={180}
+                    size="compact"
                 />
             </div>
 
@@ -405,6 +410,7 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
                     selected={filters.releasedSprintIds || []}
                     onChange={(next) => setArrayField('releasedSprintIds', next)}
                     width={220}
+                    size="compact"
                 />
             </div>
 
@@ -419,6 +425,7 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
                             selected={pickedParents}
                             onChange={(next) => setHierarchyParents(next)}
                             width={220}
+                            size="compact"
                         />
                     </div>
 
