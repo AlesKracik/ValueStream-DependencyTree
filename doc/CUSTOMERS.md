@@ -82,7 +82,13 @@ The Support list page provides JSON-based bulk operations:
 - **Export JSON:** Downloads all support issues as a JSON array with the same structure, suitable for round-trip editing and re-import.
 
 ### Money-Bag Column (💰)
-The Support list shows each issue's customer "weight" as a three-slot money-bag fill. The driving figure is the customer's **existing TCV**; when a customer has no existing TCV, it **falls back to potential TCV** so prospects still register a bag. The fill is sqrt-scaled against the largest such TCV in the set (`sqrt(tcv / maxTcv)`), spreading values usefully across the three slots even with wide ranges. Both the figure and the ratio are reusable helpers — `customerMoneyBagTcv()` and `moneyBagFillRatio()` in `web-client/src/utils/businessLogic.ts`.
+The Support list shows each issue's customer "weight" as a three-slot money-bag fill.
+
+- **Each customer's bag value** is its **existing TCV**, falling back to **potential TCV** when it has no existing TCV — so prospects still register a bag (`customerMoneyBagTcv()`).
+- **The scale** is anchored to the largest **existing TCV** across all customers; potentials never inflate the maximum, so bags are measured against realised revenue.
+- The fill is sqrt-scaled (`sqrt(value / maxExistingTcv)`, `moneyBagFillRatio()`), spreading values usefully across the three slots even with wide ranges. A prospect whose potential exceeds the largest existing TCV yields a ratio > 1; the three-slot render clamps each slot, so it simply **caps at 3 full bags** (the tooltip can still read e.g. "400% of max").
+
+Both helpers live in `web-client/src/utils/businessLogic.ts`.
 
 ### 2. Support Overview & Jira Synchronization
 When Jira integration is configured, the Customer Page displays a "Support Overview" tab that pulls live data from Jira.

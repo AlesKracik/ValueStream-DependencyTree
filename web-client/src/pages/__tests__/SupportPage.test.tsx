@@ -405,11 +405,53 @@ describe('SupportPage', () => {
             return within(row as HTMLElement).getByTestId('tcv-bags') as HTMLElement;
         };
 
-        // Both reference $100 (max), so the prospect's potential-backed bag is full.
+        // Both reference $100 (max existing), so the prospect's potential-backed bag is full.
         const prospectBags = bagsFor('Prospect Issue');
         expect(within(prospectBags).getByTestId('tcv-bag-slot-0').getAttribute('data-fill')).toBe('1.000');
         expect(within(prospectBags).getByTestId('tcv-bag-slot-2').getAttribute('data-fill')).toBe('1.000');
         expect(prospectBags.getAttribute('title')).toBe('TCV: $100 (100% of max $100)');
+    });
+
+    it('anchors the scale to max EXISTING TCV; a prospect whose potential exceeds it caps at 3 bags', () => {
+        const tcvData: ValueStreamData = {
+            ...mockData,
+            customers: [
+                {
+                    id: 'c1',
+                    name: 'Whale',
+                    existing_tcv: 100,
+                    potential_tcv: 0,
+                    support_issues: [{ id: 'i1', description: 'Whale Issue', status: 'to do' }]
+                },
+                {
+                    // Potential (400) exceeds the largest existing TCV (100): ratio
+                    // sqrt(400/100)=2 → bags=6, but each slot clamps to 1 → all 3 full.
+                    id: 'c2',
+                    name: 'Big Prospect',
+                    existing_tcv: 0,
+                    potential_tcv: 400,
+                    support_issues: [{ id: 'i2', description: 'Prospect Issue', status: 'to do' }]
+                }
+            ]
+        };
+
+        renderWithProviders(
+            <SupportPage data={tcvData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        const bagsFor = (issueDescription: string): HTMLElement => {
+            const row = screen.getByDisplayValue(issueDescription).closest('[class*="listItem"]')!;
+            return within(row as HTMLElement).getByTestId('tcv-bags') as HTMLElement;
+        };
+
+        const prospectBags = bagsFor('Prospect Issue');
+        // Max stays at the whale's existing $100 — potential did not inflate it.
+        expect(prospectBags.getAttribute('title')).toBe('TCV: $400 (400% of max $100)');
+        // ratio = 2, so bags = 6 but every slot clamps to 1 → exactly 3 full bags.
+        expect(prospectBags.getAttribute('data-tcv-ratio')).toBe('2.000');
+        expect(within(prospectBags).getByTestId('tcv-bag-slot-0').getAttribute('data-fill')).toBe('1.000');
+        expect(within(prospectBags).getByTestId('tcv-bag-slot-1').getAttribute('data-fill')).toBe('1.000');
+        expect(within(prospectBags).getByTestId('tcv-bag-slot-2').getAttribute('data-fill')).toBe('1.000');
     });
 
     it('sorts by TCV category (money bag) correctly', async () => {

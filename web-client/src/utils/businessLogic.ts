@@ -90,11 +90,14 @@ export const customerMoneyBagTcv = (
 };
 
 /**
- * Sqrt-scaled money-bag fill ∈ [0, 1] of a customer's TCV relative to the
- * largest TCV in the set. Sqrt sits between linear (which crushes small
- * customers near 0) and log (which crushes everyone near the whale), giving a
- * usable spread across the three bag slots even with wide TCV ranges. Returns 0
- * when there is no positive reference (`maxTcv`) or the customer's TCV is 0.
+ * Sqrt-scaled money-bag fill of a customer's TCV relative to the reference
+ * `maxTcv` (the largest existing TCV — see SupportPage). Sqrt sits between
+ * linear (which crushes small customers near 0) and log (which crushes everyone
+ * near the whale), giving a usable spread across the three bag slots even with
+ * wide TCV ranges. Usually ∈ [0, 1], but may exceed 1 when `tcv` (e.g. a
+ * prospect's potential) is larger than `maxTcv`; the caller's three-slot render
+ * clamps each slot, so the visible bags cap at 3. Returns 0 when there is no
+ * positive reference (`maxTcv`) or the customer's TCV is 0.
  */
 export const moneyBagFillRatio = (tcv: number, maxTcv: number): number => {
     if (maxTcv <= 0 || tcv <= 0) return 0;

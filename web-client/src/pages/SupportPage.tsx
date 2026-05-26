@@ -47,11 +47,15 @@ interface SupportIssueWithCustomer {
     /** Customer's money-bag TCV: existing TCV, or potential TCV when existing is 0.
      *  Drives sort and visible bag fill. See customerMoneyBagTcv. */
     totalTcv: number;
-    /** Max combined TCV across all customers (for tooltip context). */
+    /** The largest EXISTING TCV across all customers — the scale "whale" (for
+     *  tooltip context). Potentials never raise this, so a prospect's bag is
+     *  measured against realised revenue. */
     maxTcv: number;
-    /** Sqrt-scaled bag fill ∈ [0, 1]: sqrt(totalTcv / maxTcv). Sqrt sits between linear
+    /** Sqrt-scaled bag fill: sqrt(totalTcv / maxTcv). Sqrt sits between linear
      *  (which crushes small customers near 0) and log (which crushes everyone near max),
-     *  giving a usable spread across all three bag slots even with wide TCV ranges. */
+     *  giving a usable spread across all three bag slots even with wide TCV ranges.
+     *  Usually ∈ [0, 1], but a prospect whose potential exceeds the max existing TCV
+     *  can exceed 1 — the three-slot render clamps each slot, capping at 3 bags. */
     tcvRatio: number;
     activity: 'new' | 'updated' | 'none';
     isJira: boolean;
@@ -568,17 +572,21 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         const issues: SupportIssueWithCustomer[] = [];
         const today = new Date().toISOString().split('T')[0];
         
-        // Money-bag fill is driven by realised contract value (existing TCV);
-        // customers with no existing TCV fall back to potential TCV so prospects
-        // still show a bag. See customerMoneyBagTcv / moneyBagFillRatio.
-        const maxBagTcv = Math.max(
-            ...data.customers.map(customerMoneyBagTcv),
+        // Money-bag scale is anchored to realised contract value: the reference
+        // "whale" is always the largest EXISTING TCV — potentials never inflate
+        // the scale. A customer's own bag value, though, falls back to potential
+        // TCV when it has no existing TCV (see customerMoneyBagTcv), so prospects
+        // still show a bag. A prospect whose potential exceeds the largest
+        // existing TCV yields a ratio > 1; the three-slot fill clamps each slot
+        // to [0,1], so it simply maxes out at 3 bags.
+        const maxExistingTcv = Math.max(
+            ...data.customers.map(c => c.existing_tcv || 0),
             0
         );
 
         data.customers.forEach(customer => {
             const bagTcv = customerMoneyBagTcv(customer);
-            const tcvRatio = moneyBagFillRatio(bagTcv, maxBagTcv);
+            const tcvRatio = moneyBagFillRatio(bagTcv, maxExistingTcv);
 
             // Manual Support Issues
             (customer.support_issues || []).forEach(issue => {
@@ -599,7 +607,7 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                     customerName: customer.name,
                     customerId: customer.id,
                     totalTcv: bagTcv,
-                    maxTcv: maxBagTcv,
+                    maxTcv: maxExistingTcv,
                     tcvRatio,
                     activity,
                     isJira: false,
