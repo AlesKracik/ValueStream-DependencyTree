@@ -10,7 +10,7 @@ import { llmGenerate, gleanAuthLogin, gleanAuthStatus, gleanChat } from '../util
 import { generateId } from '../utils/security';
 import { useNotificationContext } from '../contexts/NotificationContext';
 import { useUIStateContext } from '../contexts/UIStateContext';
-import { extractFirstJSONObject, buildSupportStatusPatch } from '../utils/businessLogic';
+import { extractFirstJSONObject, buildSupportStatusPatch, customerMoneyBagTcv, moneyBagFillRatio } from '../utils/businessLogic';
 
 const DEFAULT_PAGE_SIZE = 25;
 const SUPPORT_PAGE_ID = 'support';
@@ -44,7 +44,8 @@ interface SupportIssueWithCustomer {
     status: string;
     customerName: string;
     customerId: string;
-    /** Customer's existing TCV (potentials excluded). Drives sort and visible bag fill. */
+    /** Customer's money-bag TCV: existing TCV, or potential TCV when existing is 0.
+     *  Drives sort and visible bag fill. See customerMoneyBagTcv. */
     totalTcv: number;
     /** Max combined TCV across all customers (for tooltip context). */
     maxTcv: number;
@@ -567,18 +568,17 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         const issues: SupportIssueWithCustomer[] = [];
         const today = new Date().toISOString().split('T')[0];
         
-        // Money-bag fill is driven by existing TCV only — potentials are excluded
-        // so bags reflect realised contract value rather than pipeline upside.
-        const maxExistingTcv = Math.max(
-            ...data.customers.map(c => c.existing_tcv || 0),
+        // Money-bag fill is driven by realised contract value (existing TCV);
+        // customers with no existing TCV fall back to potential TCV so prospects
+        // still show a bag. See customerMoneyBagTcv / moneyBagFillRatio.
+        const maxBagTcv = Math.max(
+            ...data.customers.map(customerMoneyBagTcv),
             0
         );
 
         data.customers.forEach(customer => {
-            const existingTcv = customer.existing_tcv || 0;
-            const tcvRatio = maxExistingTcv > 0
-                ? Math.sqrt(existingTcv / maxExistingTcv)
-                : 0;
+            const bagTcv = customerMoneyBagTcv(customer);
+            const tcvRatio = moneyBagFillRatio(bagTcv, maxBagTcv);
 
             // Manual Support Issues
             (customer.support_issues || []).forEach(issue => {
@@ -598,8 +598,8 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                     status: issue.status,
                     customerName: customer.name,
                     customerId: customer.id,
-                    totalTcv: existingTcv,
-                    maxTcv: maxExistingTcv,
+                    totalTcv: bagTcv,
+                    maxTcv: maxBagTcv,
                     tcvRatio,
                     activity,
                     isJira: false,

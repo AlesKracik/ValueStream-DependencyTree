@@ -373,6 +373,45 @@ describe('SupportPage', () => {
         expect(lowBags.textContent).toBe('💰💰💰');
     });
 
+    it('falls back to potential TCV for the money bag when a customer has no existing TCV', () => {
+        const tcvData: ValueStreamData = {
+            ...mockData,
+            customers: [
+                {
+                    id: 'c1',
+                    name: 'Whale',
+                    existing_tcv: 100,
+                    potential_tcv: 0,
+                    support_issues: [{ id: 'i1', description: 'Whale Issue', status: 'to do' }]
+                },
+                {
+                    // No existing TCV — its potential (100) should drive the bag instead,
+                    // putting it on par with the whale.
+                    id: 'c2',
+                    name: 'Prospect',
+                    existing_tcv: 0,
+                    potential_tcv: 100,
+                    support_issues: [{ id: 'i2', description: 'Prospect Issue', status: 'to do' }]
+                }
+            ]
+        };
+
+        renderWithProviders(
+            <SupportPage data={tcvData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        const bagsFor = (issueDescription: string): HTMLElement => {
+            const row = screen.getByDisplayValue(issueDescription).closest('[class*="listItem"]')!;
+            return within(row as HTMLElement).getByTestId('tcv-bags') as HTMLElement;
+        };
+
+        // Both reference $100 (max), so the prospect's potential-backed bag is full.
+        const prospectBags = bagsFor('Prospect Issue');
+        expect(within(prospectBags).getByTestId('tcv-bag-slot-0').getAttribute('data-fill')).toBe('1.000');
+        expect(within(prospectBags).getByTestId('tcv-bag-slot-2').getAttribute('data-fill')).toBe('1.000');
+        expect(prospectBags.getAttribute('title')).toBe('TCV: $100 (100% of max $100)');
+    });
+
     it('sorts by TCV category (money bag) correctly', async () => {
         const tcvData: ValueStreamData = {
             ...mockData,

@@ -11,7 +11,9 @@ import {
     buildSupportStatusPatch,
     SUPPORT_DONE_RETENTION_DAYS,
     estimateTeamCapacityMds,
-    TEAM_CAPACITY_PTO_FACTOR
+    TEAM_CAPACITY_PTO_FACTOR,
+    customerMoneyBagTcv,
+    moneyBagFillRatio
 } from '../businessLogic';
 import type { WorkItem, Issue, Customer, Sprint, Team } from '@valuestream/shared-types';
 
@@ -647,6 +649,46 @@ describe('businessLogic', () => {
 
         it('exposes the PTO factor constant', () => {
             expect(TEAM_CAPACITY_PTO_FACTOR).toBe(0.8);
+        });
+    });
+
+    describe('customerMoneyBagTcv', () => {
+        it('uses existing TCV when present', () => {
+            expect(customerMoneyBagTcv({ existing_tcv: 100, potential_tcv: 50 })).toBe(100);
+        });
+
+        it('falls back to potential TCV when existing is 0', () => {
+            expect(customerMoneyBagTcv({ existing_tcv: 0, potential_tcv: 50 })).toBe(50);
+        });
+
+        it('falls back to potential TCV when existing is missing', () => {
+            expect(customerMoneyBagTcv({ potential_tcv: 75 } as Customer)).toBe(75);
+        });
+
+        it('returns 0 when neither is set', () => {
+            expect(customerMoneyBagTcv({} as Customer)).toBe(0);
+        });
+
+        it('prefers existing even when potential is larger', () => {
+            expect(customerMoneyBagTcv({ existing_tcv: 10, potential_tcv: 1000 })).toBe(10);
+        });
+    });
+
+    describe('moneyBagFillRatio', () => {
+        it('is the sqrt of the tcv/max ratio', () => {
+            expect(moneyBagFillRatio(100, 100)).toBe(1);
+            expect(moneyBagFillRatio(25, 100)).toBe(0.5);
+            expect(moneyBagFillRatio(50, 100)).toBeCloseTo(0.7071, 4);
+        });
+
+        it('returns 0 when max is non-positive', () => {
+            expect(moneyBagFillRatio(50, 0)).toBe(0);
+            expect(moneyBagFillRatio(50, -10)).toBe(0);
+        });
+
+        it('returns 0 when the customer tcv is non-positive', () => {
+            expect(moneyBagFillRatio(0, 100)).toBe(0);
+            expect(moneyBagFillRatio(-5, 100)).toBe(0);
         });
     });
 });

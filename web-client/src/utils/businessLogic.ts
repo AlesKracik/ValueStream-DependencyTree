@@ -77,6 +77,31 @@ export function buildSupportStatusPatch(
 }
 
 /**
+ * The TCV figure that drives a customer's money-bag fill on the Support page.
+ * Prefers realised contract value (`existing_tcv`); when a customer has none,
+ * falls back to potential (pipeline) TCV so brand-new prospects still surface a
+ * bag instead of showing empty.
+ */
+export const customerMoneyBagTcv = (
+    customer: Pick<Customer, 'existing_tcv' | 'potential_tcv'>
+): number => {
+    const existing = customer.existing_tcv || 0;
+    return existing > 0 ? existing : (customer.potential_tcv || 0);
+};
+
+/**
+ * Sqrt-scaled money-bag fill ∈ [0, 1] of a customer's TCV relative to the
+ * largest TCV in the set. Sqrt sits between linear (which crushes small
+ * customers near 0) and log (which crushes everyone near the whale), giving a
+ * usable spread across the three bag slots even with wide TCV ranges. Returns 0
+ * when there is no positive reference (`maxTcv`) or the customer's TCV is 0.
+ */
+export const moneyBagFillRatio = (tcv: number, maxTcv: number): number => {
+    if (maxTcv <= 0 || tcv <= 0) return 0;
+    return Math.sqrt(tcv / maxTcv);
+};
+
+/**
  * Maps an Aha! feature payload to the WorkItem fields we cache.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -81,6 +81,9 @@ The Support list page provides JSON-based bulk operations:
 - **Upsert from JSON:** Opens a modal to upload a JSON file. The JSON must be an array of issue objects, each with a `customer` field (matching the customer ID) and optional fields: `description`, `status`, `related_jiras`, `expiration_date`. Missing fields receive defaults (status defaults to "to do"). An optional checkbox allows replacing all existing support issues with only the JSON content (removing issues not in the JSON).
 - **Export JSON:** Downloads all support issues as a JSON array with the same structure, suitable for round-trip editing and re-import.
 
+### Money-Bag Column (💰)
+The Support list shows each issue's customer "weight" as a three-slot money-bag fill. The driving figure is the customer's **existing TCV**; when a customer has no existing TCV, it **falls back to potential TCV** so prospects still register a bag. The fill is sqrt-scaled against the largest such TCV in the set (`sqrt(tcv / maxTcv)`), spreading values usefully across the three slots even with wide ranges. Both the figure and the ratio are reusable helpers — `customerMoneyBagTcv()` and `moneyBagFillRatio()` in `web-client/src/utils/businessLogic.ts`.
+
 ### 2. Support Overview & Jira Synchronization
 When Jira integration is configured, the Customer Page displays a "Support Overview" tab that pulls live data from Jira.
 
