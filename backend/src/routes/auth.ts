@@ -32,6 +32,9 @@ const UpdateRoleBody = Type.Object({
 });
 type UpdateRoleBodyType = Static<typeof UpdateRoleBody>;
 
+/** Max consecutive failed legacy admin-password logins before the path locks. */
+const MAX_ADMIN_PASSWORD_ATTEMPTS = 3;
+
 // ── Helpers ─────────────────────────────────────────────────────
 
 async function getAppDb(fastify: any) {
@@ -80,12 +83,57 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     const { username, password } = request.body;
     const ADMIN_SECRET = process.env.ADMIN_SECRET || process.env.VITE_ADMIN_SECRET;
 
-    // Legacy ADMIN_SECRET login (god mode) — password only, no username
+    // Legacy ADMIN_SECRET login (god mode) — password only, no username.
+    // Brute-force protection: after MAX_ADMIN_PASSWORD_ATTEMPTS consecutive
+    // failures the path hard-locks and stays locked until an admin clears it
+    // (Settings → Authentication, or POST /api/auth/admin-lock/reset). The
+    // counter/lock live in settings so they survive restarts and don't depend
+    // on the app DB (which may be absent in the bootstrap scenario where this
+    // login is used).
     if (!username && password) {
+      // No admin secret configured → admin-password login is disabled; don't
+      // track attempts against a feature that can never succeed.
+      if (!ADMIN_SECRET) {
+        throw new AppError('Invalid password', 401);
+      }
+
+      const settings = await fastify.getSettings();
+      const auth = settings.auth || {};
+
+      if (auth.admin_password_locked) {
+        throw new AppError(
+          'Admin password login is locked after too many failed attempts. An administrator must unlock it in Settings → Authentication.',
+          423
+        );
+      }
+
       if (password === ADMIN_SECRET) {
+        // Success — clear any accumulated failed attempts.
+        if (auth.admin_password_attempts) {
+          await fastify.saveSettings({ ...settings, auth: { ...auth, admin_password_attempts: 0 } });
+        }
         return reply.send({ success: true, token: password });
       }
-      throw new AppError('Invalid password', 401);
+
+      // Failure — increment the counter and lock once the limit is reached.
+      const attempts = (auth.admin_password_attempts || 0) + 1;
+      const locked = attempts >= MAX_ADMIN_PASSWORD_ATTEMPTS;
+      await fastify.saveSettings({
+        ...settings,
+        auth: { ...auth, admin_password_attempts: attempts, admin_password_locked: locked },
+      });
+
+      if (locked) {
+        throw new AppError(
+          `Admin password login is now locked after ${MAX_ADMIN_PASSWORD_ATTEMPTS} failed attempts. An administrator must unlock it in Settings → Authentication.`,
+          423
+        );
+      }
+      const remaining = MAX_ADMIN_PASSWORD_ATTEMPTS - attempts;
+      throw new AppError(
+        `Invalid password. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining before lockout.`,
+        401
+      );
     }
 
     if (!username || !password) {
@@ -202,6 +250,23 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     }
     const db = await getAppDb(fastify);
     await deleteUser(db, request.params.id);
+    return reply.send({ success: true });
+  });
+
+  // ── Admin-password lockout (admin only) ──────────────────────
+  // Clears the failed-attempt counter and unlocks the legacy admin-password
+  // login after a lockout. Not in PUBLIC_PREFIXES, so it requires a valid
+  // (non-admin-password) admin session — the admin signs in via the configured
+  // method, then unlocks. If admin-password is the only way in, clear
+  // `auth.admin_password_locked` directly in the settings store.
+  fastify.post('/api/auth/admin-lock/reset', async (request, reply) => {
+    if (!request.authUser?.isAdmin) throw new AppError('Admin access required', 403);
+    const settings = await fastify.getSettings();
+    const auth = settings.auth || {};
+    await fastify.saveSettings({
+      ...settings,
+      auth: { ...auth, admin_password_attempts: 0, admin_password_locked: false },
+    });
     return reply.send({ success: true });
   });
 };

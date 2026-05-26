@@ -59,6 +59,21 @@ export const AuthSettings: React.FC<SettingsTabProps> = ({
     }
   };
 
+  const adminPasswordLocked = !!localFormData.auth?.admin_password_locked;
+  const [unlocking, setUnlocking] = useState(false);
+  const handleUnlockAdminPassword = async () => {
+    setUnlocking(true);
+    try {
+      const res = await authorizedFetch('/api/auth/admin-lock/reset', { method: 'POST' });
+      if (res.ok) {
+        // Mirror the cleared state locally so the banner disappears without a reload.
+        updateFormData('auth.admin_password_locked', false);
+        updateFormData('auth.admin_password_attempts', 0);
+      }
+    } catch { /* ignore */ }
+    setUnlocking(false);
+  };
+
   return (
     <>
       <h3 style={{ margin: "0 0 4px 0", fontSize: "15px", color: "var(--text-primary)", borderBottom: "1px solid var(--border-secondary)", paddingBottom: "4px" }}>
@@ -111,6 +126,36 @@ export const AuthSettings: React.FC<SettingsTabProps> = ({
         max={720}
         style={settingsFieldStyle}
       />
+
+      {adminPasswordLocked && (
+        <div style={{
+          maxWidth: '32rem',
+          padding: '12px 14px',
+          borderRadius: '6px',
+          border: '1px solid var(--status-danger)',
+          background: 'var(--status-danger-bg)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+        }}>
+          <strong style={{ fontSize: '14px', color: 'var(--status-danger-text)' }}>
+            🔒 Admin password login is locked
+          </strong>
+          <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+            The legacy admin-password login was locked after 3 failed attempts and is being refused.
+            Unlock it to allow admin-password sign-in again.
+          </span>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={handleUnlockAdminPassword}
+            disabled={unlocking}
+            style={{ alignSelf: 'flex-start', fontSize: '13px' }}
+          >
+            {unlocking ? 'Unlocking…' : 'Unlock admin password'}
+          </button>
+        </div>
+      )}
 
       {authMethod === 'aws-sso' && (
         <>

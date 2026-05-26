@@ -408,7 +408,9 @@ const AdminPasswordLogin: React.FC<{ onSuccess: (token: string) => void }> = ({ 
             if (response.ok && (data.success || data.token)) {
                 onSuccess(data.token || password);
             } else {
-                setError('Invalid password');
+                // Surface the server message so the remaining-attempts countdown
+                // and the lockout notice (HTTP 423) reach the user.
+                setError(data.error || 'Invalid password');
             }
         } catch {
             setError('Connection error');

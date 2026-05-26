@@ -198,10 +198,20 @@ The `ADMIN_SECRET` environment variable serves as a superuser bypass:
 - Required for initial user setup
 - Intended for bootstrap and emergency access — can be removed once users are configured
 
+#### Admin-password brute-force lockout
+
+The legacy admin-password login (`POST /api/auth/login` with `{ password }` only) is hard-limited to **3 consecutive failed attempts**. The failed-attempt counter and lock flag live in settings (`auth.admin_password_attempts` / `auth.admin_password_locked`) so they survive restarts and don't depend on the app database — important because this login is most used during bootstrap when the DB may be absent.
+
+- Each wrong password returns `401` with the number of attempts remaining.
+- The 3rd wrong password sets `auth.admin_password_locked = true`; from then on **every** admin-password login (including the correct one) is refused with `423 Locked`.
+- A successful admin-password login *before* the limit resets the counter to 0.
+- **Unlocking:** an admin signed in via the configured method (local/LDAP/SSO/Okta, or an `ADMIN_SECRET` Bearer token) clicks **Unlock admin password** in Settings → Authentication, which calls `POST /api/auth/admin-lock/reset`. If the admin password is the only way in, clear `auth.admin_password_locked` directly in the settings store.
+- The other auth methods (username/password, SSO, STS, Okta) are **not** affected by this counter.
+
 ## Session Management
 
 - **Token type:** JWT signed with `ADMIN_SECRET` (or a random key if not set)
-- **Storage:** Browser `sessionStorage` (cleared on tab/browser close)
+- **Storage:** Browser `localStorage` — shared across all tabs/windows of the same browser and persisted across restarts, so opening a new window reuses the existing login. The token is cleared on logout, on a 401 response, or when it expires.
 - **Expiry:** Configurable in Settings > Authentication > Session expiry (default: 24 hours)
 - **Refresh:** No refresh tokens — user re-authenticates after expiry
 
@@ -224,6 +234,7 @@ The `ADMIN_SECRET` environment variable serves as a superuser bypass:
 | GET | `/api/auth/users` | Admin | List all users |
 | PUT | `/api/auth/users/:id/role` | Admin | Update user role |
 | DELETE | `/api/auth/users/:id` | Admin | Delete user |
+| POST | `/api/auth/admin-lock/reset` | Admin | Clear the admin-password failed-attempt counter and unlock |
 
 ## Key Files
 

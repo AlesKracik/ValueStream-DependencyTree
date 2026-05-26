@@ -68,6 +68,7 @@ export const DEFAULT_SETTINGS: Settings = {
     aws_sso: { start_url: '', region: '', account_id: '', role_name: '' },
     aws_sts: { region: '', account_id: '', role_name: '', default_profile: '', max_request_age_seconds: 300 },
     okta: { issuer: '', client_id: '', client_secret: '' },
+    admin_password_attempts: 0, admin_password_locked: false,
   }
 };
 

@@ -326,6 +326,13 @@ export interface AuthSettings {
   aws_sts?: AwsStsAuthConfig;
   okta?: OktaAuthConfig;
   default_role: UserRole;
+  /** Count of consecutive failed legacy admin-password logins. Reset to 0 on a
+   *  successful admin-password login or via the admin-lock reset endpoint. */
+  admin_password_attempts?: number;
+  /** Set true once admin_password_attempts reaches the limit (3). While true the
+   *  legacy admin-password login is refused (HTTP 423). An admin clears it from
+   *  Settings → Authentication (or by editing settings directly). */
+  admin_password_locked?: boolean;
 }
 
 export interface AppUser {
