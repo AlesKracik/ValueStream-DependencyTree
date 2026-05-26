@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { gleanAuthStatus, gleanChat, syncJiraIssue, syncAhaFeature, llmGenerate, gleanAuthLogin } from '../api';
+import {
+  gleanAuthStatus, gleanChat, syncJiraIssue, syncAhaFeature, llmGenerate, gleanAuthLogin,
+  getAdminSecret, setAdminSecret, clearAdminSecret, setUserRole, getUserRole,
+} from '../api';
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -8,6 +11,39 @@ describe('frontend api utils', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sessionStorage.clear();
+    localStorage.clear();
+  });
+
+  describe('auth token storage', () => {
+    it('persists the token in localStorage so it is shared across tabs/windows', () => {
+      setAdminSecret('jwt-123');
+      expect(localStorage.getItem('AUTH_TOKEN')).toBe('jwt-123');
+      expect(sessionStorage.getItem('AUTH_TOKEN')).toBeNull();
+      expect(getAdminSecret()).toBe('jwt-123');
+    });
+
+    it('falls back to the legacy ADMIN_SECRET key and migrates it on next set', () => {
+      localStorage.setItem('ADMIN_SECRET', 'legacy-secret');
+      expect(getAdminSecret()).toBe('legacy-secret');
+
+      setAdminSecret('jwt-456');
+      expect(localStorage.getItem('ADMIN_SECRET')).toBeNull();
+      expect(getAdminSecret()).toBe('jwt-456');
+    });
+
+    it('clears token and role on logout', () => {
+      setAdminSecret('jwt-123');
+      setUserRole('editor');
+      clearAdminSecret();
+      expect(getAdminSecret()).toBe('');
+      expect(localStorage.getItem('USER_ROLE')).toBeNull();
+    });
+
+    it('defaults the role to admin when none is stored', () => {
+      expect(getUserRole()).toBe('admin');
+      setUserRole('viewer');
+      expect(getUserRole()).toBe('viewer');
+    });
   });
 
   describe('gleanAuthStatus', () => {

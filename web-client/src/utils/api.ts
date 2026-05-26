@@ -1,18 +1,21 @@
-// Auth token storage — supports both legacy ADMIN_SECRET and JWT tokens
+// Auth token storage — supports both legacy ADMIN_SECRET and JWT tokens.
+// Uses localStorage (not sessionStorage) so the session is shared across all
+// tabs/windows of the same browser and survives a restart, until the JWT
+// expires (Settings > Authentication > Session expiry) or the user logs out.
 const AUTH_TOKEN_KEY = 'AUTH_TOKEN';
-export const getAdminSecret = () => sessionStorage.getItem(AUTH_TOKEN_KEY) || sessionStorage.getItem('ADMIN_SECRET') || '';
+export const getAdminSecret = () => localStorage.getItem(AUTH_TOKEN_KEY) || localStorage.getItem('ADMIN_SECRET') || '';
 export const setAdminSecret = (secret: string) => {
-    sessionStorage.setItem(AUTH_TOKEN_KEY, secret);
-    sessionStorage.removeItem('ADMIN_SECRET'); // clean up legacy key
+    localStorage.setItem(AUTH_TOKEN_KEY, secret);
+    localStorage.removeItem('ADMIN_SECRET'); // clean up legacy key
 };
 export const clearAdminSecret = () => {
-    sessionStorage.removeItem(AUTH_TOKEN_KEY);
-    sessionStorage.removeItem('ADMIN_SECRET');
-    sessionStorage.removeItem('USER_ROLE');
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem('ADMIN_SECRET');
+    localStorage.removeItem('USER_ROLE');
 };
 
-export const setUserRole = (role: string) => sessionStorage.setItem('USER_ROLE', role);
-export const getUserRole = () => sessionStorage.getItem('USER_ROLE') || 'admin'; // default admin for ADMIN_SECRET/no-auth
+export const setUserRole = (role: string) => localStorage.setItem('USER_ROLE', role);
+export const getUserRole = () => localStorage.getItem('USER_ROLE') || 'admin'; // default admin for ADMIN_SECRET/no-auth
 
 /**
  * Generic POST+JSON API wrapper. Handles authorizedFetch, JSON parsing, and error checking.
