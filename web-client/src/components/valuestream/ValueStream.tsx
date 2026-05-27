@@ -381,15 +381,24 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         return () => clearTimeout(timer);
     }, [localFilters, setViewState]);
 
+    // A right-click focus (selectedNodeId) pins the graph to one node's subgraph.
+    // Once the user starts changing filters that focus no longer reflects what
+    // they're configuring, so clear it. No-ops (returns the same state) when
+    // nothing is focused, so it won't trigger spurious re-renders on keystrokes.
+    const clearFocusOnFilterChange = useCallback(() => {
+        setViewState(s => (s.selectedNodeId ? { ...s, selectedNodeId: null } : s));
+    }, [setViewState]);
+
     const handleFilterChange = (key: keyof LocalFilters, value: string) => {
         setLocalFilters(prev => ({ ...prev, [key]: value }));
+        clearFocusOnFilterChange();
     };
 
     const setStatusFilter = (next: string[]) => {
-        setViewState(s => ({ ...s, statusFilter: next.length > 0 ? next : undefined }));
+        setViewState(s => ({ ...s, selectedNodeId: null, statusFilter: next.length > 0 ? next : undefined }));
     };
     const setReleasedSprintFilter = (next: string[]) => {
-        setViewState(s => ({ ...s, releasedSprintIds: next.length > 0 ? next : undefined }));
+        setViewState(s => ({ ...s, selectedNodeId: null, releasedSprintIds: next.length > 0 ? next : undefined }));
     };
 
     // Hierarchy filter helpers — mirror the WorkItems list page contract.
@@ -399,6 +408,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         const clean = ids.filter(Boolean);
         setViewState(s => ({
             ...s,
+            selectedNodeId: null,
             parentIds: clean.length > 0 && scope === 'direct' ? clean : undefined,
             subtreeOfIds: clean.length > 0 && scope === 'subtree' ? clean : undefined,
             rootsOnly: undefined,
@@ -686,6 +696,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                                     checked={!!viewState.rootsOnly}
                                     onChange={e => setViewState(s => ({
                                         ...s,
+                                        selectedNodeId: null,
                                         rootsOnly: e.target.checked || undefined,
                                         parentIds: e.target.checked ? undefined : s.parentIds,
                                         subtreeOfIds: e.target.checked ? undefined : s.subtreeOfIds,

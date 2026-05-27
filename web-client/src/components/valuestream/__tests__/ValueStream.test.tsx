@@ -269,6 +269,56 @@ describe('Value Stream', () => {
         }, { timeout: 1500 });
     });
 
+    it('clears the right-click focus when a filter changes', () => {
+        const setViewState = vi.fn();
+        const focused = { ...mockViewState, selectedNodeId: 'c1' };
+
+        render(
+            <NotificationProvider>
+                <ValueStreamProvider value={{ data: mockData, updateIssue: vi.fn(), addIssue: vi.fn(), deleteIssue: vi.fn() }}>
+                    <ReactFlowProvider>
+                        <ValueStream {...defaultProps} viewState={focused} setViewState={setViewState} />
+                    </ReactFlowProvider>
+                </ValueStreamProvider>
+            </NotificationProvider>
+        );
+
+        // Toggle a status — a direct viewState filter setter.
+        fireEvent.click(screen.getByLabelText('Status filter'));
+        fireEvent.click(screen.getByRole('option', { name: 'Backlog' }));
+
+        // setViewState is called with a functional updater; applying it to the
+        // focused state must both set the filter and drop the focus.
+        const updater = setViewState.mock.calls.at(-1)![0];
+        const next = updater(focused);
+        expect(next.selectedNodeId).toBeNull();
+        expect(next.statusFilter).toEqual(['Backlog']);
+    });
+
+    it('clears the right-click focus when a text filter is typed', () => {
+        const setViewState = vi.fn();
+        const focused = { ...mockViewState, selectedNodeId: 'c1' };
+
+        render(
+            <NotificationProvider>
+                <ValueStreamProvider value={{ data: mockData, updateIssue: vi.fn(), addIssue: vi.fn(), deleteIssue: vi.fn() }}>
+                    <ReactFlowProvider>
+                        <ValueStream {...defaultProps} viewState={focused} setViewState={setViewState} />
+                    </ReactFlowProvider>
+                </ValueStreamProvider>
+            </NotificationProvider>
+        );
+
+        fireEvent.change(screen.getByPlaceholderText('Customers...'), { target: { value: 'Acme' } });
+
+        // The keystroke path clears focus immediately (the value itself is debounced).
+        // The focus-clearing updater no-ops when nothing is focused, so feed it the
+        // focused state and assert the focus is dropped.
+        const updater = setViewState.mock.calls.at(-1)![0];
+        const next = updater(focused);
+        expect(next.selectedNodeId).toBeNull();
+    });
+
     it('triggers fit view on pane right-click', async () => {
         const mockSetViewport = vi.fn();
         vi.mocked(useReactFlow).mockReturnValue({
