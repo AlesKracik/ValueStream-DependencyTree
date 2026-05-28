@@ -113,6 +113,15 @@
     white-space: nowrap;
 }
 
+/* Open up overflow when an inline editor inside the cell is focused so the
+   field's box-shadow focus glow isn't clipped by the cell. position+z-index
+   keep the glow above neighboring cells where it now extends. */
+.itemColumn:focus-within {
+    overflow: visible;
+    position: relative;
+    z-index: 1;
+}
+
 .itemColumn:first-child {
     font-weight: 600;
     color: var(--text-highlight);

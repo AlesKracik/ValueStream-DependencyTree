@@ -195,6 +195,18 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
+/* Field-like dropdown triggers (MultiSelectDropdown etc.) share the soft
+   input-focus glow so fields, pull-downs, and multi-selects look the same.
+   !important mirrors the input:focus rule so inline `border:` /
+   `backgroundColor:` shorthands on the trigger don't break consistency. */
+button[aria-haspopup="listbox"]:focus,
+button[aria-haspopup="listbox"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+  border-color: var(--accent-focus) !important;
+  background-color: var(--bg-input-focus) !important;
+}
+
 /* Primary Button (Blue) */
 .btn-primary {
   background-color: var(--accent-primary);
@@ -267,12 +279,15 @@ textarea:hover {
   border-color: var(--border-hover);
 }
 
+/* Unified field focus glow. !important is used so inline `border:` /
+   `backgroundColor:` shorthands on element style props (common across
+   list pages, support page, modals) cannot override the focus look. */
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: var(--accent-focus);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-  background-color: var(--bg-input-focus);
+  border-color: var(--accent-focus) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+  background-color: var(--bg-input-focus) !important;
 }
 
 input:disabled,
