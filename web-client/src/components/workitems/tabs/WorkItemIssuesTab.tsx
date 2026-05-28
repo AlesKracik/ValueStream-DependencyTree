@@ -8,6 +8,7 @@ import { useDeleteWithConfirm } from '../../../hooks/useDeleteWithConfirm';
 import { generateId } from '../../../utils/security';
 import { parseJiraIssue } from '../../../utils/businessLogic';
 import { SettingsLink } from '../../common/SettingsLink';
+import { JiraLink } from '../../common/JiraLink';
 import customerStyles from '../../customers/CustomerPage.module.css';
 
 interface Props {
@@ -114,15 +115,11 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
                                 style={{ flex: 1, minWidth: '60px' }}
                             />
                             {issue.jira_key && issue.jira_key !== 'TBD' && data?.settings?.jira?.base_url && (
-                                <a
-                                    href={`${data.settings.jira.base_url.replace(/\/$/, '')}/browse/${issue.jira_key}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    title="Open in Jira"
-                                    style={{ color: 'var(--accent-text)', textDecoration: 'none', fontSize: '14px' }}
-                                >
-                                    ↗
-                                </a>
+                                <JiraLink
+                                    issueKey={issue.jira_key}
+                                    baseUrl={data.settings.jira.base_url}
+                                    variant="icon"
+                                />
                             )}
                         </div>
                         <div style={{ flex: 1 }}>

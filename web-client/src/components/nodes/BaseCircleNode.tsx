@@ -1,5 +1,7 @@
-import React, { memo } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import React, { memo, useMemo, useState } from 'react';
+import { Handle, Position, useNodeId } from '@xyflow/react';
+import { NodeHoverChips } from './NodeHoverActions';
+import { useNodeHoverActions, type NodeHoverAction } from './nodeHoverActionsContext';
 
 export interface BaseCircleNodeHandle {
     type: 'source' | 'target';
@@ -23,6 +25,8 @@ interface BaseCircleNodeProps {
     containerStyle?: React.CSSProperties;
     onClick?: (event: React.MouseEvent) => void;
     opacity?: number;
+    /** Optional action chips shown when the node is hovered. */
+    hoverActions?: NodeHoverAction[];
 }
 
 /**
@@ -43,20 +47,43 @@ export const BaseCircleNode = memo(({
     labelStyle,
     containerStyle,
     onClick,
-    opacity = 1
+    opacity = 1,
+    hoverActions,
 }: BaseCircleNodeProps) => {
+    const [chipsVisible, setChipsVisible] = useState(false);
+    const nodeId = useNodeId();
+    const nodeActions = useNodeHoverActions();
+
+    const resolvedActions = useMemo<NodeHoverAction[]>(() => {
+        if (hoverActions !== undefined) return hoverActions;
+        if (!nodeId || !nodeActions) return [];
+        const isFocused = nodeActions.focusedNodeId === nodeId;
+        return [
+            {
+                label: isFocused ? 'Clear focus' : 'Focus subtree',
+                icon: isFocused ? '✕' : '🎯',
+                active: isFocused,
+                onClick: () => nodeActions.onFocusNode(nodeId),
+            },
+        ];
+    }, [hoverActions, nodeId, nodeActions]);
+
+    const showChips = chipsVisible && resolvedActions.length > 0;
+
     return (
-        <div 
-            style={{ 
-                position: 'relative', 
-                width: size, 
+        <div
+            style={{
+                position: 'relative',
+                width: size,
                 height: label ? size + 40 : size,
                 opacity,
                 cursor: onClick ? 'pointer' : 'default',
-                ...containerStyle 
-            }} 
+                ...containerStyle
+            }}
             title={tooltip}
             onClick={onClick}
+            onMouseEnter={() => setChipsVisible(true)}
+            onMouseLeave={() => setChipsVisible(false)}
         >
             <div
                 style={{
@@ -94,6 +121,10 @@ export const BaseCircleNode = memo(({
 
                 {children}
             </div>
+
+            {showChips && (
+                <NodeHoverChips actions={resolvedActions} />
+            )}
 
             {/* External Label */}
             {label && (

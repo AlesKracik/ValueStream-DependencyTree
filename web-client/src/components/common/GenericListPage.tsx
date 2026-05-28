@@ -434,7 +434,7 @@ export function GenericListPage<T extends { id: string }>({
                                     lineHeight: 1.2,
                                 }}
                             >
-                                ▴
+                                ▾
                             </button>
                         )}
 
@@ -513,7 +513,7 @@ export function GenericListPage<T extends { id: string }>({
                                 borderTop: 'none',
                             }}
                         >
-                            ▾{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+                            ▸{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
                         </button>
                     </div>
                 )}
@@ -547,9 +547,16 @@ export function GenericListPage<T extends { id: string }>({
                                         }}
                                     >
                                         {col.header}
-                                        {isActive && (
-                                            <span style={{ fontSize: '10px' }}>{sortOrder === 'asc' ? '▲' : '▼'}</span>
-                                        )}
+                                        <span
+                                            aria-hidden="true"
+                                            style={{
+                                                fontSize: '10px',
+                                                opacity: isActive ? 1 : 0.35,
+                                                marginLeft: '2px',
+                                            }}
+                                        >
+                                            {isActive ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                                        </span>
                                     </button>
                                 );
                             }

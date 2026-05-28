@@ -4,6 +4,7 @@ import type { CustomerHealthData } from '../../../hooks/useCustomerHealth';
 import { generateId } from '../../../utils/security';
 import { buildSupportStatusPatch } from '../../../utils/businessLogic';
 import { SettingsLink } from '../../common/SettingsLink';
+import { JiraLink } from '../../common/JiraLink';
 import customerStyles from '../CustomerPage.module.css';
 
 interface JiraKeysInputProps {
@@ -43,15 +44,12 @@ const JiraKeysInput: React.FC<JiraKeysInputProps> = ({ value, onChange, jiraBase
             />
             <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
                 {value.map(key => (
-                    <a
+                    <JiraLink
                         key={key}
-                        href={`${jiraBaseUrl}/browse/${key}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ fontSize: '12px', color: 'var(--accent-text)', textDecoration: 'none', backgroundColor: 'var(--accent-primary-bg)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--accent-primary-bg)' }}
-                    >
-                        {key} ↗
-                    </a>
+                        issueKey={key}
+                        baseUrl={jiraBaseUrl}
+                        variant="pill"
+                    />
                 ))}
             </div>
         </div>
@@ -240,9 +238,11 @@ export const CustomerSupportTab: React.FC<Props> = ({ customer, data, updateCust
                                 }}>
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <a href={issue.url} target="_blank" rel="noreferrer" style={{ fontWeight: 'bold', color: 'var(--accent-text)', textDecoration: 'none' }}>
-                                                {issue.key}
-                                            </a>
+                                            <JiraLink
+                                                issueKey={issue.key}
+                                                directUrl={issue.url}
+                                                variant="text"
+                                            />
                                             <span style={{
                                                 fontSize: '10px',
                                                 padding: '2px 6px',

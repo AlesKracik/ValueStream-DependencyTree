@@ -67,11 +67,12 @@
     border-radius: 8px;
     padding: 16px;
     cursor: pointer;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, background-color 0.2s;
 }
 
 .listItem:hover {
     border-color: var(--accent-focus);
+    background-color: var(--bg-tertiary);
 }
 
 .itemTitle {

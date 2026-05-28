@@ -429,7 +429,7 @@ describe('WorkItemListPage', () => {
             // Collapse via the chevron in the filter bar.
             fireEvent.click(screen.getByTitle('Hide filters'));
 
-            // Pull-tab now reads "▾ (2)".
+            // Pull-tab now reads "▸ (2)".
             const tab = screen.getByTitle('Show filters');
             expect(tab.textContent).toContain('(2)');
 

@@ -3,8 +3,8 @@ import { Handle, Position } from '@xyflow/react';
 import { addDays, format, parseISO } from 'date-fns';
 import { useValueStreamContext } from '../../contexts/ValueStreamContext';
 import { useNotificationContext } from '../../contexts/NotificationContext';
-import { sanitizeUrl } from '../../utils/security';
 import { calculateIssueEffortPerSprint } from '../../utils/businessLogic';
+import { JiraLink } from '../common/JiraLink';
 import type { Issue } from '@valuestream/shared-types';
 
 export interface GanttBarNodeData {
@@ -273,14 +273,15 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
 
             <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', pointerEvents: 'none', zIndex: 5 }}>
                 {data.jiraKey && data.jiraBaseUrl ? (
-                    <a
-                        href={sanitizeUrl(`${data.jiraBaseUrl}/browse/${data.jiraKey}`)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: 'var(--text-highlight)', textDecoration: 'underline', width: '100%', pointerEvents: 'auto' }}
-                    >
-                        {data.label}
-                    </a>
+                    <span style={{ pointerEvents: 'auto' }}>
+                        <JiraLink
+                            issueKey={data.jiraKey}
+                            baseUrl={data.jiraBaseUrl}
+                            variant="text"
+                            label={data.label}
+                            color="var(--text-highlight)"
+                        />
+                    </span>
                 ) : (
                     data.label
                 )}

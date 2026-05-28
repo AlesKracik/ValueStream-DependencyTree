@@ -103,17 +103,16 @@ describe('SupportPage', () => {
         expect(screen.queryByText(/Independent Jira Summary/)).toBeNull();
     });
 
-    it('opens linked Jira in a new tab when clicked', () => {
-        const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+    it('renders linked Jira as an external link with safe rel attributes', () => {
         renderWithProviders(
             <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
         );
 
-        const jiraTag = screen.getByText('SUP-101');
-        fireEvent.click(jiraTag);
-
-        expect(windowOpenSpy).toHaveBeenCalledWith('https://jira.com/browse/SUP-101', '_blank');
-        windowOpenSpy.mockRestore();
+        const jiraLink = screen.getByText('SUP-101').closest('a');
+        expect(jiraLink).not.toBeNull();
+        expect(jiraLink!.getAttribute('href')).toBe('https://jira.com/browse/SUP-101');
+        expect(jiraLink!.getAttribute('target')).toBe('_blank');
+        expect(jiraLink!.getAttribute('rel')).toBe('noopener noreferrer');
     });
 
     it('cleans up expired issues on mount', async () => {

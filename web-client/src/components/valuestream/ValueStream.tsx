@@ -15,6 +15,7 @@ import { SprintCapacityNode } from '../nodes/SprintCapacityNode';
 import { TodayLineNode } from '../nodes/TodayLineNode';
 import { HeaderNode } from '../nodes/HeaderNode';
 import { EditNodeModal } from './EditNodeModal';
+import { NodeHoverActionsProvider } from '../nodes/nodeHoverActionsContext';
 import styles from './ValueStream.module.css';
 
 // Register custom node types with React Flow
@@ -284,28 +285,30 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         }
     }, [onNavigateToCustomer, onNavigateToWorkItem, onNavigateToTeam, onNavigateToIssue, onNavigateToSprint]);
 
+    const toggleNodeFocus = useCallback((nodeId: string) => {
+        setViewState(s => ({
+            ...s,
+            selectedNodeId: s.selectedNodeId === nodeId ? null : nodeId,
+        }));
+        setTimeout(() => {
+            handleFitView();
+        }, 50);
+    }, [setViewState, handleFitView]);
+
     const onNodeContextMenu = useCallback(
         (event: React.MouseEvent, node: Node) => {
             event.preventDefault();
             // Don't show modal for static layout elements
             if (['sprintCapacityNode', 'todayLineNode'].includes(node.type || '')) return;
-            
-            setViewState(s => {
-                // If it's already selected, clear the selection (unfilter)
-                if (s.selectedNodeId === node.id) {
-                    return { ...s, selectedNodeId: null };
-                }
-                // Otherwise set the new selection
-                return { ...s, selectedNodeId: node.id };
-            });
-
-            // Trigger reset view after a small delay to allow nodes to update
-            setTimeout(() => {
-                handleFitView();
-            }, 50);
+            toggleNodeFocus(node.id);
         },
-        [setViewState, handleFitView]
+        [toggleNodeFocus]
     );
+
+    const hoverActionsValue = useMemo(() => ({
+        onFocusNode: toggleNodeFocus,
+        focusedNodeId: viewState.selectedNodeId ?? null,
+    }), [toggleNodeFocus, viewState.selectedNodeId]);
 
     const onPaneContextMenu = useCallback((event: React.MouseEvent | MouseEvent) => {
         event.preventDefault();
@@ -755,7 +758,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                             lineHeight: 1.2
                         }}
                     >
-                        ▴
+                        ▾
                     </button>
                 </div>
                 ) : (
@@ -786,35 +789,37 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                             borderTop: 'none'
                         }}
                     >
-                        ▾{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+                        ▸{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
                     </button>
                 </div>
                 )}
             </div>
 
             <div className={styles.flowWrapper}>
-                <ReactFlow
-                    data-testid="react-flow-pane"
-                    nodes={nodes}
-                    edges={edges}
-                    nodeTypes={nodeTypes}
-                    onInit={() => setFlowReady(true)}
-                    onNodeMouseEnter={onNodeMouseEnter}
-                    onNodeMouseLeave={onNodeMouseLeave}
-                    onNodeContextMenu={onNodeContextMenu}
-                    onPaneContextMenu={onPaneContextMenu}
-                    onNodeClick={onNodeClick}
-                    onMoveEnd={(_, viewport) => {
-                        setViewState(s => ({ ...s, viewport }));
-                    }}
-                    defaultViewport={viewState.viewport}
-                    fitView={false}
-                    minZoom={0.2}
-                    maxZoom={1.5}
-                    proOptions={{ hideAttribution: true }}
-                >
-                    <ValueStreamControls onFitView={handleFitView} />
-                </ReactFlow>
+                <NodeHoverActionsProvider value={hoverActionsValue}>
+                    <ReactFlow
+                        data-testid="react-flow-pane"
+                        nodes={nodes}
+                        edges={edges}
+                        nodeTypes={nodeTypes}
+                        onInit={() => setFlowReady(true)}
+                        onNodeMouseEnter={onNodeMouseEnter}
+                        onNodeMouseLeave={onNodeMouseLeave}
+                        onNodeContextMenu={onNodeContextMenu}
+                        onPaneContextMenu={onPaneContextMenu}
+                        onNodeClick={onNodeClick}
+                        onMoveEnd={(_, viewport) => {
+                            setViewState(s => ({ ...s, viewport }));
+                        }}
+                        defaultViewport={viewState.viewport}
+                        fitView={false}
+                        minZoom={0.2}
+                        maxZoom={1.5}
+                        proOptions={{ hideAttribution: true }}
+                    >
+                        <ValueStreamControls onFitView={handleFitView} />
+                    </ReactFlow>
+                </NodeHoverActionsProvider>
             </div>
 
             {editingNode && data && (

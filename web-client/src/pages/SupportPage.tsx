@@ -5,6 +5,7 @@ import type { SortOption, ListColumn } from '../components/common/GenericListPag
 import { MultiSelectDropdown } from '../components/common/MultiSelectDropdown';
 import { Pagination } from '../components/common/Pagination';
 import { SettingsLink } from '../components/common/SettingsLink';
+import { JiraLink } from '../components/common/JiraLink';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { llmGenerate, gleanAuthLogin, gleanAuthStatus, gleanChat } from '../utils/api';
 import { generateId } from '../utils/security';
@@ -912,39 +913,15 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                             }}
                         />
                         {d.linkedJiras && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }} onClick={(e) => e.stopPropagation()}>
                                 {d.linkedJiras.map(jira => (
-                                    <div
+                                    <JiraLink
                                         key={jira.key}
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (jira.url) {
-                                                window.open(jira.url, '_blank');
-                                            }
-                                        }}
-                                        style={{
-                                            fontSize: '10px',
-                                            backgroundColor: 'var(--bg-tertiary)',
-                                            border: '1px solid var(--border-secondary)',
-                                            borderRadius: '4px',
-                                            padding: '1px 6px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '4px',
-                                            cursor: jira.url ? 'pointer' : 'default',
-                                            color: 'var(--text-primary)'
-                                        }}
-                                        title={`Jira Status: ${jira.status}`}
-                                    >
-                                        <span style={{ fontWeight: 'bold' }}>{jira.key}</span>
-                                        <span style={{
-                                            fontSize: '9px',
-                                            color: 'var(--text-muted)',
-                                            borderLeft: '1px solid var(--border-secondary)',
-                                            paddingLeft: '4px',
-                                            fontWeight: 'bold'
-                                        }}>{jira.status}</span>
-                                    </div>
+                                        issueKey={jira.key}
+                                        directUrl={jira.url}
+                                        variant="pill"
+                                        status={jira.status}
+                                    />
                                 ))}
                             </div>
                         )}
@@ -1079,7 +1056,12 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
                                                         {issue.jiraTickets && issue.jiraTickets.length > 0 && (
                                                             <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
                                                                 {issue.jiraTickets.map(key => (
-                                                                    <span key={key} style={{ fontSize: '10px', backgroundColor: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: '4px' }}>{key}</span>
+                                                                    <JiraLink
+                                                                        key={key}
+                                                                        issueKey={key}
+                                                                        baseUrl={data?.settings?.jira?.base_url}
+                                                                        variant="pill"
+                                                                    />
                                                                 ))}
                                                             </div>
                                                         )}

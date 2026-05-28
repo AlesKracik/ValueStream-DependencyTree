@@ -5,7 +5,8 @@ import { WorkItemNode } from '../WorkItemNode';
 // Mock React Flow components
 vi.mock('@xyflow/react', () => ({
     Handle: () => <div data-testid="handle" />,
-    Position: { Left: 'left', Right: 'right' }
+    Position: { Left: 'left', Right: 'right' },
+    useNodeId: () => null,
 }));
 
 const mockData = {
