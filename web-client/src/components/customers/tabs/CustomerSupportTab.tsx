@@ -236,24 +236,13 @@ export const CustomerSupportTab: React.FC<Props> = ({ customer, data, updateCust
                                     borderRadius: '6px',
                                     border: '1px solid var(--border-primary)'
                                 }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <JiraLink
-                                                issueKey={issue.key}
-                                                directUrl={issue.url}
-                                                variant="text"
-                                            />
-                                            <span style={{
-                                                fontSize: '10px',
-                                                padding: '2px 6px',
-                                                borderRadius: '4px',
-                                                backgroundColor: issue.category === 'new' ? 'var(--status-danger)' : (issue.category === 'in_progress' ? 'var(--status-warning)' : 'var(--status-info)'),
-                                                color: 'white',
-                                                fontWeight: 'bold'
-                                            }}>
-                                                {issue.status}
-                                            </span>
-                                        </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+                                        <JiraLink
+                                            issueKey={issue.key}
+                                            directUrl={issue.url}
+                                            variant="pill"
+                                            status={issue.status}
+                                        />
                                         <span style={{ fontSize: '13px' }}>{issue.summary}</span>
                                     </div>
 
