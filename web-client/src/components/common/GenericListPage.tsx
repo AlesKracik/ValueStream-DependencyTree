@@ -294,6 +294,12 @@ export function GenericListPage<T extends { id: string }>({
     }, []);
 
     const handleItemClick = (item: T) => {
+        // If the user drag-selected text inside the row, the mouseup still fires a
+        // click on the row. Skip navigation so the selection is preserved instead of
+        // being clobbered by a route change.
+        if (typeof window !== 'undefined' && (window.getSelection()?.toString().length ?? 0) > 0) {
+            return;
+        }
         const container = getScrollContainer();
         if (pageId && container) {
             // Lock restoration flag to prevent any subsequent scroll events
