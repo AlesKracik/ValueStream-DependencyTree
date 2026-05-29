@@ -42,4 +42,5 @@ Each entity corresponds to a layer in the value-stream pipeline:
 ## Reference
 
 - [API Reference](API-REFERENCE.md) — Complete REST endpoint catalogue.
+- [Concurrency](CONCURRENCY.md) — Optimistic concurrency control: `_version`, 409 merge/retry, field-level PATCH, array-element endpoints.
 - [User Guide](../web-client/public/USER_GUIDE.md) — End-user documentation (served by the application).

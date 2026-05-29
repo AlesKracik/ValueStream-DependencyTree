@@ -1,3 +1,20 @@
+/**
+ * Optimistic-concurrency-control field present on every persisted top-level entity.
+ *
+ * - Server stamps `_version: 0` on insert.
+ * - Every successful update bumps `_version` by 1.
+ * - Clients must echo back the `_version` they read; the server rejects writes
+ *   with a stale version (409 Conflict + the current document) so the client
+ *   can merge and retry.
+ * - Legacy documents without `_version` are treated as `_version: 0` on the
+ *   server side and stamped on first mutation, so a migration is optional cleanup.
+ *
+ * The field is `_version?: number` on the TypeScript interface because freshly
+ * constructed in-memory entities (before the first server round-trip) won't
+ * have one yet; the wire schema for update endpoints requires it.
+ */
+export type EntityVersion = number;
+
 export interface TcvHistoryEntry {
   id: string;
   value: number;
@@ -27,6 +44,7 @@ export interface JiraIssue {
 
 export interface Customer {
   id: string;
+  _version?: EntityVersion;
   name: string;
   customer_id?: string;
   existing_tcv: number;
@@ -42,6 +60,7 @@ export interface Customer {
 
 export interface WorkItem {
   id: string;
+  _version?: EntityVersion;
   name: string;
   description?: string;
   status: 'Backlog' | 'Planning' | 'Development' | 'Done';
@@ -97,6 +116,7 @@ export interface TeamMember {
 
 export interface Team {
   id: string;
+  _version?: EntityVersion;
   name: string;
   total_capacity_mds: number;
   country?: string;
@@ -113,6 +133,7 @@ export interface IssueDependency {
 
 export interface Issue {
   id: string;
+  _version?: EntityVersion;
   jira_key: string;
   work_item_id?: string;
   team_id: string;
@@ -127,6 +148,7 @@ export interface Issue {
 
 export interface Sprint {
   id: string;
+  _version?: EntityVersion;
   name: string;
   start_date: string;
   end_date: string;
@@ -611,9 +633,23 @@ export interface ValueStreamParameters {
 
 export interface ValueStreamEntity {
   id: string;
+  _version?: EntityVersion;
   name: string;
   description: string;
   parameters: ValueStreamParameters;
+}
+
+/**
+ * Response body for a 409 Conflict on an entity update.
+ * The client should deep-merge its pending changes onto `current` (favouring
+ * its own values for fields it actually touched) and retry once.
+ */
+export interface EntityConflictResponse {
+  success: false;
+  conflict: true;
+  error: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  current: Record<string, any>;
 }
 
 export interface ValueStreamData {
@@ -713,6 +749,27 @@ export interface ValueStreamDataState {
   addValueStream: (valueStream: ValueStreamEntity) => void;
   updateValueStream: (id: string, updates: Partial<ValueStreamEntity>, immediate?: boolean) => Promise<void>;
   deleteValueStream: (id: string) => void;
+  /**
+   * Element-level operations on whitelisted nested arrays of a Customer
+   * (currently `support_issues` and `tcv_history`). Phase 3 of the OCC
+   * rollout — two users editing different elements no longer collide.
+   */
+  addCustomerArrayItem: (
+    customerId: string,
+    arrayPath: 'support_issues' | 'tcv_history',
+    item: SupportIssue | TcvHistoryEntry
+  ) => Promise<SupportIssue | TcvHistoryEntry | undefined>;
+  patchCustomerArrayItem: (
+    customerId: string,
+    arrayPath: 'support_issues' | 'tcv_history',
+    itemId: string,
+    patch: Partial<SupportIssue> | Partial<TcvHistoryEntry>
+  ) => Promise<boolean>;
+  deleteCustomerArrayItem: (
+    customerId: string,
+    arrayPath: 'support_issues' | 'tcv_history',
+    itemId: string
+  ) => Promise<boolean>;
 }
 
 

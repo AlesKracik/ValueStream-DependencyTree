@@ -67,13 +67,30 @@ Migration endpoint — run once after deployment to backfill existing data. Scor
 
 ## Entity CRUD
 
+All mutation endpoints below use optimistic concurrency control via a required `_version` field on the wire. See [Concurrency](CONCURRENCY.md) for the full contract, merge semantics, and migration story.
+
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/api/entity/:collection` | Upsert a document (requires `id` in body) |
-| `POST` | `/api/entity/:collection/:id` | Upsert a document by path ID |
+| `POST` | `/api/entity/:collection` | Upsert whole document (requires `id` and `_version` in body) |
+| `POST` | `/api/entity/:collection/:id` | Upsert whole document by path ID (body `_version` required) |
+| `PATCH` | `/api/entity/:collection/:id` | Field-level update: body `{ _version, patch }` |
 | `DELETE` | `/api/entity/:collection/:id` | Delete a document with cascade cleanup |
+| `POST` | `/api/entity/:collection/:id/items/:arrayPath` | Append element to a whitelisted nested array: body `{ _version, item }` |
+| `PATCH` | `/api/entity/:collection/:id/items/:arrayPath/:itemId` | Update one element of a whitelisted array: body `{ _version, patch }` |
+| `DELETE` | `/api/entity/:collection/:id/items/:arrayPath/:itemId` | Remove one element: query `?_version=N` |
 
 **Allowed collections:** `customers`, `workItems`, `teams`, `issues`, `sprints`, `valueStreams`.
+
+**Whitelisted array paths for element-level endpoints:**
+- `customers.support_issues` (key: `id`)
+- `customers.tcv_history` (key: `id`)
+
+**Standard responses:**
+- `200 OK` — `{ success: true, _version: N }` on mutations; array adds also return `item`.
+- `400 Bad Request` — invalid schema, missing `_version`, forbidden patch keys (`id`, `_version`, `calculated_*`), or non-whitelisted array path.
+- `403 Forbidden` — non-allowed collection or insufficient role.
+- `404 Not Found` — PATCH/array endpoint hit a missing entity or missing array element.
+- `409 Conflict` — `_version` mismatch. Body: `{ success: false, conflict: true, error, current }` — the client should merge its pending changes onto `current` and retry with `current._version`.
 
 **Cascade cleanup on DELETE:**
 - Deleting a **Customer** → `$pull` from `customer_targets` in all WorkItems.

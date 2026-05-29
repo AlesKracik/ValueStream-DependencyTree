@@ -167,7 +167,14 @@ const TeamListRouteWrapper = createRouteWrapper({
 const SupportRouteWrapper = createRouteWrapper({
   collections: ['customers', 'settings'],
   render: ({ state }) =>
-    <SupportPage data={state.data} loading={state.loading} updateCustomer={state.updateCustomer} />,
+    <SupportPage
+      data={state.data}
+      loading={state.loading}
+      updateCustomer={state.updateCustomer}
+      patchSupportIssue={(customerId, issueId, patch) =>
+        state.patchCustomerArrayItem(customerId, 'support_issues', issueId, patch)
+      }
+    />,
 });
 
 const SprintListRouteWrapper = createRouteWrapper({

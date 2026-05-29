@@ -1,15 +1,30 @@
 import { Type, Static } from '@sinclair/typebox';
 
 // ── Entity ──────────────────────────────────────────────────────────────────
+// Every mutation must carry the `_version` the client last observed (0 for a
+// brand-new entity). The server uses it for optimistic concurrency control:
+// matching version → update + bump; mismatch → 409 with current document.
+// Legacy docs that never got a `_version` are matched as if it were 0.
 export const EntityBody = Type.Object({
-  id: Type.String()
+  id: Type.String(),
+  _version: Type.Integer({ minimum: 0 })
 }, { additionalProperties: true });
 export type EntityBodyType = Static<typeof EntityBody>;
 
 export const EntityOptionalIdBody = Type.Object({
-  id: Type.Optional(Type.String())
+  id: Type.Optional(Type.String()),
+  _version: Type.Integer({ minimum: 0 })
 }, { additionalProperties: true });
 export type EntityOptionalIdBodyType = Static<typeof EntityOptionalIdBody>;
+
+// PATCH /api/entity/:collection/:id — field-level update. `patch` is a sparse
+// object containing only the keys the client wants to change. Server-owned
+// keys (id, _version, calculated_*) are rejected if present in `patch`.
+export const EntityPatchBody = Type.Object({
+  _version: Type.Integer({ minimum: 0 }),
+  patch: Type.Object({}, { additionalProperties: true })
+}, { additionalProperties: false });
+export type EntityPatchBodyType = Static<typeof EntityPatchBody>;
 
 export const CollectionParams = Type.Object({
   collection: Type.String()
@@ -21,6 +36,44 @@ export const CollectionIdParams = Type.Object({
   id: Type.String()
 });
 export type CollectionIdParamsType = Static<typeof CollectionIdParams>;
+
+// ── Array element endpoints (Phase 3) ───────────────────────────────────────
+// POST /api/entity/:collection/:id/items/:arrayPath — push a new element.
+// If the item lacks `id`, the server fills one with a UUID.
+export const ArrayItemAddBody = Type.Object({
+  _version: Type.Integer({ minimum: 0 }),
+  item: Type.Object({}, { additionalProperties: true })
+}, { additionalProperties: false });
+export type ArrayItemAddBodyType = Static<typeof ArrayItemAddBody>;
+
+// PATCH /api/entity/:collection/:id/items/:arrayPath/:itemId — field-level
+// update of one element. Same patch semantics as the entity PATCH.
+export const ArrayItemPatchBody = Type.Object({
+  _version: Type.Integer({ minimum: 0 }),
+  patch: Type.Object({}, { additionalProperties: true })
+}, { additionalProperties: false });
+export type ArrayItemPatchBodyType = Static<typeof ArrayItemPatchBody>;
+
+// DELETE doesn't carry a body — `_version` comes from the query string.
+export const ArrayItemDeleteQuery = Type.Object({
+  _version: Type.String()  // arrives as string; coerced to int in the handler
+}, { additionalProperties: true });
+export type ArrayItemDeleteQueryType = Static<typeof ArrayItemDeleteQuery>;
+
+export const ArrayItemParams = Type.Object({
+  collection: Type.String(),
+  id: Type.String(),
+  arrayPath: Type.String()
+});
+export type ArrayItemParamsType = Static<typeof ArrayItemParams>;
+
+export const ArrayItemWithIdParams = Type.Object({
+  collection: Type.String(),
+  id: Type.String(),
+  arrayPath: Type.String(),
+  itemId: Type.String()
+});
+export type ArrayItemWithIdParamsType = Static<typeof ArrayItemWithIdParams>;
 
 // ── Settings ────────────────────────────────────────────────────────────────
 // Settings body is a deep, complex object — use passthrough schema for runtime

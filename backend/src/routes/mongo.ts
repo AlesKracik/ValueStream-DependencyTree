@@ -82,7 +82,14 @@ export const mongoRoutes: FastifyPluginAsync = async (fastify) => {
     for (const col of ALLOWED_COLLECTIONS) {
       await db.collection(col).deleteMany({});
       if (importData[col]?.length > 0) {
-          await db.collection(col).insertMany(importData[col] as any[]);
+          // Ensure every imported doc carries `_version` so OCC works without
+          // needing the lazy-upgrade path on first mutation. Existing values
+          // (e.g. from a same-version export) are preserved.
+          const docs = (importData[col] as any[]).map(d => ({
+            _version: 0,
+            ...d,
+          }));
+          await db.collection(col).insertMany(docs);
       }
     }
 

@@ -155,9 +155,9 @@ describe('useValueStreamData', () => {
         expect(result.current.data?.sprints).toHaveLength(0);
         await waitFor(() => {
             expect(fetch).toHaveBeenCalledWith(
-                '/api/entity/sprints',
+                '/api/entity/sprints/s1',
                 expect.objectContaining({
-                    method: 'POST',
+                    method: 'PATCH',
                     body: expect.stringContaining('"is_archived":true'),
                     headers: expect.objectContaining({
                         'Authorization': expect.stringContaining('Bearer')
@@ -268,11 +268,11 @@ describe('useValueStreamData', () => {
         });
         expect(result.current.data?.sprints[0].quarter).toBe('FY2026 Q4');
         
-        // Should have persisted the updated sprint
+        // Should have persisted the updated sprint via PATCH /api/entity/sprints/:id
         expect(fetch).toHaveBeenCalledWith(
-            '/api/entity/sprints',
+            '/api/entity/sprints/s1',
             expect.objectContaining({
-                method: 'POST',
+                method: 'PATCH',
                 body: expect.stringContaining('"quarter":"FY2026 Q4"'),
                 headers: expect.objectContaining({
                     'Authorization': expect.stringContaining('Bearer')

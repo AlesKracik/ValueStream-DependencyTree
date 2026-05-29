@@ -37,6 +37,10 @@ interface Props {
     data: ValueStreamData | null;
     loading: boolean;
     updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
+    /** Element-level support_issues operations. Optional so existing tests/callers keep working;
+     *  when provided, the inline description/status edits route through the array endpoints
+     *  (Phase 3) instead of replacing the whole `support_issues` array. */
+    patchSupportIssue?: (customerId: string, issueId: string, patch: Partial<SupportIssue>) => Promise<boolean>;
 }
 
 interface SupportIssueWithCustomer {
@@ -138,7 +142,7 @@ const AutoGrowTextarea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElemen
     return <textarea ref={ref} {...props} />;
 };
 
-export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) => {
+export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer, patchSupportIssue }) => {
     const navigate = useNavigate();
     const location = useLocation();
     const { showAlert } = useNotificationContext();
@@ -166,15 +170,22 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer }) 
         issueId: string,
         patch: Partial<SupportIssue>
     ) => {
+        const stamped = { ...patch, updated_at: new Date().toISOString() };
+        // Prefer the array-element PATCH endpoint when available — it lets two
+        // users edit different support_issues on the same customer concurrently
+        // without one overwriting the other's array. Falls back to the
+        // whole-array replacement when the helper isn't wired (e.g. in tests).
+        if (patchSupportIssue) {
+            await patchSupportIssue(customerId, issueId, stamped);
+            return;
+        }
         const customer = data?.customers.find(c => c.id === customerId);
         if (!customer) return;
         const updated = (customer.support_issues || []).map(si =>
-            si.id === issueId
-                ? { ...si, ...patch, updated_at: new Date().toISOString() }
-                : si
+            si.id === issueId ? { ...si, ...stamped } : si
         );
         await updateCustomer(customerId, { support_issues: updated }, true);
-    }, [data, updateCustomer]);
+    }, [data, updateCustomer, patchSupportIssue]);
 
     const commitDescription = useCallback(async (customerId: string, issueId: string, currentValue: string) => {
         const draft = descriptionDrafts[issueId];
