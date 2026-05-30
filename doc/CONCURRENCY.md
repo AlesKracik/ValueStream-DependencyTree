@@ -29,7 +29,7 @@ Documents predating the OCC rollout don't have a `_version` field. The server tr
 { id, $or: [{ _version: 0 }, { _version: { $exists: false } }] }
 ```
 
-So legacy docs auto-upgrade transparently on first mutation. The optional migration script `backend/scripts/add-version-field.ts` (also available as `npm --prefix backend run migrate:add-version`) stamps `_version: 0` on every document that lacks it — purely a housekeeping operation, not a deploy blocker.
+So legacy docs auto-upgrade transparently on first mutation — no migration step required.
 
 ## Layer 1 — Whole-document OCC (`POST`)
 
@@ -137,7 +137,6 @@ These apply the change optimistically to local state, call the corresponding end
 
 - Backend OCC plumbing: `backend/src/routes/entity.ts` (`upsertWithOcc`, `versionMatch`, the three array-element handlers).
 - Backend schemas: `backend/src/routes/schemas.ts` (`EntityBody`, `EntityPatchBody`, `ArrayItemAddBody`, etc.).
-- Migration script: `backend/scripts/add-version-field.ts`.
 - Frontend merge utility: `web-client/src/utils/entityMerge.ts` (`mergeForRetry`, `findContestedKeys`).
 - Frontend persistence: `web-client/src/hooks/useValueStreamData.ts` (`persistEntity`, `patchEntity`, `addArrayItem`/`patchArrayItem`/`deleteArrayItem`, hook-level helpers).
 - Tests: `backend/src/routes/__tests__/entity.test.ts`, `web-client/src/hooks/__tests__/useValueStreamData.persistence.test.tsx`, `web-client/src/utils/__tests__/entityMerge.test.ts`.
