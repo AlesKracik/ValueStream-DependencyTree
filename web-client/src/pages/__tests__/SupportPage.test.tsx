@@ -736,6 +736,22 @@ describe('SupportPage', () => {
         expect(mockedNavigate).not.toHaveBeenCalled();
     });
 
+    it('blurs the inline status select on change so the badge colour repaints immediately', () => {
+        renderWithProviders(
+            <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />
+        );
+
+        const statusSelect = screen.getByLabelText('Status for issue i1') as HTMLSelectElement;
+        statusSelect.focus();
+        expect(document.activeElement).toBe(statusSelect);
+
+        fireEvent.change(statusSelect, { target: { value: 'work in progress' } });
+
+        // Chrome only repaints a <select>'s inline background-color once it loses focus,
+        // so the change handler must blur it for the new status colour to show right away.
+        expect(document.activeElement).not.toBe(statusSelect);
+    });
+
     it('changing the inline status select does NOT navigate', () => {
         renderWithProviders(
             <SupportPage data={mockData} loading={false} updateCustomer={mockUpdateCustomer} />

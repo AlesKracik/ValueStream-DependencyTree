@@ -950,7 +950,13 @@ export const SupportPage: React.FC<Props> = ({ data, loading, updateCustomer, pa
                     <select
                         aria-label={`Status for issue ${d.id}`}
                         value={d.status}
-                        onChange={e => handleStatusChange(d.customerId, d.id, e.target.value as SupportIssue['status'])}
+                        onChange={e => {
+                            // Chrome won't repaint a focused <select>'s background-color when it
+                            // changes via React state — the new colour only shows after the select
+                            // loses focus. Blur immediately so the badge colour updates on selection.
+                            e.currentTarget.blur();
+                            handleStatusChange(d.customerId, d.id, e.target.value as SupportIssue['status']);
+                        }}
                         onClick={e => e.stopPropagation()}
                         onMouseDown={e => e.stopPropagation()}
                         onKeyDown={e => e.stopPropagation()}
