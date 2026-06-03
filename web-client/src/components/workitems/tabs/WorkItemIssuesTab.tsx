@@ -61,6 +61,30 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
         }
     };
 
+    // Prevent duplicating a Jira that already exists in the system: if the
+    // manually-typed key matches another issue, link that existing issue to
+    // this work item and drop the blank row the user was filling in.
+    const handleJiraKeyBlur = (id: string, rawKey: string) => {
+        const key = rawKey.trim();
+        if (!key || key === 'TBD') return;
+
+        const existing = (data?.issues || []).find(
+            e => e.id !== id && e.jira_key?.trim().toLowerCase() === key.toLowerCase()
+        );
+        if (!existing) return;
+
+        if (isNew) {
+            setNewWorkItemIssues(prev => {
+                const alreadyLinked = prev.some(e => e.id === existing.id);
+                const withoutBlank = prev.filter(e => e.id !== id);
+                return alreadyLinked ? withoutBlank : [...withoutBlank, { ...existing, work_item_id: 'new' }];
+            });
+        } else {
+            updateIssue(existing.id, { work_item_id: workItemId });
+            deleteIssue(id);
+        }
+    };
+
     const handleAddIssue = () => {
         const newId = generateId('e');
         const newIssue: Issue = {
@@ -112,6 +136,7 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
                                         updateIssue(issue.id, { jira_key: e.target.value });
                                     }
                                 }}
+                                onBlur={e => handleJiraKeyBlur(issue.id, e.target.value)}
                                 style={{ flex: 1, minWidth: '60px' }}
                             />
                             {issue.jira_key && issue.jira_key !== 'TBD' && data?.settings?.jira?.base_url && (
