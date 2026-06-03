@@ -457,3 +457,156 @@ export const extractFirstJSONObject = (str: string): string => {
 
     return str;
 };
+
+/* ------------------------------------------------------------------ */
+/*  Jira Parent Link → WorkItem hierarchy alignment                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Resolve a Jira custom-field id from the `names` map (field id → display
+ * label) returned by /search. Returns the first id whose label matches
+ * `label`, or undefined if absent.
+ */
+export const resolveFieldId = (
+    names: Record<string, string> | undefined,
+    label: string,
+): string | undefined => {
+    if (!names) return undefined;
+    for (const [id, name] of Object.entries(names)) {
+        if (name === label) return id;
+    }
+    return undefined;
+};
+
+/**
+ * The Advanced-Roadmaps "Parent Link" custom field can come back as a plain
+ * issue-key string ("ABC-123") or as an object carrying the key. Normalise to
+ * the key string, or undefined when there is no usable value.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const extractParentLinkKey = (value: any): string | undefined => {
+    if (!value) return undefined;
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed || undefined;
+    }
+    if (typeof value === 'object') {
+        const key = value.key || value.data?.key || value.value;
+        return typeof key === 'string' && key.trim() ? key.trim() : undefined;
+    }
+    return undefined;
+};
+
+export interface HierarchyAlignmentInput {
+    /** Successfully-fetched Jira issues this sync, keyed by issue key. Each
+     *  value is a raw Jira issue augmented with a top-level `names` map. */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    fetchedByKey: Map<string, any>;
+    /** All system issues (used to map any jira_key → its WorkItem). */
+    issues: Issue[];
+    /** All work items (for existence + cycle checks). */
+    workItems: WorkItem[];
+}
+
+export interface HierarchyAlignmentPlan {
+    /** Work items whose parent_id should change, in apply order. */
+    updates: { workItemId: string; parentId: string }[];
+    /** Work-item ids skipped because their child jiras disagree on the parent. */
+    conflicts: string[];
+    /** Work-item ids skipped because the change would create a cycle. */
+    cycles: string[];
+    /** True when the instance has no "Parent Link" field — nothing can align. */
+    parentFieldMissing: boolean;
+}
+
+/**
+ * Build a plan to align WorkItem.parent_id to the Jira "Parent Link" hierarchy,
+ * treating Jira as the source of truth but only for issues/work items already
+ * present in the system. Pure — performs no I/O; the caller applies `updates`.
+ *
+ * Rules (see plan): a child jira whose Parent Link points at an in-system
+ * parent jira makes the child jira's work item a child of the parent jira's
+ * work item. Skips when either side is Unassigned, when both jiras share a work
+ * item, on a work item whose child jiras disagree (conflict), and when the edge
+ * would form a cycle. Never clears an existing parent_id.
+ */
+export const planHierarchyAlignment = (
+    { fetchedByKey, issues, workItems }: HierarchyAlignmentInput,
+): HierarchyAlignmentPlan => {
+    const plan: HierarchyAlignmentPlan = {
+        updates: [], conflicts: [], cycles: [], parentFieldMissing: false,
+    };
+
+    // Resolve the Parent Link field id from any fetched issue's names map
+    // (the id is instance-global, so the first one that has it wins).
+    let parentLinkFieldId: string | undefined;
+    for (const issue of fetchedByKey.values()) {
+        parentLinkFieldId = resolveFieldId(issue?.names, 'Parent Link');
+        if (parentLinkFieldId) break;
+    }
+    if (!parentLinkFieldId) {
+        plan.parentFieldMissing = true;
+        return plan;
+    }
+
+    const issueByKey = new Map<string, Issue>();
+    for (const issue of issues) {
+        if (issue.jira_key && !issueByKey.has(issue.jira_key)) {
+            issueByKey.set(issue.jira_key, issue);
+        }
+    }
+    const workItemById = new Map(workItems.map(w => [w.id, w]));
+
+    // Gather proposed parent work items per child work item.
+    const proposals = new Map<string, Set<string>>();
+    for (const [childKey, issueData] of fetchedByKey.entries()) {
+        const childIssue = issueByKey.get(childKey);
+        if (!childIssue) continue;
+
+        const parentKey = extractParentLinkKey(issueData?.fields?.[parentLinkFieldId]);
+        if (!parentKey) continue;                       // no Parent Link
+
+        const parentIssue = issueByKey.get(parentKey);
+        if (!parentIssue) continue;                     // parent jira not in system
+
+        const childWI = childIssue.work_item_id;
+        const parentWI = parentIssue.work_item_id;
+        if (!childWI || !parentWI) continue;            // either side Unassigned
+        if (childWI === parentWI) continue;             // same work item
+        if (!workItemById.has(childWI) || !workItemById.has(parentWI)) continue; // stale ref
+
+        let set = proposals.get(childWI);
+        if (!set) { set = new Set(); proposals.set(childWI, set); }
+        set.add(parentWI);
+    }
+
+    // Resolve proposals → updates, honouring conflicts, no-ops and cycles.
+    // `pendingParent` tracks parent_ids as we apply, so the cycle check sees
+    // the resulting graph within this run.
+    const pendingParent = new Map<string, string | undefined>(
+        workItems.map(w => [w.id, w.parent_id]),
+    );
+
+    const wouldCycle = (childWI: string, parentWI: string): boolean => {
+        let cursor: string | undefined = parentWI;
+        const seen = new Set<string>();
+        while (cursor) {
+            if (cursor === childWI) return true;
+            if (seen.has(cursor)) break;                // pre-existing cycle guard
+            seen.add(cursor);
+            cursor = pendingParent.get(cursor);
+        }
+        return false;
+    };
+
+    for (const [childWI, parentSet] of proposals.entries()) {
+        if (parentSet.size > 1) { plan.conflicts.push(childWI); continue; }
+        const parentWI = [...parentSet][0];
+        if (pendingParent.get(childWI) === parentWI) continue;   // already correct
+        if (wouldCycle(childWI, parentWI)) { plan.cycles.push(childWI); continue; }
+        plan.updates.push({ workItemId: childWI, parentId: parentWI });
+        pendingParent.set(childWI, parentWI);
+    }
+
+    return plan;
+};

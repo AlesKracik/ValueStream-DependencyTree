@@ -13,7 +13,10 @@ import {
     estimateTeamCapacityMds,
     TEAM_CAPACITY_PTO_FACTOR,
     customerMoneyBagTcv,
-    moneyBagFillRatio
+    moneyBagFillRatio,
+    resolveFieldId,
+    extractParentLinkKey,
+    planHierarchyAlignment
 } from '../businessLogic';
 import type { WorkItem, Issue, Customer, Sprint, Team } from '@valuestream/shared-types';
 
@@ -689,6 +692,155 @@ describe('businessLogic', () => {
         it('returns 0 when the customer tcv is non-positive', () => {
             expect(moneyBagFillRatio(0, 100)).toBe(0);
             expect(moneyBagFillRatio(-5, 100)).toBe(0);
+        });
+    });
+});
+
+describe('Jira Parent Link hierarchy alignment', () => {
+    const PL = 'customfield_99'; // Parent Link field id
+    const names = { [PL]: 'Parent Link' };
+
+    const issue = (id: string, jira_key: string, work_item_id?: string): Issue =>
+        ({ id, jira_key, work_item_id, team_id: 't1', effort_md: 0 });
+    const wi = (id: string, parent_id?: string): WorkItem =>
+        ({ id, name: id, status: 'Backlog', total_effort_mds: 0, score: 0, customer_targets: [], parent_id });
+    // Build a fetched-issue map; parent = the Parent Link key for that issue.
+    const fetched = (entries: { key: string; parent?: string }[]) => {
+        const m = new Map<string, any>();
+        for (const e of entries) {
+            m.set(e.key, { key: e.key, names, fields: e.parent ? { [PL]: e.parent } : {} });
+        }
+        return m;
+    };
+
+    describe('resolveFieldId', () => {
+        it('finds the field id by label', () => {
+            expect(resolveFieldId(names, 'Parent Link')).toBe(PL);
+        });
+        it('returns undefined when absent', () => {
+            expect(resolveFieldId({ x: 'Team' }, 'Parent Link')).toBeUndefined();
+            expect(resolveFieldId(undefined, 'Parent Link')).toBeUndefined();
+        });
+    });
+
+    describe('extractParentLinkKey', () => {
+        it('accepts a plain key string', () => {
+            expect(extractParentLinkKey('ABC-1')).toBe('ABC-1');
+            expect(extractParentLinkKey('  ABC-1  ')).toBe('ABC-1');
+        });
+        it('accepts object shapes', () => {
+            expect(extractParentLinkKey({ key: 'ABC-2' })).toBe('ABC-2');
+            expect(extractParentLinkKey({ data: { key: 'ABC-3' } })).toBe('ABC-3');
+        });
+        it('returns undefined for empty/invalid', () => {
+            expect(extractParentLinkKey(undefined)).toBeUndefined();
+            expect(extractParentLinkKey('')).toBeUndefined();
+            expect(extractParentLinkKey({})).toBeUndefined();
+        });
+    });
+
+    describe('planHierarchyAlignment', () => {
+        it('flags parentFieldMissing when no Parent Link field is present', () => {
+            const plan = planHierarchyAlignment({
+                fetchedByKey: new Map([['C-1', { key: 'C-1', names: { x: 'Team' }, fields: {} }]]),
+                issues: [issue('i1', 'C-1', 'wiC')],
+                workItems: [wi('wiC')],
+            });
+            expect(plan.parentFieldMissing).toBe(true);
+            expect(plan.updates).toEqual([]);
+        });
+
+        it('sets parent_id when child WI differs from current', () => {
+            const plan = planHierarchyAlignment({
+                fetchedByKey: fetched([{ key: 'C-1', parent: 'P-1' }]),
+                issues: [issue('i1', 'C-1', 'wiC'), issue('i2', 'P-1', 'wiP')],
+                workItems: [wi('wiC'), wi('wiP')],
+            });
+            expect(plan.updates).toEqual([{ workItemId: 'wiC', parentId: 'wiP' }]);
+        });
+
+        it('is a no-op when parent_id already correct', () => {
+            const plan = planHierarchyAlignment({
+                fetchedByKey: fetched([{ key: 'C-1', parent: 'P-1' }]),
+                issues: [issue('i1', 'C-1', 'wiC'), issue('i2', 'P-1', 'wiP')],
+                workItems: [wi('wiC', 'wiP'), wi('wiP')],
+            });
+            expect(plan.updates).toEqual([]);
+        });
+
+        it('skips when the child jira is Unassigned', () => {
+            const plan = planHierarchyAlignment({
+                fetchedByKey: fetched([{ key: 'C-1', parent: 'P-1' }]),
+                issues: [issue('i1', 'C-1', undefined), issue('i2', 'P-1', 'wiP')],
+                workItems: [wi('wiP')],
+            });
+            expect(plan.updates).toEqual([]);
+        });
+
+        it('skips when the parent jira is Unassigned', () => {
+            const plan = planHierarchyAlignment({
+                fetchedByKey: fetched([{ key: 'C-1', parent: 'P-1' }]),
+                issues: [issue('i1', 'C-1', 'wiC'), issue('i2', 'P-1', undefined)],
+                workItems: [wi('wiC')],
+            });
+            expect(plan.updates).toEqual([]);
+        });
+
+        it('skips when the parent jira is not in the system', () => {
+            const plan = planHierarchyAlignment({
+                fetchedByKey: fetched([{ key: 'C-1', parent: 'GHOST-1' }]),
+                issues: [issue('i1', 'C-1', 'wiC')],
+                workItems: [wi('wiC')],
+            });
+            expect(plan.updates).toEqual([]);
+        });
+
+        it('skips when both jiras share a work item', () => {
+            const plan = planHierarchyAlignment({
+                fetchedByKey: fetched([{ key: 'C-1', parent: 'P-1' }]),
+                issues: [issue('i1', 'C-1', 'wiX'), issue('i2', 'P-1', 'wiX')],
+                workItems: [wi('wiX')],
+            });
+            expect(plan.updates).toEqual([]);
+        });
+
+        it('records a conflict when child jiras in one WI point to different parent WIs', () => {
+            const plan = planHierarchyAlignment({
+                fetchedByKey: fetched([
+                    { key: 'C-1', parent: 'P-1' },
+                    { key: 'C-2', parent: 'P-2' },
+                ]),
+                issues: [
+                    issue('i1', 'C-1', 'wiC'), issue('i2', 'C-2', 'wiC'),
+                    issue('i3', 'P-1', 'wiP1'), issue('i4', 'P-2', 'wiP2'),
+                ],
+                workItems: [wi('wiC'), wi('wiP1'), wi('wiP2')],
+            });
+            expect(plan.updates).toEqual([]);
+            expect(plan.conflicts).toEqual(['wiC']);
+        });
+
+        it('records a cycle and skips the edge', () => {
+            // wiP already child of wiC; making wiC child of wiP would loop.
+            const plan = planHierarchyAlignment({
+                fetchedByKey: fetched([{ key: 'C-1', parent: 'P-1' }]),
+                issues: [issue('i1', 'C-1', 'wiC'), issue('i2', 'P-1', 'wiP')],
+                workItems: [wi('wiC'), wi('wiP', 'wiC')],
+            });
+            expect(plan.updates).toEqual([]);
+            expect(plan.cycles).toEqual(['wiC']);
+        });
+
+        it('handles object-shaped Parent Link values', () => {
+            const m = new Map<string, any>([
+                ['C-1', { key: 'C-1', names, fields: { [PL]: { key: 'P-1' } } }],
+            ]);
+            const plan = planHierarchyAlignment({
+                fetchedByKey: m,
+                issues: [issue('i1', 'C-1', 'wiC'), issue('i2', 'P-1', 'wiP')],
+                workItems: [wi('wiC'), wi('wiP')],
+            });
+            expect(plan.updates).toEqual([{ workItemId: 'wiC', parentId: 'wiP' }]);
         });
     });
 });

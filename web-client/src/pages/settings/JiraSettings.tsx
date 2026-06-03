@@ -4,7 +4,7 @@ import type { Issue, JiraIssue } from '@valuestream/shared-types';
 import { authorizedFetch } from "../../utils/api";
 import { generateId } from '../../utils/security';
 import { ScopeIndicator } from '../../components/common/ScopeIndicator';
-import { parseJiraIssue } from "../../utils/businessLogic";
+import { parseJiraIssue, planHierarchyAlignment } from "../../utils/businessLogic";
 import styles from '../List.module.css';
 import type { SettingsTabWithDataProps } from './types';
 
@@ -17,6 +17,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
   updateIssue,
   addIssue,
   updateCustomer,
+  updateWorkItem,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeSubTab = searchParams.get("subtab") || "common";
@@ -26,6 +27,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
   const [importSyncResult, setImportSyncResult] = useState<{ success: boolean; message: string; } | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState<string>("");
+  const [alignHierarchy, setAlignHierarchy] = useState(false);
   const [importJql, setImportJql] = useState("");
   const [importChildren, setImportChildren] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -148,9 +150,41 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
       }
     }
 
+    let hierarchyNote = "";
+    if (alignHierarchy) {
+      setSyncProgress("Aligning work-item hierarchy…");
+      const plan = planHierarchyAlignment({
+        fetchedByKey,
+        issues: data.issues || [],
+        workItems: data.workItems || [],
+      });
+      if (plan.parentFieldMissing) {
+        hierarchyNote = " Hierarchy: Parent Link field not found.";
+      } else {
+        let aligned = 0;
+        let alignFail = 0;
+        for (let i = 0; i < plan.updates.length; i++) {
+          const u = plan.updates[i];
+          setSyncProgress(`Aligning hierarchy ${i + 1}/${plan.updates.length}…`);
+          try {
+            await updateWorkItem(u.workItemId, { parent_id: u.parentId }, true);
+            aligned++;
+          } catch (err: unknown) {
+            console.error(`Error reparenting work item ${u.workItemId}:`, err);
+            alignFail++;
+          }
+        }
+        hierarchyNote = ` Hierarchy: ${aligned} aligned`
+          + (alignFail > 0 ? `, ${alignFail} failed` : "")
+          + (plan.conflicts.length > 0 ? `, ${plan.conflicts.length} conflicts skipped` : "")
+          + (plan.cycles.length > 0 ? `, ${plan.cycles.length} cycles skipped` : "")
+          + ".";
+      }
+    }
+
     setIsSyncing(false);
     setSyncProgress("");
-    setImportSyncResult({ success: failCount === 0, message: `Sync complete. ${successCount} succeeded, ${failCount} failed.` });
+    setImportSyncResult({ success: failCount === 0, message: `Sync complete. ${successCount} succeeded, ${failCount} failed.${hierarchyNote}` });
   };
 
   const handleSyncSupportJiras = async () => {
@@ -512,6 +546,15 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
               >
                 {isSyncing ? syncProgress : "Sync Issues from Jira"}
               </button>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                <input
+                  type="checkbox"
+                  checked={alignHierarchy}
+                  onChange={(e) => setAlignHierarchy(e.target.checked)}
+                  style={{ width: "auto" }}
+                />
+                Align work-item hierarchy to Jira (Parent Link)
+              </label>
             </div>
 
             {importSyncResult && (

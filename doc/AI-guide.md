@@ -48,7 +48,7 @@ For the complete endpoint catalogue, see [API Reference](API-REFERENCE.md). Key 
 - `POST /api/entity/{collection}` (create-or-replace) / `PATCH /api/entity/{collection}/{id}` (field-level) / `DELETE /api/entity/{collection}/{id}` — CRUD with cascade cleanup and OCC (`_version`).
 - `POST|PATCH|DELETE /api/entity/{collection}/{id}/items/{arrayPath}[/{itemId}]` — element-level operations on whitelisted nested arrays (`customers.support_issues`, `customers.tcv_history`).
 - `GET /api/settings` / `POST /api/settings` — Settings with secret masking (see [Secret Management](SECRET-MANAGEMENT.md)).
-- Integration proxies: Jira (`/api/jira/*`), AI (`/api/llm/generate`), Glean (`/api/glean/*`), Aha! (`/api/aha/*`), AWS SSO (`/api/aws/sso/*`), LDAP (`/api/ldap/*`). `POST /api/jira/search` paginates and (with `include_children`) fetches one level of `"Parent Link"` children; paging/batching/dedupe live in `backend/src/utils/jiraSearch.ts`. See [Jira Integration](JIRA-INTEGRATION.md).
+- Integration proxies: Jira (`/api/jira/*`), AI (`/api/llm/generate`), Glean (`/api/glean/*`), Aha! (`/api/aha/*`), AWS SSO (`/api/aws/sso/*`), LDAP (`/api/ldap/*`). `POST /api/jira/search` paginates and (with `include_children`) fetches one level of `"Parent Link"` children; paging/batching/dedupe live in `backend/src/utils/jiraSearch.ts`. The "Sync Issues" flow can optionally align `WorkItem.parent_id` to the Jira Parent Link hierarchy (`planHierarchyAlignment` in `web-client/src/utils/businessLogic.ts`, applied in `JiraSettings.tsx`). See [Jira Integration](JIRA-INTEGRATION.md).
 
 ### Business Logic & Metrics
 Centralized in `backend/src/utils/businessLogic.ts`:
