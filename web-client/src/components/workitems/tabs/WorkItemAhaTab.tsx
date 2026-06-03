@@ -69,7 +69,10 @@ export const WorkItemAhaTab: React.FC<Props> = ({
     };
 
     const clearAhaLink = (silent: boolean) => {
-        const patch: Partial<WorkItem> = { aha_reference: null, aha_synced_data: undefined };
+        // Use null (not undefined) for both keys: JSON.stringify drops undefined
+        // values, so an `undefined` here never reaches the PATCH body and the
+        // server keeps the stale synced data. null is sent and $set explicitly.
+        const patch: Partial<WorkItem> = { aha_reference: null, aha_synced_data: null };
         if (isNew) {
             setNewWorkItemDraft(prev => ({ ...prev, ...patch }));
         } else {

@@ -105,7 +105,7 @@ export interface WorkItem {
       description?: string;
       url?: string;
     }[];
-  };
+  } | null;
 }
 
 export interface TeamMember {

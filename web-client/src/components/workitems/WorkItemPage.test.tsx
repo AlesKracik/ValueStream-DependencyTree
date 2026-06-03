@@ -765,9 +765,12 @@ describe('WorkItemPage', () => {
         });
 
         expect(mockShowConfirm).toHaveBeenCalledWith('Unlink Aha!', expect.any(String));
+        // Both keys must be null (not undefined): JSON.stringify drops undefined
+        // values from the PATCH body, which previously left the synced data
+        // stale on the server even though the reference was cleared.
         expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', {
             aha_reference: null,
-            aha_synced_data: undefined
+            aha_synced_data: null
         });
     });
 
