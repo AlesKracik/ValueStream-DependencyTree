@@ -431,6 +431,10 @@ export function useGraphBuilder(
                     const yPos = ganttStartY + (laneIdx * 45);
 
                     const workItem = data.workItems.find(wi => wi.id === issue.work_item_id);
+                    // A jira whose work_item_id is missing (or points to a work
+                    // item that no longer exists) sits in no work item — flag it
+                    // so the Gantt bar can be highlighted as needing assignment.
+                    const isUnassigned = !workItem;
 
                     // Build the segments for heat/intensity mapping using centralized logic
                     const segments: { startOffsetPixels: number, widthPixels: number, intensity: number, color: string, isFrozen: boolean }[] = [];
@@ -492,6 +496,7 @@ export function useGraphBuilder(
                             issueId: issue.id,
                             targetStart: issue.target_start!,
                             targetEnd: issue.target_end!,
+                            isUnassigned,
                             segments: segments
                         },
                     });

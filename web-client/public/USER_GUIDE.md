@@ -306,6 +306,7 @@ The Live Graph is a multi-layered dependency tree that maps demand (Customers) t
     *   **Heat/Intensity Mapping:** Bars are segmented by sprint. A segment's brightness indicates if the effort allocated to that sprint is higher or lower than the uniform baseline.
     *   **Frozen History:** Segments in the past (before the active sprint) are marked with a diagonal stripe pattern and are automatically snapshotted to preserve historical accuracy.
     *   **Status Colours:** Issues are Slate Blue (Past) or Purple (Future/Active).
+    *   **Unassigned Highlight:** Jiras that are not linked to any Work Item are outlined with an amber border and glow so they are easy to spot and triage.
 
 *   **Sprint Capacity (Timeline Header):**
     *   **Visual Health:** Sprint headers change colour based on team utilisation:

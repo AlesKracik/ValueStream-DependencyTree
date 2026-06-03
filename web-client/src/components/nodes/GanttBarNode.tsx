@@ -16,7 +16,9 @@ export interface GanttBarNodeData {
     issueId: string;
     targetStart: string;
     targetEnd: string;
-    segments?: { 
+    /** True when the jira belongs to no work item (unassigned). */
+    isUnassigned?: boolean;
+    segments?: {
         startOffsetPixels: number, 
         widthPixels: number, 
         intensity: number, 
@@ -180,6 +182,7 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
     return (
         <div
             ref={nodeRef}
+            data-unassigned={data.isUnassigned ? 'true' : undefined}
             style={{
                 width: `${visualWidth}px`,
                 transform: `translateX(${visualLeft}px)`,
@@ -192,8 +195,15 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
                 color: 'var(--text-highlight)',
                 fontWeight: 'bold',
                 fontSize: '12px',
-                boxShadow: '0 2px 4px -1px var(--bg-shadow)',
-                border: '1px solid rgba(255,255,255,0.2)',
+                // Unassigned jiras get an amber attention border + glow so they
+                // stand out against the regular bars without recolouring the
+                // intensity segments that sit on top.
+                boxShadow: data.isUnassigned
+                    ? '0 0 0 2px var(--status-warning), 0 0 8px 1px var(--status-warning)'
+                    : '0 2px 4px -1px var(--bg-shadow)',
+                border: data.isUnassigned
+                    ? '1px solid var(--status-warning)'
+                    : '1px solid rgba(255,255,255,0.2)',
                 boxSizing: 'border-box',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -201,7 +211,7 @@ export const GanttBarNode = memo(({ data }: { data: GanttBarNodeData }) => {
                 position: 'relative',
                 transition: dragState.active ? 'none' : 'width 0.1s, transform 0.1s'
             }}
-            title={data.label}
+            title={data.isUnassigned ? `${data.label} — not assigned to a work item` : data.label}
         >
             {/* Render Intensity Segments */}
             {data.segments && data.segments.map((seg, idx) => {

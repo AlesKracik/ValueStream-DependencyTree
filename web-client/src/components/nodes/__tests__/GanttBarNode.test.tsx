@@ -138,6 +138,52 @@ describe('GanttBarNode Auto-Freeze', () => {
     });
 });
 
+describe('GanttBarNode unassigned highlight', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-02-20'));
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    const baseNodeData = {
+        label: 'Issue 1',
+        width: 400,
+        color: '#8b5cf6',
+        issueId: 'e1',
+        targetStart: '2026-01-05',
+        targetEnd: '2026-02-25',
+        segments: []
+    };
+
+    const renderBar = (extra: Record<string, unknown>) => render(
+        <NotificationProvider>
+            <ValueStreamProvider value={{ data: mockData, updateIssue: vi.fn(), addIssue: vi.fn(), deleteIssue: vi.fn() }}>
+                <GanttBarNode data={{ ...baseNodeData, ...extra }} />
+            </ValueStreamProvider>
+        </NotificationProvider>
+    );
+
+    it('marks the bar and adds an amber glow when the jira is unassigned', () => {
+        const { container } = renderBar({ isUnassigned: true });
+        const bar = container.querySelector('[data-unassigned="true"]') as HTMLElement;
+        expect(bar).not.toBeNull();
+        expect(bar.style.boxShadow).toContain('--status-warning');
+        expect(bar.style.border).toContain('--status-warning');
+        expect(bar.title).toContain('not assigned to a work item');
+    });
+
+    it('does not highlight a jira that belongs to a work item', () => {
+        const { container } = renderBar({ isUnassigned: false });
+        expect(container.querySelector('[data-unassigned="true"]')).toBeNull();
+        const bar = container.firstElementChild as HTMLElement;
+        expect(bar.style.boxShadow).not.toContain('--status-warning');
+    });
+});
+
 
 
 
