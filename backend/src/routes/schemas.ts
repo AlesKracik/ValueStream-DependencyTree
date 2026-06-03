@@ -116,7 +116,12 @@ export type JiraIssueBodyType = Static<typeof JiraIssueBody>;
 
 export const JiraSearchBody = Type.Intersect([
   JiraConfigBody,
-  Type.Object({ jql: Type.String() })
+  Type.Object({
+    jql: Type.String(),
+    // When true, after the base JQL runs the backend fetches one level of
+    // children (issues whose "Parent Link" points at a base-result key).
+    include_children: Type.Optional(Type.Boolean())
+  })
 ]);
 export type JiraSearchBodyType = Static<typeof JiraSearchBody>;
 

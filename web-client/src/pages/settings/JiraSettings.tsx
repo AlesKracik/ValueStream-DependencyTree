@@ -27,6 +27,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState<string>("");
   const [importJql, setImportJql] = useState("");
+  const [importChildren, setImportChildren] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState<string>("");
   const [isSyncingSupport, setIsSyncingSupport] = useState(false);
@@ -303,12 +304,13 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
     let updateCount = 0;
 
     try {
-      setImportProgress("Fetching issues...");
+      setImportProgress(importChildren ? "Fetching issues + children..." : "Fetching issues...");
       const response = await authorizedFetch("/api/jira/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           jql: importJql,
+          include_children: importChildren,
           jira: {
             base_url: jira.base_url,
             api_version: jira.api_version,
@@ -328,6 +330,10 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
         return;
       }
 
+      // Index existing issues by jira_key once (O(n)) so the per-issue dedupe
+      // lookup stays O(1) even when child expansion balloons the result set.
+      const existingByKey = new Map((data.issues || []).map((e) => [e.jira_key, e]));
+
       for (let i = 0; i < issues.length; i++) {
         const issue = issues[i];
         const jiraKey = issue.key;
@@ -337,7 +343,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
         // can resolve custom-field IDs (target_start, target_end, team).
         const updates = parseJiraIssue({ ...issue, names }, data.teams);
 
-        const existingIssue = (data.issues || []).find((e) => e.jira_key === jiraKey);
+        const existingIssue = existingByKey.get(jiraKey);
         try {
           if (existingIssue) {
             await updateIssue(existingIssue.id, updates, true);
@@ -363,7 +369,8 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
           failCount++;
         }
       }
-      setImportSyncResult({ success: failCount === 0, message: `Import complete. Created ${createCount}, Updated ${updateCount}, Failed ${failCount}.` });
+      const warning = resData.data.warning ? ` ${resData.data.warning}` : "";
+      setImportSyncResult({ success: failCount === 0, message: `Import complete. Created ${createCount}, Updated ${updateCount}, Failed ${failCount}.${warning}` });
     } catch (err: unknown) {
       console.error("Import error:", err);
       const msg = err instanceof Error ? err.message : "Import failed.";
@@ -476,6 +483,15 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
                 value={importJql}
                 onChange={(e) => setImportJql(e.target.value)}
               />
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+              <input
+                type="checkbox"
+                checked={importChildren}
+                onChange={(e) => setImportChildren(e.target.checked)}
+                style={{ width: "auto" }}
+              />
+              Also import children (follow Parent Link)
             </label>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
               <button

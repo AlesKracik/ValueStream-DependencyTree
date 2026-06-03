@@ -52,6 +52,56 @@ describe('Jira Routes', () => {
     expect(sentBody.jql).toBe('project = PROJ');
   });
 
+  it('POST /api/jira/search with include_children fetches Parent Link children and dedupes', async () => {
+    const mockFetch = vi.fn()
+      // base JQL page
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ issues: [{ key: 'EPIC-1' }], names: {}, total: 1 })
+      })
+      // child JQL page — echoes the parent (deduped) plus a new child
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ issues: [{ key: 'EPIC-1' }, { key: 'STORY-1' }], names: {}, total: 2 })
+      });
+    global.fetch = mockFetch;
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/jira/search',
+      payload: { jql: 'project = PROJ', include_children: true, jira: mockJiraSettings.jira }
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.success).toBe(true);
+    expect(body.data.issues.map((i: any) => i.key)).toEqual(['EPIC-1', 'STORY-1']);
+
+    // Second call must query children via the "Parent Link" field.
+    const [, childOpts] = mockFetch.mock.calls[1];
+    expect(JSON.parse(childOpts.body).jql).toBe('"Parent Link" in ("EPIC-1")');
+  });
+
+  it('POST /api/jira/search without include_children skips the child query', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ issues: [{ key: 'EPIC-1' }], names: {}, total: 1 })
+    });
+    global.fetch = mockFetch;
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/jira/search',
+      payload: { jql: 'project = PROJ', jira: mockJiraSettings.jira }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
   it('POST /api/jira/search surfaces JQL/auth errors instead of swallowing them', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
       ok: false,

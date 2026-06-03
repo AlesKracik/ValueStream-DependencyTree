@@ -47,7 +47,8 @@ The system maintains customer support health using a hybrid synchronization mode
 The Jira settings are organized into three sub-tabs for better management:
 - **Common:** Configure the Jira Base URL, API Version, and Personal Access Token (PAT). Includes a **Test Connection** tool.
 - **Issues:** Tools for bulk operations:
-    - **Import from Jira:** Executes the user's JQL **verbatim** and creates new Issues (and potentially Work Items) in the local database. The query is not modified — narrow the result set yourself with clauses like `issuetype != Sub-task` or `status != Done` if needed.
+    - **Import from Jira:** Executes the user's JQL **verbatim** and creates new Issues (and potentially Work Items) in the local database. The query is not modified — narrow the result set yourself with clauses like `issuetype != Sub-task` or `status != Done` if needed. Results are fully paginated (no 100-issue cap).
+    - **Also import children (follow Parent Link):** Optional checkbox next to the import JQL. When enabled (`include_children: true`), after the base JQL runs the backend fetches **one level** of children — issues whose **`"Parent Link"`** field points at any base-result key. Parent keys are batched (≤50 per query, via `"Parent Link" in (...)`) and each batch is paginated. Results are deduped by issue key, so a child already in the base set (or already present locally) is never imported twice. Note: this follows the Advanced-Roadmaps **Parent Link** field only — not the `parent` field or **Epic Link**. A failed child batch is fail-soft: the import completes and the result message notes the incomplete batches.
     - **Sync Issues from Jira:** Iterates through all local issues with a `jira_key` and refreshes their metadata.
 - **Customer:** Define JQL queries to automatically identify and track specific issue types linked to customers using the `{{CUSTOMER_ID}}` placeholder.
 
