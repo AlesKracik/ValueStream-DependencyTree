@@ -23,6 +23,13 @@ import { wouldCreateCycle } from '../utils/workItemHierarchy';
 // Collections whose mutations affect RICE scores and trigger recomputation
 const SCORE_AFFECTING_COLLECTIONS = ['workItems', 'customers', 'issues'];
 
+// Collections whose documents carry server-owned lifecycle timestamps:
+// `created_at` is stamped once on insert and is immutable thereafter, while
+// `updated_at` is refreshed on every persisted mutation. These let work items
+// be aged out / cleaned up later. Score recomputation writes only the
+// `calculated_*` fields via a separate bulkWrite, so it never touches these.
+const TIMESTAMPED_COLLECTIONS = ['workItems'];
+
 /**
  * Per-collection whitelist of nested array paths that the element-level
  * endpoints (add/patch/delete) are allowed to touch, mapped to the field used
@@ -82,9 +89,14 @@ async function upsertWithOcc(
   | { ok: false; current: Record<string, any> }
 > {
   const clientVersion = typeof body._version === 'number' ? body._version : 0;
-  // Don't echo the client's version field into the stored doc; we set it explicitly.
-  const { _version: _ignored, ...rest } = body;
-  void _ignored;
+  // Don't echo the client's version field into the stored doc; we set it
+  // explicitly. created_at/updated_at are server-owned — strip any client-sent
+  // values so creation time can't be forged or rewound.
+  const { _version: _ignored, created_at: _ignoredCreated, updated_at: _ignoredUpdated, ...rest } = body;
+  void _ignored; void _ignoredCreated; void _ignoredUpdated;
+
+  const stamped = TIMESTAMPED_COLLECTIONS.includes(collection);
+  const now = new Date().toISOString();
 
   await db.collection(collection).createIndex({ id: 1 }, { unique: true });
 
@@ -99,11 +111,19 @@ async function upsertWithOcc(
   const nextVersion = clientVersion + 1;
   const updated = await db.collection(collection).findOneAndUpdate(
     matchFilter,
-    { $set: { ...rest, id: entityId, _version: nextVersion } },
+    // On replace, bump updated_at but leave created_at untouched so the
+    // original creation time survives the write.
+    { $set: { ...rest, id: entityId, _version: nextVersion, ...(stamped ? { updated_at: now } : {}) } },
     { returnDocument: 'after' }
   );
 
   if (updated) {
+    // Lazy backfill (no migration): a legacy doc that predates the timestamp
+    // fields gets a created_at on its first update. The value is the update
+    // time, not the true creation time — an accepted approximation.
+    if (stamped && !updated.created_at) {
+      await db.collection(collection).updateOne({ id: entityId }, { $set: { created_at: now } });
+    }
     return { ok: true, newVersion: nextVersion };
   }
 
@@ -111,8 +131,8 @@ async function upsertWithOcc(
   // version conflict. Disambiguate with a plain findOne.
   const existing = await db.collection(collection).findOne({ id: entityId });
   if (!existing) {
-    // Insert with version 0. Re-fetch through insertOne with full payload.
-    await db.collection(collection).insertOne({ ...rest, id: entityId, _version: 0 });
+    // Fresh insert: stamp both created_at and updated_at.
+    await db.collection(collection).insertOne({ ...rest, id: entityId, _version: 0, ...(stamped ? { created_at: now, updated_at: now } : {}) });
     return { ok: true, newVersion: 0 };
   }
 
@@ -273,9 +293,17 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
         : { id, _version: clientVersion };
 
       const nextVersion = clientVersion + 1;
+      // created_at is server-owned and immutable; drop any client value. For
+      // timestamped collections, refresh updated_at so it reflects this edit.
+      const { created_at: _patchCreated, updated_at: _patchUpdated, ...cleanPatch } =
+        patch as Record<string, unknown>;
+      void _patchCreated; void _patchUpdated;
+      const stamped = TIMESTAMPED_COLLECTIONS.includes(collection);
+      const now = new Date().toISOString();
+      const stampSet = stamped ? { updated_at: now } : {};
       const updated = await db.collection(collection).findOneAndUpdate(
         matchFilter,
-        { $set: { ...patch, _version: nextVersion } },
+        { $set: { ...cleanPatch, ...stampSet, _version: nextVersion } },
         { returnDocument: 'after' }
       );
 
@@ -285,6 +313,13 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
           throw new AppError('Entity not found', 404);
         }
         return replyConflict(reply, existing);
+      }
+
+      // Lazy backfill (no migration): a legacy work item lacking created_at gets
+      // one stamped on its first update. The value is the update time, not the
+      // true creation time — an accepted approximation.
+      if (stamped && !updated.created_at) {
+        await db.collection(collection).updateOne({ id }, { $set: { created_at: now } });
       }
 
       maybeRecomputeScores(db, collection, fastify.log);

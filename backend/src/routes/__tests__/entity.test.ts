@@ -33,6 +33,7 @@ describe('Entity Routes', () => {
       findOneAndUpdate: vi.fn().mockResolvedValue(null),
       insertOne: vi.fn().mockResolvedValue({ acknowledged: true, insertedId: 'mock' }),
       deleteOne: vi.fn().mockResolvedValue({ acknowledged: true }),
+      updateOne: vi.fn().mockResolvedValue({ acknowledged: true, modifiedCount: 1 }),
       updateMany: vi.fn().mockResolvedValue({ modifiedCount: 0 }),
       findOne: vi.fn().mockResolvedValue(null),
       find: vi.fn().mockReturnValue({ toArray: vi.fn().mockResolvedValue([]) }),
@@ -143,10 +144,14 @@ describe('Entity Routes', () => {
     expect(json.success).toBe(true);
 
     expect(mockDb.collection).toHaveBeenCalledWith('workItems');
+    // workItems is a timestamped collection — a fresh insert stamps both
+    // created_at and updated_at.
     expect(mockCollection.insertOne).toHaveBeenCalledWith({
       id: 'wi-2',
       name: 'Test Work Item',
       _version: 0,
+      created_at: expect.any(String),
+      updated_at: expect.any(String),
     });
   });
 
@@ -306,6 +311,8 @@ describe('Entity Routes', () => {
       name: 'Valid child',
       parent_id: 'wi-B',
       _version: 0,
+      created_at: expect.any(String),
+      updated_at: expect.any(String),
     });
   });
 
@@ -530,6 +537,121 @@ describe('Entity Routes', () => {
     });
 
     expect(recomputeSpy).toHaveBeenCalledWith(mockDb);
+  });
+
+  // ── Lifecycle timestamps (workItems) ───────────────────────────────────
+  describe('created_at / updated_at timestamps', () => {
+    it('POST replace bumps updated_at and preserves an existing created_at', async () => {
+      // Returned doc already has a created_at → it must survive untouched.
+      mockCollection.findOneAndUpdate.mockResolvedValueOnce({
+        id: 'wi-1', _version: 4, name: 'Updated', created_at: '2020-01-01T00:00:00.000Z',
+      });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/entity/workItems/wi-1',
+        payload: { id: 'wi-1', _version: 3, name: 'Updated' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const setArg = mockCollection.findOneAndUpdate.mock.calls[0][1].$set;
+      expect(setArg.updated_at).toEqual(expect.any(String));
+      // created_at must not be in the write, so the stored value is preserved…
+      expect('created_at' in setArg).toBe(false);
+      // …and no lazy backfill is needed since the doc already had one.
+      expect(mockCollection.updateOne).not.toHaveBeenCalled();
+    });
+
+    it('POST replace lazily backfills created_at on a legacy work item lacking it', async () => {
+      // Returned doc has no created_at → backfilled on this update.
+      mockCollection.findOneAndUpdate.mockResolvedValueOnce({ id: 'wi-legacy', _version: 4, name: 'Updated' });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/entity/workItems/wi-legacy',
+        payload: { id: 'wi-legacy', _version: 3, name: 'Updated' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(mockCollection.updateOne).toHaveBeenCalledWith(
+        { id: 'wi-legacy' },
+        { $set: { created_at: expect.any(String) } }
+      );
+    });
+
+    it('POST insert stamps both created_at and updated_at', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/entity/workItems/wi-new',
+        payload: { id: 'wi-new', _version: 0, name: 'Brand new' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(mockCollection.insertOne).toHaveBeenCalledWith(expect.objectContaining({
+        id: 'wi-new',
+        created_at: expect.any(String),
+        updated_at: expect.any(String),
+      }));
+    });
+
+    it('POST ignores a client-supplied created_at/updated_at on insert', async () => {
+      await app.inject({
+        method: 'POST',
+        url: '/api/entity/workItems/wi-forge',
+        payload: { id: 'wi-forge', _version: 0, name: 'x', created_at: '1999-01-01T00:00:00.000Z', updated_at: '1999-01-01T00:00:00.000Z' },
+      });
+
+      const insertArg = mockCollection.insertOne.mock.calls[0][0];
+      expect(insertArg.created_at).not.toBe('1999-01-01T00:00:00.000Z');
+      expect(insertArg.updated_at).not.toBe('1999-01-01T00:00:00.000Z');
+    });
+
+    it('PATCH refreshes updated_at and strips a client-supplied created_at', async () => {
+      // Returned doc already has created_at → no backfill; just refresh + strip.
+      mockCollection.findOneAndUpdate.mockResolvedValueOnce({
+        id: 'wi1', _version: 1, name: 'ok', created_at: '2020-01-01T00:00:00.000Z',
+      });
+
+      await app.inject({
+        method: 'PATCH',
+        url: '/api/entity/workItems/wi1',
+        payload: { _version: 0, patch: { name: 'ok', created_at: '1999-01-01T00:00:00.000Z' } },
+      });
+
+      const setArg = mockCollection.findOneAndUpdate.mock.calls[0][1].$set;
+      expect(setArg.updated_at).toEqual(expect.any(String));
+      expect(setArg.updated_at).not.toBe('1999-01-01T00:00:00.000Z');
+      // The forged created_at must not reach the document.
+      expect('created_at' in setArg).toBe(false);
+      expect(mockCollection.updateOne).not.toHaveBeenCalled();
+    });
+
+    it('PATCH lazily backfills created_at on a legacy work item lacking it', async () => {
+      mockCollection.findOneAndUpdate.mockResolvedValueOnce({ id: 'wi-legacy', _version: 1, name: 'ok' });
+
+      await app.inject({
+        method: 'PATCH',
+        url: '/api/entity/workItems/wi-legacy',
+        payload: { _version: 0, patch: { name: 'ok' } },
+      });
+
+      expect(mockCollection.updateOne).toHaveBeenCalledWith(
+        { id: 'wi-legacy' },
+        { $set: { created_at: expect.any(String) } }
+      );
+    });
+
+    it('does NOT stamp timestamps on a non-timestamped collection (customers)', async () => {
+      await app.inject({
+        method: 'POST',
+        url: '/api/entity/customers/c-ts',
+        payload: { id: 'c-ts', _version: 0, name: 'No stamps' },
+      });
+
+      const insertArg = mockCollection.insertOne.mock.calls[0][0];
+      expect('created_at' in insertArg).toBe(false);
+      expect('updated_at' in insertArg).toBe(false);
+    });
   });
 
   // ── Array element endpoints (Phase 3) ──────────────────────────────────

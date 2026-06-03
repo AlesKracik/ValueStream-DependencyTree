@@ -61,6 +61,18 @@ export interface Customer {
 export interface WorkItem {
   id: string;
   _version?: EntityVersion;
+  /**
+   * Server-owned lifecycle timestamps (ISO 8601 datetime strings). `created_at`
+   * is stamped when the work item is first persisted and is immutable
+   * thereafter; `updated_at` is refreshed on every persisted mutation. They are
+   * set by the backend — clients never send them — and exist to support later
+   * aging/cleanup of stale work items. Optional because legacy documents predate
+   * the fields: such an item is backfilled on its NEXT update, so its
+   * `created_at` will reflect that update time rather than the true creation
+   * time (an accepted approximation — no migration is run).
+   */
+  created_at?: string;
+  updated_at?: string;
   name: string;
   description?: string;
   status: 'Backlog' | 'Planning' | 'Development' | 'Done';

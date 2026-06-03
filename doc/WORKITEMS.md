@@ -24,8 +24,25 @@ export interface WorkItem {
     priority: 'Must-have' | 'Should-have' | 'Nice-to-have';
   };
   released_in_sprint_id?: string;
+  created_at?: string;      // ISO 8601 — server-stamped once on first persist (immutable)
+  updated_at?: string;      // ISO 8601 — server-refreshed on every persisted mutation
 }
 ```
+
+### Lifecycle Timestamps (`created_at` / `updated_at`)
+`created_at` and `updated_at` are **server-owned** — clients never send them. The
+backend stamps both on the initial insert and refreshes `updated_at` on every
+subsequent POST replace or field-level PATCH (see `backend/src/routes/entity.ts`,
+`TIMESTAMPED_COLLECTIONS`). Score recomputation writes only the `calculated_*`
+fields via a separate `bulkWrite`, so it never bumps `updated_at`. These fields
+exist to support later aging/cleanup of stale work items.
+
+There is **no migration**. Legacy work items created before this feature are
+backfilled lazily: on a work item's next update, if it has no `created_at` the
+backend stamps one with the update time. This means `created_at` for pre-existing
+items reflects when they were first touched after the feature shipped, **not**
+their true creation time — an accepted approximation. `updated_at` is always
+accurate from the first update onward.
 
 ## Prioritization Logic (RICE Score / ROI)
 The score is calculated server-side in `backend/src/services/metricsService.ts`:
