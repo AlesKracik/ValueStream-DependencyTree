@@ -527,7 +527,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
               />
               Also import children (follow Parent Link)
             </label>
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               <button
                 type="button"
                 className="btn-primary"
@@ -537,6 +537,20 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
               >
                 {isImporting ? importProgress : "Import from Jira"}
               </button>
+            </div>
+
+            <hr style={{ width: "100%", maxWidth: "32rem", border: "none", borderTop: "1px solid var(--border-primary)", margin: "0", alignSelf: "flex-start" }} />
+
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+              <input
+                type="checkbox"
+                checked={alignHierarchy}
+                onChange={(e) => setAlignHierarchy(e.target.checked)}
+                style={{ width: "auto" }}
+              />
+              Align work-item hierarchy to Jira (Parent Link)
+            </label>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               <button
                 type="button"
                 className="btn-primary"
@@ -546,15 +560,6 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
               >
                 {isSyncing ? syncProgress : "Sync Issues from Jira"}
               </button>
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-                <input
-                  type="checkbox"
-                  checked={alignHierarchy}
-                  onChange={(e) => setAlignHierarchy(e.target.checked)}
-                  style={{ width: "auto" }}
-                />
-                Align work-item hierarchy to Jira (Parent Link)
-              </label>
             </div>
 
             {importSyncResult && (
