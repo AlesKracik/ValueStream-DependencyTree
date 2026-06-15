@@ -69,6 +69,10 @@ const linkButtonStyle: React.CSSProperties = {
   padding: 0,
   fontSize: 14,
   textAlign: 'left',
+  // Global `button` rule is display:inline-flex; justify-content:center, which
+  // would center the label when the button stretches (flex:1). Override so the
+  // name sits left.
+  justifyContent: 'flex-start',
 };
 
 export const WorkItemHierarchyTab: React.FC<Props> = ({
