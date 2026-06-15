@@ -511,8 +511,12 @@ export interface HierarchyAlignmentInput {
 export interface HierarchyAlignmentPlan {
     /** Work items whose parent_id should change, in apply order. */
     updates: { workItemId: string; parentId: string }[];
-    /** Work-item ids skipped because their child jiras disagree on the parent. */
-    conflicts: string[];
+    /**
+     * Work items skipped because their child jiras disagree on the parent.
+     * `parentIds` lists the distinct candidate parent work items that clashed,
+     * so the caller can report exactly which parents were in dispute.
+     */
+    conflicts: { workItemId: string; parentIds: string[] }[];
     /** Work-item ids skipped because the change would create a cycle. */
     cycles: string[];
     /** True when the instance has no "Parent Link" field — nothing can align. */
@@ -600,7 +604,10 @@ export const planHierarchyAlignment = (
     };
 
     for (const [childWI, parentSet] of proposals.entries()) {
-        if (parentSet.size > 1) { plan.conflicts.push(childWI); continue; }
+        if (parentSet.size > 1) {
+            plan.conflicts.push({ workItemId: childWI, parentIds: [...parentSet] });
+            continue;
+        }
         const parentWI = [...parentSet][0];
         if (pendingParent.get(childWI) === parentWI) continue;   // already correct
         if (wouldCycle(childWI, parentWI)) { plan.cycles.push(childWI); continue; }

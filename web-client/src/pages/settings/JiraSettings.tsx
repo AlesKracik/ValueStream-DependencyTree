@@ -161,24 +161,61 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
       if (plan.parentFieldMissing) {
         hierarchyNote = " Hierarchy: Parent Link field not found.";
       } else {
-        let aligned = 0;
+        // Resolve work-item ids → names for human-readable reporting.
+        const nameById = new Map((data.workItems || []).map(w => [w.id, w.name]));
+        const nameOf = (id: string) => nameById.get(id) || id;
+        // Cap how many names go in the toast so it stays short; full detail
+        // goes to the console group below.
+        const summarize = (names: string[], max = 5) =>
+          names.length <= max
+            ? names.join(", ")
+            : `${names.slice(0, max).join(", ")} +${names.length - max} more`;
+
+        const alignedNames: string[] = [];
         let alignFail = 0;
         for (let i = 0; i < plan.updates.length; i++) {
           const u = plan.updates[i];
           setSyncProgress(`Aligning hierarchy ${i + 1}/${plan.updates.length}…`);
           try {
             await updateWorkItem(u.workItemId, { parent_id: u.parentId }, true);
-            aligned++;
+            alignedNames.push(`${nameOf(u.workItemId)} → ${nameOf(u.parentId)}`);
           } catch (err: unknown) {
             console.error(`Error reparenting work item ${u.workItemId}:`, err);
             alignFail++;
           }
         }
+
+        const aligned = alignedNames.length;
+        const conflictNames = plan.conflicts.map(c => nameOf(c.workItemId));
+        const cycleNames = plan.cycles.map(nameOf);
+
         hierarchyNote = ` Hierarchy: ${aligned} aligned`
           + (alignFail > 0 ? `, ${alignFail} failed` : "")
-          + (plan.conflicts.length > 0 ? `, ${plan.conflicts.length} conflicts skipped` : "")
-          + (plan.cycles.length > 0 ? `, ${plan.cycles.length} cycles skipped` : "")
+          + (conflictNames.length > 0
+              ? `, ${conflictNames.length} conflicts skipped (${summarize(conflictNames)})`
+              : "")
+          + (cycleNames.length > 0
+              ? `, ${cycleNames.length} cycles skipped (${summarize(cycleNames)})`
+              : "")
           + ".";
+
+        // Full breakdown to the console — the toast only carries a summary.
+        console.groupCollapsed(
+          `Jira hierarchy alignment: ${aligned} aligned, `
+          + `${plan.conflicts.length} conflicts, ${plan.cycles.length} cycles`
+          + (alignFail > 0 ? `, ${alignFail} failed` : ""),
+        );
+        if (aligned > 0) console.info("Aligned (child → parent):", alignedNames);
+        for (const c of plan.conflicts) {
+          console.warn(
+            `Conflict — "${nameOf(c.workItemId)}" skipped; its jiras point at `
+            + `disagreeing parents: ${c.parentIds.map(nameOf).join(", ")}`,
+          );
+        }
+        for (const id of plan.cycles) {
+          console.warn(`Cycle — "${nameOf(id)}" skipped; reparenting would form a loop.`);
+        }
+        console.groupEnd();
       }
     }
 

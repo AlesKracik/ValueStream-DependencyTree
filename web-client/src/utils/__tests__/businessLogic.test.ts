@@ -817,7 +817,9 @@ describe('Jira Parent Link hierarchy alignment', () => {
                 workItems: [wi('wiC'), wi('wiP1'), wi('wiP2')],
             });
             expect(plan.updates).toEqual([]);
-            expect(plan.conflicts).toEqual(['wiC']);
+            expect(plan.conflicts).toHaveLength(1);
+            expect(plan.conflicts[0].workItemId).toBe('wiC');
+            expect([...plan.conflicts[0].parentIds].sort()).toEqual(['wiP1', 'wiP2']);
         });
 
         it('records a cycle and skips the edge', () => {
