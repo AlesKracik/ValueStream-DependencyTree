@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Customer, Settings, JiraIssue } from '@valuestream/shared-types';
-import { authorizedFetch } from '../utils/api';
+import { authorizedFetch, jiraConnectionPayload } from '../utils/api';
 
 export interface CustomerHealthData {
     newIssues: JiraIssue[];
@@ -40,12 +40,12 @@ export const useCustomerHealth = (customer: Customer | undefined, settings: Sett
             }
 
             const { jira } = settings;
-            const { 
+            const {
                 customer: jiraCustomer,
-                base_url: jira_base_url, 
-                api_version: jira_api_version, 
-                api_token: jira_api_token 
+                base_url: jira_base_url,
             } = jira;
+            const jiraConnection = jiraConnectionPayload(jira);
+            const browseBase = (jira_base_url || '').replace(/\/+$/, '');
 
             const customer_jql_new = jiraCustomer?.jql_new;
             const customer_jql_in_progress = jiraCustomer?.jql_in_progress;
@@ -75,11 +75,7 @@ export const useCustomerHealth = (customer: Customer | undefined, settings: Sett
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
                             jql, 
-                            jira: {
-                                base_url: jira_base_url,
-                                api_version: jira_api_version,
-                                api_token: jira_api_token 
-                            }
+                            jira: jiraConnection
                         })
                     });
                     const resData = await response.json();
@@ -94,7 +90,7 @@ export const useCustomerHealth = (customer: Customer | undefined, settings: Sett
                             summary: fields.summary || 'Unknown',
                             status: fields.status?.name || 'Unknown',
                             priority: fields.priority?.name || 'Default',
-                            url: `${jira_base_url}/browse/${issue.key}`,
+                            url: `${browseBase}/browse/${issue.key}`,
                             last_updated: now,
                             category
                         };

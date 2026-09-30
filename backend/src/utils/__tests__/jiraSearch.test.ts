@@ -109,3 +109,31 @@ describe('expandChildren', () => {
     expect(onChunkError).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('searchAllPages (Cloud token paging)', () => {
+  it('follows nextPageToken until isLast', async () => {
+    const fetchPage: JiraFetchPage = vi.fn()
+      .mockResolvedValueOnce({ issues: [{ key: 'A-1' }], names: { f: 'Team' }, nextPageToken: 't2', isLast: false })
+      .mockResolvedValueOnce({ issues: [{ key: 'A-2' }], nextPageToken: 't3', isLast: false })
+      .mockResolvedValueOnce({ issues: [{ key: 'A-3' }], isLast: true });
+    const res = await searchAllPages(fetchPage, 'q');
+    expect(res.issues.map((i) => i.key)).toEqual(['A-1', 'A-2', 'A-3']);
+    expect(res.names).toEqual({ f: 'Team' });
+    expect((fetchPage as any).mock.calls.map((c: any[]) => c[2])).toEqual([undefined, 't2', 't3']);
+  });
+
+  it('stops when no token is returned even if isLast is false', async () => {
+    const fetchPage: JiraFetchPage = vi.fn().mockResolvedValue({ issues: [{ key: 'A-1' }], isLast: false });
+    const res = await searchAllPages(fetchPage, 'q');
+    expect(res.issues).toHaveLength(1);
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('expandChildren custom JQL', () => {
+  it('uses the supplied buildJql', async () => {
+    const fetchPage: JiraFetchPage = vi.fn().mockResolvedValue({ issues: [{ key: 'S-1' }], isLast: true });
+    await expandChildren(fetchPage, ['E-1'], new Map(), { buildJql: (k) => `parent in ("${k.join('", "')}")` });
+    expect((fetchPage as any).mock.calls[0][0]).toBe('parent in ("E-1")');
+  });
+});

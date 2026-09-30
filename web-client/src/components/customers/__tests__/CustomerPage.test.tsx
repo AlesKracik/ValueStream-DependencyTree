@@ -12,7 +12,8 @@ vi.mock('../../../contexts/NotificationContext', () => ({
     useNotificationContext: vi.fn(),
 }));
 
-vi.mock('../../../utils/api', () => ({
+vi.mock('../../../utils/api', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('../../../utils/api')>()),
     authorizedFetch: vi.fn()
 }));
 

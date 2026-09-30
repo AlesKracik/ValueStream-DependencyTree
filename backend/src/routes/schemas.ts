@@ -102,7 +102,11 @@ export type MongoImportBodyType = Static<typeof MongoImportBody>;
 export const JiraConfigBody = Type.Object({
   jira: Type.Optional(Type.Object({
     base_url: Type.Optional(Type.String()),
+    // 'cloud' | 'datacenter'; inferred from base_url when omitted
+    deployment: Type.Optional(Type.String()),
     api_version: Type.Optional(Type.String()),
+    // Cloud only: Atlassian account e-mail paired with the API token
+    username: Type.Optional(Type.String()),
     api_token: Type.Optional(Type.String())
   }, { additionalProperties: true }))
 }, { additionalProperties: true });

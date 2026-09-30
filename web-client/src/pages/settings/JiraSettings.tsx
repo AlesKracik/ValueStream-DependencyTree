@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { Issue, JiraIssue } from '@valuestream/shared-types';
-import { authorizedFetch } from "../../utils/api";
+import { resolveJiraDeployment } from '@valuestream/shared-types';
+import { authorizedFetch, jiraConnectionPayload } from "../../utils/api";
 import { generateId } from '../../utils/security';
 import { ScopeIndicator } from '../../components/common/ScopeIndicator';
 import { parseJiraIssue, planHierarchyAlignment } from "../../utils/businessLogic";
@@ -44,11 +45,30 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
     });
   };
 
+  // Effective deployment (explicit setting, else inferred from the base URL).
+  const deployment = resolveJiraDeployment(localFormData.jira);
+  const isCloud = deployment === "cloud";
+  const hierarchyFieldLabel = isCloud ? "parent" : "Parent Link";
+
+  /** Returns an error message when required connection fields are missing. */
+  const missingConnectionFields = (action: string): string | null => {
+    const { jira } = localFormData;
+    if (isCloud) {
+      if (!jira.base_url || !jira.username || !jira.api_token) {
+        return `Base URL, account e-mail and API token are required to ${action}.`;
+      }
+    } else if (!jira.base_url || !jira.api_token) {
+      return `Base URL and PAT are required to ${action}.`;
+    }
+    return null;
+  };
+
   const handleJiraTestConnection = async () => {
     const { jira } = localFormData;
 
-    if (!jira.base_url || !jira.api_token) {
-      setJiraTestResult({ success: false, message: "Base URL and PAT are required to test." });
+    const missing = missingConnectionFields("test");
+    if (missing) {
+      setJiraTestResult({ success: false, message: missing });
       return;
     }
     setIsTesting(true);
@@ -58,11 +78,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          jira: {
-            base_url: jira.base_url,
-            api_token: jira.api_token,
-            api_version: jira.api_version,
-          }
+          jira: jiraConnectionPayload(jira)
         }),
       });
       const resData = await response.json();
@@ -88,8 +104,9 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
     }
     const { jira } = localFormData;
 
-    if (!jira.base_url || !jira.api_token) {
-      setImportSyncResult({ success: false, message: "Base URL and PAT are required to sync." });
+    const missing = missingConnectionFields("sync");
+    if (missing) {
+      setImportSyncResult({ success: false, message: missing });
       return;
     }
     setIsSyncing(true);
@@ -113,11 +130,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             jql: `key in (${keyList})`,
-            jira: {
-              base_url: jira.base_url,
-              api_version: jira.api_version,
-              api_token: jira.api_token,
-            }
+            jira: jiraConnectionPayload(jira)
           }),
         });
         const resData = await response.json();
@@ -157,6 +170,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
         fetchedByKey,
         issues: data.issues || [],
         workItems: data.workItems || [],
+        deployment,
       });
       if (plan.parentFieldMissing) {
         hierarchyNote = " Hierarchy: Parent Link field not found.";
@@ -228,8 +242,9 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
     if (!data) return;
     const { jira } = localFormData;
 
-    if (!jira.base_url || !jira.api_token) {
-      setSupportSyncResult({ success: false, message: "Base URL and PAT are required to sync." });
+    const missing = missingConnectionFields("sync");
+    if (missing) {
+      setSupportSyncResult({ success: false, message: missing });
       return;
     }
 
@@ -278,11 +293,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             jql: `key in (${chunk.map(k => `"${k}"`).join(", ")})`,
-            jira: {
-              base_url: jira.base_url,
-              api_version: jira.api_version,
-              api_token: jira.api_token,
-            }
+            jira: jiraConnectionPayload(jira)
           }),
         });
         const resData = await response.json();
@@ -358,8 +369,9 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
     if (!data) return;
     const { jira } = localFormData;
 
-    if (!jira.base_url || !jira.api_token) {
-      setImportSyncResult({ success: false, message: "Base URL and PAT are required to import." });
+    const missing = missingConnectionFields("import");
+    if (missing) {
+      setImportSyncResult({ success: false, message: missing });
       return;
     }
     if (!importJql.trim()) {
@@ -382,11 +394,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
         body: JSON.stringify({
           jql: importJql,
           include_children: importChildren,
-          jira: {
-            base_url: jira.base_url,
-            api_version: jira.api_version,
-            api_token: jira.api_token,
-          }
+          jira: jiraConnectionPayload(jira)
         }),
       });
       const resData = await response.json();
@@ -490,29 +498,73 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
             </label>
 
             <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-              Jira API Version:
+              Jira Deployment:
               <select
-                value={localFormData.jira.api_version}
+                aria-label="Jira Deployment"
+                value={localFormData.jira.deployment || ""}
                 onChange={(e) => {
-                    const val = e.target.value as "2" | "3";
-                    updateFormData('jira.api_version', val);
-                    onUpdateSettings({ jira: { ...localFormData.jira, api_version: val } });
+                    const val = (e.target.value || undefined) as "cloud" | "datacenter" | undefined;
+                    updateFormData('jira.deployment', val);
+                    onUpdateSettings({ jira: { ...localFormData.jira, deployment: val } });
                 }}
               >
-                <option value="2">2</option>
-                <option value="3">3</option>
+                <option value="">Auto-detect from URL ({isCloud ? "Cloud" : "Data Center"})</option>
+                <option value="cloud">Cloud (*.atlassian.net)</option>
+                <option value="datacenter">Data Center / Server</option>
               </select>
             </label>
 
+            {isCloud ? (
+              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                Jira API Version:
+                <select
+                  aria-label="Jira API Version"
+                  value={localFormData.jira.api_version || "3"}
+                  onChange={(e) => {
+                      const val = e.target.value as "2" | "3";
+                      updateFormData('jira.api_version', val);
+                      onUpdateSettings({ jira: { ...localFormData.jira, api_version: val } });
+                  }}
+                >
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                </select>
+              </label>
+            ) : (
+              <p style={{ color: "var(--text-muted)", fontSize: "13px", margin: 0, maxWidth: "32rem" }}>
+                Data Center / Server uses REST API v2.
+              </p>
+            )}
+
+            {isCloud && (
+              <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
+                <span>Atlassian Account E-mail:<ScopeIndicator path="jira.username" /></span>
+                <input
+                  type="email"
+                  autoComplete="username"
+                  placeholder="you@example.com"
+                  value={localFormData.jira.username || ""}
+                  onChange={(e) => updateFormData('jira.username', e.target.value)}
+                  onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, username: localFormData.jira.username } })}
+                />
+              </label>
+            )}
+
             <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
-              <span>Jira Personal Access Token (PAT):<ScopeIndicator path="jira.api_token" /></span>
+              <span>{isCloud ? "Jira API Token:" : "Jira Personal Access Token (PAT):"}<ScopeIndicator path="jira.api_token" /></span>
               <input
                 type="password"
-                placeholder="Your Jira PAT"
+                autoComplete="current-password"
+                placeholder={isCloud ? "Your Atlassian API token" : "Your Jira PAT"}
                 value={localFormData.jira.api_token || ""}
                 onChange={(e) => updateFormData('jira.api_token', e.target.value)}
                 onBlur={() => onUpdateSettings({ jira: { ...localFormData.jira, api_token: localFormData.jira.api_token } })}
               />
+              {isCloud && (
+                <span style={{ color: "var(--text-muted)", fontSize: "12px" }}>
+                  Jira Cloud does not accept PATs. Create an API token at id.atlassian.com → Security → API tokens.
+                </span>
+              )}
             </label>
 
             <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
@@ -562,7 +614,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
                 onChange={(e) => setImportChildren(e.target.checked)}
                 style={{ width: "auto" }}
               />
-              Also import children (follow Parent Link)
+              Also import children (follow {hierarchyFieldLabel})
             </label>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               <button
@@ -585,7 +637,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
                 onChange={(e) => setAlignHierarchy(e.target.checked)}
                 style={{ width: "auto" }}
               />
-              Align work-item hierarchy to Jira (Parent Link)
+              Align work-item hierarchy to Jira ({hierarchyFieldLabel})
             </label>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               <button

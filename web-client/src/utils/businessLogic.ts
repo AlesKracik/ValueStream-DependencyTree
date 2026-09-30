@@ -506,6 +506,13 @@ export interface HierarchyAlignmentInput {
     issues: Issue[];
     /** All work items (for existence + cycle checks). */
     workItems: WorkItem[];
+    /**
+     * Jira deployment. Cloud models every hierarchy level with the system
+     * `parent` field (Parent Link / Epic Link were retired); Data Center uses
+     * the Advanced Roadmaps "Parent Link" custom field. Defaults to
+     * 'datacenter' for backward compatibility.
+     */
+    deployment?: 'cloud' | 'datacenter';
 }
 
 export interface HierarchyAlignmentPlan {
@@ -519,7 +526,7 @@ export interface HierarchyAlignmentPlan {
     conflicts: { workItemId: string; parentIds: string[] }[];
     /** Work-item ids skipped because the change would create a cycle. */
     cycles: string[];
-    /** True when the instance has no "Parent Link" field — nothing can align. */
+    /** True when no hierarchy field is available ("Parent Link" on Data Center) — nothing can align. */
     parentFieldMissing: boolean;
 }
 
@@ -535,7 +542,7 @@ export interface HierarchyAlignmentPlan {
  * would form a cycle. Never clears an existing parent_id.
  */
 export const planHierarchyAlignment = (
-    { fetchedByKey, issues, workItems }: HierarchyAlignmentInput,
+    { fetchedByKey, issues, workItems, deployment = 'datacenter' }: HierarchyAlignmentInput,
 ): HierarchyAlignmentPlan => {
     const plan: HierarchyAlignmentPlan = {
         updates: [], conflicts: [], cycles: [], parentFieldMissing: false,
@@ -548,10 +555,23 @@ export const planHierarchyAlignment = (
         parentLinkFieldId = resolveFieldId(issue?.names, 'Parent Link');
         if (parentLinkFieldId) break;
     }
-    if (!parentLinkFieldId) {
+    const isCloud = deployment === 'cloud';
+    // Cloud always has the system `parent` field, so it never "misses" one.
+    if (!parentLinkFieldId && !isCloud) {
         plan.parentFieldMissing = true;
         return plan;
     }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parentKeyOf = (issueData: any): string | undefined => {
+        const fields = issueData?.fields;
+        if (isCloud) {
+            // Prefer the system parent; fall back to a lingering Parent Link value.
+            return extractParentLinkKey(fields?.parent)
+                ?? (parentLinkFieldId ? extractParentLinkKey(fields?.[parentLinkFieldId]) : undefined);
+        }
+        return extractParentLinkKey(fields?.[parentLinkFieldId as string]);
+    };
 
     const issueByKey = new Map<string, Issue>();
     for (const issue of issues) {
@@ -567,8 +587,8 @@ export const planHierarchyAlignment = (
         const childIssue = issueByKey.get(childKey);
         if (!childIssue) continue;
 
-        const parentKey = extractParentLinkKey(issueData?.fields?.[parentLinkFieldId]);
-        if (!parentKey) continue;                       // no Parent Link
+        const parentKey = parentKeyOf(issueData);
+        if (!parentKey) continue;                       // no parent
 
         const parentIssue = issueByKey.get(parentKey);
         if (!parentIssue) continue;                     // parent jira not in system
