@@ -4,7 +4,8 @@ import { useCustomerHealth } from '../useCustomerHealth';
 import * as api from '../../utils/api';
 import type { Customer, Settings } from '@valuestream/shared-types';
 
-vi.mock('../../utils/api', () => ({
+vi.mock('../../utils/api', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('../../utils/api')>()),
     authorizedFetch: vi.fn()
 }));
 

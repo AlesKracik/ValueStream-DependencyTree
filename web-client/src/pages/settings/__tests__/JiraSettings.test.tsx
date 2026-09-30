@@ -5,7 +5,8 @@ import { JiraSettings } from '../JiraSettings';
 import * as api from '../../../utils/api';
 import type { Settings, ValueStreamData, Team } from '@valuestream/shared-types';
 
-vi.mock('../../../utils/api', () => ({
+vi.mock('../../../utils/api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../utils/api')>()),
   authorizedFetch: vi.fn()
 }));
 
@@ -32,6 +33,7 @@ const baseSettings: Settings = {
   jira: {
     base_url: 'https://example.atlassian.net',
     api_version: '3',
+    username: 'me@example.com',
     api_token: 'tok',
     customer: { jql_new: '', jql_in_progress: '', jql_noop: '' }
   },
@@ -51,12 +53,16 @@ const mockData = {
   users: []
 } as unknown as ValueStreamData;
 
-const renderJiraSettings = () => {
+const renderJiraSettings = (
+  jiraOverrides: Partial<Settings['jira']> = {},
+  subtab = 'work-items',
+) => {
+  const settings: Settings = { ...baseSettings, jira: { ...baseSettings.jira, ...jiraOverrides } };
   const props = {
-    localFormData: baseSettings,
+    localFormData: settings,
     updateFormData: vi.fn(),
     onUpdateSettings: vi.fn(),
-    settings: baseSettings,
+    settings,
     data: mockData,
     updateIssue: vi.fn().mockResolvedValue(undefined),
     addIssue: vi.fn(),
@@ -65,7 +71,7 @@ const renderJiraSettings = () => {
     addWorkItem: vi.fn()
   };
   return render(
-    <MemoryRouter initialEntries={['/?subtab=work-items']}>
+    <MemoryRouter initialEntries={[`/?subtab=${subtab}`]}>
       <JiraSettings {...props} />
     </MemoryRouter>
   );
@@ -98,5 +104,62 @@ describe('JiraSettings — Import JQL', () => {
     const sentBody = JSON.parse(options.body);
     expect(sentBody.jql).toBe(userJql);
     expect(sentBody.jql).not.toMatch(/issuetype\s*=\s*Issue/i);
+  });
+});
+
+describe('JiraSettings — Cloud vs Data Center', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('Cloud: shows the account e-mail + API token fields and forwards them', async () => {
+    (api.authorizedFetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, message: 'Connected' })
+    });
+
+    renderJiraSettings({}, 'common');
+
+    expect(screen.getByPlaceholderText('you@example.com')).toBeTruthy();
+    expect(screen.getByText(/Jira API Token:/)).toBeTruthy();
+    expect(screen.getByLabelText('Jira API Version')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /test connection/i }));
+    await waitFor(() => expect(api.authorizedFetch).toHaveBeenCalled());
+    const [url, options] = (api.authorizedFetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toBe('/api/jira/test');
+    expect(JSON.parse(options.body).jira).toMatchObject({
+      base_url: 'https://example.atlassian.net',
+      username: 'me@example.com',
+      api_token: 'tok',
+    });
+  });
+
+  it('Cloud: refuses to test without the account e-mail', async () => {
+    renderJiraSettings({ username: '' }, 'common');
+    fireEvent.click(screen.getByRole('button', { name: /test connection/i }));
+    expect(await screen.findByText(/account e-mail and API token are required/i)).toBeTruthy();
+    expect(api.authorizedFetch).not.toHaveBeenCalled();
+  });
+
+  it('Data Center: shows the PAT field, hides e-mail and API-version selector', () => {
+    renderJiraSettings({ base_url: 'https://jira.example.com', username: undefined }, 'common');
+    expect(screen.queryByPlaceholderText('you@example.com')).toBeNull();
+    expect(screen.getByText(/Personal Access Token \(PAT\)/)).toBeTruthy();
+    expect(screen.queryByLabelText('Jira API Version')).toBeNull();
+    expect(screen.getByText(/uses REST API v2/)).toBeTruthy();
+  });
+
+  it('explicit deployment overrides URL detection', () => {
+    renderJiraSettings({ base_url: 'https://jira.example.com', deployment: 'cloud' }, 'common');
+    expect(screen.getByPlaceholderText('you@example.com')).toBeTruthy();
+  });
+
+  it('labels the hierarchy field per deployment', () => {
+    const { unmount } = renderJiraSettings();
+    expect(screen.getByText(/follow parent\)/)).toBeTruthy();
+    unmount();
+    renderJiraSettings({ base_url: 'https://jira.example.com' });
+    expect(screen.getByText(/follow Parent Link\)/)).toBeTruthy();
   });
 });

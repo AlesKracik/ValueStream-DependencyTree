@@ -918,7 +918,9 @@ export function useValueStreamData(
                 (newMongo?.customer?.uri !== prevMongo?.customer?.uri) ||
                 (newMongo?.customer?.db !== prevMongo?.customer?.db) ||
                 (newSettings.jira?.base_url !== prev.settings?.jira?.base_url) ||
-                (newSettings.jira?.api_token !== prev.settings?.jira?.api_token)
+                (newSettings.jira?.api_token !== prev.settings?.jira?.api_token) ||
+                (newSettings.jira?.username !== prev.settings?.jira?.username) ||
+                (newSettings.jira?.deployment !== prev.settings?.jira?.deployment)
             );
 
             if (needsRefresh) {

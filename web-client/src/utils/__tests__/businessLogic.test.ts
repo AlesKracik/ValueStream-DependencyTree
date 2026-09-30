@@ -740,6 +740,30 @@ describe('Jira Parent Link hierarchy alignment', () => {
     });
 
     describe('planHierarchyAlignment', () => {
+        it('Cloud: uses the system parent field even without a Parent Link field', () => {
+            const plan = planHierarchyAlignment({
+                fetchedByKey: new Map([
+                    ['C-1', { key: 'C-1', names: {}, fields: { parent: { id: '10', key: 'P-1', fields: {} } } }],
+                ]),
+                issues: [issue('i1', 'C-1', 'wiC'), issue('i2', 'P-1', 'wiP')],
+                workItems: [wi('wiC'), wi('wiP')],
+                deployment: 'cloud',
+            });
+            expect(plan.parentFieldMissing).toBe(false);
+            expect(plan.updates).toEqual([{ workItemId: 'wiC', parentId: 'wiP' }]);
+        });
+
+        it('Data Center: ignores the system parent field (sub-task parent)', () => {
+            const plan = planHierarchyAlignment({
+                fetchedByKey: new Map([
+                    ['C-1', { key: 'C-1', names: {}, fields: { parent: { key: 'P-1' } } }],
+                ]),
+                issues: [issue('i1', 'C-1', 'wiC'), issue('i2', 'P-1', 'wiP')],
+                workItems: [wi('wiC'), wi('wiP')],
+            });
+            expect(plan.parentFieldMissing).toBe(true);
+        });
+
         it('flags parentFieldMissing when no Parent Link field is present', () => {
             const plan = planHierarchyAlignment({
                 fetchedByKey: new Map([['C-1', { key: 'C-1', names: { x: 'Team' }, fields: {} }]]),

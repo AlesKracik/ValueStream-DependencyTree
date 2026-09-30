@@ -96,9 +96,31 @@ export function debounce<T extends (...args: any[]) => any>(
     };
 }
 
+/** Connection-relevant subset of the Jira settings. */
+export interface JiraConnectionFields {
+    base_url?: string;
+    deployment?: 'cloud' | 'datacenter';
+    api_version?: string;
+    username?: string;
+    api_token?: string;
+}
+
+/**
+ * Build the `jira` block sent to the backend Jira routes. Keeping this in one
+ * place ensures every caller forwards the Cloud/Data Center fields
+ * (deployment, username) alongside the token.
+ */
+export const jiraConnectionPayload = (jira: JiraConnectionFields | undefined): JiraConnectionFields => ({
+    base_url: jira?.base_url,
+    deployment: jira?.deployment,
+    api_version: jira?.api_version,
+    username: jira?.username,
+    api_token: jira?.api_token,
+});
+
 export const syncJiraIssue = async (
     jiraKey: string,
-    settings: { base_url?: string; api_version?: string; api_token?: string }
+    settings: JiraConnectionFields
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> => {
     if (!jiraKey || jiraKey === 'TBD') {
@@ -109,11 +131,7 @@ export const syncJiraIssue = async (
         "/api/jira/issue",
         {
             jira_key: jiraKey,
-            jira: {
-                base_url: settings.base_url,
-                api_version: settings.api_version || "3",
-                api_token: settings.api_token,
-            }
+            jira: jiraConnectionPayload(settings)
         },
         (resData) => resData.data,
         "Failed to fetch Jira data"

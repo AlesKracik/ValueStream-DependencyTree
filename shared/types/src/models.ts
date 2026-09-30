@@ -208,9 +208,28 @@ export interface GeneralSettings {
   theme_definitions?: ThemeDefinition[];
 }
 
+/**
+ * Jira deployment flavour. Cloud (Atlassian-hosted, *.atlassian.net) and
+ * Data Center / Server (self-hosted) differ in auth, REST API versions,
+ * the search endpoint and how the issue hierarchy is modelled.
+ */
+export type JiraDeployment = 'cloud' | 'datacenter';
+
 export interface JiraSettings {
   base_url: string;
+  /**
+   * 'cloud' | 'datacenter'. When unset the deployment is inferred from the
+   * base URL (see resolveJiraDeployment) so existing configs keep working.
+   */
+  deployment?: JiraDeployment;
+  /** REST API version. Cloud supports 2 and 3; Data Center only supports 2. */
   api_version: '2' | '3';
+  /**
+   * Cloud: Atlassian account e-mail used with the API token (Basic auth).
+   * Unused on Data Center, where the token is a PAT sent as a Bearer token.
+   */
+  username?: string;
+  /** Cloud: API token. Data Center: Personal Access Token (PAT). */
   api_token?: string;
   customer?: {
     jql_new?: string;
@@ -429,6 +448,7 @@ export const SETTINGS_SCOPE: Record<string, SettingsScope> = {
   // jira
   'jira': 'server',
   'jira.api_token': 'client',
+  'jira.username': 'client',
   // aha
   'aha': 'server',
   'aha.api_key': 'client',
@@ -786,3 +806,37 @@ export interface ValueStreamDataState {
 
 
 
+
+/** Hostnames that are always Atlassian Cloud. */
+const JIRA_CLOUD_HOST_SUFFIXES = ['.atlassian.net', '.jira.com', '.jira-dev.com'];
+
+/**
+ * Resolve the effective Jira deployment: an explicit `deployment` setting wins,
+ * otherwise infer Cloud from an Atlassian-hosted base URL and fall back to
+ * Data Center (the historical behaviour) for anything else.
+ */
+export function resolveJiraDeployment(
+  jira: { deployment?: string; base_url?: string } | undefined | null,
+): JiraDeployment {
+  if (jira?.deployment === 'cloud' || jira?.deployment === 'datacenter') return jira.deployment;
+  const url = jira?.base_url;
+  if (url) {
+    // Parse the host without `URL` so this module stays lib-agnostic.
+    const m = /^[a-z][a-z0-9+.-]*:\/\/(?:[^@/?#]*@)?([^:/?#]+)/i.exec(url.trim());
+    const host = m ? m[1].toLowerCase() : '';
+    if (host && JIRA_CLOUD_HOST_SUFFIXES.some((sfx) => host.endsWith(sfx))) return 'cloud';
+  }
+  return 'datacenter';
+}
+
+/**
+ * Resolve the REST API version to use. Data Center / Server only exposes v2
+ * (there is no /rest/api/3), so it is always forced to '2'. Cloud honours the
+ * configured version and defaults to '3'.
+ */
+export function resolveJiraApiVersion(
+  jira: { deployment?: string; base_url?: string; api_version?: string } | undefined | null,
+): '2' | '3' {
+  if (resolveJiraDeployment(jira) === 'datacenter') return '2';
+  return jira?.api_version === '2' ? '2' : '3';
+}

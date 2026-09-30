@@ -418,7 +418,7 @@ Icons only appear at the point where the scope is defined — on tab headers and
 
 ![Settings - Jira Integration](images/settings-jira.png)
 
-*   **Common:** Jira Base URL, API Version, and Personal Access Token (PAT). Includes a **Test Connection** tool.
+*   **Common:** Jira Base URL, Deployment (Auto-detect / Cloud / Data Center) and credentials. **Jira Cloud** uses your Atlassian account e-mail plus an **API token** (create one at id.atlassian.com → Security → API tokens; Cloud does not accept PATs) and lets you pick REST API v2 or v3. **Jira Data Center / Server** uses a **Personal Access Token (PAT)** and always REST API v2. Includes a **Test Connection** tool.
 *   **Issues:** Tools for bulk operations:
     *   **Import from Jira:** Execute a custom JQL query and create new Issues (and potentially Work Items) in the local database.
     *   **Sync Issues from Jira:** Iterate through all local issues with a `jira_key` and refresh their metadata.
