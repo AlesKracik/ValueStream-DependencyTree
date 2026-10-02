@@ -134,7 +134,7 @@ describe('useValueStreamData', () => {
 
         expect(result.current.data?.sprints).toHaveLength(0);
         expect(fetch).toHaveBeenCalledWith(
-            '/api/entity/sprints/s1',
+            '/api/entity/sprints/s1?_version=0',
             expect.objectContaining({
                 method: 'DELETE',
                 headers: expect.objectContaining({
@@ -179,7 +179,7 @@ describe('useValueStreamData', () => {
 
         // The exact call for deleting the customer
         expect(fetch).toHaveBeenCalledWith(
-            '/api/entity/customers/c1',
+            '/api/entity/customers/c1?_version=0',
             expect.objectContaining({
                 method: 'DELETE',
                 body: undefined,
@@ -188,7 +188,7 @@ describe('useValueStreamData', () => {
 
         // Verify headers don't have Content-Type
         const deleteCall = vi.mocked(global.fetch).mock.calls.find(call => 
-            call[0] === '/api/entity/customers/c1' && (call[1] as RequestInit)?.method === 'DELETE'
+            call[0] === '/api/entity/customers/c1?_version=0' && (call[1] as RequestInit)?.method === 'DELETE'
         );
         expect(deleteCall).toBeDefined();
         
@@ -210,7 +210,7 @@ describe('useValueStreamData', () => {
         expect(f1?.customer_targets).toHaveLength(0);
         // Only the DELETE call should be made — backend handles cascade persistence
         expect(fetch).toHaveBeenCalledWith(
-            '/api/entity/customers/c1',
+            '/api/entity/customers/c1?_version=0',
             expect.objectContaining({ method: 'DELETE' })
         );
         // Should NOT persist cascaded workItem updates from frontend
@@ -218,6 +218,32 @@ describe('useValueStreamData', () => {
             '/api/entity/workItems',
             expect.objectContaining({ method: 'POST' })
         );
+    });
+
+    it('sends the last-seen _version on DELETE and bumps cascaded local versions (DEC-013, DEC-007)', async () => {
+        const versioned: ValueStreamData = {
+            ...mockData,
+            customers: mockData.customers.map(c => ({ ...c, _version: 4 })),
+            workItems: mockData.workItems.map(w => ({ ...w, _version: 2 })),
+        };
+        vi.stubGlobal('fetch', vi.fn().mockImplementation((url) => {
+            if (url.startsWith('/api/workspace')) return Promise.resolve({ ok: true, json: () => Promise.resolve(versioned) });
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+        }));
+
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 0));
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        act(() => {
+            result.current.deleteCustomer('c1');
+        });
+
+        expect(fetch).toHaveBeenCalledWith(
+            '/api/entity/customers/c1?_version=4',
+            expect.objectContaining({ method: 'DELETE' })
+        );
+        // f1 targeted c1, so the server's cascade bumped it: 2 → 3.
+        expect(result.current.data?.workItems.find(w => w.id === 'f1')?._version).toBe(3);
     });
 
     it('cascades deleteWorkItem to issues in local state (backend handles DB cascade)', async () => {
@@ -242,7 +268,7 @@ describe('useValueStreamData', () => {
         expect(e1?.work_item_id).toBeUndefined();
         // Only the DELETE call should be made — backend handles cascade persistence
         expect(fetch).toHaveBeenCalledWith(
-            '/api/entity/workItems/f1',
+            '/api/entity/workItems/f1?_version=0',
             expect.objectContaining({ method: 'DELETE' })
         );
         // Should NOT persist cascaded issue updates from frontend

@@ -11,6 +11,7 @@ import {
   ArrayItemAddBody, ArrayItemAddBodyType,
   ArrayItemPatchBody, ArrayItemPatchBodyType,
   ArrayItemDeleteQuery, ArrayItemDeleteQueryType,
+  EntityDeleteQuery, EntityDeleteQueryType,
   ArrayItemParams, ArrayItemParamsType,
   ArrayItemWithIdParams, ArrayItemWithIdParamsType,
   CollectionParams, CollectionParamsType,
@@ -20,6 +21,7 @@ import { ALLOWED_COLLECTIONS } from '../utils/constants';
 import { AppError } from '../utils/errors';
 import { requireRole } from '../utils/roleGuard';
 import { wouldCreateCycle } from '../utils/workItemHierarchy';
+import { assertDocumentStatuses, assertSupportIssueStatus, assertParentExists, namesParent } from '../utils/entityValidation';
 // Collections whose mutations affect RICE scores and trigger recomputation
 const SCORE_AFFECTING_COLLECTIONS = ['workItems', 'customers', 'issues'];
 
@@ -57,6 +59,7 @@ function getArrayKey(collection: string, arrayPath: string): string | null {
  * Legacy documents lacking `_version` are matched as version 0 so the first
  * write stamps the field automatically.
  */
+// REQ-003 (legacy docs match as version 0)
 function versionMatch(id: string, clientVersion: number): Record<string, unknown> {
   return clientVersion === 0
     ? { id, $or: [{ _version: 0 }, { _version: { $exists: false } }] }
@@ -68,15 +71,16 @@ function versionMatch(id: string, clientVersion: number): Record<string, unknown
  *
  * Contract:
  *  - Client sends `_version` (the value it last observed; 0 for new entities).
- *  - If the document does not exist, we insert it with `_version: 0` (preserves
- *    legacy upsert-on-POST behaviour). The client-sent `_version` is ignored in
- *    this case — it lets a client recreate a deleted entity without first
- *    having to re-read it.
- *  - If the document exists with a matching `_version` (or has no `_version`
- *    field at all and the client sent 0), we replace it and bump the version.
- *  - If the document exists with a non-matching `_version`, we return the
- *    current document so the caller can respond 409 and the client can merge.
+ *  - If the document does not exist, we insert it with `_version: 0`. The
+ *    client-sent `_version` is ignored in this case — it lets a client recreate
+ *    a deleted entity without first having to re-read it (DEC-002).
+ *  - `_version: 0` on an id that already exists (versioned or legacy) is a
+ *    conflict: a create never overwrites (DEC-012).
+ *  - `_version: N > 0` matching the stored version merges the body ($set) and
+ *    bumps the version; a mismatch returns the current document so the caller
+ *    can respond 409 and the client can merge.
  */
+// REQ-001, REQ-002, REQ-004, REQ-011, REQ-013, REQ-036
 async function upsertWithOcc(
   db: Db,
   collection: string,
@@ -100,43 +104,59 @@ async function upsertWithOcc(
 
   await db.collection(collection).createIndex({ id: 1 }, { unique: true });
 
-  // Legacy docs lack `_version` entirely; treat them as version 0 so a client
-  // that reads one and sends back `_version: 0` succeeds. We can't use $or
-  // inside findOneAndUpdate's filter portably across older MongoDB driver
-  // versions, but a single $or on top-level fields is fine.
-  const matchFilter = clientVersion === 0
-    ? { id: entityId, $or: [{ _version: 0 }, { _version: { $exists: false } }] }
-    : { id: entityId, _version: clientVersion };
-
-  const nextVersion = clientVersion + 1;
-  const updated = await db.collection(collection).findOneAndUpdate(
-    matchFilter,
-    // On replace, bump updated_at but leave created_at untouched so the
-    // original creation time survives the write.
-    { $set: { ...rest, id: entityId, _version: nextVersion, ...(stamped ? { updated_at: now } : {}) } },
-    { returnDocument: 'after' }
-  );
-
-  if (updated) {
-    // Lazy backfill (no migration): a legacy doc that predates the timestamp
-    // fields gets a created_at on its first update. The value is the update
-    // time, not the true creation time — an accepted approximation.
-    if (stamped && !updated.created_at) {
-      await db.collection(collection).updateOne({ id: entityId }, { $set: { created_at: now } });
+  const insertFresh = async (): Promise<boolean> => {
+    try {
+      await db.collection(collection).insertOne({ ...rest, id: entityId, _version: 0, ...(stamped ? { created_at: now, updated_at: now } : {}) });
+      return true;
+    } catch (err) {
+      // Duplicate key: someone created the id first — that's a conflict.
+      if ((err as { code?: number }).code === 11000) return false;
+      throw err;
     }
-    return { ok: true, newVersion: nextVersion };
+  };
+
+  if (clientVersion > 0) {
+    const nextVersion = clientVersion + 1;
+    const updated = await db.collection(collection).findOneAndUpdate(
+      { id: entityId, _version: clientVersion },
+      // On replace, bump updated_at but leave created_at untouched so the
+      // original creation time survives the write.
+      { $set: { ...rest, id: entityId, _version: nextVersion, ...(stamped ? { updated_at: now } : {}) } },
+      { returnDocument: 'after' }
+    );
+
+    if (updated) {
+      // Lazy backfill (no migration): a legacy doc that predates the timestamp
+      // fields gets a created_at on its first update. The value is the update
+      // time, not the true creation time — an accepted approximation.
+      if (stamped && !updated.created_at) {
+        await db.collection(collection).updateOne({ id: entityId }, { $set: { created_at: now } });
+      }
+      return { ok: true, newVersion: nextVersion };
+    }
   }
 
-  // No match: either the document doesn't exist (treat as insert) or there's a
-  // version conflict. Disambiguate with a plain findOne.
+  // Version 0 (a create), or a version that matched nothing: insert when the
+  // id is free, otherwise it is a conflict.
   const existing = await db.collection(collection).findOne({ id: entityId });
-  if (!existing) {
-    // Fresh insert: stamp both created_at and updated_at.
-    await db.collection(collection).insertOne({ ...rest, id: entityId, _version: 0, ...(stamped ? { created_at: now, updated_at: now } : {}) });
+  if (!existing && await insertFresh()) {
     return { ok: true, newVersion: 0 };
   }
+  const current = existing ?? await db.collection(collection).findOne({ id: entityId });
+  return { ok: false, current: current ?? {} };
+}
 
-  return { ok: false, current: existing };
+/**
+ * Write guards shared by every route that writes a work item's `parent_id`:
+ * the hierarchy must stay acyclic, and a named parent must exist.
+ */
+// REQ-014, REQ-038; INV-001, INV-008 guard
+async function guardParent(db: Db, childId: string, parentId: unknown): Promise<void> {
+  if (!namesParent(parentId)) return;
+  if (await wouldCreateCycle(db, childId, parentId)) {
+    throw new AppError('parent_id would create a cycle in the work item hierarchy', 400);
+  }
+  await assertParentExists(db, parentId);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -149,6 +169,7 @@ function replyConflict(reply: FastifyReply, current: Record<string, any>) {
   });
 }
 
+// REQ-027; INV-003
 function maybeRecomputeScores(db: Db, collection: string, log: FastifyBaseLogger) {
   if (SCORE_AFFECTING_COLLECTIONS.includes(collection)) {
     recomputeScoresForWorkItems(db).catch(err =>
@@ -159,6 +180,7 @@ function maybeRecomputeScores(db: Db, collection: string, log: FastifyBaseLogger
 
 export const entityRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /api/entity/:collection — id supplied in body. Create-or-update with OCC.
+  // REQ-001..REQ-006, REQ-014, REQ-036, REQ-038, REQ-039
   fastify.post<{ Params: CollectionParamsType; Body: EntityBodyType }>('/api/entity/:collection', { schema: { params: CollectionParams, body: EntityBody } }, async (request, reply) => {
     requireRole(request, 'editor');
     const { collection } = request.params;
@@ -174,6 +196,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     const entityId = String(data.id);
+    assertDocumentStatuses(collection, data as Record<string, unknown>);
 
     const settings = await fastify.getSettings();
 
@@ -183,12 +206,9 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
 
     const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
 
-    // Hierarchy cycle guard for workItems.
+    // Hierarchy guards for workItems: no cycles, and the parent must exist.
     if (collection === 'workItems') {
-      const parentId = (data as unknown as { parent_id?: unknown }).parent_id;
-      if (typeof parentId === 'string' && await wouldCreateCycle(db, entityId, parentId)) {
-        throw new AppError('parent_id would create a cycle in the work item hierarchy', 400);
-      }
+      await guardParent(db, entityId, (data as unknown as { parent_id?: unknown }).parent_id);
     }
 
     const result = await upsertWithOcc(db, collection, entityId, data);
@@ -202,7 +222,9 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // POST /api/entity/:collection/:id — id from URL, body may omit it. Create-or-update with OCC.
+  // REQ-001..REQ-006, REQ-014, REQ-036, REQ-038, REQ-039 (DEC-006)
   fastify.post<{ Params: CollectionIdParamsType; Body: EntityOptionalIdBodyType }>('/api/entity/:collection/:id', { schema: { params: CollectionIdParams, body: EntityOptionalIdBody } }, async (request, reply) => {
+    requireRole(request, 'editor');
     const { collection, id } = request.params;
 
     if (!ALLOWED_COLLECTIONS.includes(collection)) {
@@ -211,6 +233,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
 
     const data = request.body;
     const entityId = String(data.id || id);
+    assertDocumentStatuses(collection, data as Record<string, unknown>);
 
     const settings = await fastify.getSettings();
 
@@ -220,12 +243,9 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
 
     const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
 
-    // Hierarchy cycle guard for workItems.
+    // Hierarchy guards for workItems: no cycles, and the parent must exist.
     if (collection === 'workItems') {
-      const parentId = (data as unknown as { parent_id?: unknown }).parent_id;
-      if (typeof parentId === 'string' && await wouldCreateCycle(db, entityId, parentId)) {
-        throw new AppError('parent_id would create a cycle in the work item hierarchy', 400);
-      }
+      await guardParent(db, entityId, (data as unknown as { parent_id?: unknown }).parent_id);
     }
 
     const result = await upsertWithOcc(db, collection, entityId, data);
@@ -243,6 +263,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
   // preserved. Server-owned keys (id, _version, calculated_*) are rejected.
   // Returns 404 if the document doesn't exist (PATCH never creates), 409 on
   // version mismatch, 200 with the new `_version` on success.
+  // REQ-003, REQ-007..REQ-010, REQ-012, REQ-013, REQ-038, REQ-039
   fastify.patch<{ Params: CollectionIdParamsType; Body: EntityPatchBodyType }>(
     '/api/entity/:collection/:id',
     { schema: { params: CollectionIdParams, body: EntityPatchBody } },
@@ -268,23 +289,17 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
         );
       }
 
+      assertDocumentStatuses(collection, patch as Record<string, unknown>);
+
       const settings = await fastify.getSettings();
       if (!settings.persistence?.mongo?.app?.uri) {
         throw new Error("App MongoDB not configured");
       }
       const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
 
-      // Hierarchy cycle guard: only fires when the patch touches parent_id.
+      // Hierarchy guards: only fire when the patch touches parent_id.
       if (collection === 'workItems') {
-        const patchParentId = (patch as { parent_id?: unknown }).parent_id;
-        if (typeof patchParentId === 'string') {
-          if (await wouldCreateCycle(db, id, patchParentId)) {
-            throw new AppError(
-              'parent_id would create a cycle in the work item hierarchy',
-              400
-            );
-          }
-        }
+        await guardParent(db, id, (patch as { parent_id?: unknown }).parent_id);
       }
 
       // OCC match. Treat legacy docs (no `_version`) as version 0.
@@ -341,6 +356,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
   // client can retry against the fresh version.
 
   // POST /api/entity/:collection/:id/items/:arrayPath — push a new element.
+  // REQ-020, REQ-021, REQ-034, REQ-039 (DEC-011)
   fastify.post<{ Params: ArrayItemParamsType; Body: ArrayItemAddBodyType }>(
     '/api/entity/:collection/:id/items/:arrayPath',
     { schema: { params: ArrayItemParams, body: ArrayItemAddBody } },
@@ -358,10 +374,13 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
 
       const { _version: clientVersion, item } = request.body;
 
-      // Stamp an id on the new element if the caller didn't provide one.
+      if (arrayPath === 'support_issues') assertSupportIssueStatus(item);
+
+      // The server owns element ids: always stamp a fresh one, ignoring any
+      // id the caller sent (DEC-011).
       const elementWithKey = {
         ...item,
-        [keyField]: (item as Record<string, unknown>)[keyField] ?? randomUUID(),
+        [keyField]: randomUUID(),
       };
 
       const settings = await fastify.getSettings();
@@ -398,6 +417,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   // PATCH /api/entity/:collection/:id/items/:arrayPath/:itemId — element field update.
+  // REQ-022, REQ-023, REQ-024, REQ-034, REQ-039
   fastify.patch<{ Params: ArrayItemWithIdParamsType; Body: ArrayItemPatchBodyType }>(
     '/api/entity/:collection/:id/items/:arrayPath/:itemId',
     { schema: { params: ArrayItemWithIdParams, body: ArrayItemPatchBody } },
@@ -420,6 +440,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
       if (keyField in patch) {
         throw new AppError(`Cannot patch the element's "${keyField}" field`, 400);
       }
+      if (arrayPath === 'support_issues') assertSupportIssueStatus(patch);
 
       const settings = await fastify.getSettings();
       if (!settings.persistence?.mongo?.app?.uri) {
@@ -435,14 +456,24 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
         setSpec[`${arrayPath}.$[elem].${k}`] = v;
       }
 
-      const updated = await db.collection(collection).findOneAndUpdate(
-        versionMatch(id, clientVersion),
-        { $set: setSpec },
-        {
-          arrayFilters: [{ [`elem.${keyField}`]: itemId }],
-          returnDocument: 'after',
+      let updated;
+      try {
+        updated = await db.collection(collection).findOneAndUpdate(
+          versionMatch(id, clientVersion),
+          { $set: setSpec },
+          {
+            arrayFilters: [{ [`elem.${keyField}`]: itemId }],
+            returnDocument: 'after',
+          }
+        );
+      } catch (err) {
+        // The parent matched (version included) but has no such array at all:
+        // Mongo refuses the positional update. That is a missing element.
+        if (/must exist in the document in order to apply array updates/.test((err as Error).message)) {
+          throw new AppError(`Array element "${itemId}" not found in ${arrayPath}`, 404);
         }
-      );
+        throw err;
+      }
 
       if (!updated) {
         const existing = await db.collection(collection).findOne({ id });
@@ -473,6 +504,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   // DELETE /api/entity/:collection/:id/items/:arrayPath/:itemId — remove element.
+  // REQ-025, REQ-026, REQ-034
   fastify.delete<{ Params: ArrayItemWithIdParamsType; Querystring: ArrayItemDeleteQueryType }>(
     '/api/entity/:collection/:id/items/:arrayPath/:itemId',
     { schema: { params: ArrayItemWithIdParams, querystring: ArrayItemDeleteQuery } },
@@ -522,12 +554,21 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  fastify.delete<{ Params: CollectionIdParamsType }>('/api/entity/:collection/:id', { schema: { params: CollectionIdParams } }, async (request, reply) => {
+  // DELETE /api/entity/:collection/:id?_version=N — version-checked delete
+  // (DEC-013). A stale version is a 409 that deletes and cascades nothing; an
+  // id that does not exist still succeeds (and still cleans up references).
+  // REQ-015..REQ-018, REQ-035, REQ-037 (DEC-007, DEC-013)
+  fastify.delete<{ Params: CollectionIdParamsType; Querystring: EntityDeleteQueryType }>('/api/entity/:collection/:id', { schema: { params: CollectionIdParams, querystring: EntityDeleteQuery } }, async (request, reply) => {
     requireRole(request, 'editor');
     const { collection, id } = request.params;
 
     if (!ALLOWED_COLLECTIONS.includes(collection)) {
       throw new AppError('Forbidden collection', 403);
+    }
+
+    const clientVersion = Number.parseInt(request.query._version, 10);
+    if (!Number.isFinite(clientVersion) || clientVersion < 0) {
+      throw new AppError('Invalid _version query parameter', 400);
     }
 
     const settings = await fastify.getSettings();
@@ -537,46 +578,51 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
-    await db.collection(collection).deleteOne({ id });
+    const deleted = await db.collection(collection).deleteOne(versionMatch(id, clientVersion));
+    if (deleted.deletedCount === 0) {
+      const existing = await db.collection(collection).findOne({ id });
+      if (existing) return replyConflict(reply, existing);
+    }
 
-    // Cascade: clean up references in related collections
+    // Cascade: clean up references in related collections. Every cascaded
+    // edit is a versioned edit (DEC-007): it bumps `_version`, and refreshes
+    // `updated_at` on work items.
     const cascaded: Record<string, number> = {};
+    const now = new Date().toISOString();
+    const bump = { $inc: { _version: 1 } };
 
     if (collection === 'customers') {
       // Remove customer_targets entries referencing this customer from ALL workItems
       const result = await db.collection('workItems').updateMany(
         { 'customer_targets.customer_id': id },
-        { $pull: { customer_targets: { customer_id: id } } as any }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { $pull: { customer_targets: { customer_id: id } } as any, $set: { updated_at: now }, ...bump }
       );
       if (result.modifiedCount > 0) cascaded.workItems = result.modifiedCount;
     } else if (collection === 'workItems') {
       // Clear work_item_id from ALL issues referencing this workItem
       const issuesResult = await db.collection('issues').updateMany(
         { work_item_id: id },
-        { $unset: { work_item_id: '' } }
+        { $unset: { work_item_id: '' }, ...bump }
       );
       if (issuesResult.modifiedCount > 0) cascaded.issues = issuesResult.modifiedCount;
 
       // Detach children: clear parent_id on every workItem that pointed to this one.
       const childrenResult = await db.collection('workItems').updateMany(
         { parent_id: id },
-        { $unset: { parent_id: '' } }
+        { $unset: { parent_id: '' }, $set: { updated_at: now }, ...bump }
       );
       if (childrenResult.modifiedCount > 0) cascaded.workItems = childrenResult.modifiedCount;
     } else if (collection === 'teams') {
       // Clear team_id from ALL issues referencing this team
       const result = await db.collection('issues').updateMany(
         { team_id: id },
-        { $set: { team_id: '' } }
+        { $set: { team_id: '' }, ...bump }
       );
       if (result.modifiedCount > 0) cascaded.issues = result.modifiedCount;
     }
 
-    if (SCORE_AFFECTING_COLLECTIONS.includes(collection)) {
-      recomputeScoresForWorkItems(db).catch(err =>
-        fastify.log.error(err, 'Score recomputation failed')
-      );
-    }
+    maybeRecomputeScores(db, collection, fastify.log);
 
     return reply.send({ success: true, cascaded });
   });

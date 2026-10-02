@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { 
     calculateWorkItemEffort, 
     calculateWorkItemTcv, 
-    calculateWorkItemScore,
     calculateIssueEffortPerSprint, 
     calculateIssueIntensityRatio, 
     parseJiraIssue 
@@ -296,39 +295,31 @@ describe('businessLogic', () => {
             // Total for f1 = 50 + 200 = 250.
             expect(calculateWorkItemTcv(f1, mockCustomers, allWorkItems)).toBe(250);
         });
-    });
 
-    describe('calculateWorkItemScore', () => {
-        const mockCustomers: Customer[] = [
-            { id: 'c1', name: 'Cust 1', existing_tcv: 1000, potential_tcv: 0 }
-        ];
-
-        it('calculates score as Impact / Effort', () => {
-            const workItem: WorkItem = {
-                id: 'f1',
-                name: 'F1',
-                total_effort_mds: 10,
-                score: 0,
-                customer_targets: [
-                    { customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }
-                ]
+        it('treats a customer target without a priority as Should-have (DEC-008)', () => {
+            const f1: WorkItem = {
+                id: 'f1', name: 'F1', total_effort_mds: 0, score: 0,
+                customer_targets: [{ customer_id: 'c1', tcv_type: 'existing' }]
             };
-            // Impact = 1000, Effort = 10. Score = 100.
-            expect(calculateWorkItemScore(workItem, mockCustomers, [workItem], [])).toBe(100);
+            const f2: WorkItem = {
+                id: 'f2', name: 'F2', total_effort_mds: 0, score: 0,
+                customer_targets: [{ customer_id: 'c1', tcv_type: 'existing', priority: 'Should-have' }]
+            };
+            // Both count toward c1's Should-have divisor: 100 / 2 each.
+            expect(calculateWorkItemTcv(f1, mockCustomers, [f1, f2])).toBe(50);
+            expect(calculateWorkItemTcv(f2, mockCustomers, [f1, f2])).toBe(50);
         });
 
-        it('uses a floor of 1 MD for effort to avoid division by zero', () => {
-            const workItem: WorkItem = {
-                id: 'f1',
-                name: 'F1',
-                total_effort_mds: 0,
-                score: 0,
-                customer_targets: [
-                    { customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }
-                ]
+        it('counts an all-customers target without a priority toward every Should-have divisor (DEC-008)', () => {
+            const g: WorkItem = {
+                id: 'g', name: 'G', total_effort_mds: 0, score: 0, customer_targets: [],
+                all_customers_target: { tcv_type: 'existing' }
+            } as unknown as WorkItem;
+            const f: WorkItem = {
+                id: 'f', name: 'F', total_effort_mds: 0, score: 0,
+                customer_targets: [{ customer_id: 'c1', tcv_type: 'existing', priority: 'Should-have' }]
             };
-            // Impact = 1000, Effort floor = 1. Score = 1000.
-            expect(calculateWorkItemScore(workItem, mockCustomers, [workItem], [])).toBe(1000);
+            expect(calculateWorkItemTcv(f, mockCustomers, [g, f])).toBe(50);
         });
     });
 

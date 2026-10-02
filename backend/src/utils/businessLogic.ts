@@ -86,6 +86,7 @@ export const calculateProportionalEffort = (issue: Issue, sprint: Sprint, countr
  * It is the maximum of the work item's own 'total_effort_mds' 
  * or the sum of all its related issues' effort.
  */
+// REQ-028
 export const calculateWorkItemEffort = (workItem: WorkItem, issues: Issue[]): number => {
     const issuesForWorkItem = issues.filter(e => e.work_item_id === workItem.id);
     const issueMdsSum = issuesForWorkItem.reduce((sum, e) => sum + (e.effort_md || 0), 0);
@@ -93,17 +94,24 @@ export const calculateWorkItemEffort = (workItem: WorkItem, issues: Issue[]): nu
 };
 
 /**
+ * A target without a priority is Should-have (DEC-008) — both for its own
+ * share and for every Should-have divisor it counts toward.
+ */
+const isShouldHave = (priority: string | undefined): boolean => !priority || priority === 'Should-have';
+
+/**
  * Calculates the total TCV impact for a work item based on its customer targets.
  * Must-have: 100% of Customer TCV
- * Should-have: Shared portion (Customer TCV / Count of all Should-have work items for that customer)
+ * Should-have (or no priority): Shared portion (Customer TCV / Count of all Should-have work items for that customer)
  * Nice-to-have: 0%
  */
+// REQ-029, REQ-030 (DEC-008)
 export const calculateWorkItemTcv = (workItem: WorkItem, customers: Customer[], allWorkItems: WorkItem[]): number => {
     // Helper to get total number of Should-have targets for a specific customer
     const getShouldHaveCount = (customerId: string) => {
         return allWorkItems.reduce((count, w) => {
-            const hasShouldHave = (w.customer_targets || []).some(t => t.customer_id === customerId && t.priority === 'Should-have');
-            const globalShouldHave = w.all_customers_target?.priority === 'Should-have';
+            const hasShouldHave = (w.customer_targets || []).some(t => t.customer_id === customerId && isShouldHave(t.priority));
+            const globalShouldHave = !!w.all_customers_target && isShouldHave(w.all_customers_target.priority);
             return count + (hasShouldHave || globalShouldHave ? 1 : 0);
         }, 0);
     };
@@ -141,25 +149,15 @@ export const calculateWorkItemTcv = (workItem: WorkItem, customers: Customer[], 
             customerTcv = customer.potential_tcv;
         }
 
-        if (target.priority === 'Must-have' || !target.priority) {
+        if (target.priority === 'Must-have') {
             return sum + (customerTcv || 0);
-        } else if (target.priority === 'Should-have') {
+        } else if (isShouldHave(target.priority)) {
             const totalShouldHaves = getShouldHaveCount(customer.id);
             return sum + (totalShouldHaves > 0 ? (customerTcv || 0) / totalShouldHaves : 0);
         }
         
         return sum;
     }, 0);
-};
-
-/**
- * Calculates the RICE/ROI Score for a work item.
- * Score = Total Impact / Effort (min 1 MD)
- */
-export const calculateWorkItemScore = (workItem: WorkItem, customers: Customer[], allWorkItems: WorkItem[], issues: Issue[]): number => {
-    const impact = calculateWorkItemTcv(workItem, customers, allWorkItems);
-    const effort = Math.max(calculateWorkItemEffort(workItem, issues), 1);
-    return impact / effort;
 };
 
 /**

@@ -4,6 +4,8 @@ import { buildApp } from '../../app';
 import * as mongoServer from '../../utils/mongoServer';
 import * as metricsService from '../../services/metricsService';
 import { invalidateSettingsCache } from '../../services/secretManager';
+import * as roleGuard from '../../utils/roleGuard';
+import { AppError } from '../../utils/errors';
 
 describe('Entity Routes', () => {
   let app: FastifyInstance;
@@ -91,24 +93,54 @@ describe('Entity Routes', () => {
     );
   });
 
-  it('should match docs missing _version when client sends version 0', async () => {
-    // Legacy doc (no _version field). Client sends _version: 0; server matches via $or.
-    mockCollection.findOneAndUpdate.mockResolvedValueOnce({
-      id: 'cust-legacy', _version: 1, name: 'Legacy',
-    });
+  it('should return 409 when a create (version 0) names an existing id (DEC-012)', async () => {
+    // Legacy doc (no _version field) already stored. A create never overwrites.
+    mockCollection.findOne.mockResolvedValueOnce({ id: 'cust-legacy', name: 'Legacy' });
 
     const response = await app.inject({
       method: 'POST',
       url: '/api/entity/customers/cust-legacy',
-      payload: { id: 'cust-legacy', _version: 0, name: 'Legacy' }
+      payload: { id: 'cust-legacy', _version: 0, name: 'Overwrite attempt' }
     });
 
-    expect(response.statusCode).toBe(200);
-    expect(mockCollection.findOneAndUpdate).toHaveBeenCalledWith(
-      { id: 'cust-legacy', $or: [{ _version: 0 }, { _version: { $exists: false } }] },
-      expect.objectContaining({ $set: expect.objectContaining({ _version: 1 }) }),
-      { returnDocument: 'after' }
-    );
+    expect(response.statusCode).toBe(409);
+    const json = JSON.parse(response.payload);
+    expect(json.conflict).toBe(true);
+    expect(json.current).toEqual({ id: 'cust-legacy', name: 'Legacy' });
+    expect(mockCollection.findOneAndUpdate).not.toHaveBeenCalled();
+    expect(mockCollection.insertOne).not.toHaveBeenCalled();
+  });
+
+  it('should return 409 when a concurrent create wins the insert race', async () => {
+    mockCollection.insertOne.mockRejectedValueOnce(Object.assign(new Error('dup'), { code: 11000 }));
+    mockCollection.findOne
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'cust-race', _version: 0, name: 'First' });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/entity/customers/cust-race',
+      payload: { id: 'cust-race', _version: 0, name: 'Second' }
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(JSON.parse(response.payload).current).toEqual({ id: 'cust-race', _version: 0, name: 'First' });
+  });
+
+  it('should require the editor role on POST /api/entity/:collection/:id (DEC-006)', async () => {
+    const guard = vi.spyOn(roleGuard, 'requireRole').mockImplementation(() => {
+      throw new AppError('Requires editor role', 403);
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/entity/customers/cust-1',
+      payload: { id: 'cust-1', _version: 0, name: 'x' }
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(guard).toHaveBeenCalledWith(expect.anything(), 'editor');
+    expect(mockCollection.insertOne).not.toHaveBeenCalled();
   });
 
   it('should return 409 with current document on version mismatch', async () => {
@@ -198,7 +230,7 @@ describe('Entity Routes', () => {
   it('should delete an entity', async () => {
     const response = await app.inject({
       method: 'DELETE',
-      url: '/api/entity/workItems/wi-1'
+      url: '/api/entity/workItems/wi-1?_version=0'
     });
 
     expect(response.statusCode).toBe(200);
@@ -206,7 +238,7 @@ describe('Entity Routes', () => {
     expect(json.success).toBe(true);
 
     expect(mockDb.collection).toHaveBeenCalledWith('workItems');
-    expect(mockCollection.deleteOne).toHaveBeenCalledWith({ id: 'wi-1' });
+    expect(mockCollection.deleteOne).toHaveBeenCalledWith({ id: 'wi-1', $or: [{ _version: 0 }, { _version: { $exists: false } }] });
   });
 
   it('should cascade-remove customer_targets when deleting a customer', async () => {
@@ -214,7 +246,7 @@ describe('Entity Routes', () => {
 
     const response = await app.inject({
       method: 'DELETE',
-      url: '/api/entity/customers/cust-1'
+      url: '/api/entity/customers/cust-1?_version=0'
     });
 
     expect(response.statusCode).toBe(200);
@@ -223,11 +255,11 @@ describe('Entity Routes', () => {
     expect(json.cascaded).toEqual({ workItems: 3 });
 
     expect(mockDb.collection).toHaveBeenCalledWith('customers');
-    expect(mockCollection.deleteOne).toHaveBeenCalledWith({ id: 'cust-1' });
+    expect(mockCollection.deleteOne).toHaveBeenCalledWith({ id: 'cust-1', $or: [{ _version: 0 }, { _version: { $exists: false } }] });
     expect(mockDb.collection).toHaveBeenCalledWith('workItems');
     expect(mockCollection.updateMany).toHaveBeenCalledWith(
       { 'customer_targets.customer_id': 'cust-1' },
-      { $pull: { customer_targets: { customer_id: 'cust-1' } } }
+      { $pull: { customer_targets: { customer_id: 'cust-1' } }, $set: { updated_at: expect.any(String) }, $inc: { _version: 1 } }
     );
   });
 
@@ -239,7 +271,7 @@ describe('Entity Routes', () => {
 
     const response = await app.inject({
       method: 'DELETE',
-      url: '/api/entity/workItems/wi-1'
+      url: '/api/entity/workItems/wi-1?_version=0'
     });
 
     expect(response.statusCode).toBe(200);
@@ -249,11 +281,11 @@ describe('Entity Routes', () => {
 
     expect(mockCollection.updateMany).toHaveBeenCalledWith(
       { work_item_id: 'wi-1' },
-      { $unset: { work_item_id: '' } }
+      { $unset: { work_item_id: '' }, $inc: { _version: 1 } }
     );
     expect(mockCollection.updateMany).toHaveBeenCalledWith(
       { parent_id: 'wi-1' },
-      { $unset: { parent_id: '' } }
+      { $unset: { parent_id: '' }, $set: { updated_at: expect.any(String) }, $inc: { _version: 1 } }
     );
   });
 
@@ -297,7 +329,9 @@ describe('Entity Routes', () => {
     // upsertWithOcc's later findOne (existence check after findOneAndUpdate miss)
     // also returns null, taking the insert path.
     mockCollection.findOne.mockResolvedValue(null);
-    mockCollection.findOne.mockResolvedValueOnce({ parent_id: undefined });
+    mockCollection.findOne
+      .mockResolvedValueOnce({ parent_id: undefined }) // cycle-guard walk of wi-B
+      .mockResolvedValueOnce({ _id: 'b' });            // parent-exists check
 
     const response = await app.inject({
       method: 'POST',
@@ -321,7 +355,7 @@ describe('Entity Routes', () => {
 
     const response = await app.inject({
       method: 'DELETE',
-      url: '/api/entity/teams/team-1'
+      url: '/api/entity/teams/team-1?_version=0'
     });
 
     expect(response.statusCode).toBe(200);
@@ -332,7 +366,7 @@ describe('Entity Routes', () => {
     expect(mockDb.collection).toHaveBeenCalledWith('issues');
     expect(mockCollection.updateMany).toHaveBeenCalledWith(
       { team_id: 'team-1' },
-      { $set: { team_id: '' } }
+      { $set: { team_id: '' }, $inc: { _version: 1 } }
     );
   });
 
@@ -341,12 +375,124 @@ describe('Entity Routes', () => {
 
     const response = await app.inject({
       method: 'DELETE',
-      url: '/api/entity/customers/cust-orphan'
+      url: '/api/entity/customers/cust-orphan?_version=0'
     });
 
     const json = JSON.parse(response.payload);
     expect(json.success).toBe(true);
     expect(json.cascaded).toEqual({});
+  });
+
+  it('should return 409 and cascade nothing when a delete carries a stale _version (DEC-013)', async () => {
+    mockCollection.deleteOne.mockResolvedValueOnce({ deletedCount: 0 });
+    mockCollection.findOne.mockResolvedValueOnce({ id: 'wi-1', _version: 4 });
+
+    const response = await app.inject({ method: 'DELETE', url: '/api/entity/workItems/wi-1?_version=2' });
+
+    expect(response.statusCode).toBe(409);
+    expect(JSON.parse(response.payload).current).toEqual({ id: 'wi-1', _version: 4 });
+    expect(mockCollection.deleteOne).toHaveBeenCalledWith({ id: 'wi-1', _version: 2 });
+    expect(mockCollection.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('should succeed deleting an id that does not exist (DEC-013)', async () => {
+    mockCollection.deleteOne.mockResolvedValueOnce({ deletedCount: 0 });
+    const response = await app.inject({ method: 'DELETE', url: '/api/entity/issues/gone?_version=3' });
+    expect(response.statusCode).toBe(200);
+  });
+
+  it('should reject a delete without a valid _version (DEC-013)', async () => {
+    const missing = await app.inject({ method: 'DELETE', url: '/api/entity/issues/i-1' });
+    expect(missing.statusCode).toBe(400);
+    const bad = await app.inject({ method: 'DELETE', url: '/api/entity/issues/i-1?_version=-1' });
+    expect(bad.statusCode).toBe(400);
+    expect(mockCollection.deleteOne).not.toHaveBeenCalled();
+  });
+
+  it('should reject a workItem upsert whose parent does not exist (DEC-014)', async () => {
+    mockCollection.findOne.mockResolvedValue(null);
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/entity/workItems',
+      payload: { id: 'wi-orphan', _version: 0, name: 'Orphan', parent_id: 'wi-nope' }
+    });
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.payload).error).toMatch(/parent_id/);
+    expect(mockCollection.insertOne).not.toHaveBeenCalled();
+  });
+
+  it('should reject a patch that points parent_id at a missing work item (DEC-014)', async () => {
+    mockCollection.findOne.mockResolvedValue(null);
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/entity/workItems/wi-1',
+      payload: { _version: 1, patch: { parent_id: 'wi-nope' } }
+    });
+    expect(response.statusCode).toBe(400);
+    expect(mockCollection.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it('should allow clearing parent_id without an existence check', async () => {
+    mockCollection.findOneAndUpdate.mockResolvedValueOnce({ id: 'wi-1', _version: 2, created_at: 'x' });
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/entity/workItems/wi-1',
+      payload: { _version: 1, patch: { parent_id: '' } }
+    });
+    expect(response.statusCode).toBe(200);
+  });
+
+  it('should reject a work item status outside the closed set (DEC-015)', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/entity/workItems',
+      payload: { id: 'wi-s', _version: 0, name: 'S', status: 'Shipped' }
+    });
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.payload).error).toMatch(/status/);
+    expect(mockCollection.insertOne).not.toHaveBeenCalled();
+
+    const patched = await app.inject({
+      method: 'PATCH',
+      url: '/api/entity/workItems/wi-s',
+      payload: { _version: 1, patch: { status: 'Shipped' } }
+    });
+    expect(patched.statusCode).toBe(400);
+  });
+
+  it('should accept a work item without a status (DEC-015)', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/entity/workItems',
+      payload: { id: 'wi-nostatus', _version: 0, name: 'No status' }
+    });
+    expect(response.statusCode).toBe(200);
+  });
+
+  it('should reject a customer whose support issue has an unknown status (DEC-015)', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/entity/customers/c-bad',
+      payload: { id: 'c-bad', _version: 0, name: 'C', support_issues: [{ id: 's1', description: 'd', status: 'closed' }] }
+    });
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.payload).error).toMatch(/support_issues\.status/);
+  });
+
+  it('should reject a support issue element with an unknown status (DEC-015)', async () => {
+    const added = await app.inject({
+      method: 'POST',
+      url: '/api/entity/customers/c1/items/support_issues',
+      payload: { _version: 1, item: { description: 'd', status: 'closed' } }
+    });
+    expect(added.statusCode).toBe(400);
+    const patched = await app.inject({
+      method: 'PATCH',
+      url: '/api/entity/customers/c1/items/support_issues/si-1',
+      payload: { _version: 1, patch: { status: 'closed' } }
+    });
+    expect(patched.statusCode).toBe(400);
+    expect(mockCollection.findOneAndUpdate).not.toHaveBeenCalled();
   });
 
   it('should trigger score recomputation when saving a workItem', async () => {
@@ -680,17 +826,18 @@ describe('Entity Routes', () => {
       expect(call[1].$push.support_issues.description).toBe('oops');
     });
 
-    it('POST /items honours a client-supplied element id', async () => {
+    it('POST /items ignores a client-supplied element id (DEC-011)', async () => {
       mockCollection.findOneAndUpdate.mockResolvedValueOnce({ id: 'c1', _version: 1 });
 
-      await app.inject({
+      const response = await app.inject({
         method: 'POST',
         url: '/api/entity/customers/c1/items/tcv_history',
         payload: { _version: 0, item: { id: 'h-100', value: 1000, valid_from: '2026-01-01' } },
       });
 
       const call = mockCollection.findOneAndUpdate.mock.calls[0];
-      expect(call[1].$push.tcv_history.id).toBe('h-100');
+      expect(call[1].$push.tcv_history.id).not.toBe('h-100');
+      expect(JSON.parse(response.payload).item.id).toBe(call[1].$push.tcv_history.id);
     });
 
     it('POST /items rejects a non-whitelisted array path', async () => {
@@ -771,6 +918,18 @@ describe('Entity Routes', () => {
       expect(response.statusCode).toBe(400);
       expect(JSON.parse(response.payload).error).toMatch(/cannot patch the element's "id"/i);
       expect(mockCollection.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('PATCH /items returns 404 when the customer has no such array at all (found by conformance replay, REQ-024)', async () => {
+      mockCollection.findOneAndUpdate.mockRejectedValueOnce(new Error(
+        "Plan executor error during findAndModify :: caused by :: The path 'support_issues' must exist in the document in order to apply array updates."
+      ));
+      const response = await app.inject({
+        method: 'PATCH',
+        url: '/api/entity/customers/c1/items/support_issues/si-1',
+        payload: { _version: 0, patch: { description: 'x' } },
+      });
+      expect(response.statusCode).toBe(404);
     });
 
     it('PATCH /items returns 404 (and rolls back the version) when the element is missing', async () => {
@@ -886,7 +1045,7 @@ describe('Entity Routes', () => {
 
     await app.inject({
       method: 'DELETE',
-      url: '/api/entity/customers/cust-del'
+      url: '/api/entity/customers/cust-del?_version=0'
     });
 
     expect(recomputeSpy).toHaveBeenCalledWith(mockDb);
@@ -897,7 +1056,7 @@ describe('Entity Routes', () => {
 
     await app.inject({
       method: 'DELETE',
-      url: '/api/entity/sprints/s-del'
+      url: '/api/entity/sprints/s-del?_version=0'
     });
 
     expect(recomputeSpy).not.toHaveBeenCalled();

@@ -1,10 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     deepMerge,
-    calculateWorkItemEffort,
     hasUnestimatedWorkItemEffort,
-    calculateWorkItemTcv,
-    calculateWorkItemScore,
     calculateIssueEffortPerSprint,
     calculateIssueIntensityRatio,
     parseJiraIssue,
@@ -137,52 +134,6 @@ describe('businessLogic', () => {
         });
     });
 
-    describe('calculateWorkItemEffort', () => {
-        const mockWorkItem: WorkItem = {
-            id: 'f1',
-            name: 'Test Feature',
-            total_effort_mds: 10,
-            score: 0,
-            status: 'Backlog',
-            customer_targets: []
-        };
-
-        it('uses workItem effort when no issues are present', () => {
-            expect(calculateWorkItemEffort(mockWorkItem, [])).toBe(10);
-        });
-
-        it('uses workItem effort when issue effort sum is 0', () => {
-            const issues: Issue[] = [
-                { id: 'e1', jira_key: 'J1', work_item_id: 'f1', team_id: 't1', effort_md: 0 }
-            ];
-            expect(calculateWorkItemEffort(mockWorkItem, issues)).toBe(10);
-        });
-
-        it('prioritizes issue effort sum when it is greater than 0', () => {
-            const issues: Issue[] = [
-                { id: 'e1', jira_key: 'J1', work_item_id: 'f1', team_id: 't1', effort_md: 5 },
-                { id: 'e2', jira_key: 'J2', work_item_id: 'f1', team_id: 't2', effort_md: 7 }
-            ];
-            // Issue sum (12) > WorkItem effort (10)
-            expect(calculateWorkItemEffort(mockWorkItem, issues)).toBe(12);
-        });
-
-        it('uses issue effort sum even if it is smaller than workItem effort (as long as it is > 0)', () => {
-            const issues: Issue[] = [
-                { id: 'e1', jira_key: 'J1', work_item_id: 'f1', team_id: 't1', effort_md: 5 }
-            ];
-            // Issue sum (5) is taken because it's > 0, even though WorkItem effort is 10
-            expect(calculateWorkItemEffort(mockWorkItem, issues)).toBe(5);
-        });
-
-        it('ignores issues for other work items', () => {
-            const issues: Issue[] = [
-                { id: 'e1', jira_key: 'J1', work_item_id: 'f2', team_id: 't1', effort_md: 50 }
-            ];
-            expect(calculateWorkItemEffort(mockWorkItem, issues)).toBe(10);
-        });
-    });
-
     describe('hasUnestimatedWorkItemEffort', () => {
         const baseWorkItem: WorkItem = {
             id: 'f1',
@@ -197,8 +148,8 @@ describe('businessLogic', () => {
             expect(hasUnestimatedWorkItemEffort(baseWorkItem, [])).toBe(true);
         });
 
-        it('does not flag a workitem with its own effort and no issues', () => {
-            const wi = { ...baseWorkItem, total_effort_mds: 5 };
+        it('does not flag a workitem whose stored effort is positive and has no issues', () => {
+            const wi = { ...baseWorkItem, total_effort_mds: 5, calculated_effort: 5 };
             expect(hasUnestimatedWorkItemEffort(wi, [])).toBe(false);
         });
 
@@ -207,7 +158,8 @@ describe('businessLogic', () => {
                 { id: 'e1', jira_key: 'J1', work_item_id: 'f1', team_id: 't1', effort_md: 5 },
                 { id: 'e2', jira_key: 'J2', work_item_id: 'f1', team_id: 't2', effort_md: 3 }
             ];
-            expect(hasUnestimatedWorkItemEffort(baseWorkItem, issues)).toBe(false);
+            // calculated_effort is the backend's stored value (DEC-016).
+            expect(hasUnestimatedWorkItemEffort({ ...baseWorkItem, calculated_effort: 8 }, issues)).toBe(false);
         });
 
         it('flags a workitem when any linked issue has zero effort', () => {
@@ -215,7 +167,7 @@ describe('businessLogic', () => {
                 { id: 'e1', jira_key: 'J1', work_item_id: 'f1', team_id: 't1', effort_md: 5 },
                 { id: 'e2', jira_key: 'J2', work_item_id: 'f1', team_id: 't2', effort_md: 0 }
             ];
-            expect(hasUnestimatedWorkItemEffort(baseWorkItem, issues)).toBe(true);
+            expect(hasUnestimatedWorkItemEffort({ ...baseWorkItem, calculated_effort: 5 }, issues)).toBe(true);
         });
 
         it('ignores issues belonging to other work items', () => {
@@ -224,178 +176,6 @@ describe('businessLogic', () => {
             ];
             // The workitem has 0 own effort and no own issues — still unestimated.
             expect(hasUnestimatedWorkItemEffort(baseWorkItem, issues)).toBe(true);
-        });
-    });
-
-    describe('calculateWorkItemTcv', () => {
-        const mockCustomers: Customer[] = [
-            { id: 'c1', name: 'Cust 1', existing_tcv: 100, potential_tcv: 50, tcv_history: [
-                { id: 'h1', value: 80, valid_from: '2025-01-01' }
-            ]},
-            { id: 'c2', name: 'Cust 2', existing_tcv: 200, potential_tcv: 0 }
-        ];
-
-        it('calculates TCV for specific customer targets (existing, Must-have)', () => {
-            const workItem: WorkItem = {
-                id: 'f1',
-                name: 'F1',
-                total_effort_mds: 0,
-                score: 0,
-                status: 'Backlog',
-                customer_targets: [
-                    { customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }
-                ]
-            };
-            expect(calculateWorkItemTcv(workItem, mockCustomers, [workItem])).toBe(100);
-        });
-
-        it('calculates shared TCV for Should-have priority', () => {
-            const f1: WorkItem = {
-                id: 'f1',
-                name: 'F1',
-                total_effort_mds: 0,
-                score: 0,
-                status: 'Backlog',
-                customer_targets: [
-                    { customer_id: 'c1', tcv_type: 'existing', priority: 'Should-have' }
-                ]
-            };
-            const f2: WorkItem = {
-                id: 'f2',
-                name: 'F2',
-                total_effort_mds: 0,
-                score: 0,
-                status: 'Backlog',
-                customer_targets: [
-                    { customer_id: 'c1', tcv_type: 'existing', priority: 'Should-have' }
-                ]
-            };
-            const allWorkItems = [f1, f2];
-
-            // c1 has 100 existing_tcv. Shared between 2 should-haves = 50 each.
-            expect(calculateWorkItemTcv(f1, mockCustomers, allWorkItems)).toBe(50);
-            expect(calculateWorkItemTcv(f2, mockCustomers, allWorkItems)).toBe(50);
-        });
-
-        it('returns 0 for Nice-to-have priority', () => {
-            const workItem: WorkItem = {
-                id: 'f1',
-                name: 'F1',
-                total_effort_mds: 0,
-                score: 0,
-                status: 'Backlog',
-                customer_targets: [
-                    { customer_id: 'c1', tcv_type: 'existing', priority: 'Nice-to-have' }
-                ]
-            };
-            expect(calculateWorkItemTcv(workItem, mockCustomers, [workItem])).toBe(0);
-        });
-
-        it('calculates TCV for specific customer targets (historical)', () => {
-            const workItem: WorkItem = {
-                id: 'f1',
-                name: 'F1',
-                total_effort_mds: 0,
-                score: 0,
-                status: 'Backlog',
-                customer_targets: [
-                    { customer_id: 'c1', tcv_type: 'existing', tcv_history_id: 'h1', priority: 'Must-have' }
-                ]
-            };
-            expect(calculateWorkItemTcv(workItem, mockCustomers, [workItem])).toBe(80);
-        });
-
-        it('sums TCV across multiple customers with mixed priorities', () => {
-            const f1: WorkItem = {
-                id: 'f1',
-                name: 'F1',
-                total_effort_mds: 0,
-                score: 0,
-                status: 'Backlog',
-                customer_targets: [
-                    { customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }, // 100
-                    { customer_id: 'c2', tcv_type: 'existing', priority: 'Should-have' } // 200 / 1 = 200
-                ]
-            };
-            expect(calculateWorkItemTcv(f1, mockCustomers, [f1])).toBe(300);
-        });
-
-        it('calculates TCV for global work items (all customers) with Must-have', () => {
-            const workItem: WorkItem = {
-                id: 'f1',
-                name: 'F1',
-                total_effort_mds: 0,
-                score: 0,
-                status: 'Backlog',
-                customer_targets: [],
-                all_customers_target: { tcv_type: 'existing', priority: 'Must-have' }
-            };
-            // 100 + 200 = 300
-            expect(calculateWorkItemTcv(workItem, mockCustomers, [workItem])).toBe(300);
-        });
-
-        it('calculates TCV for global work items (all customers) with Should-have', () => {
-            const f1: WorkItem = {
-                id: 'f1',
-                name: 'F1',
-                total_effort_mds: 0,
-                score: 0,
-                status: 'Backlog',
-                customer_targets: [],
-                all_customers_target: { tcv_type: 'existing', priority: 'Should-have' }
-            };
-            const f2: WorkItem = {
-                id: 'f2',
-                name: 'F2',
-                total_effort_mds: 0,
-                score: 0,
-                status: 'Backlog',
-                customer_targets: [
-                    { customer_id: 'c1', tcv_type: 'existing', priority: 'Should-have' }
-                ]
-            };
-            const allWorkItems = [f1, f2];
-
-            // For c1 (100): Shared between f1 (global) and f2. 100 / 2 = 50.
-            // For c2 (200): Only f1 (global) targets it as should-have. 200 / 1 = 200.
-            // Total for f1 = 50 + 200 = 250.
-            expect(calculateWorkItemTcv(f1, mockCustomers, allWorkItems)).toBe(250);
-        });
-    });
-
-    describe('calculateWorkItemScore', () => {
-        const mockCustomers: Customer[] = [
-            { id: 'c1', name: 'Cust 1', existing_tcv: 1000, potential_tcv: 0 }
-        ];
-
-        it('calculates score as Impact / Effort', () => {
-            const workItem: WorkItem = {
-                id: 'f1',
-                name: 'F1',
-                total_effort_mds: 10,
-                score: 0,
-                status: 'Backlog',
-                customer_targets: [
-                    { customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }
-                ]
-            };
-            // Impact = 1000, Effort = 10. Score = 100.
-            expect(calculateWorkItemScore(workItem, mockCustomers, [workItem], [])).toBe(100);
-        });
-
-        it('uses a floor of 1 MD for effort to avoid division by zero', () => {
-            const workItem: WorkItem = {
-                id: 'f1',
-                name: 'F1',
-                total_effort_mds: 0,
-                score: 0,
-                status: 'Backlog',
-                customer_targets: [
-                    { customer_id: 'c1', tcv_type: 'existing', priority: 'Must-have' }
-                ]
-            };
-            // Impact = 1000, Effort floor = 1. Score = 1000.
-            expect(calculateWorkItemScore(workItem, mockCustomers, [workItem], [])).toBe(1000);
         });
     });
 

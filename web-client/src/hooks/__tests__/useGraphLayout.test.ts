@@ -161,9 +161,9 @@ describe('useGraphLayout Math Engine', () => {
         const TEST_DATA: ValueStreamData = {
             ...MOCK_DATA,
             workItems: [
-                { id: 'f1', name: 'Estimated Feat', total_effort_mds: 10, score: 50, calculated_score: 50, status: 'Backlog', customer_targets: [] },
+                { id: 'f1', name: 'Estimated Feat', total_effort_mds: 10, calculated_effort: 5, score: 50, calculated_score: 50, status: 'Backlog', customer_targets: [] },
                 { id: 'f2', name: 'Unestimated Feat (0 MDs)', total_effort_mds: 0, score: 50, calculated_score: 50, status: 'Backlog', customer_targets: [] },
-                { id: 'f3', name: 'Feat with Unestimated Issue', total_effort_mds: 10, score: 50, calculated_score: 50, status: 'Backlog', customer_targets: [] },
+                { id: 'f3', name: 'Feat with Unestimated Issue', total_effort_mds: 10, calculated_effort: 10, score: 50, calculated_score: 50, status: 'Backlog', customer_targets: [] },
             ],
             issues: [
                 { id: 'e1', jira_key: 'E1', work_item_id: 'f1', team_id: 't1', effort_md: 5 },

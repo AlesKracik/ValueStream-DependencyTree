@@ -60,6 +60,10 @@ export const ArrayItemDeleteQuery = Type.Object({
 }, { additionalProperties: true });
 export type ArrayItemDeleteQueryType = Static<typeof ArrayItemDeleteQuery>;
 
+// DELETE /api/entity/:collection/:id carries the same version query (DEC-013).
+export const EntityDeleteQuery = ArrayItemDeleteQuery;
+export type EntityDeleteQueryType = ArrayItemDeleteQueryType;
+
 export const ArrayItemParams = Type.Object({
   collection: Type.String(),
   id: Type.String(),

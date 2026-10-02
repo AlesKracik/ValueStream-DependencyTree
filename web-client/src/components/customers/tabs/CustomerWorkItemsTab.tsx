@@ -1,7 +1,6 @@
 import React from 'react';
 import type { Customer, WorkItem, ValueStreamData } from '@valuestream/shared-types';
 import { SearchableDropdown } from '../../common/SearchableDropdown';
-import { calculateWorkItemEffort } from '../../../utils/businessLogic';
 import customerStyles from '../CustomerPage.module.css';
 
 interface CustomerWorkItemTarget {
@@ -53,8 +52,7 @@ export const CustomerWorkItemsTab: React.FC<Props> = ({
                 </thead>
                 <tbody>
                     {targetedWorkItems.map(workItem => {
-                        const workItemIssues = data ? data.issues.filter(e => e.work_item_id === workItem.id) : [];
-                        const calculatedEffort = calculateWorkItemEffort(workItem, workItemIssues);
+                        const calculatedEffort = workItem.calculated_effort ?? 0;
 
                         const targetDef = isNew
                             ? newCustomerWorkItems.find(ncf => ncf.workItemId === workItem.id)!

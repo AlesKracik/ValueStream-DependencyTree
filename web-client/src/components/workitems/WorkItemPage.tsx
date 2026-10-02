@@ -3,7 +3,6 @@ import type { ValueStreamData, WorkItem, Issue } from '@valuestream/shared-types
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import { useDeleteWithConfirm } from '../../hooks/useDeleteWithConfirm';
 import { generateId } from '../../utils/security';
-import { calculateWorkItemEffort, calculateWorkItemTcv } from '../../utils/businessLogic';
 import { GenericDetailPage, type DetailTab } from '../common/GenericDetailPage';
 import { FormTextField, FormNumberField, FormSelectField, FormTextArea } from '../common/FormFields';
 import { WorkItemCustomersTab } from './tabs/WorkItemCustomersTab';
@@ -61,8 +60,9 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
         : data?.customers.filter(c => workItem?.customer_targets?.some(ct => ct.customer_id === c.id)) || [];
 
     const issues = isNew ? newWorkItemIssues : (data?.issues || []).filter(e => e.work_item_id === workItemId);
-    const calculatedEffort = workItem && data ? calculateWorkItemEffort(workItem, issues) : 0;
-    const calculatedTcv = workItem && data ? calculateWorkItemTcv(workItem, data.customers, data.workItems) : 0;
+    // Derived values are computed by the backend only (DEC-016); show the stored ones.
+    const calculatedEffort = workItem?.calculated_effort ?? 0;
+    const calculatedTcv = workItem?.calculated_tcv ?? 0;
 
     const handleSave = async () => {
         if (!data) return;

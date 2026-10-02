@@ -3,7 +3,7 @@ import { differenceInDays, parseISO, min, max, format, isWeekend } from 'date-fn
 import type { Node, Edge } from '@xyflow/react';
 import type { ValueStreamData, WorkItem, WorkItemPriorityMetric } from '@valuestream/shared-types';
 import Holidays from 'date-holidays';
-import { calculateWorkItemEffort, calculateIssueEffortPerSprint, calculateIssueIntensityRatio, hasUnestimatedWorkItemEffort } from '../utils/businessLogic';
+import { calculateIssueEffortPerSprint, calculateIssueIntensityRatio, hasUnestimatedWorkItemEffort } from '../utils/businessLogic';
 import type { GraphFilterResult } from './useGraphFilters';
 
 /**
@@ -143,8 +143,9 @@ export function useGraphBuilder(
 
                 // Pass the full issues set (not just visible) so the warning
                 // reflects the real estimation state of the underlying jiras,
-                // independent of which ones are currently on screen.
-                const totalEffort = calculateWorkItemEffort(workItem, data.issues);
+                // independent of which ones are currently on screen. Effort is
+                // the backend's stored value (DEC-016).
+                const totalEffort = workItem.calculated_effort ?? 0;
                 const hasUnestimatedEffort = hasUnestimatedWorkItemEffort(workItem, data.issues);
 
                 return {

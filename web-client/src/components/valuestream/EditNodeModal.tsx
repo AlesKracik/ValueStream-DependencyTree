@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import type { Node } from '@xyflow/react';
 import type { ValueStreamData, Customer, WorkItem, Team } from '@valuestream/shared-types';
 import { SearchableDropdown } from '../common/SearchableDropdown';
-import { calculateWorkItemEffort } from '../../utils/businessLogic';
 
 interface EditNodeModalProps {
     node: Node;
@@ -178,7 +177,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                         const workItem = data.workItems.find(f => f.id === domainId);
                         if (!workItem) return null;
                         const workItemIssues = data.issues.filter(e => e.work_item_id === workItem.id);
-                        const calculatedEffort = calculateWorkItemEffort(workItem, workItemIssues);
+                        const calculatedEffort = workItem.calculated_effort ?? 0;
                         const issueSum = workItemIssues.reduce((sum, e) => sum + (e.effort_md || 0), 0);
                         
                         return (

@@ -217,17 +217,6 @@ export const calculateProportionalEffort = (issue: Issue, sprint: Sprint, countr
 };
 
 /**
- * Calculates the total effort for a work item in man-days (MDs).
- * It is the maximum of the work item's own 'total_effort_mds' 
- * or the sum of all its related issues' effort.
- */
-export const calculateWorkItemEffort = (workItem: WorkItem, issues: Issue[] = []): number => {
-    const issuesForWorkItem = (issues || []).filter(e => e.work_item_id === workItem.id);
-    const issueMdsSum = issuesForWorkItem.reduce((sum, e) => sum + (e.effort_md || 0), 0);
-    return issueMdsSum > 0 ? issueMdsSum : (workItem.total_effort_mds || 0);
-};
-
-/**
  * Whether a work item should display the "missing estimate" warning icon. True
  * when either the work item has no effort at all (own field is 0 AND no linked
  * issue contributes effort) OR at least one linked issue itself lacks an
@@ -238,78 +227,8 @@ export const calculateWorkItemEffort = (workItem: WorkItem, issues: Issue[] = []
  */
 export const hasUnestimatedWorkItemEffort = (workItem: WorkItem, issues: Issue[] = []): boolean => {
     const issuesForWorkItem = (issues || []).filter(e => e.work_item_id === workItem.id);
-    const totalEffort = calculateWorkItemEffort(workItem, issues);
+    const totalEffort = workItem.calculated_effort ?? 0;
     return totalEffort === 0 || issuesForWorkItem.some(e => (e.effort_md || 0) === 0);
-};
-
-/**
- * Calculates the total TCV impact for a work item based on its customer targets.
- * Must-have: 100% of Customer TCV
- * Should-have: Shared portion (Customer TCV / Count of all Should-have work items for that customer)
- * Nice-to-have: 0%
- */
-export const calculateWorkItemTcv = (workItem: WorkItem, customers: Customer[], allWorkItems: WorkItem[]): number => {
-    // Helper to get total number of Should-have targets for a specific customer
-    const getShouldHaveCount = (customerId: string) => {
-        return allWorkItems.reduce((count, w) => {
-            const hasShouldHave = (w.customer_targets || []).some(t => t.customer_id === customerId && t.priority === 'Should-have');
-            const globalShouldHave = w.all_customers_target?.priority === 'Should-have';
-            return count + (hasShouldHave || globalShouldHave ? 1 : 0);
-        }, 0);
-    };
-
-    if (workItem.all_customers_target) {
-        const priority = workItem.all_customers_target.priority;
-        if (priority === 'Nice-to-have') return 0;
-
-        const type = workItem.all_customers_target.tcv_type;
-        return customers.reduce((sum, c) => {
-            const val = type === 'existing' ? (c.existing_tcv || 0) : (c.potential_tcv || 0);
-            if (priority === 'Must-have') return sum + val;
-            
-            // Should-have: Shared portion
-            const totalShouldHaves = getShouldHaveCount(c.id);
-            return sum + (totalShouldHaves > 0 ? val / totalShouldHaves : 0);
-        }, 0);
-    }
-    
-    return (workItem.customer_targets || []).reduce((sum, target) => {
-        if (target.priority === 'Nice-to-have') return sum;
-
-        const customer = customers.find(c => c.id === target.customer_id);
-        if (!customer) return sum;
-        
-        let customerTcv = 0;
-        if (target.tcv_type === 'existing') {
-            if (target.tcv_history_id && customer.tcv_history) {
-                const historyEntry = customer.tcv_history.find(h => h.id === target.tcv_history_id);
-                customerTcv = historyEntry ? historyEntry.value : customer.existing_tcv;
-            } else {
-                customerTcv = customer.existing_tcv;
-            }
-        } else {
-            customerTcv = customer.potential_tcv;
-        }
-
-        if (target.priority === 'Must-have' || !target.priority) {
-            return sum + (customerTcv || 0);
-        } else if (target.priority === 'Should-have') {
-            const totalShouldHaves = getShouldHaveCount(customer.id);
-            return sum + (totalShouldHaves > 0 ? (customerTcv || 0) / totalShouldHaves : 0);
-        }
-        
-        return sum;
-    }, 0);
-};
-
-/**
- * Calculates the RICE/ROI Score for a work item.
- * Score = Total Impact / Effort (min 1 MD)
- */
-export const calculateWorkItemScore = (workItem: WorkItem, customers: Customer[], allWorkItems: WorkItem[], issues: Issue[]): number => {
-    const impact = calculateWorkItemTcv(workItem, customers, allWorkItems);
-    const effort = Math.max(calculateWorkItemEffort(workItem, issues), 1);
-    return impact / effort;
 };
 
 /**

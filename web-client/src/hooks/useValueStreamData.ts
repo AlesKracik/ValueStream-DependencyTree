@@ -121,7 +121,10 @@ const persistEntity = async (
         baseline?: AnyEntity;
     }
 ): Promise<PersistResult> => {
-    const url = `/api/entity/${collection}${method === 'DELETE' ? `/${entity.id}` : ''}`;
+    // DELETE is version-checked (DEC-013): send the version this client last saw.
+    const url = method === 'DELETE'
+        ? `/api/entity/${collection}/${entity.id}?_version=${entity._version ?? 0}`
+        : `/api/entity/${collection}`;
 
     const doFetch = async (payload: AnyEntity | undefined) => {
         return authorizedFetch(url, {
@@ -145,6 +148,14 @@ const persistEntity = async (
             const json = await response.json().catch(() => ({}));
             const newVersion = typeof json._version === 'number' ? json._version : 0;
             return { ok: true, method: 'POST', newVersion };
+        }
+
+        // A stale DELETE: someone changed the entity since we loaded it. Nothing
+        // was deleted on the server; ask the user to reload and decide again.
+        if (response.status === 409 && method === 'DELETE') {
+            const message = `This ${singularize(collection)} was changed by someone else and was not deleted. Reload to see the latest version.`;
+            if (showAlert) showAlert('Conflict', message);
+            return { ok: false, error: message };
         }
 
         // 409 Conflict — server returned the current document. Merge our pending
@@ -715,7 +726,8 @@ export function useValueStreamData(
         };
 
         const remove = (id: string) => {
-            persistEntity(collection, 'DELETE', { id }, showAlert);
+            const existing = (data?.[key] as T[] | undefined)?.find(entity => entity.id === id);
+            persistEntity(collection, 'DELETE', { id, _version: existing?._version ?? 0 }, showAlert);
             setData(prev => {
                 if (!prev) return prev;
                 const base: ValueStreamData = {
@@ -730,21 +742,31 @@ export function useValueStreamData(
     }
 
     // Backend handles cascade: removes customer_targets referencing this customer from all workItems
+    // The local cascades mirror the backend's. Each cascaded edit bumps the
+    // document's `_version` on the server (DEC-007), so bump it locally too —
+    // otherwise the next edit of that document would 409 against our own delete.
+    const bumped = <E extends { _version?: number }>(e: E): E => ({ ...e, _version: (e._version ?? 0) + 1 });
+
+    // Backend handles cascade: pulls this customer from every work item's targets
     const customerCRUD = createEntityCRUD<Customer>('customers', 'customers', (prev, id) => ({
-        workItems: (prev.workItems || []).map(workItem => ({
-            ...workItem,
-            customer_targets: workItem.customer_targets.filter(ct => ct.customer_id !== id)
-        }))
+        workItems: (prev.workItems || []).map(workItem =>
+            (workItem.customer_targets || []).some(ct => ct.customer_id === id)
+                ? bumped({ ...workItem, customer_targets: workItem.customer_targets.filter(ct => ct.customer_id !== id) })
+                : workItem)
     }));
 
-    // Backend handles cascade: clears work_item_id from all issues referencing this workItem
+    // Backend handles cascade: clears work_item_id from all issues referencing this
+    // workItem, and detaches its children (they become roots)
     const workItemCRUD = createEntityCRUD<WorkItem>('workItems', 'workItems', (prev, id) => ({
-        issues: (prev.issues || []).map(issue => issue.work_item_id === id ? { ...issue, work_item_id: undefined } : issue)
+        issues: (prev.issues || []).map(issue => issue.work_item_id === id ? bumped({ ...issue, work_item_id: undefined }) : issue),
+        workItems: (prev.workItems || [])
+            .filter(workItem => workItem.id !== id)
+            .map(workItem => workItem.parent_id === id ? bumped({ ...workItem, parent_id: undefined }) : workItem)
     }));
 
     // Backend handles cascade: clears team_id from all issues referencing this team
     const teamCRUD = createEntityCRUD<Team>('teams', 'teams', (prev, id) => ({
-        issues: (prev.issues || []).map(issue => issue.team_id === id ? { ...issue, team_id: '' } : issue)
+        issues: (prev.issues || []).map(issue => issue.team_id === id ? bumped({ ...issue, team_id: '' }) : issue)
     }));
 
     const issueCRUD = createEntityCRUD<Issue>('issues', 'issues');
@@ -1013,7 +1035,8 @@ export function useValueStreamData(
     };
 
     const deleteSprint = (id: string) => {
-        persistEntity('sprints', 'DELETE', { id }, showAlert);
+        const existing = data?.sprints.find(s => s.id === id);
+        persistEntity('sprints', 'DELETE', { id, _version: existing?._version ?? 0 }, showAlert);
         setData(prev => {
             if (!prev) return prev;
             return {
