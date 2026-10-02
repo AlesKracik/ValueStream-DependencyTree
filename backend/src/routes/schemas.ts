@@ -5,8 +5,10 @@ import { Type, Static } from '@sinclair/typebox';
 // brand-new entity). The server uses it for optimistic concurrency control:
 // matching version → update + bump; mismatch → 409 with current document.
 // Legacy docs that never got a `_version` are matched as if it were 0.
+// POST /api/entity/:collection — `id` names the document to upsert; without
+// one the server creates the document under an id it generates.
 export const EntityBody = Type.Object({
-  id: Type.String(),
+  id: Type.Optional(Type.String()),
   _version: Type.Integer({ minimum: 0 })
 }, { additionalProperties: true });
 export type EntityBodyType = Static<typeof EntityBody>;

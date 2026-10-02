@@ -94,20 +94,40 @@ describe('Entity Routes', () => {
   });
 
   it('should return 409 when a create (version 0) names an existing id (DEC-012)', async () => {
-    // Legacy doc (no _version field) already stored. A create never overwrites.
-    mockCollection.findOne.mockResolvedValueOnce({ id: 'cust-legacy', name: 'Legacy' });
+    // A versioned doc already stored. A create never overwrites.
+    mockCollection.findOne.mockResolvedValueOnce({ id: 'cust-1', _version: 0, name: 'Existing' });
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/entity/customers/cust-legacy',
-      payload: { id: 'cust-legacy', _version: 0, name: 'Overwrite attempt' }
+      url: '/api/entity/customers/cust-1',
+      payload: { id: 'cust-1', _version: 0, name: 'Overwrite attempt' }
     });
 
     expect(response.statusCode).toBe(409);
     const json = JSON.parse(response.payload);
     expect(json.conflict).toBe(true);
-    expect(json.current).toEqual({ id: 'cust-legacy', name: 'Legacy' });
+    expect(json.current).toEqual({ id: 'cust-1', _version: 0, name: 'Existing' });
     expect(mockCollection.findOneAndUpdate).not.toHaveBeenCalled();
+    expect(mockCollection.insertOne).not.toHaveBeenCalled();
+  });
+
+  it('should replace a legacy document saved whole with version 0 (REQ-047)', async () => {
+    mockCollection.findOne.mockResolvedValueOnce({ id: 'cust-legacy', name: 'Legacy' });
+    mockCollection.findOneAndUpdate.mockResolvedValueOnce({ id: 'cust-legacy', name: 'Saved', _version: 1 });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/entity/customers/cust-legacy',
+      payload: { id: 'cust-legacy', _version: 0, name: 'Saved' }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.payload)._version).toBe(1);
+    expect(mockCollection.findOneAndUpdate).toHaveBeenCalledWith(
+      { id: 'cust-legacy', _version: { $exists: false } },
+      { $set: { id: 'cust-legacy', name: 'Saved', _version: 1 } },
+      { returnDocument: 'after' }
+    );
     expect(mockCollection.insertOne).not.toHaveBeenCalled();
   });
 
@@ -187,18 +207,130 @@ describe('Entity Routes', () => {
     });
   });
 
-  it('should reject upsert if ID is missing from body when not in URL', async () => {
+  it('should create under a server-generated id when the body names none (REQ-043)', async () => {
     const response = await app.inject({
       method: 'POST',
-      url: '/api/entity/workItems',
-      payload: { _version: 0, name: 'Test Work Item without ID' }
+      url: '/api/entity/teams',
+      headers: { 'idempotency-key': 'key-1' },
+      payload: { _version: 0, name: 'New Team' }
+    });
+
+    expect(response.statusCode).toBe(200);
+    const json = JSON.parse(response.payload);
+    expect(json.id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(json._version).toBe(0);
+    expect(mockCollection.insertOne).toHaveBeenCalledWith({
+      name: 'New Team', id: json.id, _version: 0, _idempotency_key: 'key-1',
+    });
+  });
+
+  it('should answer a repeated idempotency key with the first document (REQ-044)', async () => {
+    mockCollection.findOne.mockResolvedValueOnce({ id: 'first-id', _version: 2, _idempotency_key: 'key-1' });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/entity/teams',
+      headers: { 'idempotency-key': 'key-1' },
+      payload: { _version: 0, name: 'New Team' }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.payload)).toEqual({ success: true, id: 'first-id', _version: 2 });
+    expect(mockCollection.findOne).toHaveBeenCalledWith({ _idempotency_key: 'key-1' });
+    expect(mockCollection.insertOne).not.toHaveBeenCalled();
+  });
+
+  it('should answer the winner when two creates with one key race (REQ-044)', async () => {
+    mockCollection.insertOne.mockRejectedValueOnce(Object.assign(new Error('dup'), { code: 11000 }));
+    mockCollection.findOne
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'winner', _version: 0, _idempotency_key: 'key-1' });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/entity/teams',
+      headers: { 'idempotency-key': 'key-1' },
+      payload: { _version: 0, name: 'New Team' }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.payload).id).toBe('winner');
+  });
+
+  it('should refuse an issue naming a work item that does not exist (REQ-045)', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/entity/issues/i-1',
+      payload: { id: 'i-1', _version: 0, name: 'Issue', work_item_id: 'ghost' }
     });
 
     expect(response.statusCode).toBe(400);
-    const json = JSON.parse(response.payload);
-    // Schema validation caught by global error handler
-    expect(json.success).toBe(false);
-    expect(json.error).toContain("required property 'id'");
+    expect(JSON.parse(response.payload).error).toBe('work_item_id "ghost" does not name an existing work item');
+    expect(mockCollection.insertOne).not.toHaveBeenCalled();
+  });
+
+  it('should refuse a patch moving an issue to a team that does not exist (REQ-045)', async () => {
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/entity/issues/i-1',
+      payload: { _version: 1, patch: { team_id: 'ghost' } }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.payload).error).toBe('team_id "ghost" does not name an existing team');
+    expect(mockCollection.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it('should refuse a work item targeting a customer that does not exist (REQ-046)', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/entity/workItems/wi-1',
+      payload: { id: 'wi-1', _version: 0, name: 'WI', customer_targets: [{ customer_id: 'ghost', tcv_type: 'existing', priority: 'Must-have' }] }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.payload).error).toBe('customer_targets.customer_id "ghost" does not name an existing customer');
+  });
+
+  it('should allow empty references (REQ-045)', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/entity/issues/i-1',
+      payload: { id: 'i-1', _version: 0, name: 'Issue', work_item_id: '', team_id: '' }
+    });
+
+    expect(response.statusCode).toBe(200);
+  });
+
+  it('should add a customer target element keyed by its customer_id (REQ-048)', async () => {
+    mockCollection.findOne.mockResolvedValueOnce({ id: 'cust-1' }); // the customer exists
+    mockCollection.findOneAndUpdate.mockResolvedValueOnce({ id: 'wi-1', _version: 4 });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/entity/workItems/wi-1/items/customer_targets',
+      payload: { _version: 3, item: { customer_id: 'cust-1', tcv_type: 'existing', priority: 'Must-have' } }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.payload).item.customer_id).toBe('cust-1');
+    const [filter] = mockCollection.findOneAndUpdate.mock.calls[0];
+    expect(filter).toEqual({ id: 'wi-1', _version: 3, 'customer_targets.customer_id': { $ne: 'cust-1' } });
+  });
+
+  it('should refuse a second target for the same customer (REQ-048)', async () => {
+    mockCollection.findOne
+      .mockResolvedValueOnce({ id: 'cust-1' })
+      .mockResolvedValueOnce({ id: 'wi-1', _version: 3, customer_targets: [{ customer_id: 'cust-1' }] });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/entity/workItems/wi-1/items/customer_targets',
+      payload: { _version: 3, item: { customer_id: 'cust-1', tcv_type: 'existing', priority: 'Must-have' } }
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(JSON.parse(response.payload).error).toBe('customer_targets already has an element with customer_id "cust-1"');
   });
 
   it('should reject upsert if _version is missing', async () => {

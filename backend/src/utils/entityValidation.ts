@@ -47,3 +47,40 @@ export async function assertParentExists(db: Db, parentId: string): Promise<void
     throw new AppError(`parent_id "${parentId}" does not name an existing work item`, 400);
   }
 }
+
+/** True when `ref` is a non-empty string — i.e. the write names a document. */
+function namesDoc(ref: unknown): ref is string {
+  return typeof ref === 'string' && ref !== '';
+}
+
+async function assertExists(db: Db, collection: string, id: string, field: string, what: string): Promise<void> {
+  const doc = await db.collection(collection).findOne({ id }, { projection: { _id: 1 } });
+  if (!doc) {
+    throw new AppError(`${field} "${id}" does not name an existing ${what}`, 400);
+  }
+}
+
+/** Rejects a customer target naming no existing customer. */
+// REQ-046; INV-010 guard
+export async function assertCustomerTargetExists(db: Db, target: unknown): Promise<void> {
+  const customerId = (target as { customer_id?: unknown } | null)?.customer_id;
+  if (namesDoc(customerId)) {
+    await assertExists(db, 'customers', customerId, 'customer_targets.customer_id', 'customer');
+  }
+}
+
+/**
+ * Rejects references a document (or patch) carries that name nothing: an
+ * issue's work_item_id and team_id, a work item's customer_targets. An empty
+ * reference is allowed. parent_id has its own guard (assertParentExists).
+ */
+// REQ-045, REQ-046; INV-010 guard
+export async function assertReferencesExist(db: Db, collection: string, doc: Record<string, unknown>): Promise<void> {
+  if (collection === 'issues') {
+    if (namesDoc(doc.work_item_id)) await assertExists(db, 'workItems', doc.work_item_id, 'work_item_id', 'work item');
+    if (namesDoc(doc.team_id)) await assertExists(db, 'teams', doc.team_id, 'team_id', 'team');
+  }
+  if (collection === 'workItems' && Array.isArray(doc.customer_targets)) {
+    for (const target of doc.customer_targets) await assertCustomerTargetExists(db, target);
+  }
+}

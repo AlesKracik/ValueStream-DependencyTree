@@ -21,7 +21,10 @@ import { ALLOWED_COLLECTIONS } from '../utils/constants';
 import { AppError } from '../utils/errors';
 import { requireRole } from '../utils/roleGuard';
 import { wouldCreateCycle } from '../utils/workItemHierarchy';
-import { assertDocumentStatuses, assertSupportIssueStatus, assertParentExists, namesParent } from '../utils/entityValidation';
+import {
+  assertDocumentStatuses, assertSupportIssueStatus, assertParentExists, namesParent,
+  assertReferencesExist, assertCustomerTargetExists
+} from '../utils/entityValidation';
 // Collections whose mutations affect RICE scores and trigger recomputation
 const SCORE_AFFECTING_COLLECTIONS = ['workItems', 'customers', 'issues'];
 
@@ -38,20 +41,28 @@ const TIMESTAMPED_COLLECTIONS = ['workItems'];
  * to identify an element within the array.
  *
  * Adding an entry here exposes that array to concurrent-safe element-level
- * editing (Phase 3 of the OCC rollout). Arrays whose elements lack a stable
- * identifier — `workItems.customer_targets`, `teams.members` — are deliberately
- * NOT listed; they still go through the whole-array PATCH path until they
- * grow proper element ids.
+ * editing (Phase 3 of the OCC rollout). `serverAssigned` keys are stamped by
+ * the server on add (DEC-011); a natural key (`customer_targets.customer_id`)
+ * is supplied by the caller and must be unique within the array.
+ * `teams.members` is not listed yet: its elements have no id (DEC-020).
  */
-const ARRAY_ELEMENT_WHITELIST: Record<string, Record<string, string>> = {
+// REQ-048 (DEC-020)
+const ARRAY_ELEMENT_WHITELIST: Record<string, Record<string, { key: string; serverAssigned: boolean }>> = {
   customers: {
-    support_issues: 'id',
-    tcv_history: 'id',
+    support_issues: { key: 'id', serverAssigned: true },
+    tcv_history: { key: 'id', serverAssigned: true },
+  },
+  workItems: {
+    customer_targets: { key: 'customer_id', serverAssigned: false },
   },
 };
 
-function getArrayKey(collection: string, arrayPath: string): string | null {
+function getArraySpec(collection: string, arrayPath: string): { key: string; serverAssigned: boolean } | null {
   return ARRAY_ELEMENT_WHITELIST[collection]?.[arrayPath] ?? null;
+}
+
+function getArrayKey(collection: string, arrayPath: string): string | null {
+  return getArraySpec(collection, arrayPath)?.key ?? null;
 }
 
 /**
@@ -139,6 +150,23 @@ async function upsertWithOcc(
   // Version 0 (a create), or a version that matched nothing: insert when the
   // id is free, otherwise it is a conflict.
   const existing = await db.collection(collection).findOne({ id: entityId });
+
+  // REQ-047: version 0 on a legacy document (no `_version`) matches it as
+  // version 0, as PATCH does — replace it and stamp version 1.
+  if (clientVersion === 0 && existing && existing._version === undefined) {
+    const replaced = await db.collection(collection).findOneAndUpdate(
+      { id: entityId, _version: { $exists: false } },
+      { $set: { ...rest, id: entityId, _version: 1, ...(stamped ? { updated_at: now } : {}) } },
+      { returnDocument: 'after' }
+    );
+    if (replaced) {
+      if (stamped && !replaced.created_at) {
+        await db.collection(collection).updateOne({ id: entityId }, { $set: { created_at: now } });
+      }
+      return { ok: true, newVersion: 1 };
+    }
+  }
+
   if (!existing && await insertFresh()) {
     return { ok: true, newVersion: 0 };
   }
@@ -178,9 +206,69 @@ function maybeRecomputeScores(db: Db, collection: string, log: FastifyBaseLogger
   }
 }
 
+/**
+ * Create a document under a server-generated id (DEC-017). An idempotency key
+ * (`Idempotency-Key` header) is stored with the document; a create repeating
+ * a key already used in the collection answers with the document that key
+ * created and stores nothing (REQ-044, DEC-019).
+ */
+// REQ-043, REQ-044
+async function createWithServerId(
+  db: Db,
+  collection: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  body: Record<string, any>,
+  idempotencyKey: string | undefined,
+  validate: () => Promise<void>
+): Promise<{ id: string; _version: number; replayed: boolean }> {
+  const coll = db.collection(collection);
+  await coll.createIndex({ id: 1 }, { unique: true });
+  await coll.createIndex(
+    { _idempotency_key: 1 },
+    { unique: true, partialFilterExpression: { _idempotency_key: { $exists: true } } }
+  );
+
+  const replay = async () => {
+    if (!idempotencyKey) return null;
+    const prior = await coll.findOne({ _idempotency_key: idempotencyKey });
+    return prior
+      ? { id: String(prior.id), _version: typeof prior._version === 'number' ? prior._version : 0, replayed: true }
+      : null;
+  };
+
+  // A repeated key answers before validation: the first create already passed it.
+  const earlier = await replay();
+  if (earlier) return earlier;
+  await validate();
+
+  const { _version: _v, created_at: _c, updated_at: _u, id: _id, _idempotency_key: _k, ...rest } = body;
+  void _v; void _c; void _u; void _id; void _k;
+  const stamped = TIMESTAMPED_COLLECTIONS.includes(collection);
+  const now = new Date().toISOString();
+  const entityId = randomUUID();
+  try {
+    await coll.insertOne({
+      ...rest,
+      id: entityId,
+      _version: 0,
+      ...(idempotencyKey ? { _idempotency_key: idempotencyKey } : {}),
+      ...(stamped ? { created_at: now, updated_at: now } : {}),
+    });
+  } catch (err) {
+    // Two creates with the same key raced: the other one won — answer with it.
+    if ((err as { code?: number }).code === 11000) {
+      const winner = await replay();
+      if (winner) return winner;
+    }
+    throw err;
+  }
+  return { id: entityId, _version: 0, replayed: false };
+}
+
 export const entityRoutes: FastifyPluginAsync = async (fastify) => {
-  // POST /api/entity/:collection — id supplied in body. Create-or-update with OCC.
-  // REQ-001..REQ-006, REQ-014, REQ-036, REQ-038, REQ-039
+  // POST /api/entity/:collection — with an id in the body: create-or-update
+  // with OCC. Without one: create under a server-generated id (DEC-017).
+  // REQ-001..REQ-006, REQ-014, REQ-036, REQ-038, REQ-039, REQ-043..REQ-047
   fastify.post<{ Params: CollectionParamsType; Body: EntityBodyType }>('/api/entity/:collection', { schema: { params: CollectionParams, body: EntityBody } }, async (request, reply) => {
     requireRole(request, 'editor');
     const { collection } = request.params;
@@ -190,12 +278,6 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     const data = request.body;
-
-    if (!data.id) {
-      throw new AppError('Entity ID is required in body', 400);
-    }
-
-    const entityId = String(data.id);
     assertDocumentStatuses(collection, data as Record<string, unknown>);
 
     const settings = await fastify.getSettings();
@@ -206,10 +288,27 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
 
     const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
 
+    if (!data.id) {
+      const keyHeader = request.headers['idempotency-key'];
+      const idempotencyKey = typeof keyHeader === 'string' && keyHeader !== '' ? keyHeader : undefined;
+      const created = await createWithServerId(db, collection, data, idempotencyKey, async () => {
+        if (collection === 'workItems') {
+          const parentId = (data as unknown as { parent_id?: unknown }).parent_id;
+          if (namesParent(parentId)) await assertParentExists(db, parentId);
+        }
+        await assertReferencesExist(db, collection, data as Record<string, unknown>);
+      });
+      if (!created.replayed) maybeRecomputeScores(db, collection, fastify.log);
+      return reply.send({ success: true, id: created.id, _version: created._version });
+    }
+
+    const entityId = String(data.id);
+
     // Hierarchy guards for workItems: no cycles, and the parent must exist.
     if (collection === 'workItems') {
       await guardParent(db, entityId, (data as unknown as { parent_id?: unknown }).parent_id);
     }
+    await assertReferencesExist(db, collection, data as Record<string, unknown>);
 
     const result = await upsertWithOcc(db, collection, entityId, data);
     if (!result.ok) {
@@ -247,6 +346,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
     if (collection === 'workItems') {
       await guardParent(db, entityId, (data as unknown as { parent_id?: unknown }).parent_id);
     }
+    await assertReferencesExist(db, collection, data as Record<string, unknown>);
 
     const result = await upsertWithOcc(db, collection, entityId, data);
     if (!result.ok) {
@@ -280,7 +380,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
       // Reject server-owned keys in the patch. `calculated_*` are filled by the
       // score recompute service; `id`/`_version` are part of the envelope.
       const forbiddenKeys = Object.keys(patch).filter(k =>
-        k === 'id' || k === '_version' || k.startsWith('calculated_')
+        k === 'id' || k === '_version' || k === '_idempotency_key' || k.startsWith('calculated_')
       );
       if (forbiddenKeys.length > 0) {
         throw new AppError(
@@ -301,6 +401,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
       if (collection === 'workItems') {
         await guardParent(db, id, (patch as { parent_id?: unknown }).parent_id);
       }
+      await assertReferencesExist(db, collection, patch as Record<string, unknown>);
 
       // OCC match. Treat legacy docs (no `_version`) as version 0.
       const matchFilter = clientVersion === 0
@@ -367,21 +468,15 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
       if (!ALLOWED_COLLECTIONS.includes(collection)) {
         throw new AppError('Forbidden collection', 403);
       }
-      const keyField = getArrayKey(collection, arrayPath);
-      if (!keyField) {
+      const spec = getArraySpec(collection, arrayPath);
+      if (!spec) {
         throw new AppError(`Array path "${arrayPath}" is not editable element-wise on ${collection}`, 400);
       }
+      const keyField = spec.key;
 
       const { _version: clientVersion, item } = request.body;
 
       if (arrayPath === 'support_issues') assertSupportIssueStatus(item);
-
-      // The server owns element ids: always stamp a fresh one, ignoring any
-      // id the caller sent (DEC-011).
-      const elementWithKey = {
-        ...item,
-        [keyField]: randomUUID(),
-      };
 
       const settings = await fastify.getSettings();
       if (!settings.persistence?.mongo?.app?.uri) {
@@ -389,9 +484,25 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
       }
       const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
 
+      // A server-assigned key is always stamped fresh, ignoring any id the
+      // caller sent (DEC-011). A natural key comes from the caller and must
+      // not already be in the array.
+      const callerKey = (item as Record<string, unknown>)[keyField];
+      if (!spec.serverAssigned && (typeof callerKey !== 'string' || callerKey === '')) {
+        throw new AppError(`Element of ${arrayPath} needs a "${keyField}"`, 400);
+      }
+      if (arrayPath === 'customer_targets') await assertCustomerTargetExists(db, item);
+      const elementWithKey = {
+        ...item,
+        [keyField]: spec.serverAssigned ? randomUUID() : callerKey,
+      };
+
       const nextVersion = clientVersion + 1;
+      const filter = spec.serverAssigned
+        ? versionMatch(id, clientVersion)
+        : { ...versionMatch(id, clientVersion), [`${arrayPath}.${keyField}`]: { $ne: callerKey } };
       const updated = await db.collection(collection).findOneAndUpdate(
-        versionMatch(id, clientVersion),
+        filter,
         {
           $set: { _version: nextVersion },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -403,6 +514,10 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
       if (!updated) {
         const existing = await db.collection(collection).findOne({ id });
         if (!existing) throw new AppError('Entity not found', 404);
+        const arr = (existing as Record<string, unknown>)[arrayPath] as Array<Record<string, unknown>> | undefined;
+        if (!spec.serverAssigned && arr?.some(el => el[keyField] === callerKey)) {
+          throw new AppError(`${arrayPath} already has an element with ${keyField} "${String(callerKey)}"`, 400);
+        }
         return replyConflict(reply, existing);
       }
 
