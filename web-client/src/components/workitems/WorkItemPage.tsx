@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import type { ValueStreamData, WorkItem, Issue } from '@valuestream/shared-types';
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import { useDeleteWithConfirm } from '../../hooks/useDeleteWithConfirm';
-import { generateId } from '../../utils/security';
 import { GenericDetailPage, type DetailTab } from '../common/GenericDetailPage';
 import { FormTextField, FormNumberField, FormSelectField, FormTextArea } from '../common/FormFields';
 import { WorkItemCustomersTab } from './tabs/WorkItemCustomersTab';
@@ -16,10 +15,11 @@ export interface WorkItemPageProps {
     data: ValueStreamData | null;
     loading: boolean;
     error: Error | null;
-    addWorkItem: (f: WorkItem) => void;
+    addWorkItem: (f: Omit<WorkItem, 'id'>) => Promise<WorkItem | undefined>;
     deleteWorkItem: (id: string) => void;
     updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
-    addIssue: (e: Issue) => void;
+    saveWorkItemTargets: (workItemId: string, targets: WorkItem['customer_targets']) => Promise<boolean>;
+    addIssue: (e: Omit<Issue, 'id'> & { id?: string }) => Promise<Issue | undefined> | void;
     deleteIssue: (id: string) => void;
     updateIssue: (id: string, updates: Partial<Issue>, immediate?: boolean) => Promise<void>;
 }
@@ -33,6 +33,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     addWorkItem,
     deleteWorkItem,
     updateWorkItem,
+    saveWorkItemTargets,
     addIssue,
     deleteIssue,
     updateIssue
@@ -68,10 +69,8 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
         if (!data) return;
         try {
             if (isNew) {
-                const newId = generateId('f');
-                const newFeat: WorkItem = {
+                const newFeat: Omit<WorkItem, 'id'> = {
                     ...newWorkItemDraft,
-                    id: newId,
                     name: newWorkItemDraft.name || 'New Work Item',
                     description: newWorkItemDraft.description || '',
                     status: (newWorkItemDraft.status as WorkItem['status']) || 'Backlog',
@@ -85,14 +84,15 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     }))
                 };
 
-                const issuesToAdd = newWorkItemIssues.map(e => ({
+                // REQ-018: the server names the work item; its issues need that id.
+                const created = await addWorkItem(newFeat);
+                if (!created) return;
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const issuesToAdd = newWorkItemIssues.map(({ id: _draftId, ...e }) => ({
                     ...e,
-                    id: generateId('e'),
-                    work_item_id: newId
+                    work_item_id: created.id
                 }));
-
-                addWorkItem(newFeat);
-                issuesToAdd.forEach(e => addIssue(e));
+                await Promise.all(issuesToAdd.map(e => addIssue(e)));
 
                 setTimeout(() => {
                     onBack();
@@ -234,6 +234,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     setNewWorkItemCustomers={setNewWorkItemCustomers}
                     setNewWorkItemDraft={setNewWorkItemDraft}
                     updateWorkItem={updateWorkItem}
+                    saveWorkItemTargets={saveWorkItemTargets}
                     data={data}
                 />
             )

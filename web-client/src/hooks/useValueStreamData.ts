@@ -5,6 +5,7 @@ import { authorizedFetch, debounce, getUserRole } from '../utils/api';
 import { calculateQuarter } from '../utils/dateHelpers';
 import { applyTheme } from '../utils/themeApply';
 import { mergeForRetry, findContestedKeys, type AnyEntity } from '../utils/entityMerge';
+import { generateId } from '../utils/security';
 
 const CLIENT_SETTINGS_FALLBACK_KEY = 'vst-client-settings-pending';
 
@@ -96,7 +97,68 @@ async function saveClientSettingsToServer(settings: Partial<Settings>): Promise<
 export type PersistResult =
     | { ok: true; method: 'POST' | 'PATCH'; newVersion: number; merged?: AnyEntity }
     | { ok: true; method: 'DELETE' }
+    // `status` is the HTTP status of the refusal; absent when no answer came back.
+    | { ok: false; error: string; status?: number };
+
+/**
+ * A save that failed this way keeps its fields pending, so the next save sends
+ * them again (REQ-015). A 404 (the record is gone) and an unresolved conflict
+ * do not: there is nothing a re-send could land on.
+ */
+export const isRetryableSaveFailure = (r: PersistResult) =>
+    !r.ok && r.status !== 404 && r.status !== 409;
+
+export type CreateResult =
+    | { ok: true; id: string; newVersion: number }
     | { ok: false; error: string };
+
+/**
+ * Create a document under the id the server assigns (DEC-005). The request
+ * carries an idempotency key that is reused if the create is retried after a
+ * lost answer, so a retry never stores a second document (value-streams
+ * REQ-043, REQ-044).
+ */
+// REQ-012, REQ-018
+export const createEntity = async (
+    collection: string,
+    entity: AnyEntity,
+    showAlert?: (title: string, message: string) => Promise<void>
+): Promise<CreateResult> => {
+    const idempotencyKey = generateId();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { id: _ignoredId, _version: _ignoredVersion, ...body } = entity;
+    const send = () => authorizedFetch(`/api/entity/${collection}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
+        body: JSON.stringify({ ...body, _version: 0 }),
+    });
+
+    // One retry, with the same key, when no answer (or a server error) came back.
+    for (let attempt = 0; ; attempt++) {
+        try {
+            const response = await send();
+            if (response.ok) {
+                const json = await response.json().catch(() => ({}));
+                if (typeof json.id === 'string') {
+                    return { ok: true, id: json.id, newVersion: typeof json._version === 'number' ? json._version : 0 };
+                }
+                const message = `The server did not return an id for the new ${singularize(collection)}`;
+                if (showAlert) showAlert('Error', message);
+                return { ok: false, error: message };
+            }
+            if (response.status >= 500 && attempt === 0) continue;
+            const errorData = await response.json().catch(() => ({}));
+            const message = errorData.error || `Failed to create ${singularize(collection)}`;
+            if (showAlert) showAlert('Error', message);
+            return { ok: false, error: message };
+        } catch (e) {
+            if (attempt === 0) continue;
+            const message = e instanceof Error ? e.message : String(e);
+            if (showAlert) showAlert('Network Error', `Could not connect to server while saving to ${collection}: ${message}`);
+            return { ok: false, error: message };
+        }
+    }
+};
 
 /**
  * Persist an entity mutation. On 409, deep-merges the client's `changedKeys`
@@ -270,19 +332,22 @@ const patchEntity = async (
                         );
                     }
                 }
-                return { ok: true, method: 'PATCH', newVersion };
+                // REQ-016: the record as the server now holds it — the other
+                // user's changes with ours applied on top.
+                const merged = current ? { ...current, ...patch, _version: newVersion } : undefined;
+                return { ok: true, method: 'PATCH', newVersion, merged };
             }
             const retryErr = await retry.json().catch(() => ({}));
             const message = retryErr.error || `Failed to resolve conflict on ${collection}`;
             if (showAlert) showAlert('Conflict', message);
-            return { ok: false, error: message };
+            return { ok: false, error: message, status: retry.status };
         }
 
         const errorData = await response.json().catch(() => ({}));
         const message = errorData.error || `Failed to PATCH entity in ${collection}`;
         console.error(message);
         if (showAlert) showAlert('Error', message);
-        return { ok: false, error: message };
+        return { ok: false, error: message, status: response.status };
     } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         console.error(`Failed to PATCH entity in ${collection}`, e);
@@ -485,19 +550,33 @@ export function useValueStreamData(
     // Coalesces successive edits to the same entity, sending one PATCH with the
     // most recent values per key. We rebuild the patch at fire time from the
     // accumulated `pendingPatch` map so coalesced updates merge cleanly.
-    const debouncedPatch = useMemo(() => {
+    const { debouncedPatch, cancelPendingPatch } = useMemo(() => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const timeouts = new Map<string, any>();
         const pendingPatches = new Map<string, AnyEntity>();
         const baselines = new Map<string, AnyEntity>();
-        return (
+        const keyOf = (col: string, id: string) => `${col}-PATCH-${id}`;
+        // REQ-017: drop a record's pending save, e.g. when the record is deleted.
+        const cancelPendingPatch = (col: string, id: string) => {
+            const key = keyOf(col, id);
+            if (timeouts.has(key)) clearTimeout(timeouts.get(key));
+            timeouts.delete(key);
+            pendingPatches.delete(key);
+            baselines.delete(key);
+        };
+        const debouncedPatch = (
             col: string,
             id: string,
             currentVersion: number,
             patch: AnyEntity,
-            opts?: { baseline?: AnyEntity; onVersion?: (v: number) => void }
+            opts?: {
+                baseline?: AnyEntity;
+                onVersion?: (v: number) => void;
+                // A conflict retry returned the record as the server holds it.
+                onServerCopy?: (doc: AnyEntity) => void;
+            }
         ) => {
-            const key = `${col}-PATCH-${id}`;
+            const key = keyOf(col, id);
             // Merge into any pending patch so consecutive edits coalesce.
             const merged = { ...(pendingPatches.get(key) || {}), ...patch };
             pendingPatches.set(key, merged);
@@ -513,11 +592,22 @@ export function useValueStreamData(
                 baselines.delete(key);
 
                 const result = await patchEntity(col, id, currentVersion, toSend, showAlert, { baseline });
-                if (result.ok && result.method === 'PATCH' && opts?.onVersion) {
-                    opts.onVersion(result.newVersion);
+                if (result.ok && result.method === 'PATCH') {
+                    if (result.merged && opts?.onServerCopy) {
+                        // Edits made while the request was in flight still win locally.
+                        opts.onServerCopy({ ...result.merged, ...(pendingPatches.get(key) || {}) });
+                    } else if (opts?.onVersion) {
+                        opts.onVersion(result.newVersion);
+                    }
+                } else if (isRetryableSaveFailure(result)) {
+                    // REQ-015: keep the failed fields pending (newer edits win) so
+                    // the next save sends them again.
+                    pendingPatches.set(key, { ...toSend, ...(pendingPatches.get(key) || {}) });
+                    if (baseline && !baselines.has(key)) baselines.set(key, baseline);
                 }
             }, persistenceDebounceMs));
         };
+        return { debouncedPatch, cancelPendingPatch };
     }, [persistenceDebounceMs, showAlert]);
 
     const debouncedSettings = useMemo(() => debounce(async (sets, needsRefresh) => {
@@ -672,17 +762,27 @@ export function useValueStreamData(
             });
         };
 
-        const add = async (entity: T) => {
-            // Initialise with `_version: 0` so the local copy has it from the start.
-            const withVersion = { _version: 0, ...entity } as T;
+        // Replace the local copy with the server's (REQ-016).
+        const applyServerCopy = (id: string, doc: AnyEntity) => {
             setData(prev => {
                 if (!prev) return prev;
-                return { ...prev, [key]: [...((prev[key] as unknown as T[]) || []), withVersion] };
+                const list = (prev[key] as unknown as T[]) || [];
+                return { ...prev, [key]: list.map(e => e.id === id ? { ...e, ...doc } as T : e) };
             });
-            const result = await persistEntity(collection, 'POST', withVersion, showAlert);
-            if (result.ok && result.method === 'POST') {
-                applyVersionToState(entity.id, result.newVersion);
-            }
+        };
+
+        // The server names the new record (DEC-005); it appears locally once
+        // stored. Resolves to the created record, or undefined if it failed.
+        // REQ-012, REQ-018
+        const add = async (entity: Omit<T, 'id'> & { id?: string }): Promise<T | undefined> => {
+            const result = await createEntity(collection, entity as AnyEntity, showAlert);
+            if (!result.ok) return undefined;
+            const created = { ...entity, id: result.id, _version: result.newVersion } as unknown as T;
+            setData(prev => {
+                if (!prev) return prev;
+                return { ...prev, [key]: [...((prev[key] as unknown as T[]) || []), created] };
+            });
+            return created;
         };
 
         const update = async (id: string, updates: Partial<T>, immediate = false) => {
@@ -715,18 +815,21 @@ export function useValueStreamData(
             if (immediate) {
                 const result = await patchEntity(collection, id, clientVersion, patch, showAlert, { baseline });
                 if (result.ok && result.method === 'PATCH') {
-                    applyVersionToState(id, result.newVersion);
+                    if (result.merged) applyServerCopy(id, result.merged);
+                    else applyVersionToState(id, result.newVersion);
                 }
             } else {
                 debouncedPatch(collection, id, clientVersion, patch, {
                     baseline,
                     onVersion: v => applyVersionToState(id, v),
+                    onServerCopy: doc => applyServerCopy(id, doc),
                 });
             }
         };
 
         const remove = (id: string) => {
             const existing = (data?.[key] as T[] | undefined)?.find(entity => entity.id === id);
+            cancelPendingPatch(collection, id);
             persistEntity(collection, 'DELETE', { id, _version: existing?._version ?? 0 }, showAlert);
             setData(prev => {
                 if (!prev) return prev;
@@ -879,6 +982,64 @@ export function useValueStreamData(
         return false;
     };
 
+    // ── Work item customer targets (value-streams REQ-048) ────────────────
+    // A target is keyed by its customer_id. Saving a new list sends only the
+    // differences — one add, patch or delete per target — so two users editing
+    // different targets of the same work item both keep their change.
+    type CustomerTarget = WorkItem['customer_targets'][number];
+    const saveWorkItemTargets = async (workItemId: string, next: CustomerTarget[]): Promise<boolean> => {
+        const workItem = data?.workItems.find(w => w.id === workItemId);
+        if (!workItem) return false;
+        const before = workItem.customer_targets || [];
+        const beforeById = new Map(before.map(t => [t.customer_id, t]));
+        const nextIds = new Set(next.map(t => t.customer_id));
+
+        setData(prev => prev ? {
+            ...prev,
+            workItems: prev.workItems.map(w => w.id === workItemId ? { ...w, customer_targets: next } : w)
+        } : prev);
+
+        // Each operation bumps the work item's _version; chain it to the next.
+        let version = workItem._version ?? 0;
+        let ok = true;
+        const run = async (op: (v: number) => Promise<ArrayOpResult>) => {
+            const result = await op(version);
+            if (result.ok) version = result.newVersion;
+            else ok = false;
+        };
+
+        for (const t of before) {
+            if (!nextIds.has(t.customer_id)) {
+                await run(v => deleteArrayItem('workItems', workItemId, v, 'customer_targets', t.customer_id, showAlert));
+            }
+        }
+        for (const t of next) {
+            const old = beforeById.get(t.customer_id);
+            if (!old) {
+                await run(v => addArrayItem('workItems', workItemId, v, 'customer_targets', t, showAlert));
+                continue;
+            }
+            const patch: AnyEntity = {};
+            const keys = new Set([...Object.keys(old), ...Object.keys(t)]);
+            for (const k of keys) {
+                if (k === 'customer_id') continue;
+                const value = (t as AnyEntity)[k];
+                // A cleared field is sent as null so the server removes its value.
+                if (value !== (old as AnyEntity)[k]) patch[k] = value === undefined ? null : value;
+            }
+            if (Object.keys(patch).length > 0) {
+                await run(v => patchArrayItem('workItems', workItemId, v, 'customer_targets', t.customer_id, patch, showAlert));
+            }
+        }
+
+        const finalVersion = version;
+        setData(prev => prev ? {
+            ...prev,
+            workItems: prev.workItems.map(w => w.id === workItemId ? { ...w, _version: finalVersion } : w)
+        } : prev);
+        return ok;
+    };
+
     const updateSettings = (updates: Partial<Settings>) => {
         setData(prev => {
             if (!prev) return prev;
@@ -970,22 +1131,23 @@ export function useValueStreamData(
         });
     };
 
-    const addSprint = (sprint: Sprint) => {
+    // REQ-018: the server names the new sprint (DEC-005).
+    const addSprint = async (sprint: Omit<Sprint, 'id'> & { id?: string }): Promise<Sprint | undefined> => {
+        const draft = {
+            ...sprint,
+            quarter: calculateQuarter(sprint.end_date, data?.settings?.general?.fiscal_year_start_month || 1)
+        };
+        const result = await createEntity('sprints', draft as AnyEntity, showAlert);
+        if (!result.ok) return undefined;
+        const newSprint = { ...draft, id: result.id, _version: result.newVersion } as Sprint;
         setData(prev => {
             if (!prev) return prev;
-            const newSprint = {
-                _version: 0,
-                ...sprint,
-                quarter: calculateQuarter(sprint.end_date, prev.settings?.general?.fiscal_year_start_month || 1)
-            };
-            persistEntity('sprints', 'POST', newSprint, showAlert).then(result => {
-                if (result.ok && result.method === 'POST') applySprintVersion(newSprint.id, result.newVersion);
-            });
             return {
                 ...prev,
                 sprints: [...(prev.sprints || []), newSprint].sort((a, b) => a.start_date.localeCompare(b.start_date))
             };
         });
+        return newSprint;
     };
 
     const updateSprint = async (id: string, updates: Partial<Sprint>, immediate = false) => {
@@ -1023,19 +1185,27 @@ export function useValueStreamData(
 
         const clientVersion = existing._version ?? 0;
 
+        const applySprintCopy = (doc: AnyEntity) => setData(prev => prev
+            ? { ...prev, sprints: (prev.sprints || []).map(s => s.id === id ? { ...s, ...doc } as Sprint : s) }
+            : prev);
         if (immediate) {
             const result = await patchEntity('sprints', id, clientVersion, patch, showAlert, { baseline });
-            if (result.ok && result.method === 'PATCH') applySprintVersion(id, result.newVersion);
+            if (result.ok && result.method === 'PATCH') {
+                if (result.merged) applySprintCopy(result.merged);
+                else applySprintVersion(id, result.newVersion);
+            }
         } else {
             debouncedPatch('sprints', id, clientVersion, patch, {
                 baseline,
                 onVersion: v => applySprintVersion(id, v),
+                onServerCopy: applySprintCopy,
             });
         }
     };
 
     const deleteSprint = (id: string) => {
         const existing = data?.sprints.find(s => s.id === id);
+        cancelPendingPatch('sprints', id);
         persistEntity('sprints', 'DELETE', { id, _version: existing?._version ?? 0 }, showAlert);
         setData(prev => {
             if (!prev) return prev;
@@ -1073,5 +1243,6 @@ export function useValueStreamData(
         addCustomerArrayItem,
         patchCustomerArrayItem,
         deleteCustomerArrayItem,
+        saveWorkItemTargets,
     };
 }

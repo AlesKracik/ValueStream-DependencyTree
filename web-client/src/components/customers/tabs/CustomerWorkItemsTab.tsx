@@ -17,7 +17,8 @@ interface Props {
     targetedWorkItems: WorkItem[];
     newCustomerWorkItems: CustomerWorkItemTarget[];
     setNewCustomerWorkItems: React.Dispatch<React.SetStateAction<CustomerWorkItemTarget[]>>;
-    updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
+    // Targets are saved one element at a time (value-streams REQ-048).
+    saveWorkItemTargets: (workItemId: string, targets: WorkItem['customer_targets']) => Promise<boolean>;
     data: ValueStreamData | null;
 }
 
@@ -34,7 +35,7 @@ export const CustomerWorkItemsTab: React.FC<Props> = ({
     targetedWorkItems,
     newCustomerWorkItems,
     setNewCustomerWorkItems,
-    updateWorkItem,
+    saveWorkItemTargets,
     data
 }) => {
     return (
@@ -67,7 +68,7 @@ export const CustomerWorkItemsTab: React.FC<Props> = ({
                                 const newTargets = workItem.customer_targets.map(ct =>
                                     ct.customer_id === customerId ? { ...ct, ...updates } : ct
                                 );
-                                updateWorkItem(workItem.id, { customer_targets: newTargets });
+                                saveWorkItemTargets(workItem.id, newTargets);
                             }
                         };
 
@@ -76,7 +77,7 @@ export const CustomerWorkItemsTab: React.FC<Props> = ({
                                 setNewCustomerWorkItems(prev => prev.filter(ncf => ncf.workItemId !== workItem.id));
                             } else {
                                 const newTargets = workItem.customer_targets.filter(ct => ct.customer_id !== customerId);
-                                updateWorkItem(workItem.id, { customer_targets: newTargets });
+                                saveWorkItemTargets(workItem.id, newTargets);
                             }
                         };
 
@@ -150,7 +151,7 @@ export const CustomerWorkItemsTab: React.FC<Props> = ({
                                         tcv_type: 'existing' as const,
                                         priority: 'Should-have' as const
                                     }];
-                                    updateWorkItem(workItemId, { customer_targets: newTargets });
+                                    saveWorkItemTargets(workItemId, newTargets);
                                 }
                             }
                         }}

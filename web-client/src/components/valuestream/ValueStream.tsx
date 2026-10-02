@@ -72,6 +72,7 @@ export interface ValueStreamProps {
     error: Error | null;
     updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
     updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
+    saveWorkItemTargets: (workItemId: string, targets: WorkItem['customer_targets']) => Promise<boolean>;
     updateTeam: (id: string, updates: Partial<Team>, immediate?: boolean) => Promise<void>;
     updateIssue: (id: string, updates: Partial<Issue>, immediate?: boolean) => Promise<void>;
     currentValueStreamId?: string;
@@ -88,7 +89,7 @@ export interface ValueStreamProps {
 
 export const ValueStream: React.FC<ValueStreamProps> = ({
     data, loading, error,
-    updateCustomer, updateWorkItem, updateTeam, currentValueStreamId,
+    updateCustomer, updateWorkItem, saveWorkItemTargets, updateTeam, currentValueStreamId,
      viewState, setViewState,
     onNavigateToCustomer,
     onNavigateToWorkItem,
@@ -830,6 +831,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                     data={data}
                     onUpdateCustomer={updateCustomer}
                     onUpdateWorkItem={updateWorkItem}
+                    onSaveWorkItemTargets={saveWorkItemTargets}
                     onUpdateTeam={updateTeam}
                 />
             )}

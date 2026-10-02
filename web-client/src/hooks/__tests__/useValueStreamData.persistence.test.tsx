@@ -290,10 +290,132 @@ describe('useValueStreamData Persistence', () => {
         expect(retryBody._version).toBe(4);
         expect(retryBody.patch).toEqual({ effort_md: 42 });
     });
+
+    it('keeps the fields of a failed save pending and sends them with the next one (REQ-015)', async () => {
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 50));
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        vi.mocked(fetch).mockClear();
+        vi.mocked(fetch).mockImplementationOnce(() =>
+            Promise.resolve({ ok: false, status: 400, json: () => Promise.resolve({ error: 'bad' }) } as Response));
+
+        await act(async () => {
+            result.current.updateIssue('e1', { name: 'Kept' });
+        });
+        await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1), { timeout: 1000 });
+
+        await act(async () => {
+            result.current.updateIssue('e1', { effort_md: 5 });
+        });
+        await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2), { timeout: 1000 });
+
+        const body = JSON.parse(vi.mocked(fetch).mock.calls[1][1]!.body as string);
+        expect(body.patch).toEqual({ name: 'Kept', effort_md: 5 });
+    });
+
+    it('drops the edits when the record is gone (REQ-007)', async () => {
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 50));
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        vi.mocked(fetch).mockClear();
+        vi.mocked(fetch).mockImplementationOnce(() =>
+            Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({ error: 'Entity not found' }) } as Response));
+
+        await act(async () => {
+            result.current.updateIssue('e1', { name: 'Lost' });
+        });
+        await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1), { timeout: 1000 });
+
+        await act(async () => {
+            result.current.updateIssue('e1', { effort_md: 5 });
+        });
+        await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2), { timeout: 1000 });
+
+        const body = JSON.parse(vi.mocked(fetch).mock.calls[1][1]!.body as string);
+        expect(body.patch).toEqual({ effort_md: 5 });
+    });
+
+    it('replaces the local copy with the server record after a conflict retry (REQ-016)', async () => {
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 50));
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        vi.mocked(fetch).mockClear();
+        vi.mocked(fetch)
+            .mockImplementationOnce(() => Promise.resolve({
+                ok: false, status: 409,
+                json: () => Promise.resolve({ current: { id: 'e1', jira_key: 'E1', team_id: 't2', effort_md: 10, name: 'Issue 1', _version: 3 } })
+            } as Response))
+            .mockImplementationOnce(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, _version: 4 }) } as Response));
+
+        await act(async () => {
+            result.current.updateIssue('e1', { name: 'Mine' });
+        });
+        await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2), { timeout: 1000 });
+
+        await waitFor(() => {
+            const issue = result.current.data?.issues.find(i => i.id === 'e1');
+            // the other user's team_id, our name, the new version
+            expect(issue).toEqual(expect.objectContaining({ team_id: 't2', name: 'Mine', _version: 4 }));
+        });
+    });
+
+    it('cancels a pending save when the record is deleted (REQ-017)', async () => {
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 50));
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        vi.mocked(fetch).mockClear();
+        await act(async () => {
+            result.current.updateIssue('e1', { name: 'Never sent' });
+            result.current.deleteIssue('e1');
+        });
+        await new Promise(r => setTimeout(r, 150));
+
+        const methods = vi.mocked(fetch).mock.calls.map(c => (c[1] as RequestInit | undefined)?.method);
+        expect(methods).toEqual(['DELETE']);
+    });
+
+    it('saves customer targets as one element operation per change (value-streams REQ-048)', async () => {
+        const withTargets = {
+            ...mockData,
+            workItems: [{
+                id: 'w1', name: 'W', total_effort_mds: 1, score: 0, status: 'Backlog' as const, _version: 2,
+                customer_targets: [
+                    { customer_id: 'a', tcv_type: 'existing' as const, priority: 'Must-have' as const },
+                    { customer_id: 'b', tcv_type: 'existing' as const, priority: 'Must-have' as const, tcv_history_id: 'h1' },
+                ]
+            }]
+        };
+        // Each element operation answers with the version it was sent, plus one.
+        vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+            if (url.startsWith('/api/workspace')) return Promise.resolve({ ok: true, json: () => Promise.resolve(withTargets) });
+            const sent = init?.body
+                ? JSON.parse(init.body as string)._version
+                : Number(new URL(url, 'http://x').searchParams.get('_version'));
+            return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, _version: sent + 1 }) });
+        }));
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 50));
+        await waitFor(() => expect(result.current.loading).toBe(false));
+        vi.mocked(fetch).mockClear();
+
+        await act(async () => {
+            await result.current.saveWorkItemTargets('w1', [
+                // a removed, b's history cleared, c added
+                { customer_id: 'b', tcv_type: 'existing', priority: 'Must-have' },
+                { customer_id: 'c', tcv_type: 'potential', priority: 'Nice-to-have' },
+            ]);
+        });
+
+        const calls = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/items/')).map(([url, init]) => [
+            (init as RequestInit).method, url, JSON.parse(((init as RequestInit).body as string) || 'null')
+        ]);
+        expect(calls).toEqual([
+            ['DELETE', '/api/entity/workItems/w1/items/customer_targets/a?_version=2', null],
+            ['PATCH', '/api/entity/workItems/w1/items/customer_targets/b', { _version: 3, patch: { tcv_history_id: null } }],
+            ['POST', '/api/entity/workItems/w1/items/customer_targets',
+                { _version: 4, item: { customer_id: 'c', tcv_type: 'potential', priority: 'Nice-to-have' } }],
+        ]);
+        const w1 = result.current.data?.workItems.find(w => w.id === 'w1');
+        expect(w1?._version).toBe(5);
+        expect(w1?.customer_targets.map(t => t.customer_id)).toEqual(['b', 'c']);
+    });
 });
-
-
-
-
-
-

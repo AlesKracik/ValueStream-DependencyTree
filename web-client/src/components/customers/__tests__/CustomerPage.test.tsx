@@ -75,8 +75,11 @@ describe('CustomerPage', () => {
         error: null,
         updateCustomer: vi.fn(),
         deleteCustomer: vi.fn(),
-        addCustomer: vi.fn(),
-        updateWorkItem: vi.fn()
+        addCustomer: vi.fn().mockImplementation(async (c: object) => ({ ...c, id: 'c-new', _version: 0 })),
+        updateWorkItem: vi.fn(),
+        saveWorkItemTargets: vi.fn().mockResolvedValue(true),
+        addCustomerArrayItem: vi.fn().mockResolvedValue(undefined),
+        deleteCustomerArrayItem: vi.fn().mockResolvedValue(true)
     };
 
     const mockShowConfirm = vi.fn().mockResolvedValue(true);
@@ -214,14 +217,16 @@ describe('CustomerPage', () => {
                 'Promote Potential TCV',
                 expect.stringContaining('2026-04-01')
             );
+            // The history entry is added on its own (value-streams REQ-048)...
+            expect(defaultProps.addCustomerArrayItem).toHaveBeenCalledWith('c1', 'tcv_history',
+                expect.objectContaining({ value: 100, valid_from: '2026-01-01' }));
+            // ...and the promoted values are patched without rewriting the history.
             expect(defaultProps.updateCustomer).toHaveBeenCalledWith('c1', expect.objectContaining({
                 existing_tcv: 50, // potential_tcv from mockData
                 existing_tcv_valid_from: '2026-04-01',
                 potential_tcv: 0,
-                tcv_history: [
-                    expect.objectContaining({ value: 100, valid_from: '2026-01-01' })
-                ]
             }));
+            expect(defaultProps.updateCustomer.mock.calls.at(-1)?.[1]).not.toHaveProperty('tcv_history');
         });
     });
 
@@ -274,11 +279,9 @@ describe('CustomerPage', () => {
             fireEvent.change(selectionDropdown, { target: { value: 'h1' } });
         });
         
-        expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', expect.objectContaining({
-            customer_targets: [
-                expect.objectContaining({ customer_id: 'c1', tcv_history_id: 'h1' })
-            ]
-        }));
+        expect(defaultProps.saveWorkItemTargets).toHaveBeenCalledWith('f1', [
+            expect.objectContaining({ customer_id: 'c1', tcv_history_id: 'h1' })
+        ]);
     });
 
     it('removes a work item target', async () => {
@@ -300,9 +303,7 @@ describe('CustomerPage', () => {
             fireEvent.click(removeBtn);
         });
 
-        expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', expect.objectContaining({
-            customer_targets: []
-        }));
+        expect(defaultProps.saveWorkItemTargets).toHaveBeenCalledWith('f1', []);
     });
 
     it('adds a new customer with initial validity date', async () => {
@@ -929,9 +930,7 @@ describe('CustomerPage', () => {
         const deleteBtn = within(historyTable).getByText('Delete');
         fireEvent.click(deleteBtn);
 
-        expect(defaultProps.updateCustomer).toHaveBeenCalledWith('c1', expect.objectContaining({
-            tcv_history: []
-        }));
+        expect(defaultProps.deleteCustomerArrayItem).toHaveBeenCalledWith('c1', 'tcv_history', 'h1');
     });
 
     it('adds and removes manual support issues', async () => {

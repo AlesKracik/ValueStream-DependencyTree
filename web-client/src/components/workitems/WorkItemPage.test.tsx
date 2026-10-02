@@ -80,9 +80,10 @@ describe('WorkItemPage', () => {
         data: mockData,
         loading: false,
         error: null,
-        addWorkItem: vi.fn(),
+        addWorkItem: vi.fn().mockImplementation(async (w: object) => ({ ...w, id: 'f-new', _version: 0 })),
         deleteWorkItem: vi.fn(),
         updateWorkItem: vi.fn(),
+        saveWorkItemTargets: vi.fn().mockResolvedValue(true),
         addIssue: vi.fn(),
         deleteIssue: vi.fn(),
         updateIssue: vi.fn()
@@ -124,11 +125,9 @@ describe('WorkItemPage', () => {
         // Select the historical entry
         fireEvent.change(historySelect, { target: { value: 'h1' } });
 
-        expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', expect.objectContaining({
-            customer_targets: expect.arrayContaining([
-                expect.objectContaining({ tcv_history_id: 'h1' })
-            ])
-        }));
+        expect(defaultProps.saveWorkItemTargets).toHaveBeenCalledWith('f1', expect.arrayContaining([
+            expect.objectContaining({ tcv_history_id: 'h1' })
+        ]));
     });
 
     it('should have Nice-to-have option in the priority dropdown for existing targets', () => {
@@ -812,7 +811,7 @@ describe('WorkItemPage', () => {
         expect(mockShowConfirm).not.toHaveBeenCalledWith('Unlink Aha!', expect.any(String));
     });
 
-    it('saves new work item with draft issues', () => {
+    it('saves new work item with draft issues', async () => {
         renderPage(defaultProps, 'new');
 
         fireEvent.change(screen.getByLabelText(/Name:/i), { target: { value: 'New Feature' } });
@@ -830,11 +829,12 @@ describe('WorkItemPage', () => {
 
         // Stack rank defaults to (max existing rank + 1000); the only existing item has no rank, so 1000.
         expect(defaultProps.addWorkItem).toHaveBeenCalledWith(expect.objectContaining({ name: 'New Feature', stackrank: 1000 }));
-        expect(defaultProps.addIssue).toHaveBeenCalledWith(expect.objectContaining({
+        // The issues point at the id the server gave the work item (REQ-018).
+        await waitFor(() => expect(defaultProps.addIssue).toHaveBeenCalledWith(expect.objectContaining({
             jira_key: 'PROJ-999',
             name: 'Draft Issue',
-            work_item_id: expect.any(String) // the new work item ID
-        }));
+            work_item_id: 'f-new'
+        })));
     });
 
     it('defaults new work item stackrank to (max existing rank + 1000)', () => {

@@ -105,6 +105,7 @@ describe('Value Stream', () => {
         error: null,
         updateCustomer: vi.fn(),
         updateWorkItem: vi.fn(),
+        saveWorkItemTargets: vi.fn().mockResolvedValue(true),
         updateTeam: vi.fn(),
         updateIssue: vi.fn(),
         viewState: mockViewState,

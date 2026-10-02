@@ -15,7 +15,7 @@ interface TeamPageProps {
     data: ValueStreamData | null;
     loading: boolean;
     updateTeam: (id: string, updates: Partial<Team>) => Promise<void>;
-    addTeam: (team: Omit<Team, 'id'>) => Promise<string>;
+    addTeam: (team: Omit<Team, 'id'>) => Promise<Team | undefined>;
     deleteTeam: (id: string) => void;
 }
 
@@ -57,8 +57,9 @@ export const TeamPage: React.FC<TeamPageProps> = ({ data, loading, updateTeam, a
 
     const handleCreate = async () => {
         if (!newTeamDraft.name) return;
-        const newId = await addTeam(newTeamDraft as Omit<Team, 'id'>);
-        navigate(`/team/${newId}`);
+        // REQ-012: open the new team under the id the server assigned.
+        const created = await addTeam(newTeamDraft as Omit<Team, 'id'>);
+        if (created) navigate(`/team/${created.id}`);
     };
 
     const handleFieldChange = (updates: Partial<Team>) => {

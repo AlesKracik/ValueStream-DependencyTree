@@ -81,7 +81,7 @@ function ValueStreamRouteWrapper() {
         onNavigateToWorkItem={(id) => navigate(`/workitem/${id}`)}
         onNavigateToIssue={(id) => navigate(`/issue/${id}`)}
         onNavigateToTeam={(id) => navigate(`/team/${id}`)}
-        onNavigateToSprint={(id) => id === 'list' ? navigate('/sprints') : navigate(`/sprint/${id}`)}
+        onNavigateToSprint={() => navigate('/sprints')}
         onNavigateToValueStreamEdit={(id) => navigate(`/valueStream/edit/${id}`)}
       />
     </ValueStreamProvider>
@@ -112,7 +112,7 @@ const IssuePageRouteWrapper = createRouteWrapper({
 const TeamPageRouteWrapper = createRouteWrapper({
   collections: ['teams', 'sprints', 'settings'],
   render: ({ state }) =>
-    <TeamPage data={state.data} loading={state.loading} updateTeam={state.updateTeam} addTeam={state.addTeam as never} deleteTeam={state.deleteTeam} />,
+    <TeamPage data={state.data} loading={state.loading} updateTeam={state.updateTeam} addTeam={state.addTeam} deleteTeam={state.deleteTeam} />,
 });
 
 const ValueStreamEditPageRouteWrapper = createRouteWrapper({

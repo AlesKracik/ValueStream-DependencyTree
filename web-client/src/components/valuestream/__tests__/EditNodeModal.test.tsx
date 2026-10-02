@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { EditNodeModal } from '../EditNodeModal';
 import type { ValueStreamData } from '@valuestream/shared-types';
@@ -37,6 +37,7 @@ const mockData: ValueStreamData = {
 describe('EditNodeModal', () => {
     const onUpdateCustomer = vi.fn();
     const onUpdateWorkItem = vi.fn();
+    const onSaveWorkItemTargets = vi.fn().mockResolvedValue(true);
     const onUpdateTeam = vi.fn();
     const onUpdateIssue = vi.fn();
     const onClose = vi.fn();
@@ -46,6 +47,7 @@ describe('EditNodeModal', () => {
         data: mockData,
         onUpdateCustomer,
         onUpdateWorkItem,
+        onSaveWorkItemTargets,
         onUpdateTeam,
         onUpdateIssue
     };
@@ -125,7 +127,7 @@ describe('EditNodeModal', () => {
         }));
     });
 
-    it('handles customer target priority and history selection in workItemNode', () => {
+    it('handles customer target priority and history selection in workItemNode', async () => {
         const dataWithWorkItem: ValueStreamData = {
             ...mockData,
             customers: [
@@ -154,11 +156,11 @@ describe('EditNodeModal', () => {
 
         fireEvent.click(screen.getByText('Save'));
 
-        expect(onUpdateWorkItem).toHaveBeenCalledWith('w1', expect.objectContaining({
-            customer_targets: [
-                expect.objectContaining({ customer_id: 'c1', priority: 'Nice-to-have', tcv_history_id: 'h1' })
-            ]
-        }));
+        // Targets are saved element by element, not inside the work item update (value-streams REQ-048).
+        await waitFor(() => expect(onSaveWorkItemTargets).toHaveBeenCalledWith('w1', [
+            expect.objectContaining({ customer_id: 'c1', priority: 'Nice-to-have', tcv_history_id: 'h1' })
+        ]));
+        expect(onUpdateWorkItem.mock.calls.at(-1)?.[1]).not.toHaveProperty('customer_targets');
     });
 });
 

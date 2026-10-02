@@ -4,10 +4,12 @@ import customerStyles from '../CustomerPage.module.css';
 
 interface Props {
     customer: Customer | undefined;
-    updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
+    deleteCustomerArrayItem: (customerId: string, arrayPath: 'tcv_history', itemId: string) => Promise<boolean>;
 }
 
-export const CustomerTcvHistoryTab: React.FC<Props> = ({ customer, updateCustomer }) => {
+export const CustomerTcvHistoryTab: React.FC<Props> = ({ customer, deleteCustomerArrayItem }) => {
+    // Entries are stored in the order they were added; show the newest first.
+    const history = [...(customer?.tcv_history || [])].sort((a, b) => b.valid_from.localeCompare(a.valid_from));
     return (
         <table className={customerStyles.table}>
             <thead>
@@ -19,7 +21,7 @@ export const CustomerTcvHistoryTab: React.FC<Props> = ({ customer, updateCustome
                 </tr>
             </thead>
             <tbody>
-                {customer?.tcv_history?.map(entry => (
+                {history.map(entry => (
                     <tr key={entry.id}>
                         <td>{entry.valid_from}</td>
                         <td>{entry.value.toLocaleString()}</td>
@@ -28,10 +30,7 @@ export const CustomerTcvHistoryTab: React.FC<Props> = ({ customer, updateCustome
                             <button
                                 className="btn-danger"
                                 onClick={() => {
-                                    if (customer) {
-                                        const newHistory = customer.tcv_history?.filter(h => h.id !== entry.id);
-                                        updateCustomer(customer.id, { tcv_history: newHistory });
-                                    }
+                                    if (customer) deleteCustomerArrayItem(customer.id, 'tcv_history', entry.id);
                                 }}
                             >
                                 Delete

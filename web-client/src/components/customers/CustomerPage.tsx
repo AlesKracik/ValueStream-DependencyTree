@@ -21,8 +21,12 @@ export interface CustomerPageProps {
     error: Error | null;
     updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
     deleteCustomer: (id: string) => void;
-    addCustomer: (customer: Customer) => void;
+    addCustomer: (customer: Omit<Customer, 'id'>) => Promise<Customer | undefined>;
     updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
+    saveWorkItemTargets: (workItemId: string, targets: WorkItem['customer_targets']) => Promise<boolean>;
+    // TCV history entries are added and removed one at a time (value-streams REQ-048).
+    addCustomerArrayItem: (customerId: string, arrayPath: 'tcv_history', item: TcvHistoryEntry) => Promise<unknown>;
+    deleteCustomerArrayItem: (customerId: string, arrayPath: 'tcv_history', itemId: string) => Promise<boolean>;
 }
 
 export const CustomerPage: React.FC<CustomerPageProps> = ({
@@ -34,7 +38,9 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
     updateCustomer,
     deleteCustomer,
     addCustomer,
-    updateWorkItem
+    saveWorkItemTargets,
+    addCustomerArrayItem,
+    deleteCustomerArrayItem
 }) => {
     const { showConfirm } = useNotificationContext();
     const deleteWithConfirm = useDeleteWithConfirm();
@@ -155,9 +161,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         if (!data) return;
         try {
             if (isNew) {
-                const newId = generateId('c');
-                const newCust: Customer = {
-                    id: newId,
+                const newCust: Omit<Customer, 'id'> = {
                     name: newCustDraft.name || 'New Customer',
                     customer_id: newCustDraft.customer_id,
                     existing_tcv: newCustDraft.existing_tcv || 0,
@@ -167,6 +171,11 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                     potential_tcv_valid_from: newCustDraft.potential_tcv_valid_from,
                     potential_tcv_duration_months: newCustDraft.potential_tcv_duration_months
                 };
+
+                // REQ-018: the server names the customer; its targets need that id.
+                const created = await addCustomer(newCust);
+                if (!created) return;
+                const newId = created.id;
 
                 const updatedWorkItems = data.workItems.map(f => {
                     const draftTarget = newCustomerWorkItems.find(ncf => ncf.workItemId === f.id);
@@ -187,11 +196,10 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                     return f;
                 });
 
-                addCustomer(newCust);
                 updatedWorkItems.forEach((f, i) => {
                     const oldF = data.workItems[i];
                     if (oldF.customer_targets.length !== f.customer_targets.length) {
-                        updateWorkItem(f.id, { customer_targets: f.customer_targets });
+                        saveWorkItemTargets(f.id, f.customer_targets);
                     }
                 });
 
@@ -218,15 +226,14 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
             duration_months: customer.existing_tcv_duration_months
         };
 
-        const newHistory = [...(customer.tcv_history || []), historyEntry].sort((a, b) => b.valid_from.localeCompare(a.valid_from));
-        
+        // The entry goes in on its own, so a concurrent history edit is not lost.
+        await addCustomerArrayItem(customer.id, 'tcv_history', historyEntry);
         updateCustomer(customer.id, {
             existing_tcv: customer.potential_tcv,
             existing_tcv_duration_months: customer.potential_tcv_duration_months,
             existing_tcv_valid_from: targetDate,
             potential_tcv: 0,
-            potential_tcv_duration_months: 12,
-            tcv_history: newHistory
+            potential_tcv_duration_months: 12
         });
     };
 
@@ -369,7 +376,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
                     targetedWorkItems={targetedWorkItems}
                     newCustomerWorkItems={newCustomerWorkItems}
                     setNewCustomerWorkItems={setNewCustomerWorkItems}
-                    updateWorkItem={updateWorkItem}
+                    saveWorkItemTargets={saveWorkItemTargets}
                     data={data}
                 />
             )
@@ -377,7 +384,7 @@ export const CustomerPage: React.FC<CustomerPageProps> = ({
         {
             id: 'history',
             label: `TCV History (${customer?.tcv_history?.length || 0})`,
-            content: <CustomerTcvHistoryTab customer={customer} updateCustomer={updateCustomer} />
+            content: <CustomerTcvHistoryTab customer={customer} deleteCustomerArrayItem={deleteCustomerArrayItem} />
         },
         {
             id: 'support',

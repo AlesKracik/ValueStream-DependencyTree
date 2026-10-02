@@ -9,6 +9,8 @@ interface EditNodeModalProps {
     data: ValueStreamData;
     onUpdateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
     onUpdateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
+    // Targets are saved one element at a time (value-streams REQ-048).
+    onSaveWorkItemTargets: (workItemId: string, targets: WorkItem['customer_targets']) => Promise<boolean>;
     onUpdateTeam: (id: string, updates: Partial<Team>, immediate?: boolean) => Promise<void>;
 }
 
@@ -18,6 +20,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
     data,
     onUpdateCustomer,
     onUpdateWorkItem,
+    onSaveWorkItemTargets,
     onUpdateTeam
 }) => {
     // Extract domain ID from node ID (e.g., 'customer-c1' -> 'c1', 'gantt-a1' -> 'a1')
@@ -104,9 +107,9 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                 name: formData.name,
                 total_effort_mds: Number(formData.total_effort_mds),
                 released_in_sprint_id: formData.released_in_sprint_id,
-                all_customers_target: formData.all_customers_target,
-                customer_targets: formData.customer_targets
+                all_customers_target: formData.all_customers_target
             });
+            await onSaveWorkItemTargets(domainId, formData.customer_targets || []);
 
         } else if (node.type === 'sprintCapacityNode') {
             const team = data.teams.find(t => t.id === formData.teamId);

@@ -102,26 +102,49 @@ describe('useValueStreamData', () => {
         });
     });
 
-    it('adds a customer', async () => {
+    it('adds a customer under the id the server assigns (REQ-018)', async () => {
         const { result } = renderHook(() => useValueStreamData(undefined, {}, 0));
         await waitFor(() => expect(result.current.loading).toBe(false));
+        vi.mocked(fetch).mockImplementationOnce(() =>
+            Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, id: 'srv-1', _version: 0 }) } as Response));
 
-        const newCust = { id: 'c2', name: 'Cust 2', existing_tcv: 0, potential_tcv: 50 };
-        
-        act(() => {
-            result.current.addCustomer(newCust);
+        const newCust = { name: 'Cust 2', existing_tcv: 0, potential_tcv: 50 };
+        let created: unknown;
+        await act(async () => {
+            created = await result.current.addCustomer(newCust);
         });
 
-        expect(result.current.data?.customers).toHaveLength(2);
-        expect(fetch).toHaveBeenCalledWith(
-            '/api/entity/customers',
-            expect.objectContaining({
-                method: 'POST',
-                headers: expect.objectContaining({
-                    'Authorization': expect.stringContaining('Bearer')
-                })
+        expect(created).toEqual(expect.objectContaining({ id: 'srv-1', name: 'Cust 2' }));
+        expect(result.current.data?.customers.map(c => c.id)).toEqual(['c1', 'srv-1']);
+        const [url, init] = vi.mocked(fetch).mock.calls.at(-1)!;
+        expect(url).toBe('/api/entity/customers');
+        expect(init).toEqual(expect.objectContaining({
+            method: 'POST',
+            headers: expect.objectContaining({
+                'Authorization': expect.stringContaining('Bearer'),
+                'Idempotency-Key': expect.any(String),
             })
-        );
+        }));
+        expect(JSON.parse((init as RequestInit).body as string)).not.toHaveProperty('id');
+    });
+
+    it('retries a create with the same idempotency key when no answer came back (REQ-018)', async () => {
+        const { result } = renderHook(() => useValueStreamData(undefined, {}, 0));
+        await waitFor(() => expect(result.current.loading).toBe(false));
+        vi.mocked(fetch)
+            .mockImplementationOnce(() => Promise.reject(new Error('socket hang up')))
+            .mockImplementationOnce(() =>
+                Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true, id: 'srv-1', _version: 0 }) } as Response));
+
+        await act(async () => {
+            await result.current.addTeam({ name: 'Team A' } as never);
+        });
+
+        const posts = vi.mocked(fetch).mock.calls.filter(c => c[0] === '/api/entity/teams');
+        expect(posts).toHaveLength(2);
+        const keyOf = (c: unknown[]) => ((c[1] as RequestInit).headers as Record<string, string>)['Idempotency-Key'];
+        expect(keyOf(posts[0])).toBe(keyOf(posts[1]));
+        expect(result.current.data?.teams.map(t => t.id)).toEqual(['srv-1']);
     });
 
     it('deletes a sprint', async () => {
@@ -373,26 +396,26 @@ describe('useValueStreamData', () => {
         });
     });
 
-    it('shows an alert when an ID collision occurs (409 Conflict)', async () => {
+    it('shows the error and adds nothing when a create is refused', async () => {
         const mockAlert = vi.fn();
         const { result } = renderHook(() => useValueStreamData(undefined, {}, 0, mockAlert));
         await waitFor(() => expect(result.current.loading).toBe(false));
 
-        // Mock a 409 Conflict response for the next fetch
-        vi.stubGlobal('fetch', vi.fn().mockImplementation(() => 
+        vi.stubGlobal('fetch', vi.fn().mockImplementation(() =>
             Promise.resolve({
                 ok: false,
-                status: 409,
-                json: () => Promise.resolve({ error: "ID collision: 'f1' already exists in the 'workItems' collection." })
+                status: 400,
+                json: () => Promise.resolve({ error: 'customer_targets.customer_id "ghost" does not name an existing customer' })
             })
         ));
 
-        act(() => {
-            result.current.addWorkItem({ id: 'f1', name: 'Collision Item', total_effort_mds: 10, score: 0, status: 'Backlog', customer_targets: [] });
+        let created: unknown = 'unset';
+        await act(async () => {
+            created = await result.current.addWorkItem({ name: 'Item', total_effort_mds: 10, score: 0, status: 'Backlog', customer_targets: [] });
         });
 
-        await waitFor(() => {
-            expect(mockAlert).toHaveBeenCalledWith('Conflict', expect.stringContaining("ID collision: 'f1'"));
-        });
+        expect(created).toBeUndefined();
+        expect(result.current.data?.workItems).toHaveLength(1);
+        expect(mockAlert).toHaveBeenCalledWith('Error', expect.stringContaining('does not name an existing customer'));
     });
 });

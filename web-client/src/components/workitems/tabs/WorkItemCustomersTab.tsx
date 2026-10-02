@@ -19,6 +19,8 @@ interface Props {
     setNewWorkItemCustomers: React.Dispatch<React.SetStateAction<WorkItemCustomerTarget[]>>;
     setNewWorkItemDraft?: React.Dispatch<React.SetStateAction<Partial<WorkItem>>>;
     updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
+    // Targets are saved one element at a time (value-streams REQ-048).
+    saveWorkItemTargets: (workItemId: string, targets: WorkItem['customer_targets']) => Promise<boolean>;
     data: ValueStreamData | null;
 }
 
@@ -31,6 +33,7 @@ export const WorkItemCustomersTab: React.FC<Props> = ({
     setNewWorkItemCustomers,
     setNewWorkItemDraft,
     updateWorkItem,
+    saveWorkItemTargets,
     data
 }) => {
     return (
@@ -114,7 +117,7 @@ export const WorkItemCustomersTab: React.FC<Props> = ({
                                         setNewWorkItemCustomers(prev => prev.map(c => c.customerId === customer.id ? { ...c, ...updates } as typeof c : c));
                                     } else {
                                         const newTargets = workItem?.customer_targets?.map(ct => ct.customer_id === customer.id ? { ...ct, ...updates } : ct);
-                                        updateWorkItem(workItemId, { customer_targets: newTargets });
+                                        saveWorkItemTargets(workItemId, newTargets || []);
                                     }
                                 };
 
@@ -155,7 +158,7 @@ export const WorkItemCustomersTab: React.FC<Props> = ({
                                                 className="btn-danger"
                                                 onClick={() => {
                                                     if (isNew) setNewWorkItemCustomers(prev => prev.filter(c => c.customerId !== customer.id));
-                                                    else updateWorkItem(workItemId, { customer_targets: workItem?.customer_targets?.filter(ct => ct.customer_id !== customer.id) });
+                                                    else saveWorkItemTargets(workItemId, (workItem?.customer_targets || []).filter(ct => ct.customer_id !== customer.id));
                                                 }}
                                             >
                                                 Remove
@@ -179,7 +182,7 @@ export const WorkItemCustomersTab: React.FC<Props> = ({
                             onSelect={(customerId) => {
                                 const newTarget = { customerId, tcv_type: 'existing' as const, priority: 'Should-have' as const };
                                 if (isNew) setNewWorkItemCustomers(prev => [...prev, newTarget]);
-                                else updateWorkItem(workItemId, { customer_targets: [...(workItem?.customer_targets || []), { customer_id: customerId, tcv_type: 'existing', priority: 'Should-have' }] });
+                                else saveWorkItemTargets(workItemId, [...(workItem?.customer_targets || []), { customer_id: customerId, tcv_type: 'existing', priority: 'Should-have' }]);
                             }}
                             placeholder="Search for a customer to target..."
                         />
