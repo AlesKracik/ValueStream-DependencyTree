@@ -4,8 +4,10 @@
  * real MongoDB, and after every step each Quint var (`st`, `last`) must equal
  * the trace's state under the adapter's abstraction.
  *
- * Traces: $SPEC_TRACES_DIR, default ../valuestream-prd/specs/entities/traces
- * (the spec repo checked out next to this one).
+ * Traces: ./traces — copies of the model checker's witness traces, kept in
+ * this repo so the suite has no dependency on the spec repo. Refresh them by
+ * copying a new set in after a re-check of the model. $SPEC_TRACES_DIR
+ * overrides the location.
  * MongoDB: $CONFORMANCE_MONGO_URI, default mongodb://127.0.0.1:27018 — see
  * run.sh, which starts a throwaway container.
  */
@@ -16,8 +18,7 @@ import path from 'node:path';
 import { EntitiesAdapter } from './adapter';
 import { assertInvariants } from './invariants';
 
-const TRACES_DIR = process.env.SPEC_TRACES_DIR
-  ?? path.resolve(__dirname, '../../../../valuestream-prd/specs/entities/traces');
+const TRACES_DIR = process.env.SPEC_TRACES_DIR ?? path.resolve(__dirname, 'traces');
 const MONGO_URI = process.env.CONFORMANCE_MONGO_URI ?? 'mongodb://127.0.0.1:27018';
 
 type Itf = { vars: string[]; states: Record<string, unknown>[] };
