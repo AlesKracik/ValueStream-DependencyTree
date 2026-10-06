@@ -49,7 +49,7 @@ See [Secret Management](SECRET-MANAGEMENT.md) for how secrets are stored and mas
 - **Text filters:** `customerFilter`, `teamFilter`
 - **Status filters:** `releasedFilter`
 - **Score filters:** `minScoreFilter` (uses pre-computed `calculated_score`)
-- **Relational filters:** `customerId`, `workItemId`, `teamId`
+- **Relational filters:** `customerId`, `workItemId`, `teamId`; issues also take `unassigned=true` (no work item). With `workItemId`, it returns the work item's issues plus the unassigned ones.
 
 **List-page filters (`/api/data/customers`, `/api/data/workItems`):** Both endpoints accept first-class list-page parameters validated by typebox schemas (`CustomerListQuery`, `WorkItemListQuery`):
 - **Customers:** `name` (escaped substring regex), `min/maxExistingTcv`, `min/maxPotentialTcv`, `min/maxTotalTcv` (computed via `$expr` over `existing_tcv + potential_tcv`), `sortBy` (`name|existing|potential`), `sortOrder`, optional `page`+`pageSize`. Returns `{ customers, total, page?, pageSize? }`.
@@ -87,7 +87,7 @@ All mutation endpoints below use optimistic concurrency control via a required `
 
 **Standard responses:**
 - `200 OK` — `{ success: true, _version: N }` on mutations; array adds also return `item`.
-- `400 Bad Request` — invalid schema, missing `_version`, forbidden patch keys (`id`, `_version`, `calculated_*`), or non-whitelisted array path.
+- `400 Bad Request` — invalid schema, missing `_version`, forbidden patch keys (`id`, `_version`, `calculated_*`), non-whitelisted array path, or an issue `jira_key` another issue already holds.
 - `403 Forbidden` — non-allowed collection or insufficient role.
 - `404 Not Found` — PATCH/array endpoint hit a missing entity or missing array element.
 - `409 Conflict` — `_version` mismatch. Body: `{ success: false, conflict: true, error, current }` — the client should merge its pending changes onto `current` and retry with `current._version`.

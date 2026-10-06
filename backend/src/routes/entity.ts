@@ -23,7 +23,7 @@ import { requireRole } from '../utils/roleGuard';
 import { wouldCreateCycle } from '../utils/workItemHierarchy';
 import {
   assertDocumentStatuses, assertSupportIssueStatus, assertParentExists, namesParent,
-  assertReferencesExist, assertCustomerTargetExists
+  assertReferencesExist, assertCustomerTargetExists, assertJiraKeyUnique
 } from '../utils/entityValidation';
 // Collections whose mutations affect RICE scores and trigger recomputation
 const SCORE_AFFECTING_COLLECTIONS = ['workItems', 'customers', 'issues'];
@@ -297,6 +297,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
           if (namesParent(parentId)) await assertParentExists(db, parentId);
         }
         await assertReferencesExist(db, collection, data as Record<string, unknown>);
+        await assertJiraKeyUnique(db, collection, data as Record<string, unknown>);
       });
       if (!created.replayed) maybeRecomputeScores(db, collection, fastify.log);
       return reply.send({ success: true, id: created.id, _version: created._version });
@@ -309,6 +310,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
       await guardParent(db, entityId, (data as unknown as { parent_id?: unknown }).parent_id);
     }
     await assertReferencesExist(db, collection, data as Record<string, unknown>);
+    await assertJiraKeyUnique(db, collection, data as Record<string, unknown>, entityId);
 
     const result = await upsertWithOcc(db, collection, entityId, data);
     if (!result.ok) {
@@ -347,6 +349,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
       await guardParent(db, entityId, (data as unknown as { parent_id?: unknown }).parent_id);
     }
     await assertReferencesExist(db, collection, data as Record<string, unknown>);
+    await assertJiraKeyUnique(db, collection, data as Record<string, unknown>, entityId);
 
     const result = await upsertWithOcc(db, collection, entityId, data);
     if (!result.ok) {
@@ -402,6 +405,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
         await guardParent(db, id, (patch as { parent_id?: unknown }).parent_id);
       }
       await assertReferencesExist(db, collection, patch as Record<string, unknown>);
+      await assertJiraKeyUnique(db, collection, patch as Record<string, unknown>, id);
 
       // OCC match. Treat legacy docs (no `_version`) as version 0.
       const matchFilter = clientVersion === 0

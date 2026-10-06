@@ -147,6 +147,26 @@ describe('dbHelpers', () => {
       expect(query.work_item_id).toBe('w1');
     });
 
+    it('filters issues linked to no work item', () => {
+      expect(buildMongoQuery({ unassigned: 'true' }, 'issues')).toEqual({
+        $or: [
+          { work_item_id: { $exists: false } },
+          { work_item_id: { $in: [null, '', 'UNASSIGNED'] } },
+        ]
+      });
+    });
+
+    it('filters issues of a work item or of none when both are asked for', () => {
+      expect(buildMongoQuery({ workItemId: 'w1', unassigned: 'true', teamId: 't1' }, 'issues')).toEqual({
+        team_id: 't1',
+        $or: [
+          { work_item_id: 'w1' },
+          { work_item_id: { $exists: false } },
+          { work_item_id: { $in: [null, '', 'UNASSIGNED'] } },
+        ]
+      });
+    });
+
     it('filters issues by teamId', () => {
       const query = buildMongoQuery({ teamId: 't1' }, 'issues');
       expect(query.team_id).toBe('t1');

@@ -302,6 +302,65 @@ describe('Entity Routes', () => {
     expect(response.statusCode).toBe(200);
   });
 
+  describe('jira_key uniqueness', () => {
+    it('refuses creating an issue with a Jira key another issue holds', async () => {
+      mockCollection.findOne.mockImplementation(async (filter: any) =>
+        filter.jira_key ? { id: 'i-imported' } : null);
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/entity/issues',
+        payload: { _version: 0, name: 'Dup', jira_key: ' proj-42 ' }
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.payload).error).toBe('jira_key "proj-42" is already used by issue "i-imported"');
+      expect(mockCollection.insertOne).not.toHaveBeenCalled();
+      const lookup = mockCollection.findOne.mock.calls.find(([f]: any[]) => f.jira_key)[0];
+      expect(lookup.jira_key).toEqual({ $regex: '^\\s*proj-42\\s*$', $options: 'i' });
+      expect(lookup.id).toBeUndefined();
+    });
+
+    it('refuses a patch giving an issue a Jira key another issue holds, excluding itself from the lookup', async () => {
+      mockCollection.findOne.mockImplementation(async (filter: any) =>
+        filter.jira_key ? { id: 'i-other' } : null);
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: '/api/entity/issues/i-1',
+        payload: { _version: 1, patch: { jira_key: 'PROJ-42' } }
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(mockCollection.findOneAndUpdate).not.toHaveBeenCalled();
+      const lookup = mockCollection.findOne.mock.calls.find(([f]: any[]) => f.jira_key)[0];
+      expect(lookup.id).toEqual({ $ne: 'i-1' });
+    });
+
+    it('escapes regex characters in the key', async () => {
+      await app.inject({
+        method: 'POST',
+        url: '/api/entity/issues/i-1',
+        payload: { id: 'i-1', _version: 0, jira_key: 'A.B+1' }
+      });
+
+      const lookup = mockCollection.findOne.mock.calls.find(([f]: any[]) => f.jira_key)[0];
+      expect(lookup.jira_key.$regex).toBe('^\\s*A\\.B\\+1\\s*$');
+    });
+
+    it('lets any number of issues carry a blank or TBD key', async () => {
+      for (const jira_key of ['', '  ', 'TBD', 'tbd']) {
+        const response = await app.inject({
+          method: 'POST',
+          url: '/api/entity/issues/i-1',
+          payload: { id: 'i-1', _version: 0, jira_key }
+        });
+        expect(response.statusCode).toBe(200);
+      }
+      expect(mockCollection.findOne.mock.calls.some(([f]: any[]) => f.jira_key)).toBe(false);
+    });
+  });
+
   it('should add a customer target element keyed by its customer_id (REQ-048)', async () => {
     mockCollection.findOne.mockResolvedValueOnce({ id: 'cust-1' }); // the customer exists
     mockCollection.findOneAndUpdate.mockResolvedValueOnce({ id: 'wi-1', _version: 4 });

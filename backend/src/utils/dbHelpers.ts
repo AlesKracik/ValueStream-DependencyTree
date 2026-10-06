@@ -314,9 +314,29 @@ export function buildMongoQuery(query: any, collection: string): any {
         mongoQuery['customer_targets.customer_id'] = query.customerId;
     }
 
-    // Filter issues linked to a specific workItem
-    if (collection === 'issues' && query.workItemId) {
-        mongoQuery.work_item_id = query.workItemId;
+    // Filter issues linked to a specific workItem and/or linked to none
+    // (`unassigned=true`). Both together return either kind — what a work item's
+    // page needs to show its issues and offer the free ones for linking. No
+    // work item is a missing, null or empty work_item_id, or the 'UNASSIGNED'
+    // sentinel the issue page writes.
+    const unassigned = query.unassigned === 'true' || query.unassigned === true;
+    if (collection === 'issues' && (query.workItemId || unassigned)) {
+        const branches: any[] = [];
+        if (query.workItemId) branches.push({ work_item_id: query.workItemId });
+        if (unassigned) {
+            branches.push(
+                { work_item_id: { $exists: false } },
+                { work_item_id: { $in: [null, '', 'UNASSIGNED'] } },
+            );
+        }
+        if (branches.length === 1) {
+            Object.assign(mongoQuery, branches[0]);
+        } else if (mongoQuery.$or) {
+            mongoQuery.$and = [...(mongoQuery.$and || []), { $or: mongoQuery.$or }, { $or: branches }];
+            delete mongoQuery.$or;
+        } else {
+            mongoQuery.$or = branches;
+        }
     }
 
     // Filter issues belonging to a specific team (by ID, not name)

@@ -84,3 +84,39 @@ export async function assertReferencesExist(db: Db, collection: string, doc: Rec
     for (const target of doc.customer_targets) await assertCustomerTargetExists(db, target);
   }
 }
+
+/** A Jira key compared the way users type it: trimmed, any case. */
+function normalizeJiraKey(key: unknown): string | null {
+  if (typeof key !== 'string') return null;
+  const k = key.trim();
+  // Blank and the 'TBD' placeholder name no Jira issue; many issues may carry them.
+  return k === '' || k.toUpperCase() === 'TBD' ? null : k;
+}
+
+/**
+ * Rejects an issue write whose jira_key another issue already holds, so one
+ * Jira issue is never tracked twice. Compared trimmed and case-insensitively;
+ * blank and 'TBD' keys are exempt. `selfId` is the issue being written (absent
+ * on a server-id create).
+ */
+export async function assertJiraKeyUnique(
+  db: Db,
+  collection: string,
+  doc: Record<string, unknown>,
+  selfId?: string
+): Promise<void> {
+  if (collection !== 'issues') return;
+  const key = normalizeJiraKey(doc.jira_key);
+  if (!key) return;
+  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const holder = await db.collection('issues').findOne(
+    {
+      jira_key: { $regex: `^\\s*${escaped}\\s*$`, $options: 'i' },
+      ...(selfId ? { id: { $ne: selfId } } : {}),
+    },
+    { projection: { _id: 0, id: 1 } }
+  );
+  if (holder) {
+    throw new AppError(`jira_key "${key}" is already used by issue "${String(holder.id)}"`, 400);
+  }
+}
