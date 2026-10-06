@@ -155,7 +155,7 @@ export const IssuePage: React.FC<IssuePageProps> = ({ data, loading, updateIssue
                         <SearchableDropdown
                             key={issue.work_item_id || 'unassigned'}
                             options={workItemOptions}
-                            onSelect={(wiId) => updateIssue(issue.id, { work_item_id: wiId === 'UNASSIGNED' ? undefined : wiId })}
+                            onSelect={(wiId) => updateIssue(issue.id, { work_item_id: wiId === 'UNASSIGNED' ? null : wiId })}
                             placeholder={workItem ? 'Search for a work item...' : 'Unassigned (search for a work item...)'}
                             clearOnSelect={false}
                             initialValue={workItem?.name || ''}

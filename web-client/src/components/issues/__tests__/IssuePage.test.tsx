@@ -345,7 +345,7 @@ describe('IssuePage', () => {
             expect(screen.getByText('Work Item 2')).toBeDefined();
         });
 
-        it('updates to undefined when selecting Unassigned', async () => {
+        it('sends null when selecting Unassigned, so the PATCH clears the assignment', async () => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (useNotificationContext as any).mockReturnValue({
                 showConfirm: mockShowConfirm,
@@ -360,7 +360,7 @@ describe('IssuePage', () => {
             const option = await screen.findByText('--- Unassigned ---');
             fireEvent.click(option);
             expect(updateIssueSpy).toHaveBeenCalledWith('e1', expect.objectContaining({
-                work_item_id: undefined
+                work_item_id: null
             }));
         });
     });

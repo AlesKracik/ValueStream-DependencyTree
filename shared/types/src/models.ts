@@ -173,7 +173,7 @@ export interface Issue {
   id: string;
   _version?: EntityVersion;
   jira_key: string;
-  work_item_id?: string;
+  work_item_id?: string | null; // null clears the assignment (undefined is dropped from JSON bodies)
   team_id: string;
   effort_md: number;
   target_start?: string;
