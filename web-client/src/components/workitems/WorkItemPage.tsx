@@ -8,6 +8,7 @@ import { WorkItemCustomersTab } from './tabs/WorkItemCustomersTab';
 import { WorkItemIssuesTab } from './tabs/WorkItemIssuesTab';
 import { WorkItemAhaTab } from './tabs/WorkItemAhaTab';
 import { WorkItemHierarchyTab } from './tabs/WorkItemHierarchyTab';
+import { isOwnedField } from '../../utils/workItemOrigin';
 
 export interface WorkItemPageProps {
     workItemId: string;
@@ -15,7 +16,7 @@ export interface WorkItemPageProps {
     data: ValueStreamData | null;
     loading: boolean;
     error: Error | null;
-    addWorkItem: (f: Omit<WorkItem, 'id'>) => Promise<WorkItem | undefined>;
+    addWorkItem: (f: Omit<WorkItem, 'id'> & { id?: string }) => Promise<WorkItem | undefined>;
     deleteWorkItem: (id: string) => void;
     updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
     saveWorkItemTargets: (workItemId: string, targets: WorkItem['customer_targets']) => Promise<boolean>;
@@ -126,6 +127,8 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                         if (isNew) setNewWorkItemDraft(prev => ({ ...prev, name: v }));
                         else updateWorkItem(workItemId, { name: v });
                     }}
+                    readOnly={isOwnedField(workItem, 'name')}
+                    helperText={isOwnedField(workItem, 'name') ? 'Managed in Aha!' : undefined}
                     placeholder="New Work Item"
                 />
                 <FormNumberField
@@ -191,6 +194,8 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                         if (isNew) setNewWorkItemDraft(prev => ({ ...prev, description: v }));
                         else updateWorkItem(workItemId, { description: v });
                     }}
+                    readOnly={isOwnedField(workItem, 'description')}
+                    helperText={isOwnedField(workItem, 'description') ? 'Managed in Aha!' : undefined}
                     rows={4}
                     placeholder="Add a detailed description for this work item..."
                     style={{ flex: 1 }}
@@ -275,7 +280,7 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     ];
 
     if (data?.settings?.aha?.subdomain) {
-        const ahaCount = workItem?.aha_synced_data ? 1 : 0;
+        const ahaCount = workItem?.links?.aha?.external_id ? 1 : 0;
         tabs.push({
             id: 'aha',
             label: `Aha! Integration (${ahaCount})`,

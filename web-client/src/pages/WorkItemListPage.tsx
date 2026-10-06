@@ -9,6 +9,7 @@ import { useNotificationContext } from '../contexts/NotificationContext';
 import { useUIStateContext } from '../contexts/UIStateContext';
 import { hasUnestimatedWorkItemEffort } from '../utils/businessLogic';
 import { useFilteredWorkItems, type WorkItemFilters, type WorkItemSort } from '../hooks/useFilteredWorkItems';
+import { ahaScore, workItemOrigin, SOURCE_LABEL } from '../utils/workItemOrigin';
 
 const PAGE_ID = 'workItems';
 
@@ -31,9 +32,14 @@ const METRIC_LABEL: Record<WorkItemPriorityMetric, string> = {
 
 const METRIC_OPTIONS: WorkItemPriorityMetric[] = ['score', 'aha_score', 'stackrank'];
 
+const ORIGIN_OPTIONS = [
+    { value: 'aha', label: 'Aha!' },
+    { value: 'local', label: 'Local (not in Aha!)' },
+];
+
 function renderMetricCell(w: WorkItem, metric: WorkItemPriorityMetric): React.ReactNode {
     if (metric === 'score') return Math.round(w.calculated_score || 0).toLocaleString();
-    if (metric === 'aha_score') return w.aha_synced_data?.score ?? '—';
+    if (metric === 'aha_score') return ahaScore(w) ?? '—';
     return w.stackrank ?? '—';
 }
 
@@ -113,7 +119,7 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
     const setFilterField = <K extends keyof WorkItemFilters>(key: K, value: WorkItemFilters[K]) => {
         setFilters(prev => ({ ...prev, [key]: value }));
     };
-    const setArrayField = (key: 'status' | 'releasedSprintIds', next: string[]) => {
+    const setArrayField = (key: 'status' | 'releasedSprintIds' | 'origin', next: string[]) => {
         setFilters(prev => ({ ...prev, [key]: next.length > 0 ? next : undefined }));
     };
 
@@ -126,6 +132,7 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
         if (filters.minTcv || filters.maxTcv) n++;
         if (filters.status && filters.status.length > 0) n++;
         if (filters.releasedSprintIds && filters.releasedSprintIds.length > 0) n++;
+        if (filters.origin && filters.origin.length > 0) n++;
         if ((filters.parentIds && filters.parentIds.length > 0) || (filters.subtreeOfIds && filters.subtreeOfIds.length > 0) || filters.rootsOnly) n++;
         return n;
     }, [filters]);
@@ -234,6 +241,11 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
                 render: (w) => (
                     <>
                         {w.name}
+                        {workItemOrigin(w) !== 'local' && (
+                            <span style={{ marginLeft: '6px', fontSize: '11px', color: 'var(--text-muted)' }}>
+                                {SOURCE_LABEL[workItemOrigin(w) as keyof typeof SOURCE_LABEL]}
+                            </span>
+                        )}
                         {renderFlagIcons(w, issues)}
                     </>
                 ),
@@ -396,6 +408,19 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
                     options={STATUSES.map(s => ({ value: s, label: s }))}
                     selected={filters.status || []}
                     onChange={(next) => setArrayField('status', next)}
+                    width={180}
+                    size="compact"
+                />
+            </div>
+
+            <div style={groupStyle}>
+                <label style={labelStyle}>Source</label>
+                <MultiSelectDropdown
+                    ariaLabel="Source filter"
+                    placeholder="All sources"
+                    options={ORIGIN_OPTIONS}
+                    selected={filters.origin || []}
+                    onChange={(next) => setArrayField('origin', next)}
                     width={180}
                     size="compact"
                 />

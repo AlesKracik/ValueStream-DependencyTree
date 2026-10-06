@@ -133,6 +133,7 @@ A prioritisation dashboard for the product organisation.
 *   **Columns:** Name, RICE Score, Effort (MDs), TCV, Status, Released Sprint.
 *   **RICE Score:** Calculated as `(Total Impact TCV / Combined Effort MDs)`.
 *   **Sorting:** Sort the list to identify high-ROI opportunities.
+*   **Source filter:** Show only work items from Aha! or only local ones (not in Aha!). Items from Aha! show a small "Aha!" label after their name.
 
 #### Work Item Detail
 
@@ -163,10 +164,10 @@ Define exactly which accounts this initiative is for. Choose the TCV type (Exist
 ![Work Item Aha! Integration](images/workitem-detail-aha.png)
 
 *   **Link Feature:** Enter an Aha! Reference Number (e.g., `PROD-123`) and click **Sync from Aha!** to pull feature data.
-*   **Synced Information:** Displays the feature's Name, Description (HTML-rendered), Effort (MDs), and Product Value (the Aha! "score" field).
+*   **Synced Information:** Displays the feature's Name, Description (HTML-rendered), Aha! Estimate (MDs, informational only), and Product Value (the Aha! "score" field).
 *   **Requirements:** Lists all requirements attached to the Aha! feature, each showing its reference number, name, and description.
-*   **Apply to Work Item:** Overwrites the current Work Item's name, description, baseline effort, and product value with the values from Aha! (requires confirmation).
-*   **Delete:** Removes both the Aha! reference and any synced data from this work item (requires confirmation). Clearing the Reference Number input has the same effect.
+*   **Managed in Aha!:** Once synced, the work item's name and description come from Aha! and are read-only here; change them in Aha! and sync again. Baseline effort stays editable.
+*   **Delete:** Removes the Aha! link (requires confirmation). The work item keeps its current values and becomes a local item, so its name and description are editable again. Clearing the Reference Number input has the same effect.
 
 ---
 

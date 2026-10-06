@@ -1,5 +1,5 @@
 import { parseISO, differenceInDays, max, min, format } from 'date-fns';
-import type { WorkItem, Issue, Customer, Sprint, Team, SupportIssue } from '@valuestream/shared-types';
+import type { WorkItem, Issue, Customer, Sprint, Team, SupportIssue, ExternalLink } from '@valuestream/shared-types';
 import { countBusinessDays } from './dateHelpers';
 
 /**
@@ -105,14 +105,11 @@ export const moneyBagFillRatio = (tcv: number, maxTcv: number): number => {
 };
 
 /**
- * Maps an Aha! feature payload to the WorkItem fields we cache.
+ * Maps an Aha! feature payload to the work item's Aha! link (synced now).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const parseAhaFeature = (feature: any): {
-    aha_reference: NonNullable<WorkItem['aha_reference']>;
-    aha_synced_data: NonNullable<WorkItem['aha_synced_data']>;
-} => {
-    const syncedData: NonNullable<WorkItem['aha_synced_data']> = {
+export const parseAhaFeature = (feature: any): ExternalLink => {
+    const data: NonNullable<ExternalLink['data']> = {
         name: feature.name,
         description: feature.description?.body || '',
         score: feature.score,
@@ -127,16 +124,15 @@ export const parseAhaFeature = (feature: any): {
     };
     if (feature.original_estimate) {
         // Aha! original_estimate is in minutes; 480 minutes = 1 person-day.
-        syncedData.total_effort_mds = Math.round(feature.original_estimate / 480);
+        data.estimate_mds = Math.round(feature.original_estimate / 480);
     }
 
     return {
-        aha_reference: {
-            id: feature.id,
-            reference_num: feature.reference_num,
-            url: feature.url,
-        },
-        aha_synced_data: syncedData,
+        external_id: String(feature.id),
+        key: feature.reference_num,
+        url: feature.url,
+        synced_at: new Date().toISOString(),
+        data,
     };
 };
 

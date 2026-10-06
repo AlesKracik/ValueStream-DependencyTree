@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { parseISO } from 'date-fns';
 import type { ValueStreamData, ValueStreamParameters, WorkItemPriorityMetric } from '@valuestream/shared-types';
+import { ahaScore } from '../utils/workItemOrigin';
 
 export interface GraphFilterResult {
     visibleCustomers: ReadonlySet<string>;
@@ -45,8 +46,8 @@ export interface DashboardFilters {
     rootsOnly?: boolean;
 }
 
-const PRIORITY_FIELD = (metric: WorkItemPriorityMetric | undefined): 'calculated_score' | 'aha_synced_data.score' | 'stackrank' => {
-    if (metric === 'aha_score') return 'aha_synced_data.score';
+const PRIORITY_FIELD = (metric: WorkItemPriorityMetric | undefined): 'calculated_score' | 'links.aha.data.score' | 'stackrank' => {
+    if (metric === 'aha_score') return 'links.aha.data.score';
     if (metric === 'stackrank') return 'stackrank';
     return 'calculated_score';
 };
@@ -99,7 +100,7 @@ export function useGraphFilters(
         // Dashboard filters (the WorkItems list-style additions). All optional —
         // missing or NaN bounds mean "no constraint". `getPriorityValue` reads the
         // field that matches the active metric so a single range applies to
-        // calculated_score / aha_synced_data.score / stackrank consistently.
+        // calculated_score / links.aha.data.score / stackrank consistently.
         const df = dashboardFilters || {};
         const maxTcv = (df.maxTcv !== undefined && Number.isFinite(df.maxTcv)) ? df.maxTcv : Infinity;
         const minEffort = (df.minEffort !== undefined && Number.isFinite(df.minEffort)) ? df.minEffort : -Infinity;
@@ -164,7 +165,7 @@ export function useGraphFilters(
         const getPriorityValue = (workItem: any): number => {
             if (priorityField === 'calculated_score') return Number(workItem.calculated_score) || 0;
             if (priorityField === 'stackrank') return Number(workItem.stackrank) || 0;
-            return Number(workItem.aha_synced_data?.score) || 0;
+            return Number(ahaScore(workItem)) || 0;
         };
 
         // Sprint Range persistent filter logic

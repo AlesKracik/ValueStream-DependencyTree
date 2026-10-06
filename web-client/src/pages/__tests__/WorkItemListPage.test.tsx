@@ -125,11 +125,11 @@ describe('WorkItemListPage', () => {
             expect(screen.getByRole('button', { name: /^Product Value/i })).toBeDefined();
         });
 
-        it('renders Product Value from aha_synced_data.score when toggled to Product Value', () => {
+        it('renders Product Value from links.aha.data.score when toggled to Product Value', () => {
             const items = [
-                { ...mockData.workItems[0], aha_synced_data: { score: 77 } },
+                { ...mockData.workItems[0], links: { aha: { external_id: 'aha-77', key: 'PROD-77', data: { score: 77 } } } },
                 { ...mockData.workItems[1] },
-                { ...mockData.workItems[2], aha_synced_data: { score: 42 } }
+                { ...mockData.workItems[2], links: { aha: { external_id: 'aha-42', key: 'PROD-42', data: { score: 42 } } } }
             ];
             mockHook(items);
 

@@ -6,6 +6,7 @@ import { assignMissingQuarters } from '../services/sprintService';
 import { fetchWithThreshold, buildMongoQuery, applyValueStreamFilters, buildWorkspaceQueries, buildWorkItemSort, buildCustomerSort } from '../utils/dbHelpers';
 import { WorkItemListQuery, WorkItemListQueryType, CustomerListQuery, CustomerListQueryType } from './schemas';
 import { getDescendantIdsForRoots, ensureHierarchyIndex } from '../utils/workItemHierarchy';
+import { migrateLegacyAhaFields } from '../utils/workItemOrigin';
 
 export const dataRoutes: FastifyPluginAsync = async (fastify) => {
 
@@ -98,6 +99,8 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
     schema: { querystring: WorkItemListQuery }
   }, async (request, reply) => {
     const db = await getAppDb();
+    // TODO(remove): lazy migration of legacy Aha! fields onto links.aha.
+    await migrateLegacyAhaFields(db);
     // Scores are pre-computed on WorkItem documents — no need to join with customers/issues
     const q = request.query || {};
     const query = buildMongoQuery(q, 'workItems');
@@ -176,6 +179,8 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
     if (hasAppDb) {
       try {
         const db = await getAppDb();
+        // TODO(remove): lazy migration of legacy Aha! fields onto links.aha.
+        await migrateLegacyAhaFields(db);
 
         const valueStreamDocs = await logQuery('ValueStreams', 'valueStreams', 'find', db.collection('valueStreams').find({}).toArray());
         dbData.valueStreams = valueStreamDocs.map(({ _id, ...rest }) => rest);

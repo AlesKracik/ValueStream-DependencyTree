@@ -615,7 +615,7 @@ describe('WorkItemPage', () => {
         expect(defaultProps.updateIssue).toHaveBeenCalledWith('e1', { target_start: '2026-03-01' });
     });
 
-    it('syncs data from Aha! into synced data and allows applying it', async () => {
+    it('syncs data from Aha! and shows the Aha!-owned fields read-only', async () => {
         const mockFeature = {
             id: 'aha-123',
             reference_num: 'PROD-1',
@@ -659,47 +659,46 @@ describe('WorkItemPage', () => {
             ahaTab = screen.getByText(/Aha! Integration/i);
             expect(ahaTab.textContent).toBe('Aha! Integration (1)');
 
-            // Core fields should NOT be updated yet (name is initially empty for 'new')
-            expect((screen.getByLabelText(/Name:/i) as HTMLInputElement).value).toBe('');
-            
+            // Aha! owns name and description: they take the Aha! values and are read-only.
+            const nameInput = screen.getByLabelText(/Name:/i) as HTMLInputElement;
+            expect(nameInput.value).toBe('Aha Feature Name');
+            expect(nameInput.readOnly).toBe(true);
+            const descInput = screen.getByPlaceholderText(/Add a detailed description/i) as HTMLTextAreaElement;
+            expect(descInput.value).toBe('Aha Description');
+            expect(descInput.readOnly).toBe(true);
+            expect(screen.getAllByText('Managed in Aha!').length).toBe(2);
+            // Effort is engineering data: the Aha! estimate is informational only.
+            expect((screen.getByLabelText(/Baseline Effort/i) as HTMLInputElement).value).toBe('0');
+
             // Synced data should be visible in the Aha tab
-            // Use getAllByText if needed, but here they should be unique enough or we can use specific roles
-            expect(screen.getByText('Aha Feature Name')).toBeDefined();
+            expect(screen.getAllByText('Aha Feature Name').length).toBeGreaterThan(0);
             expect(screen.getByText('75')).toBeDefined();
             expect(screen.getByText('PROD-1-R1')).toBeDefined();
             expect(screen.getByText('Requirement 1')).toBeDefined();
             expect(screen.getByText('Req Desc')).toBeDefined();
         });
 
-        // Click Apply button
-        const applyButton = screen.getByText('Apply to Work Item');
-        await act(async () => {
-            fireEvent.click(applyButton);
-        });
+        expect(screen.queryByText('Apply to Work Item')).toBeNull();
+        expect(screen.getByText('Name and description of this work item are managed in Aha!')).toBeDefined();
 
-        // Confirmation should be shown
-        expect(mockShowConfirm).toHaveBeenCalledWith('Apply Aha! Data', expect.any(String));
-
-        await waitFor(() => {
-            // Core fields should now be updated
-            expect((screen.getByLabelText(/Name:/i) as HTMLInputElement).value).toBe('Aha Feature Name');
-            expect((screen.getByPlaceholderText(/Add a detailed description/i) as HTMLTextAreaElement).value).toBe('Aha Description');
-            expect((screen.getByLabelText(/Baseline Effort/i) as HTMLInputElement).value).toBe('1');
-        });
-
-        // Save and verify score is persisted
+        // Save and verify the link is persisted
         const saveBtn = screen.getByText('Save Work Item');
         fireEvent.click(saveBtn);
 
         expect(defaultProps.addWorkItem).toHaveBeenCalledWith(expect.objectContaining({
             name: 'Aha Feature Name',
-            score: 75,
-            aha_reference: expect.objectContaining({ reference_num: 'PROD-1', id: 'aha-123' }),
-            aha_synced_data: expect.objectContaining({ name: 'Aha Feature Name' })
+            origin: 'aha',
+            links: {
+                aha: expect.objectContaining({
+                    external_id: 'aha-123',
+                    key: 'PROD-1',
+                    data: expect.objectContaining({ name: 'Aha Feature Name', score: 75, estimate_mds: 1 }),
+                }),
+            },
         }));
     });
 
-    it('preserves HTML in Aha tab synced data and strips it in applyAhaData', async () => {
+    it('preserves HTML in Aha tab synced data and converts it to text in the description', async () => {
         const mockFeature = {
             id: 'aha-123',
             reference_num: 'PROD-1',
@@ -726,7 +725,8 @@ describe('WorkItemPage', () => {
         await waitFor(() => {
             // Synced Information section should show raw text (or we can check innerHTML if we have the element)
             // Since we use dangerouslySetInnerHTML, we check if the content is rendered
-            const syncedDescContainer = screen.getByText(/Detailed/i).closest('div');
+            const syncedDesc = screen.getAllByText(/Detailed/i).find(el => el.tagName !== 'TEXTAREA');
+            const syncedDescContainer = syncedDesc?.closest('div');
             expect(syncedDescContainer?.innerHTML).toContain('<h3>Aha Title</h3>');
             expect(syncedDescContainer?.innerHTML).toContain('<b>description</b>');
 
@@ -734,25 +734,23 @@ describe('WorkItemPage', () => {
             expect(reqDescContainer?.innerHTML).toContain('<li>Req point</li>');
         });
 
-        // Click Apply button
-        await act(async () => {
-            fireEvent.click(screen.getByText('Apply to Work Item'));
-        });
-
-        await waitFor(() => {
-            // Main description textarea should have STRIPPED text
-            const textarea = screen.getByPlaceholderText(/Add a detailed description/i) as HTMLTextAreaElement;
-            expect(textarea.value).toBe('Aha TitleDetailed description');
-        });
+        // The description takes the Aha! HTML as plain text.
+        const textarea = screen.getByPlaceholderText(/Add a detailed description/i) as HTMLTextAreaElement;
+        expect(textarea.value).toBe('Aha Title\nDetailed description');
     });
 
-    it('Delete button on the Aha tab clears both the reference and the synced data (existing item)', async () => {
+    it('Delete button on the Aha tab removes the link and makes the item local (existing item)', async () => {
         const dataWithLinkedAha: ValueStreamData = {
             ...mockData,
             workItems: [{
                 ...mockData.workItems[0],
-                aha_reference: { id: 'aha-1', reference_num: 'PROD-1', url: 'https://test.aha.io/features/PROD-1' },
-                aha_synced_data: { name: 'Synced Name', description: '<p>x</p>', total_effort_mds: 2, score: 50, requirements: [] }
+                origin: 'aha',
+                links: {
+                    aha: {
+                        external_id: 'aha-1', key: 'PROD-1', url: 'https://test.aha.io/features/PROD-1',
+                        data: { name: 'Synced Name', description: '<p>x</p>', estimate_mds: 2, score: 50, requirements: [] }
+                    }
+                }
             }]
         };
         renderPage({ ...defaultProps, data: dataWithLinkedAha }, 'f1');
@@ -764,12 +762,11 @@ describe('WorkItemPage', () => {
         });
 
         expect(mockShowConfirm).toHaveBeenCalledWith('Unlink Aha!', expect.any(String));
-        // Both keys must be null (not undefined): JSON.stringify drops undefined
-        // values from the PATCH body, which previously left the synced data
-        // stale on the server even though the reference was cleared.
+        // The link must be null (not undefined): JSON.stringify drops undefined
+        // values from the PATCH body, which would leave the link on the server.
         expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', {
-            aha_reference: null,
-            aha_synced_data: null
+            links: { aha: null },
+            origin: 'local'
         });
     });
 

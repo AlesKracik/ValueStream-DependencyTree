@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import type { WorkItem, ValueStreamData } from '@valuestream/shared-types';
+import type { WorkItem, ValueStreamData, ExternalLink } from '@valuestream/shared-types';
 import { syncAhaFeature } from '../../../utils/api';
 import { parseAhaFeature } from '../../../utils/businessLogic';
+import { withAhaLink } from '../../../utils/workItemOrigin';
 import { useNotificationContext } from '../../../contexts/NotificationContext';
 import { SettingsLink } from '../../common/SettingsLink';
 
@@ -25,39 +26,33 @@ export const WorkItemAhaTab: React.FC<Props> = ({
     const { showAlert, showConfirm } = useNotificationContext();
     const [isSyncingAha, setIsSyncingAha] = useState(false);
 
-    const stripHtml = (html: string) => {
-        const tmp = document.createElement("DIV");
-        tmp.innerHTML = html;
-        return tmp.textContent || tmp.innerText || "";
+    const link = workItem?.links?.aha ?? undefined;
+    // Synced data is shown only once the link points at a real Aha! feature.
+    const synced = link?.external_id ? link.data : undefined;
+
+    // Every write of the link goes through here, so the origin and the
+    // Aha!-owned fields stay in step with what the server derives.
+    const applyLink = (next: ExternalLink | null) => {
+        const updates = withAhaLink(workItem, next);
+        if (isNew) {
+            setNewWorkItemDraft(prev => ({ ...prev, ...updates }));
+        } else {
+            updateWorkItem(workItemId, updates);
+        }
     };
 
     const handleSyncAha = async () => {
-        if (!workItem?.aha_reference?.reference_num) {
+        if (!link?.key) {
             await showAlert('Aha! Sync', 'Please provide an Aha! Reference Number first.');
             return;
         }
 
         setIsSyncingAha(true);
         try {
-            const feature = await syncAhaFeature(workItem.aha_reference.reference_num, data?.settings?.aha || {});
-            const parsed = parseAhaFeature(feature);
-
-            const updates: Partial<WorkItem> = {
-                aha_synced_data: parsed.aha_synced_data,
-                aha_reference: {
-                    ...workItem.aha_reference,
-                    ...parsed.aha_reference,
-                    // Preserve the user-typed reference_num verbatim — Aha! sometimes
-                    // returns a normalized casing that diverges from what's stored.
-                    reference_num: workItem.aha_reference.reference_num,
-                },
-            };
-
-            if (isNew) {
-                setNewWorkItemDraft(prev => ({ ...prev, ...updates }));
-            } else {
-                updateWorkItem(workItemId, updates);
-            }
+            const feature = await syncAhaFeature(link.key, data?.settings?.aha || {});
+            // Preserve the user-typed key verbatim — Aha! sometimes returns a
+            // normalized casing that diverges from what's stored.
+            applyLink({ ...parseAhaFeature(feature), key: link.key });
             await showAlert('Aha! Sync', `Successfully synced data from ${feature.reference_num}.`);
         } catch (err: unknown) {
             console.error('Aha! Sync failed', err);
@@ -69,45 +64,18 @@ export const WorkItemAhaTab: React.FC<Props> = ({
     };
 
     const clearAhaLink = (silent: boolean) => {
-        // Use null (not undefined) for both keys: JSON.stringify drops undefined
-        // values, so an `undefined` here never reaches the PATCH body and the
-        // server keeps the stale synced data. null is sent and $set explicitly.
-        const patch: Partial<WorkItem> = { aha_reference: null, aha_synced_data: null };
-        if (isNew) {
-            setNewWorkItemDraft(prev => ({ ...prev, ...patch }));
-        } else {
-            updateWorkItem(workItemId, patch);
-        }
+        // null (not undefined): JSON.stringify drops undefined, so only null
+        // reaches the PATCH body and clears the stored link.
+        applyLink(null);
         if (!silent) {
-            // Defer to the next tick so the alert opens after the inputs visibly clear.
-            void showAlert('Aha! Unlinked', 'The Aha! reference and synced data have been removed.');
+            void showAlert('Aha! Unlinked', 'The Aha! link has been removed. This work item is now local.');
         }
     };
 
     const handleDeleteAhaLink = async () => {
-        const confirmed = await showConfirm('Unlink Aha!', 'Remove the Aha! reference and clear all synced data?');
+        const confirmed = await showConfirm('Unlink Aha!', 'Remove the Aha! link? The work item keeps its current values and becomes local.');
         if (!confirmed) return;
         clearAhaLink(false);
-    };
-
-    const applyAhaData = async () => {
-        if (!workItem?.aha_synced_data) return;
-
-        const confirmed = await showConfirm('Apply Aha! Data', 'This will overwrite the current name, description, baseline effort, and product value with the values from Aha!. Are you sure?');
-        if (!confirmed) return;
-
-        const updates: Partial<WorkItem> = {};
-        if (workItem.aha_synced_data.name) updates.name = workItem.aha_synced_data.name;
-        if (workItem.aha_synced_data.description) updates.description = stripHtml(workItem.aha_synced_data.description);
-        if (workItem.aha_synced_data.total_effort_mds !== undefined) updates.total_effort_mds = workItem.aha_synced_data.total_effort_mds;
-        if (workItem.aha_synced_data.score !== undefined) updates.score = workItem.aha_synced_data.score;
-
-        if (isNew) {
-            setNewWorkItemDraft(prev => ({ ...prev, ...updates }));
-        } else {
-            updateWorkItem(workItemId, updates);
-        }
-        await showAlert('Aha! Data Applied', 'The work item has been updated with data from Aha!.');
     };
 
     return (
@@ -126,7 +94,7 @@ export const WorkItemAhaTab: React.FC<Props> = ({
                         <input
                             type="text"
                             placeholder="PROD-123"
-                            value={workItem?.aha_reference?.reference_num || ''}
+                            value={link?.key || ''}
                             onChange={e => {
                                 const next = e.target.value;
                                 if (next === '') {
@@ -135,20 +103,15 @@ export const WorkItemAhaTab: React.FC<Props> = ({
                                     clearAhaLink(true);
                                     return;
                                 }
-                                const val = {
-                                    id: workItem?.aha_reference?.id || '',
-                                    url: workItem?.aha_reference?.url || '',
-                                    reference_num: next
-                                };
-                                if (isNew) setNewWorkItemDraft(prev => ({ ...prev, aha_reference: val }));
-                                else updateWorkItem(workItemId, { aha_reference: val });
+                                // A new key no longer names the synced feature: keep only the key.
+                                applyLink({ key: next });
                             }}
                             style={{ width: '100%' }}
                         />
                     </div>
-                    {workItem?.aha_reference?.url && (
+                    {link?.url && (
                         <a
-                            href={workItem.aha_reference.url}
+                            href={link.url}
                             target="_blank"
                             rel="noopener noreferrer"
                             title="Open in Aha!"
@@ -160,17 +123,17 @@ export const WorkItemAhaTab: React.FC<Props> = ({
                     <button
                         className="btn-primary"
                         onClick={handleSyncAha}
-                        disabled={isSyncingAha || !workItem?.aha_reference?.reference_num}
+                        disabled={isSyncingAha || !link?.key}
                         style={{ marginLeft: 'auto' }}
                     >
                         {isSyncingAha ? 'Syncing...' : 'Sync from Aha!'}
                     </button>
-                    {(workItem?.aha_reference?.reference_num || workItem?.aha_synced_data) && (
+                    {link && (
                         <button
                             className="btn-danger"
                             onClick={handleDeleteAhaLink}
                             disabled={isSyncingAha}
-                            title="Remove the Aha! reference and synced data from this work item"
+                            title="Remove the Aha! link; the work item keeps its current values and becomes local"
                         >
                             Delete
                         </button>
@@ -178,27 +141,27 @@ export const WorkItemAhaTab: React.FC<Props> = ({
                 </div>
             </div>
 
-            {workItem?.aha_synced_data && (
+            {synced && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         <div style={{ padding: '16px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-secondary)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <div style={{ marginBottom: '16px' }}>
                                 <h3 style={{ margin: 0, fontSize: '15px' }}>Synced Information</h3>
-                                <button className="btn-primary" style={{ fontSize: '12px', padding: '6px 12px' }} onClick={applyAhaData}>
-                                    Apply to Work Item
-                                </button>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                    Name and description of this work item are managed in Aha!
+                                </div>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                 <div>
                                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Name</div>
-                                    <div style={{ fontSize: '14px', fontWeight: '500' }}>{workItem.aha_synced_data.name}</div>
+                                    <div style={{ fontSize: '14px', fontWeight: '500' }}>{synced.name}</div>
                                 </div>
                                 <div>
                                     <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Description</div>
-                                    {workItem.aha_synced_data.description ? (
+                                    {synced.description ? (
                                         <div
                                             style={{ fontSize: '13px', maxHeight: '150px', overflowY: 'auto', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-primary)', padding: '8px', borderRadius: '4px' }}
-                                            dangerouslySetInnerHTML={{ __html: workItem.aha_synced_data.description }}
+                                            dangerouslySetInnerHTML={{ __html: synced.description }}
                                         />
                                     ) : (
                                         <div style={{ fontSize: '13px', maxHeight: '150px', overflowY: 'auto', color: 'var(--text-secondary)', backgroundColor: 'var(--bg-primary)', padding: '8px', borderRadius: '4px' }}>
@@ -208,12 +171,15 @@ export const WorkItemAhaTab: React.FC<Props> = ({
                                 </div>
                                 <div style={{ display: 'flex', gap: '32px' }}>
                                     <div>
-                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Effort (MDs)</div>
-                                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--accent-text)' }}>{workItem.aha_synced_data.total_effort_mds ?? '-'}</div>
+                                        <div
+                                            style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}
+                                            title="Informational only: the work item's effort is engineering data and is not taken from Aha!"
+                                        >Aha! Estimate (MDs)</div>
+                                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--accent-text)' }}>{synced.estimate_mds ?? '-'}</div>
                                     </div>
                                     <div>
                                         <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Product Value</div>
-                                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--accent-text)' }}>{workItem.aha_synced_data.score ?? '-'}</div>
+                                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--accent-text)' }}>{synced.score ?? '-'}</div>
                                     </div>
                                 </div>
                             </div>
@@ -222,9 +188,9 @@ export const WorkItemAhaTab: React.FC<Props> = ({
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         <div style={{ padding: '16px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-secondary)' }}>
-                            <h3 style={{ margin: '0 0 12px 0', fontSize: '15px' }}>Requirements ({workItem.aha_synced_data.requirements?.length || 0})</h3>
+                            <h3 style={{ margin: '0 0 12px 0', fontSize: '15px' }}>Requirements ({synced.requirements?.length || 0})</h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '500px', overflowY: 'auto', paddingRight: '4px' }}>
-                                {workItem.aha_synced_data.requirements?.map(req => (
+                                {synced.requirements?.map(req => (
                                     <div key={req.id} style={{ padding: '12px', backgroundColor: 'var(--bg-primary)', borderRadius: '6px', border: '1px solid var(--border-secondary)' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                                             <span style={{ fontWeight: 'bold', fontSize: '13px', color: 'var(--accent-text)' }}>{req.reference_num}</span>
@@ -241,7 +207,7 @@ export const WorkItemAhaTab: React.FC<Props> = ({
                                         )}
                                     </div>
                                 ))}
-                                {(!workItem.aha_synced_data.requirements || workItem.aha_synced_data.requirements.length === 0) && (
+                                {(!synced.requirements || synced.requirements.length === 0) && (
                                     <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px', padding: '24px' }}>No requirements found.</div>
                                 )}
                             </div>

@@ -51,7 +51,7 @@ function toArray(value: unknown): string[] {
  */
 const PRIORITY_METRIC_FIELD: Record<string, string> = {
     score: 'calculated_score',
-    aha_score: 'aha_synced_data.score',
+    aha_score: 'links.aha.data.score',
     stackrank: 'stackrank',
 };
 
@@ -275,6 +275,14 @@ export function buildMongoQuery(query: any, collection: string): any {
             // legacy group we collected at the top so we don't double-OR.
             const legacyIdx = orGroups.findIndex(g => g.some(b => b.released_in_sprint_id?.$exists === false));
             if (legacyIdx >= 0) orGroups.splice(legacyIdx, 1);
+            orGroups.push(branches);
+        }
+
+        // Multi-select origin. Docs without an origin field read as 'local'.
+        const originList = toArray(query.origin);
+        if (originList.length > 0) {
+            const branches: any[] = [{ origin: { $in: originList } }];
+            if (originList.includes('local')) branches.push({ origin: { $exists: false } });
             orGroups.push(branches);
         }
 

@@ -220,6 +220,7 @@ export const WorkItemListQuery = Type.Object({
   // Multi-select filters: accept array OR single string (repeated query params)
   status: Type.Optional(Type.Union([Type.Array(Type.String()), Type.String()])),
   releasedSprintIds: Type.Optional(Type.Union([Type.Array(Type.String()), Type.String()])),
+  origin: Type.Optional(Type.Union([Type.Array(Type.String()), Type.String()])),
 
   // Sort
   sortBy: Type.Optional(Type.String()),

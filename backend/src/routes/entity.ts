@@ -21,6 +21,7 @@ import { ALLOWED_COLLECTIONS } from '../utils/constants';
 import { AppError } from '../utils/errors';
 import { requireRole } from '../utils/roleGuard';
 import { wouldCreateCycle } from '../utils/workItemHierarchy';
+import { deriveForDocument, deriveForPatch } from '../utils/workItemOrigin';
 import {
   assertDocumentStatuses, assertSupportIssueStatus, assertParentExists, namesParent,
   assertReferencesExist, assertCustomerTargetExists, assertJiraKeyUnique
@@ -187,6 +188,25 @@ async function guardParent(db: Db, childId: string, parentId: unknown): Promise<
   await assertParentExists(db, parentId);
 }
 
+/**
+ * Stamp the server-owned origin (and the source-owned fields) on a work item
+ * body before a create or upsert. A body without links on an existing id
+ * derives from the stored links, because the upsert merges onto that document.
+ */
+async function deriveWorkItemWrite(
+  db: Db,
+  entityId: string | undefined,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: Record<string, any>
+): Promise<void> {
+  let links = data.links;
+  if (!('links' in data) && entityId) {
+    const stored = await db.collection('workItems').findOne({ id: entityId }, { projection: { links: 1 } });
+    links = stored?.links;
+  }
+  Object.assign(data, deriveForDocument({ links }));
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function replyConflict(reply: FastifyReply, current: Record<string, any>) {
   return reply.code(409).send({
@@ -287,6 +307,9 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
+    if (collection === 'workItems') {
+      await deriveWorkItemWrite(db, data.id ? String(data.id) : undefined, data as Record<string, unknown>);
+    }
 
     if (!data.id) {
       const keyHeader = request.headers['idempotency-key'];
@@ -343,6 +366,9 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
     }
 
     const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
+    if (collection === 'workItems') {
+      await deriveWorkItemWrite(db, entityId, data as Record<string, unknown>);
+    }
 
     // Hierarchy guards for workItems: no cycles, and the parent must exist.
     if (collection === 'workItems') {
@@ -401,8 +427,17 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
       const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
 
       // Hierarchy guards: only fire when the patch touches parent_id.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let derived: Record<string, any> = {};
       if (collection === 'workItems') {
         await guardParent(db, id, (patch as { parent_id?: unknown }).parent_id);
+        // Origin is server-owned; source-owned fields can't be edited locally.
+        // A concurrent change before the write still fails the version check.
+        delete (patch as Record<string, unknown>).origin;
+        if (['links', 'name', 'description'].some(k => k in patch)) {
+          const current = await db.collection(collection).findOne({ id });
+          derived = deriveForPatch(current, patch as Record<string, unknown>);
+        }
       }
       await assertReferencesExist(db, collection, patch as Record<string, unknown>);
       await assertJiraKeyUnique(db, collection, patch as Record<string, unknown>, id);
@@ -423,7 +458,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
       const stampSet = stamped ? { updated_at: now } : {};
       const updated = await db.collection(collection).findOneAndUpdate(
         matchFilter,
-        { $set: { ...cleanPatch, ...stampSet, _version: nextVersion } },
+        { $set: { ...cleanPatch, ...derived, ...stampSet, _version: nextVersion } },
         { returnDocument: 'after' }
       );
 

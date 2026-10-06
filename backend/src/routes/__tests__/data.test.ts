@@ -4,6 +4,10 @@ import { buildApp } from '../../app';
 import * as mongoServer from '../../utils/mongoServer';
 import { invalidateSettingsCache } from '../../services/secretManager';
 
+vi.mock('../../utils/workItemOrigin', () => ({
+  migrateLegacyAhaFields: vi.fn().mockResolvedValue(0),
+}));
+
 const mockSettings = { persistence: { mongo: { app: { uri: 'mongodb://mock' } } } };
 
 describe('Data Routes', () => {
@@ -146,7 +150,7 @@ describe('Data Routes', () => {
     expect(observed[0]).toEqual({ stackrank: { $gte: 42 } });
   });
 
-  it('GET /api/data/workItems routes priority filter to aha_synced_data.score for priorityMetric=aha_score', async () => {
+  it('GET /api/data/workItems routes priority filter to links.aha.data.score for priorityMetric=aha_score', async () => {
     let observedFilter: any = undefined;
 
     mockDb.collection = vi.fn((colName: string) => {
@@ -171,7 +175,7 @@ describe('Data Routes', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(observedFilter).toEqual({ 'aha_synced_data.score': { $gte: 5 } });
+    expect(observedFilter).toEqual({ 'links.aha.data.score': { $gte: 5 } });
   });
 
   it('should compute maxScore and maxRoi from pre-computed fields', async () => {

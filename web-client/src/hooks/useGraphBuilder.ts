@@ -5,32 +5,33 @@ import type { ValueStreamData, WorkItem, WorkItemPriorityMetric } from '@valuest
 import Holidays from 'date-holidays';
 import { calculateIssueEffortPerSprint, calculateIssueIntensityRatio, hasUnestimatedWorkItemEffort } from '../utils/businessLogic';
 import type { GraphFilterResult } from './useGraphFilters';
+import { ahaScore } from '../utils/workItemOrigin';
 
 /**
  * Priority metric helpers
  *
  * Convention: HIGHER value = HIGHER priority (top of the list, biggest node).
  *  - score      → calculated_score (RICE/ROI). Missing → 0.
- *  - aha_score  → aha_synced_data.score (Product Value from Aha!). Missing → 0.
+ *  - aha_score  → links.aha.data.score (Product Value from Aha!). Missing → 0.
  *  - stackrank  → manual stackrank. Missing → MIN_SAFE_INTEGER for sort
  *    (unranked items sink to the bottom regardless of sort direction), but
  *    null for the displayed value (shown as "—") and 0 for size.
  */
 function getMetricSortValue(wi: WorkItem, metric: WorkItemPriorityMetric): number {
     if (metric === 'score') return wi.calculated_score || 0;
-    if (metric === 'aha_score') return wi.aha_synced_data?.score ?? 0;
+    if (metric === 'aha_score') return ahaScore(wi) ?? 0;
     return wi.stackrank ?? Number.MIN_SAFE_INTEGER;
 }
 
 function getMetricDisplayValue(wi: WorkItem, metric: WorkItemPriorityMetric): number | null {
     if (metric === 'score') return wi.calculated_score || 0;
-    if (metric === 'aha_score') return wi.aha_synced_data?.score ?? null;
+    if (metric === 'aha_score') return ahaScore(wi) ?? null;
     return wi.stackrank ?? null;
 }
 
 function getMetricSizeValue(wi: WorkItem, metric: WorkItemPriorityMetric): number {
     if (metric === 'score') return wi.calculated_score || 0;
-    if (metric === 'aha_score') return wi.aha_synced_data?.score ?? 0;
+    if (metric === 'aha_score') return ahaScore(wi) ?? 0;
     return wi.stackrank ?? 0;
 }
 

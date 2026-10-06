@@ -15,7 +15,7 @@ export interface SettingsTabWithDataProps extends SettingsTabProps {
   addIssue: (issue: Issue) => void;
   updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
   updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
-  addWorkItem: (workItem: WorkItem) => void;
+  addWorkItem: (workItem: Omit<WorkItem, 'id'> & { id?: string }) => Promise<WorkItem | undefined>;
 }
 
 export interface MongoTestResult {

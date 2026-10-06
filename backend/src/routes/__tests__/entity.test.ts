@@ -185,6 +185,7 @@ describe('Entity Routes', () => {
   });
 
   it('should upsert an allowed entity without ID in URL (ID in body)', async () => {
+    mockCollection.findOne.mockResolvedValueOnce(null); // stored-links lookup
     const response = await app.inject({
       method: 'POST',
       url: '/api/entity/workItems',
@@ -201,6 +202,7 @@ describe('Entity Routes', () => {
     expect(mockCollection.insertOne).toHaveBeenCalledWith({
       id: 'wi-2',
       name: 'Test Work Item',
+      origin: 'local',
       _version: 0,
       created_at: expect.any(String),
       updated_at: expect.any(String),
@@ -521,6 +523,7 @@ describe('Entity Routes', () => {
     // also returns null, taking the insert path.
     mockCollection.findOne.mockResolvedValue(null);
     mockCollection.findOne
+      .mockResolvedValueOnce(null)                     // stored-links lookup
       .mockResolvedValueOnce({ parent_id: undefined }) // cycle-guard walk of wi-B
       .mockResolvedValueOnce({ _id: 'b' });            // parent-exists check
 
@@ -535,6 +538,7 @@ describe('Entity Routes', () => {
       id: 'wi-child',
       name: 'Valid child',
       parent_id: 'wi-B',
+      origin: 'local',
       _version: 0,
       created_at: expect.any(String),
       updated_at: expect.any(String),
@@ -850,12 +854,12 @@ describe('Entity Routes', () => {
   });
 
   it('PATCH should NOT run the cycle guard when parent_id is absent', async () => {
-    mockCollection.findOneAndUpdate.mockResolvedValueOnce({ id: 'wi1', _version: 1, name: 'ok' });
+    mockCollection.findOneAndUpdate.mockResolvedValueOnce({ id: 'wi1', _version: 1, score: 3 });
 
     const response = await app.inject({
       method: 'PATCH',
       url: '/api/entity/workItems/wi1',
-      payload: { _version: 0, patch: { name: 'ok' } },
+      payload: { _version: 0, patch: { score: 3 } },
     });
 
     expect(response.statusCode).toBe(200);
@@ -874,6 +878,69 @@ describe('Entity Routes', () => {
     });
 
     expect(recomputeSpy).toHaveBeenCalledWith(mockDb);
+  });
+
+  // ── Origin and source-owned fields (workItems) ─────────────────────────
+  describe('work item origin', () => {
+    const ahaLink = (name: string) => ({ external_id: '42', key: 'PROD-42', data: { name, description: '<p>From <b>Aha</b></p>' } });
+
+    it('PATCH rejects a change to a field owned by Aha! and writes nothing', async () => {
+      mockCollection.findOne.mockResolvedValueOnce({ id: 'wi1', _version: 2, origin: 'aha', links: { aha: ahaLink('Aha name') } });
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: '/api/entity/workItems/wi1',
+        payload: { _version: 2, patch: { name: 'Local rename' } },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.payload).error).toContain('"name" is owned by Aha!');
+      expect(mockCollection.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('PATCH of links sets the origin and the owned fields', async () => {
+      mockCollection.findOne.mockResolvedValueOnce({ id: 'wi1', _version: 2, name: 'Old' });
+      mockCollection.findOneAndUpdate.mockResolvedValueOnce({ id: 'wi1', _version: 3, created_at: 'x' });
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: '/api/entity/workItems/wi1',
+        payload: { _version: 2, patch: { links: { aha: ahaLink('Aha name') }, name: 'Client name', origin: 'local' } },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const set = mockCollection.findOneAndUpdate.mock.calls[0][1].$set;
+      expect(set).toMatchObject({ origin: 'aha', name: 'Aha name', description: 'From Aha', _version: 3 });
+    });
+
+    it('create derives the origin from links, ignoring the client origin and name', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/entity/workItems',
+        payload: { _version: 0, name: 'Client name', origin: 'local', links: { aha: ahaLink('Aha name') } },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(mockCollection.insertOne).toHaveBeenCalledWith(expect.objectContaining({
+        origin: 'aha', name: 'Aha name', description: 'From Aha',
+      }));
+    });
+
+    it('upsert without links keeps the stored Aha! origin', async () => {
+      mockCollection.findOne.mockResolvedValueOnce({ links: { aha: ahaLink('Aha name') } });
+      mockCollection.findOneAndUpdate.mockResolvedValueOnce({ id: 'wi1', _version: 3, created_at: 'x' });
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/entity/workItems/wi1',
+        payload: { id: 'wi1', _version: 2, name: 'Client name', score: 3 },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(mockCollection.findOne).toHaveBeenCalledWith({ id: 'wi1' }, { projection: { links: 1 } });
+      const set = mockCollection.findOneAndUpdate.mock.calls[0][1].$set;
+      expect(set).toMatchObject({ origin: 'aha', name: 'Aha name', score: 3 });
+    });
   });
 
   // ── Lifecycle timestamps (workItems) ───────────────────────────────────
@@ -1218,6 +1285,7 @@ describe('Entity Routes', () => {
 
   it('should NOT recompute scores when responding with 409 conflict', async () => {
     mockCollection.findOneAndUpdate.mockResolvedValueOnce(null);
+    mockCollection.findOne.mockResolvedValueOnce(null); // stored-links lookup
     mockCollection.findOne.mockResolvedValueOnce({ id: 'wi-x', _version: 9, name: 'Conflict' });
     const recomputeSpy = vi.spyOn(metricsService, 'recomputeScoresForWorkItems').mockResolvedValue();
 

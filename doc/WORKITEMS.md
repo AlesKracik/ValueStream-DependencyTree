@@ -26,8 +26,54 @@ export interface WorkItem {
   released_in_sprint_id?: string;
   created_at?: string;      // ISO 8601 — server-stamped once on first persist (immutable)
   updated_at?: string;      // ISO 8601 — server-refreshed on every persisted mutation
+  origin?: 'local' | 'aha'; // Server-owned, derived from `links`; absent reads as 'local'
+  links?: { aha?: ExternalLink | null }; // Links to external sources (see below)
+}
+
+export interface ExternalLink {
+  external_id?: string; // Id in the source (Aha! feature id); set once synced; the stable match key
+  key: string;          // Reference number (PROD-123); can change in the source
+  url?: string;
+  synced_at?: string;
+  data?: { name?: string; description?: string /* HTML */; score?: number /* Product Value */;
+           estimate_mds?: number /* informational only */; requirements?: {...}[] };
 }
 ```
+
+### Origin and Source-Owned Fields
+A work item has exactly one **origin**: `local` (it exists only here, typically
+engineering work) or the external source it is linked to. Aha! is the source of
+truth for the PM-facing fields of work items that exist in Aha!.
+
+- **Ownership.** A work item whose `links.aha` has an `external_id` (it was synced
+  from an Aha! feature) has origin `aha`, even if it was created locally. A link
+  with only a `key` (typed but not synced yet) stays `local`.
+- **Server-owned.** The backend derives `origin` from `links` on every write
+  (`backend/src/utils/workItemOrigin.ts`); a client-sent value is ignored. On the
+  same writes it copies the owned fields from `links.<origin>.data`.
+- **Owned fields** are read-only in the UI ("Managed in Aha!"). A PATCH that sets
+  one to a value other than the source's is rejected with 400; when the same PATCH
+  also sets `links`, the source's value wins.
+
+| Field | Aha! item | Notes |
+| ------------------ | -------------- | ------------------------------------------------------------------ |
+| `name`             | From Aha!      | Feature name (copied only when non-empty).                         |
+| `description`      | From Aha!      | Feature description, converted from HTML to plain text.            |
+| Product Value      | From Aha!      | Read from `links.aha.data.score`.                                  |
+| `total_effort_mds` | Local          | Engineering data; Aha!'s estimate (`estimate_mds`) is informational. |
+| Everything else    | Local          | Status, targets, stack rank, hierarchy, …                          |
+
+- **Unlinking.** Deleting the Aha! link (`links: { aha: null }`) makes the item
+  `local`. It keeps its current name and description, which become editable again.
+- **Filtering.** `GET /api/data/workItems` accepts `origin` (`aha`, `local`, repeatable);
+  `local` also matches items without an `origin` field. The Work Items list exposes
+  it as the **Source** filter.
+- **Legacy migration.** Older documents stored Aha! data in `aha_reference`,
+  `aha_synced_data` and `aha_requirements`. They are migrated lazily when work items
+  are read (`GET /api/data/workItems`, `GET /api/workspace`): the fields are moved
+  onto `links.aha` (`total_effort_mds` becomes `estimate_mds`), the origin is
+  derived, and the old fields are removed. The migration code is marked
+  `TODO(remove)` and goes away once every record is migrated.
 
 ### Lifecycle Timestamps (`created_at` / `updated_at`)
 `created_at` and `updated_at` are **server-owned** — clients never send them. The
@@ -80,7 +126,7 @@ Both the Work Items list and the ValueStream dashboard expose a single toggle (`
 | Mode | Field source | Notes |
 | ------------- | ------------------------------ | ----------------------------------------------------------------------------------------------- |
 | Score         | `calculated_score` (RICE)      | Default. Server provides the global `maxScore` for consistent sizing across filters.            |
-| Product Value | `aha_synced_data.score`        | Pulled from Aha! when a work item has an `aha_reference`. Items without sync data show "—".     |
+| Product Value | `links.aha.data.score`         | Pulled from Aha! when a work item is linked to and synced with an Aha! feature. Items without sync data show "—". |
 | Stack Rank    | `stackrank`                    | Higher value = higher priority. Unranked items sort to the bottom and show "—".                 |
 
 In all modes higher value = higher priority (top of the list, biggest node). On the Work Items list, the toggle drives a single dynamic "Priority" column whose header label matches the active metric. The **Compact Ranks** action lives in the upper-right header and only appears when the toggle is set to Stack Rank, since it has no meaning otherwise.

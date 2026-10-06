@@ -35,7 +35,7 @@ const MOCK_DATA: ValueStreamData = {
             id: 'w1', name: 'Alpha', total_effort_mds: 5, score: 100,
             calculated_score: 100, calculated_effort: 5, calculated_tcv: 8000,
             status: 'Backlog', released_in_sprint_id: 's1', stackrank: 1000,
-            aha_synced_data: { score: 30 },
+            links: { aha: { external_id: 'aha-30', key: 'PROD-30', data: { score: 30 } } },
             customer_targets: [{ customer_id: 'c1', tcv_type: 'existing' }],
         },
         // Planning, score 40, effort 20, aha 80, stackrank 2000, unreleased
@@ -43,7 +43,7 @@ const MOCK_DATA: ValueStreamData = {
             id: 'w2', name: 'Beta', total_effort_mds: 20, score: 40,
             calculated_score: 40, calculated_effort: 20, calculated_tcv: 4000,
             status: 'Planning', stackrank: 2000,
-            aha_synced_data: { score: 80 },
+            links: { aha: { external_id: 'aha-80', key: 'PROD-80', data: { score: 80 } } },
             customer_targets: [{ customer_id: 'c1', tcv_type: 'potential' }],
         },
         // Done, score 200, effort 1, no aha, no stackrank, released to s2
@@ -121,7 +121,7 @@ describe('useGraphLayout - dashboard filters', () => {
         expect(visible.has('w4')).toBe(false); // no stackrank → 0 < 1500
     });
 
-    it('priority range with priorityMetric=aha_score targets aha_synced_data.score', () => {
+    it('priority range with priorityMetric=aha_score targets links.aha.data.score', () => {
         const { result } = runWith({ minPriority: 50, priorityMetric: 'aha_score' });
         const visible = visibleWorkItemIds(result.current.nodes);
         expect(visible.has('w2')).toBe(true);  // aha 80

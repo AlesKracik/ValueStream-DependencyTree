@@ -12,7 +12,7 @@ export interface WorkItemFilters {
     maxTcv?: string;
     /**
      * Range against the field selected by `priorityMetric` (calculated_score,
-     * aha_synced_data.score, or stackrank). Lets the metric toggle drive the
+     * links.aha.data.score, or stackrank). Lets the metric toggle drive the
      * filter without having a separate min/max pair per metric.
      */
     minPriority?: string;
@@ -25,6 +25,8 @@ export interface WorkItemFilters {
     status?: string[];
     /** May contain real sprint IDs and/or the literal 'unreleased' sentinel. */
     releasedSprintIds?: string[];
+    /** Work item origin: 'aha' and/or 'local' (local also matches items without an origin). */
+    origin?: string[];
     /** Narrow to direct children of any of these work items. Mutually exclusive with `rootsOnly`. */
     parentIds?: string[];
     /** Narrow to the entire subtree below any of these work items (descendants only, roots excluded). */
@@ -86,6 +88,7 @@ function buildQueryString(filters: WorkItemFilters, sort: WorkItemSort, paginati
 
     (filters.status || []).forEach(s => params.append('status', s));
     (filters.releasedSprintIds || []).forEach(s => params.append('releasedSprintIds', s));
+    (filters.origin || []).forEach(o => params.append('origin', o));
 
     (filters.parentIds || []).forEach(id => { if (id) params.append('parentId', id); });
     (filters.subtreeOfIds || []).forEach(id => { if (id) params.append('subtreeOf', id); });

@@ -58,6 +58,44 @@ export interface Customer {
   jira_support_issues?: JiraIssue[];
 }
 
+/** External systems a work item can be linked to. */
+export type WorkItemSource = 'aha';
+
+/** Where a work item lives: only locally, or in an external source of truth. */
+export type WorkItemOrigin = 'local' | WorkItemSource;
+
+/** A work item's link to an item in an external source (e.g. an Aha! feature). */
+export interface ExternalLink {
+  /** Id in the source (Aha! feature id). Set once synced; the stable match key. */
+  external_id?: string;
+  /** Human-readable key (Aha! reference_num, e.g. PROD-123). Can change in the source. */
+  key: string;
+  url?: string;
+  synced_at?: string; // ISO datetime
+  /** Last data synced from the source. */
+  data?: {
+    name?: string;
+    description?: string; // HTML
+    score?: number; // Product Value
+    estimate_mds?: number; // informational only
+    requirements?: {
+      id: string;
+      reference_num: string;
+      name: string;
+      description?: string;
+      url?: string;
+    }[];
+  };
+}
+
+/**
+ * Fields the source owns for a work item whose origin is that source. They are
+ * read-only locally and are refreshed from the link's synced data.
+ */
+export const SOURCE_OWNED_FIELDS: Record<WorkItemSource, readonly ('name' | 'description')[]> = {
+  aha: ['name', 'description'],
+};
+
 export interface WorkItem {
   id: string;
   _version?: EntityVersion;
@@ -99,25 +137,13 @@ export interface WorkItem {
   calculated_tcv?: number;     // Pre-computed TCV impact (set on save by recomputeScores)
   calculated_effort?: number;  // Pre-computed effort in MDs (set on save by recomputeScores)
   calculated_score?: number;   // Pre-computed RICE score = tcv / effort (set on save by recomputeScores)
-  aha_reference?: {
-    id: string;
-    reference_num: string;
-    url: string;
-  } | null;
-  aha_requirements?: string;
-  aha_synced_data?: {
-    name?: string;
-    description?: string;
-    total_effort_mds?: number;
-    score?: number;
-    requirements?: {
-      id: string;
-      reference_num: string;
-      name: string;
-      description?: string;
-      url?: string;
-    }[];
-  } | null;
+  /**
+   * Where this work item lives. Server-owned: derived from `links` on every
+   * write (a client-sent value is ignored). Absent reads as `'local'`.
+   */
+  origin?: WorkItemOrigin;
+  /** Links to external sources, keyed by source. `null` clears a link. */
+  links?: Partial<Record<WorkItemSource, ExternalLink | null>>;
 }
 
 export interface TeamMember {
@@ -702,7 +728,7 @@ export interface ValueStreamData {
  * Which metric drives work item ordering and node sizing across the
  * WorkItemList page and the ValueStream dashboard.
  *  - 'score'      → calculated_score (RICE/ROI)
- *  - 'aha_score'  → aha_synced_data.score (Product Value pulled from Aha!)
+ *  - 'aha_score'  → links.aha.data.score (Product Value pulled from Aha!)
  *  - 'stackrank'  → manual stackrank (higher value = higher priority)
  */
 export type WorkItemPriorityMetric = 'score' | 'aha_score' | 'stackrank';
@@ -726,7 +752,7 @@ export interface ValueStreamViewState {
    *  filter UI exposes the metric-aware Priority range instead. */
   minScoreFilter: string;
   /** Range against the field selected by `prioritizationMetric`
-   *  (calculated_score / aha_synced_data.score / stackrank). */
+   *  (calculated_score / links.aha.data.score / stackrank). */
   minPriorityFilter?: string;
   maxPriorityFilter?: string;
   /** Work-item `calculated_effort` range. */
@@ -765,7 +791,7 @@ export interface ValueStreamDataState {
   addCustomer: (customer: Customer) => void;
   deleteCustomer: (id: string) => void;
   updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
-  addWorkItem: (workItem: WorkItem) => void;
+  addWorkItem: (workItem: Omit<WorkItem, 'id'> & { id?: string }) => Promise<WorkItem | undefined>;
   deleteWorkItem: (id: string) => void;
   updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
   addIssue: (issue: Issue) => void;

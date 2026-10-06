@@ -53,7 +53,7 @@ See [Secret Management](SECRET-MANAGEMENT.md) for how secrets are stored and mas
 
 **List-page filters (`/api/data/customers`, `/api/data/workItems`):** Both endpoints accept first-class list-page parameters validated by typebox schemas (`CustomerListQuery`, `WorkItemListQuery`):
 - **Customers:** `name` (escaped substring regex), `min/maxExistingTcv`, `min/maxPotentialTcv`, `min/maxTotalTcv` (computed via `$expr` over `existing_tcv + potential_tcv`), `sortBy` (`name|existing|potential`), `sortOrder`, optional `page`+`pageSize`. Returns `{ customers, total, page?, pageSize? }`.
-- **Work Items:** `name`, `min/maxScore|Effort|Tcv|Priority`, `priorityMetric` (`score|aha_score|stackrank`), `status[]`, `releasedSprintIds[]` (with `unreleased` sentinel), `sortBy`, `sortOrder`, optional `page`+`pageSize`. Returns `{ workItems, metrics, total, page?, pageSize? }`.
+- **Work Items:** `name`, `min/maxScore|Effort|Tcv|Priority`, `priorityMetric` (`score|aha_score|stackrank`), `status[]`, `releasedSprintIds[]` (with `unreleased` sentinel), `origin[]` (`aha|local`; `local` also matches items without an origin), `sortBy`, `sortOrder`, optional `page`+`pageSize`. Returns `{ workItems, metrics, total, page?, pageSize? }`.
 
 When `page`+`pageSize` are both valid positive numbers the endpoint paginates (no threshold). Without them the endpoint falls back to `fetchWithThreshold()` for backward compatibility.
 

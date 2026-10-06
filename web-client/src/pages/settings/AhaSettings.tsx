@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import type { WorkItem } from '@valuestream/shared-types';
 import { authorizedFetch, importAhaFeatures, syncAhaFeature } from "../../utils/api";
-import { generateId } from '../../utils/security';
 import { parseAhaFeature } from '../../utils/businessLogic';
+import { withAhaLink } from '../../utils/workItemOrigin';
 import { ScopeIndicator } from '../../components/common/ScopeIndicator';
 import styles from '../List.module.css';
 import type { SettingsTabWithDataProps } from './types';
@@ -102,27 +101,26 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
         const feature = features[i];
         setImportProgress(`Processing ${i + 1}/${features.length}: ${feature.reference_num}`);
         try {
-          const parsed = parseAhaFeature(feature);
-          const existing = (data.workItems || []).find(w => w.aha_reference?.reference_num === parsed.aha_reference.reference_num);
+          const link = parseAhaFeature(feature);
+          // Match by the stable Aha! id first, then by a typed-but-unsynced key.
+          const workItems = data.workItems || [];
+          const existing =
+            workItems.find(w => w.links?.aha?.external_id === link.external_id) ??
+            workItems.find(w => !w.links?.aha?.external_id && w.links?.aha?.key?.toLowerCase() === link.key.toLowerCase());
           if (existing) {
-            await updateWorkItem(existing.id, {
-              aha_reference: parsed.aha_reference,
-              aha_synced_data: parsed.aha_synced_data,
-            }, true);
+            await updateWorkItem(existing.id, withAhaLink(existing, link), true);
             updateCount++;
           } else {
-            const newWorkItem: WorkItem = {
-              id: generateId('w'),
-              name: parsed.aha_synced_data.name || feature.reference_num,
+            const created = await addWorkItem({
+              name: feature.reference_num,
               status: 'Backlog',
-              total_effort_mds: parsed.aha_synced_data.total_effort_mds || 0,
-              score: parsed.aha_synced_data.score || 0,
+              total_effort_mds: 0,
+              score: 0,
               customer_targets: [],
-              aha_reference: parsed.aha_reference,
-              aha_synced_data: parsed.aha_synced_data,
-            };
-            addWorkItem(newWorkItem);
-            createCount++;
+              ...withAhaLink(undefined, link),
+            });
+            if (created) createCount++;
+            else failCount++;
           }
         } catch (err: unknown) {
           console.error(`Error processing ${feature.reference_num}:`, err);
@@ -150,7 +148,7 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
       return;
     }
 
-    const workItemsWithRef = (data.workItems || []).filter(w => w.aha_reference?.reference_num);
+    const workItemsWithRef = (data.workItems || []).filter(w => w.links?.aha?.key);
     if (workItemsWithRef.length === 0) {
       setImportSyncResult({ success: true, message: "No work items with Aha! references found to sync." });
       return;
@@ -164,20 +162,12 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
     // Sequential (concurrency 1) — simplest, well within Aha!'s rate limit.
     for (let i = 0; i < workItemsWithRef.length; i++) {
       const w = workItemsWithRef[i];
-      const refNum = w.aha_reference!.reference_num;
+      const refNum = w.links!.aha!.key;
       setSyncProgress(`Syncing ${i + 1}/${workItemsWithRef.length}: ${refNum}`);
       try {
         const feature = await syncAhaFeature(refNum, { subdomain: aha.subdomain, api_key: aha.api_key });
-        const parsed = parseAhaFeature(feature);
-        await updateWorkItem(w.id, {
-          aha_synced_data: parsed.aha_synced_data,
-          aha_reference: {
-            ...w.aha_reference!,
-            ...parsed.aha_reference,
-            // Preserve the user-typed reference_num verbatim.
-            reference_num: refNum,
-          },
-        }, true);
+        // Preserve the user-typed key verbatim.
+        await updateWorkItem(w.id, withAhaLink(w, { ...parseAhaFeature(feature), key: refNum }), true);
         successCount++;
       } catch (err: unknown) {
         console.error(`Error syncing ${refNum}:`, err);

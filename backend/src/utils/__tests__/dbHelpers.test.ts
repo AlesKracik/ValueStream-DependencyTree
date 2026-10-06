@@ -301,15 +301,26 @@ describe('dbHelpers', () => {
         expect(q.$or).toEqual([{ released_in_sprint_id: { $in: ['s1'] } }]);
       });
 
+      // ── Origin ───────────────────────────────────────────────────────
+      it('origin=aha matches only items whose origin is aha', () => {
+        const q = buildMongoQuery({ origin: 'aha' }, 'workItems');
+        expect(q.$or).toEqual([{ origin: { $in: ['aha'] } }]);
+      });
+
+      it('origin including local also matches items without an origin', () => {
+        const q = buildMongoQuery({ origin: ['local'], status: ['Backlog'] }, 'workItems');
+        expect(q.$and).toContainEqual({ $or: [{ origin: { $in: ['local'] } }, { origin: { $exists: false } }] });
+      });
+
       // ── Priority range tied to active metric ─────────────────────────
       it('priority range targets calculated_score when priorityMetric defaults', () => {
         const q = buildMongoQuery({ minPriority: '10', maxPriority: '100' }, 'workItems');
         expect(q.calculated_score).toEqual({ $gte: 10, $lte: 100 });
       });
 
-      it('priority range targets aha_synced_data.score when priorityMetric=aha_score', () => {
+      it('priority range targets links.aha.data.score when priorityMetric=aha_score', () => {
         const q = buildMongoQuery({ minPriority: '10', priorityMetric: 'aha_score' }, 'workItems');
-        expect(q['aha_synced_data.score']).toEqual({ $gte: 10 });
+        expect(q['links.aha.data.score']).toEqual({ $gte: 10 });
       });
 
       it('priority range targets stackrank when priorityMetric=stackrank', () => {
@@ -517,7 +528,7 @@ describe('dbHelpers', () => {
 
     it('priority sort routes to the active metric field', () => {
       expect(buildWorkItemSort({ sortBy: 'priority', priorityMetric: 'aha_score' }))
-        .toEqual({ 'aha_synced_data.score': 1 });
+        .toEqual({ 'links.aha.data.score': 1 });
       expect(buildWorkItemSort({ sortBy: 'priority', priorityMetric: 'stackrank', sortOrder: 'desc' }))
         .toEqual({ stackrank: -1 });
     });
