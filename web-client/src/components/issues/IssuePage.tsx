@@ -148,12 +148,17 @@ export const IssuePage: React.FC<IssuePageProps> = ({ data, loading, updateIssue
                 <label>
                     Work Item
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        {/* "Unassigned" is placeholder text, not a value: a value would
+                            filter the options down to the Unassigned entry. The key
+                            remounts the input when the assignment changes, so picking
+                            Unassigned also clears the typed label. */}
                         <SearchableDropdown
+                            key={issue.work_item_id || 'unassigned'}
                             options={workItemOptions}
                             onSelect={(wiId) => updateIssue(issue.id, { work_item_id: wiId === 'UNASSIGNED' ? undefined : wiId })}
-                            placeholder="Search for a work item..."
+                            placeholder={workItem ? 'Search for a work item...' : 'Unassigned (search for a work item...)'}
                             clearOnSelect={false}
-                            initialValue={workItem?.name || 'Unassigned'}
+                            initialValue={workItem?.name || ''}
                         />
                     </div>
                 </label>

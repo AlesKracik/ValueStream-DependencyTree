@@ -325,6 +325,26 @@ describe('IssuePage', () => {
             }));
         });
 
+        it('shows Unassigned as placeholder, so an unassigned issue lists every work item', async () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (useNotificationContext as any).mockReturnValue({
+                showConfirm: mockShowConfirm,
+                showAlert: mockShowAlert,
+                data: dataWithWorkItems,
+                updateIssue: updateIssueSpy
+            });
+            const unassigned = {
+                ...dataWithWorkItems,
+                issues: dataWithWorkItems.issues.map(i => ({ ...i, work_item_id: undefined }))
+            };
+            renderIssuePage({ ...defaultProps, data: unassigned });
+            const workItemInput = screen.getByPlaceholderText('Unassigned (search for a work item...)') as HTMLInputElement;
+            expect(workItemInput.value).toBe('');
+            fireEvent.focus(workItemInput);
+            expect(await screen.findByText('Work Item 1')).toBeDefined();
+            expect(screen.getByText('Work Item 2')).toBeDefined();
+        });
+
         it('updates to undefined when selecting Unassigned', async () => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (useNotificationContext as any).mockReturnValue({
