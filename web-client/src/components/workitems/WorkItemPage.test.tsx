@@ -837,6 +837,30 @@ describe('WorkItemPage', () => {
         })));
     });
 
+    it('links an existing issue whose Jira key is typed on a new work item instead of creating a duplicate', async () => {
+        const dataWithImported: ValueStreamData = {
+            ...mockData,
+            issues: [
+                { id: 'e-imported', jira_key: 'PROJ-42', team_id: 't1', effort_md: 3, name: 'Imported Issue' }
+            ],
+            teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }]
+        };
+        renderPage({ ...defaultProps, data: dataWithImported }, 'new');
+
+        fireEvent.change(screen.getByLabelText(/Name:/i), { target: { value: 'New Feature' } });
+        fireEvent.click(screen.getByText(/Engineering Issues \(/i));
+        fireEvent.click(screen.getByText('+ New Issue'));
+
+        const keyInput = screen.getByPlaceholderText('TBD');
+        fireEvent.change(keyInput, { target: { value: 'proj-42' } });
+        fireEvent.blur(keyInput);
+
+        fireEvent.click(screen.getByText('Save Work Item'));
+
+        await waitFor(() => expect(defaultProps.updateIssue).toHaveBeenCalledWith('e-imported', { work_item_id: 'f-new' }, true));
+        expect(defaultProps.addIssue).not.toHaveBeenCalled();
+    });
+
     it('defaults new work item stackrank to (max existing rank + 1000)', () => {
         const dataWithRanks: ValueStreamData = {
             ...mockData,

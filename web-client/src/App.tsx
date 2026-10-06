@@ -97,8 +97,9 @@ const CustomerPageRouteWrapper = createRouteWrapper({
 
 const WorkItemPageRouteWrapper = createRouteWrapper({
   collections: ['workItems', 'customers', 'teams', 'sprints', 'issues', 'settings'],
-  // Filter issues to only those linked to this workItem
-  queryParams: (id) => id ? { issues: { workItemId: id } } : undefined,
+  // This work item's issues plus the unassigned ones (e.g. Jira-imported), which
+  // the Issues tab offers for linking and matches typed Jira keys against.
+  queryParams: (id) => id ? { issues: { workItemId: id, unassigned: 'true' } } : undefined,
   render: ({ state, id, navigate }) =>
     <WorkItemPage workItemId={id!} onBack={() => navigate(-1)} {...state} />,
 });

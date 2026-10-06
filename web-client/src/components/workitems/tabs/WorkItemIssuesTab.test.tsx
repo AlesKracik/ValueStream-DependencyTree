@@ -111,3 +111,47 @@ describe('WorkItemIssuesTab — manual Jira dedup on blur', () => {
         expect(deleteIssue).not.toHaveBeenCalled();
     });
 });
+
+describe('WorkItemIssuesTab — Jira key saved on blur', () => {
+    beforeEach(() => vi.clearAllMocks());
+
+    const row: Issue = { id: 'e1', jira_key: 'OLD-1', name: 'Row', effort_md: 0, team_id: 't1', work_item_id: 'wi1' };
+    const imported: Issue = { id: 'eImported', jira_key: 'ABC-1', name: 'Imported', effort_md: 3, team_id: 't1' };
+
+    it('saves the typed key once, when the field loses focus', () => {
+        const updateIssue = vi.fn();
+        renderTab({ data: baseData([row]), issues: [row], updateIssue });
+
+        const keyInput = screen.getByDisplayValue('OLD-1');
+        fireEvent.change(keyInput, { target: { value: 'NEW' } });
+        fireEvent.change(keyInput, { target: { value: 'NEW-2' } });
+        expect(updateIssue).not.toHaveBeenCalled();
+        expect(screen.getByDisplayValue('NEW-2')).toBeDefined();
+
+        fireEvent.blur(keyInput);
+        expect(updateIssue).toHaveBeenCalledTimes(1);
+        expect(updateIssue).toHaveBeenCalledWith('e1', { jira_key: 'NEW-2' });
+    });
+
+    it('never saves a typed key that an existing issue holds; links that issue instead', () => {
+        const updateIssue = vi.fn();
+        const deleteIssue = vi.fn();
+        renderTab({ data: baseData([row, imported]), issues: [row], updateIssue, deleteIssue });
+
+        const keyInput = screen.getByDisplayValue('OLD-1');
+        fireEvent.change(keyInput, { target: { value: 'abc-1' } });
+        fireEvent.blur(keyInput);
+
+        expect(updateIssue).not.toHaveBeenCalledWith('e1', expect.objectContaining({ jira_key: expect.anything() }));
+        expect(updateIssue).toHaveBeenCalledWith('eImported', { work_item_id: 'wi1' });
+        expect(deleteIssue).toHaveBeenCalledWith('e1');
+    });
+
+    it('saves nothing when focus leaves without an edit', () => {
+        const updateIssue = vi.fn();
+        renderTab({ data: baseData([row]), issues: [row], updateIssue });
+
+        fireEvent.blur(screen.getByDisplayValue('OLD-1'));
+        expect(updateIssue).not.toHaveBeenCalled();
+    });
+});

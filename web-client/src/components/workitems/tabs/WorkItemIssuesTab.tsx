@@ -36,6 +36,11 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
     const deleteWithConfirm = useDeleteWithConfirm();
     const navigate = useNavigate();
     const [syncingId, setSyncingId] = useState<string | null>(null);
+    // Jira keys being typed on a saved work item, by issue id. A key is saved
+    // when the field loses focus, not per keystroke, so typing an existing key
+    // links that issue instead of first sending a save the server rejects as
+    // a duplicate.
+    const [keyDrafts, setKeyDrafts] = useState<Record<string, string>>({});
 
     const syncIssue = async (id: string, jiraKey: string) => {
         setSyncingId(id);
@@ -65,13 +70,23 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
     // manually-typed key matches another issue, link that existing issue to
     // this work item and drop the blank row the user was filling in.
     const handleJiraKeyBlur = (id: string, rawKey: string) => {
+        const hadDraft = id in keyDrafts;
+        if (hadDraft) {
+            setKeyDrafts(prev => {
+                const { [id]: _done, ...rest } = prev;
+                void _done;
+                return rest;
+            });
+        }
         const key = rawKey.trim();
-        if (!key || key === 'TBD') return;
-
-        const existing = (data?.issues || []).find(
-            e => e.id !== id && e.jira_key?.trim().toLowerCase() === key.toLowerCase()
-        );
-        if (!existing) return;
+        const existing = key && key !== 'TBD'
+            ? (data?.issues || []).find(e => e.id !== id && e.jira_key?.trim().toLowerCase() === key.toLowerCase())
+            : undefined;
+        if (!existing) {
+            const current = (data?.issues || []).find(e => e.id === id)?.jira_key;
+            if (!isNew && hadDraft && rawKey !== current) updateIssue(id, { jira_key: rawKey });
+            return;
+        }
 
         if (isNew) {
             setNewWorkItemIssues(prev => {
@@ -127,13 +142,14 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
                         <div style={{ width: '200px', display: 'flex', gap: '4px', alignItems: 'center' }}>
                             <input
                                 type="text"
-                                value={issue.jira_key}
+                                value={keyDrafts[issue.id] ?? issue.jira_key}
                                 placeholder="TBD"
                                 onChange={e => {
+                                    const value = e.target.value;
                                     if (isNew) {
-                                        setNewWorkItemIssues(prev => prev.map(ev => ev.id === issue.id ? { ...ev, jira_key: e.target.value } : ev));
+                                        setNewWorkItemIssues(prev => prev.map(ev => ev.id === issue.id ? { ...ev, jira_key: value } : ev));
                                     } else {
-                                        updateIssue(issue.id, { jira_key: e.target.value });
+                                        setKeyDrafts(prev => ({ ...prev, [issue.id]: value }));
                                     }
                                 }}
                                 onBlur={e => handleJiraKeyBlur(issue.id, e.target.value)}

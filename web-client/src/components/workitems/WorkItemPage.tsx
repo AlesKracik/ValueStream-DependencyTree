@@ -87,12 +87,12 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                 // REQ-018: the server names the work item; its issues need that id.
                 const created = await addWorkItem(newFeat);
                 if (!created) return;
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const issuesToAdd = newWorkItemIssues.map(({ id: _draftId, ...e }) => ({
-                    ...e,
-                    work_item_id: created.id
-                }));
-                await Promise.all(issuesToAdd.map(e => addIssue(e)));
+                // Issues picked from the existing list are linked, not created again;
+                // only the drafted ones are new records.
+                const existingIds = new Set((data.issues || []).map(e => e.id));
+                await Promise.all(newWorkItemIssues.map(({ id, ...e }) => existingIds.has(id)
+                    ? updateIssue(id, { work_item_id: created.id }, true)
+                    : addIssue({ ...e, work_item_id: created.id })));
 
                 setTimeout(() => {
                     onBack();
