@@ -77,7 +77,7 @@ export interface ExternalLink {
     name?: string;
     description?: string; // HTML
     score?: number; // Product Value
-    estimate_mds?: number; // informational only
+    estimate_mds?: number | null; // informational only; null when Aha! has no estimate
     requirements?: {
       id: string;
       reference_num: string;

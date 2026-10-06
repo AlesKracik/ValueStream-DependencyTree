@@ -32,4 +32,17 @@ describe('workItemOrigin utils', () => {
         expect(withAhaLink(base, { key: 'PROD-1' })).toEqual({ links: { aha: { key: 'PROD-1' } }, origin: 'local' });
         expect(withAhaLink({ ...base, links: { aha: link } }, null)).toEqual({ links: { aha: null }, origin: 'local' });
     });
+
+    it('merges new data onto the same feature: missing keeps, present (even null, empty, 0) overwrites', () => {
+        const stored = { ...base, links: { aha: { ...link, data: { ...link.data, estimate_mds: 3 } } } };
+        const updates = withAhaLink(stored, { external_id: '42', key: 'PROD-42', data: { name: undefined, score: 0, description: '', estimate_mds: null } });
+        expect(updates.links?.aha?.data).toEqual({ name: 'Aha name', score: 0, description: '', estimate_mds: null });
+        expect(updates).toMatchObject({ name: 'Aha name', description: '' });
+    });
+
+    it('does not merge data across different features', () => {
+        const stored = { ...base, links: { aha: link } };
+        expect(withAhaLink(stored, { external_id: '99', key: 'PROD-99', data: { name: 'Other' } }).links?.aha?.data)
+            .toEqual({ name: 'Other' });
+    });
 });

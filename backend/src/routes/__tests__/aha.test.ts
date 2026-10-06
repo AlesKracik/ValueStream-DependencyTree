@@ -172,12 +172,26 @@ describe('Aha! Routes', () => {
     expect(body.features).toHaveLength(205);
     expect(mockFetch).toHaveBeenCalledTimes(2);
     expect(mockFetch).toHaveBeenNthCalledWith(1,
-      'https://test-subdomain.aha.io/api/v1/products/PROD/features?per_page=200&page=1',
+      'https://test-subdomain.aha.io/api/v1/products/PROD/features?per_page=200&page=1&fields=id,reference_num,name,url,score,description,original_estimate,requirements',
       expect.any(Object)
     );
     expect(mockFetch).toHaveBeenNthCalledWith(2,
-      'https://test-subdomain.aha.io/api/v1/products/PROD/features?per_page=200&page=2',
+      'https://test-subdomain.aha.io/api/v1/products/PROD/features?per_page=200&page=2&fields=id,reference_num,name,url,score,description,original_estimate,requirements',
       expect.any(Object)
+    );
+  });
+
+  it('POST /api/aha/features asks the list endpoint for every field the import reads', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve({ features: [] }) });
+    global.fetch = mockFetch;
+
+    const response = await app.inject({ method: 'POST', url: '/api/aha/features', payload: { workspace: 'PROD' } });
+
+    expect(response.statusCode).toBe(200);
+    const url = new URL(mockFetch.mock.calls[0][0]);
+    expect(url.searchParams.get('per_page')).toBe('200');
+    expect(url.searchParams.get('fields')!.split(',').sort()).toEqual(
+      ['description', 'id', 'name', 'original_estimate', 'reference_num', 'requirements', 'score', 'url']
     );
   });
 

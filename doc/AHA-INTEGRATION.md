@@ -27,6 +27,7 @@ Configured in the UI via **Settings > Aha!** tab.
 |--------|------|-------------|
 | `POST` | `/api/aha/test` | Validates connection by listing features |
 | `POST` | `/api/aha/feature` | Fetches a specific feature by `reference_num` |
+| `POST` | `/api/aha/features` | Lists every feature of a workspace (product), with full feature fields |
 
 ### Test Connection
 
@@ -58,8 +59,23 @@ requirements).
 **Settings > Aha! > Import** matches each imported feature to an existing work
 item by `links.aha.external_id` first, then by an unsynced `links.aha.key`
 (case-insensitive). A match gets the refreshed link; an unmatched feature becomes
-a new `Backlog` work item with origin `aha`. **Sync all** refreshes every work item
+a new `Backlog` work item with origin `aha`.
+
+Import and sync never clear stored data that a response lacks. When the new link
+points at the same feature as the stored one (same `external_id`), its `data` is
+merged onto the stored `links.aha.data` field by field: a field missing from the
+response keeps its stored value, while a field that is present always overwrites,
+even with `null`, `''` or `0`. Effort is never taken from Aha!. **Sync all** refreshes every work item
 that has a `links.aha.key`.
+
+### List Features (Import)
+
+Fetches `https://{subdomain}.aha.io/api/v1/products/{workspace}/features` page by page
+(`per_page=200`, at most 50 pages). Aha!'s list endpoint returns only summary fields
+by default, so the request passes
+`fields=id,reference_num,name,url,score,description,original_estimate,requirements`:
+every field the import reads, so an imported feature carries the same data as a
+per-feature sync (Product Value, HTML description, estimate, requirements).
 
 ## Data Flow
 

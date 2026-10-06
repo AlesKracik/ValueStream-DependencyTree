@@ -106,25 +106,27 @@ export const moneyBagFillRatio = (tcv: number, maxTcv: number): number => {
 
 /**
  * Maps an Aha! feature payload to the work item's Aha! link (synced now).
+ * A field the payload lacks stays undefined (it is not a cleared value), so a
+ * sparse payload never wipes stored data when merged by withAhaLink.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const parseAhaFeature = (feature: any): ExternalLink => {
     const data: NonNullable<ExternalLink['data']> = {
         name: feature.name,
-        description: feature.description?.body || '',
+        description: 'description' in feature ? (feature.description?.body ?? '') : undefined,
         score: feature.score,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        requirements: feature.requirements?.map((r: any) => ({
+        requirements: 'requirements' in feature ? (feature.requirements || []).map((r: any) => ({
             id: r.id,
             reference_num: r.reference_num,
             name: r.name,
             description: r.description?.body || '',
             url: r.url,
-        })) || [],
+        })) : undefined,
     };
-    if (feature.original_estimate) {
+    if ('original_estimate' in feature) {
         // Aha! original_estimate is in minutes; 480 minutes = 1 person-day.
-        data.estimate_mds = Math.round(feature.original_estimate / 480);
+        data.estimate_mds = feature.original_estimate ? Math.round(feature.original_estimate / 480) : null;
     }
 
     return {

@@ -41,10 +41,24 @@ export const htmlToText = (html: string): string =>
         .trim();
 
 /**
- * The update that sets (or, with null, removes) the work item's Aha! link,
- * with the origin and Aha!-owned fields the server will derive from it.
+ * Merge a fresh link onto the stored one when both point at the same Aha!
+ * feature: each data field the new payload lacks (undefined) keeps its stored
+ * value; a present field always overwrites, even null, '' or 0. A sparse
+ * payload (e.g. a list response) therefore never clears synced data.
  */
-export const withAhaLink = (wi: Partial<WorkItem> | undefined, link: ExternalLink | null): Partial<WorkItem> => {
+const mergeLink = (stored: ExternalLink | null | undefined, link: ExternalLink): ExternalLink => {
+    if (!stored?.external_id || stored.external_id !== link.external_id) return link;
+    const fresh = Object.fromEntries(Object.entries(link.data ?? {}).filter(([, v]) => v !== undefined));
+    return { ...link, data: { ...stored.data, ...fresh } };
+};
+
+/**
+ * The update that sets (or, with null, removes) the work item's Aha! link,
+ * with the origin and Aha!-owned fields the server will derive from it. The
+ * server derives from the merged data this sends, so both sides agree.
+ */
+export const withAhaLink = (wi: Partial<WorkItem> | undefined, next: ExternalLink | null): Partial<WorkItem> => {
+    const link = next ? mergeLink(wi?.links?.aha, next) : null;
     const origin: WorkItemOrigin = link?.external_id ? 'aha' : 'local';
     const updates: Partial<WorkItem> = { links: { ...wi?.links, aha: link }, origin };
     if (origin === 'aha') {

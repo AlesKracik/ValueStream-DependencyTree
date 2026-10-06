@@ -69,12 +69,17 @@ export const ahaRoutes: FastifyPluginAsync = async (fastify) => {
     );
     const { subdomain, api_key } = aha;
 
+    // The list endpoint returns only summary fields by default; ask for every
+    // field parseAhaFeature (web-client) reads so import stores the same data
+    // as a per-feature sync. `description` and `requirements` come back as the
+    // full nested objects (description.body, requirement id/name/description/url).
+    const FEATURE_FIELDS = 'id,reference_num,name,url,score,description,original_estimate,requirements';
     const PER_PAGE = 200;
     const MAX_PAGES = 50; // hard ceiling: 10 000 features
     const allFeatures: any[] = [];
 
     for (let page = 1; page <= MAX_PAGES; page++) {
-      const apiUrl = `https://${subdomain}.aha.io/api/v1/products/${encodeURIComponent(workspace)}/features?per_page=${PER_PAGE}&page=${page}`;
+      const apiUrl = `https://${subdomain}.aha.io/api/v1/products/${encodeURIComponent(workspace)}/features?per_page=${PER_PAGE}&page=${page}&fields=${FEATURE_FIELDS}`;
       const ahaRes = await fetch(apiUrl, {
         headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${api_key}` }
       });
