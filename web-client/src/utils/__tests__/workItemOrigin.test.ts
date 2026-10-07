@@ -52,11 +52,12 @@ describe('workItemOrigin utils', () => {
         expect(ahaRecordTypeForKey('DR-12')).toBe('feature');
     });
 
-    it('Aha! owns the parent of a feature whose epic is known, not of epics or local items', () => {
-        const feature = { ...base, origin: 'aha' as const, links: { aha: { ...link, data: { epic_id: null } } } };
+    it('Aha! owns the parent only of a feature that has an epic', () => {
+        const feature = { ...base, origin: 'aha' as const, links: { aha: { ...link, data: { epic_id: '900' } } } };
         expect(isParentOwned(feature)).toBe(true);
+        expect(isParentOwned({ ...feature, links: { aha: { ...link, data: { epic_id: null } } } })).toBe(false);
         expect(isParentOwned({ ...feature, links: { aha: { ...link } } })).toBe(false);
-        expect(isParentOwned({ ...feature, links: { aha: { ...link, record_type: 'epic' as const, data: { epic_id: null } } } })).toBe(false);
+        expect(isParentOwned({ ...feature, links: { aha: { ...link, record_type: 'epic' as const, data: { epic_id: '900' } } } })).toBe(false);
         expect(isParentOwned(base)).toBe(false);
     });
 
@@ -64,7 +65,14 @@ describe('workItemOrigin utils', () => {
         const epicWi: WorkItem = { ...base, id: 'wi-epic', links: { aha: { external_id: '900', key: 'DR-E-1', record_type: 'epic' } } };
         expect(withAhaLink(base, { ...link, data: { epic_id: '900' } }, [epicWi]).parent_id).toBe('wi-epic');
         expect(withAhaLink(base, { ...link, data: { epic_id: '901' } }, [epicWi]).parent_id).toBeNull();
-        expect(withAhaLink(base, { ...link, data: { epic_id: null } }, [epicWi]).parent_id).toBeNull();
         expect(withAhaLink(base, link, [epicWi])).not.toHaveProperty('parent_id');
+    });
+
+    it('a feature without an epic keeps its local parent; leaving an epic leaves its work item', () => {
+        const epicWi: WorkItem = { ...base, id: 'wi-epic', links: { aha: { external_id: '900', key: 'DR-E-1', record_type: 'epic' } } };
+        const local = { ...base, parent_id: 'wi-local', origin: 'aha' as const, links: { aha: { ...link, data: { epic_id: null } } } };
+        expect(withAhaLink(local, { ...link, data: { epic_id: null } }, [epicWi])).not.toHaveProperty('parent_id');
+        const inEpic = { ...base, parent_id: 'wi-epic', origin: 'aha' as const, links: { aha: { ...link, data: { epic_id: '900' } } } };
+        expect(withAhaLink(inEpic, { ...link, data: { epic_id: null } }, [epicWi]).parent_id).toBeNull();
     });
 });

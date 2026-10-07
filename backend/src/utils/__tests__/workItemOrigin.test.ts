@@ -93,14 +93,14 @@ describe('workItemOrigin', () => {
         { 'links.aha.external_id': '900', 'links.aha.record_type': 'epic' }, { projection: { id: 1 } });
     });
 
-    it('is none when the feature has no epic or the epic is not a work item here', async () => {
-      expect(await deriveAhaParent(dbWithEpic(null).db, feature(null))).toBeNull();
+    it('is none when the feature\'s epic is not a work item here yet', async () => {
       expect(await deriveAhaParent(dbWithEpic(null).db, feature('900'))).toBeNull();
     });
 
-    it('is not owned for local items, epics, or features synced before epics were tracked', async () => {
+    it('is not owned for local items, epics, features without an epic, or synced before epics were tracked', async () => {
       const { db } = dbWithEpic({ id: 'x' });
       expect(await deriveAhaParent(db, undefined)).toBeUndefined();
+      expect(await deriveAhaParent(db, feature(null))).toBeUndefined();
       expect(await deriveAhaParent(db, { aha: { external_id: '7', key: 'DR-E-7', record_type: 'epic', data: {} } })).toBeUndefined();
       expect(await deriveAhaParent(db, feature(undefined))).toBeUndefined();
     });
@@ -114,10 +114,19 @@ describe('workItemOrigin', () => {
       expect(await deriveParentForPatch(db, stored, { score: 1 })).toBeUndefined();
     });
 
-    it('PATCH of links moves the feature to its new epic, or to no parent', async () => {
-      const { db } = dbWithEpic(null);
+    it('PATCH of links taking the feature out of its epic leaves the epic\'s work item', async () => {
+      const { db } = dbWithEpic({ id: 'wi-epic' });
       const stored = { id: 'w1', origin: 'aha', parent_id: 'wi-epic', links: feature('900') };
-      expect(await deriveParentForPatch(db, stored, { links: feature(null), parent_id: 'whatever' })).toBeNull();
+      expect(await deriveParentForPatch(db, stored, { links: feature(null) })).toBeNull();
+    });
+
+    it('a feature without an epic keeps a parent set locally', async () => {
+      const { db } = dbWithEpic({ id: 'wi-epic' });
+      const stored = { id: 'w1', origin: 'aha', parent_id: 'wi-local', links: feature(null) };
+      expect(await deriveParentForPatch(db, stored, { parent_id: 'wi-other' })).toBeUndefined();
+      expect(await deriveParentForPatch(db, stored, { links: feature(null) })).toBeUndefined();
+      const leftEpic = { ...stored, links: feature('900') };
+      expect(await deriveParentForPatch(db, leftEpic, { links: feature(null) })).toBeUndefined(); // parent wasn't the epic's
     });
   });
 

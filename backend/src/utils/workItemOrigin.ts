@@ -94,19 +94,18 @@ export function deriveForPatch(existing: Doc | null, patch: Doc): Doc {
 }
 
 /**
- * Aha! owns a feature's parent: the work item linked to the feature's Aha!
- * epic, or none (null) when the feature has no epic or that epic isn't a work
- * item here. undefined means the parent is not owned: a local item, an Aha!
- * epic (initiatives above epics aren't brought over), or a feature synced
- * before epics were tracked (no `epic_id` in its data yet).
+ * Aha! owns the parent of a feature that has an Aha! epic: the work item
+ * linked to that epic, or none (null) when the epic isn't a work item here
+ * yet. undefined means the parent is not owned and stays local: a local item,
+ * an Aha! epic (initiatives above epics aren't brought over), a feature
+ * without an epic, or one synced before epics were tracked.
  */
 export async function deriveAhaParent(db: Db, links: Links): Promise<string | null | undefined> {
   if (deriveOrigin(links) !== 'aha') return undefined;
   const link = links?.aha;
   if (link?.record_type === 'epic') return undefined;
   const epicId = link?.data?.epic_id;
-  if (epicId === undefined) return undefined;
-  if (!epicId) return null;
+  if (!epicId) return undefined;
   const epic = await db.collection('workItems').findOne(
     { 'links.aha.external_id': String(epicId), 'links.aha.record_type': 'epic' },
     { projection: { id: 1 } }
@@ -118,11 +117,17 @@ export async function deriveAhaParent(db: Db, links: Links): Promise<string | nu
  * Parent for a PATCH of a work item whose parent Aha! owns, or undefined when
  * the patch needs no parent change. Rejects a patch that sets a different
  * parent without also setting links (the source's value wins with links).
+ * A feature taken out of its epic leaves that epic's work item (parent
+ * cleared); a parent set otherwise is kept.
  */
 export async function deriveParentForPatch(db: Db, existing: Doc | null, patch: Doc): Promise<string | null | undefined> {
   const touchesLinks = 'links' in patch;
   const parent = await deriveAhaParent(db, touchesLinks ? patch.links : existing?.links);
-  if (parent === undefined) return undefined;
+  if (parent === undefined) {
+    if (!touchesLinks || !existing?.parent_id) return undefined;
+    const before = await deriveAhaParent(db, existing.links);
+    return before && before === existing.parent_id ? null : undefined;
+  }
   if (!touchesLinks && 'parent_id' in patch && (patch.parent_id || null) !== parent) {
     throw new AppError('"parent_id" is owned by Aha! for this work item (it follows the Aha! epic); change it in Aha!.', 400);
   }

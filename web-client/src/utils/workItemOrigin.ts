@@ -48,19 +48,18 @@ export const htmlToText = (html: string): string =>
 export const ahaRecordTypeForKey = (key: string): 'feature' | 'epic' => /-E-\d+$/i.test(key.trim()) ? 'epic' : 'feature';
 
 /**
- * Whether Aha! owns the work item's parent: an Aha! feature whose epic is
- * known (`epic_id` synced, null when it has none). Mirrors the server's
- * deriveAhaParent; epics and local items keep a local parent.
+ * Whether Aha! owns the work item's parent: an Aha! feature that has an Aha!
+ * epic. Mirrors the server's deriveAhaParent; epics, features without an epic
+ * and local items keep a local parent.
  */
 export const isParentOwned = (wi: Partial<WorkItem> | undefined): boolean => {
     const link = wi?.links?.aha;
-    return workItemOrigin(wi) === 'aha' && link?.record_type !== 'epic' && link?.data?.epic_id !== undefined;
+    return workItemOrigin(wi) === 'aha' && link?.record_type !== 'epic' && !!link?.data?.epic_id;
 };
 
-/** The parent Aha! gives a feature: the work item linked to its epic, or none. */
-const ahaParent = (link: ExternalLink, workItems: WorkItem[]): string | null => {
-    const epicId = link.data?.epic_id;
-    if (!epicId) return null;
+/** The parent Aha! gives a feature with an epic: the work item linked to that epic, or none yet. */
+const ahaParent = (link: ExternalLink | null | undefined, workItems: WorkItem[]): string | null => {
+    const epicId = link?.data?.epic_id;
     return workItems.find(w => w.links?.aha?.record_type === 'epic' && w.links.aha.external_id === epicId)?.id ?? null;
 };
 
@@ -91,7 +90,12 @@ export const withAhaLink = (wi: Partial<WorkItem> | undefined, next: ExternalLin
         const data = link?.data;
         if (typeof data?.name === 'string' && data.name !== '') updates.name = data.name;
         if (typeof data?.description === 'string') updates.description = htmlToText(data.description);
-        if (workItems && isParentOwned(updates)) updates.parent_id = ahaParent(link!, workItems);
+        if (workItems && isParentOwned(updates)) {
+            updates.parent_id = ahaParent(link, workItems);
+        } else if (workItems && wi?.parent_id && isParentOwned(wi) && wi.parent_id === ahaParent(wi.links?.aha, workItems)) {
+            // Taken out of its epic in Aha!: leave the epic's work item.
+            updates.parent_id = null;
+        }
     }
     return updates;
 };

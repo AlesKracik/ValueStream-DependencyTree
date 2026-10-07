@@ -112,7 +112,7 @@ export const WorkItemHierarchyTab: React.FC<Props> = ({
       !descendantIds.has(w.id) &&
       !ancestorIds.has(w.id) &&
       w.parent_id !== currentId &&
-      // Aha! owns the parent of an Aha! feature (its epic's work item).
+      // Aha! owns the parent of an Aha! feature in an epic (the epic's work item).
       !isParentOwned(w),
     )
     .map(w => ({ id: w.id, label: w.parent_id ? `${w.name} (currently child of ${allWorkItems.find(x => x.id === w.parent_id)?.name ?? '?'})` : w.name }));
@@ -261,7 +261,7 @@ export const WorkItemHierarchyTab: React.FC<Props> = ({
               <div style={{ ...helperStyle, marginTop: 4 }}>
                 Self, ancestors, descendants, and existing children are excluded.
                 Adding a work item that already has a parent will move it under this one.
-                Aha! features are excluded: their parent follows their Aha! epic.
+                Aha! features in an Aha! epic are excluded: their parent follows the epic.
               </div>
             </div>
           </>

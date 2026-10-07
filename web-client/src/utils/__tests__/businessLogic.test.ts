@@ -584,7 +584,7 @@ describe('Jira Parent Link hierarchy alignment', () => {
         it('skips a work item whose parent Aha! owns (Jira never overrides the Aha! epic)', () => {
             const ahaFeature = {
                 ...wi('wiC'), origin: 'aha' as const,
-                links: { aha: { external_id: '42', key: 'DR-42', data: { epic_id: null } } },
+                links: { aha: { external_id: '42', key: 'DR-42', data: { epic_id: '900' } } },
             };
             const plan = planHierarchyAlignment({
                 fetchedByKey: fetched([{ key: 'C-1', parent: 'P-1' }]),

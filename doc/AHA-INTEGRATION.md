@@ -99,11 +99,16 @@ per-feature sync (Product Value, HTML description, estimate, requirements).
   requirements, and Aha! initiatives above epics are not brought over, so an
   epic's own parent stays local.
 - A feature's link records its epic (`links.aha.data.epic_id`, `null` when it has
-  none). Once that is synced, **Aha! owns the feature's `parent_id`**: the work
-  item linked to the epic, or no parent when the feature has no epic or its epic
-  isn't a work item here. The server derives it on every write and rejects a
-  PATCH that sets a different parent (400); the Hierarchy tab shows it
-  read-only, and Jira's hierarchy alignment skips such work items.
+  none). Not every feature has an epic, and that is fine.
+- **A feature in an epic:** Aha! owns its `parent_id`: the work item linked to
+  the epic (none while that epic isn't a work item here yet). The server derives
+  it on every write and rejects a PATCH that sets a different parent (400); the
+  Hierarchy tab shows it read-only, and Jira's hierarchy alignment skips such
+  work items.
+- **A feature without an epic:** its parent stays local — empty by default, and
+  editable like any work item's. When a feature is taken out of its epic in
+  Aha!, the next sync moves it out of that epic's work item (parent cleared); a
+  parent that doesn't point at the old epic's work item is kept.
 - **Import** fetches epics first, then features, so each feature finds its
   epic's work item. **Sync all** also syncs epics before features, so a feature
   moved to another epic in Aha! moves to that epic's work item. A per-item Sync

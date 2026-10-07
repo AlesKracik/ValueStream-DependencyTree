@@ -137,7 +137,8 @@ describe('AhaSettings — import and sync', () => {
     expect(epic).toMatchObject({ origin: 'aha', name: 'Restore set', links: { aha: { record_type: 'epic', key: 'DR-E-1' } } });
     expect(epic).not.toHaveProperty('parent_id');
     expect(inEpic).toMatchObject({ name: 'Faster restore', parent_id: 'wi-epic', links: { aha: { record_type: 'feature', data: { epic_id: '900' } } } });
-    expect(loose).toMatchObject({ name: 'Loose', parent_id: null });
+    expect(loose).toMatchObject({ name: 'Loose', links: { aha: { data: { epic_id: null } } } });
+    expect(loose).not.toHaveProperty('parent_id'); // no epic: the parent stays local
     expect(await screen.findByText(/Created 3, updated 0, failed 0 \(epics: 1 created.*features: 2 created/)).toBeDefined();
   });
 

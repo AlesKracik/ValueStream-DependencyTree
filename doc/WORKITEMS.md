@@ -61,7 +61,7 @@ truth for the PM-facing fields of work items that exist in Aha!.
 | `name`             | From Aha!      | Feature name (copied only when non-empty).                         |
 | `description`      | From Aha!      | Feature description, converted from HTML to plain text.            |
 | Product Value      | From Aha!      | Read from `links.aha.data.score`.                                  |
-| `parent_id`        | From Aha! (features) | The work item of the feature's Aha! epic, or none. See [AHA-INTEGRATION.md](AHA-INTEGRATION.md#epics-and-the-work-item-hierarchy). |
+| `parent_id`        | From Aha! (features in an epic) | The work item of the feature's Aha! epic; a feature without an epic keeps a local parent. See [AHA-INTEGRATION.md](AHA-INTEGRATION.md#epics-and-the-work-item-hierarchy). |
 | `total_effort_mds` | Local          | Engineering data; Aha!'s estimate (`estimate_mds`) is informational. |
 | Everything else    | Local          | Status, targets, stack rank, hierarchy, …                          |
 

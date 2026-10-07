@@ -166,7 +166,7 @@ Define exactly which accounts this initiative is for. Choose the TCV type (Exist
 *   **Link Feature:** Enter an Aha! Reference Number (e.g., `PROD-123`) and click **Sync from Aha!** to pull feature data.
 *   **Synced Information:** Displays the feature's Name, Description (HTML-rendered), Aha! Estimate (MDs, informational only), and Product Value (the Aha! "score" field).
 *   **Requirements:** Lists all requirements attached to the Aha! feature, each showing its reference number, name, and description.
-*   **Aha! epics (feature sets):** Enter an epic's reference number (e.g. `PROD-E-12`) to link the work item to an Aha! epic. A synced Aha! feature sits under the work item of its Aha! epic; its parent is shown read-only in the Hierarchy tab and changes only in Aha!.
+*   **Aha! epics (feature sets):** Enter an epic's reference number (e.g. `PROD-E-12`) to link the work item to an Aha! epic. A synced Aha! feature that belongs to an Aha! epic sits under that epic's work item; its parent is shown read-only in the Hierarchy tab and changes only in Aha!. A feature without an epic keeps a parent you set locally.
 *   **Managed in Aha!:** Once synced, the work item's name and description come from Aha! and are read-only here; change them in Aha! and sync again. The baseline effort size stays editable.
 *   **Delete:** Removes the Aha! link (requires confirmation). The work item keeps its current values and becomes a local item, so its name and description are editable again. Clearing the Reference Number input has the same effect.
 
