@@ -35,12 +35,13 @@ export const GenericDetailPage: React.FC<GenericDetailPageProps> = ({
 }) => {
     const [activeTabId, setActiveTabId] = useState(initialTabId || (tabs.length > 0 ? tabs[0].id : ''));
 
-    React.useEffect(() => {
-        if (initialTabId && initialTabId !== activeTabId) {
-            setActiveTabId(initialTabId);
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [initialTabId]);
+    // Follow a new initialTabId (e.g. from the URL). Adjusted during render
+    // rather than in an effect; a tab click still wins until it changes again.
+    const [followedTabId, setFollowedTabId] = useState(initialTabId);
+    if (initialTabId !== followedTabId) {
+        setFollowedTabId(initialTabId);
+        if (initialTabId) setActiveTabId(initialTabId);
+    }
 
     // Scroll to top on mount
     React.useEffect(() => {

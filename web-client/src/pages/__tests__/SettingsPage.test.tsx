@@ -115,11 +115,10 @@ describe('SettingsPage', () => {
             });
         }));
         
-        // Mock URL methods for download
-        vi.stubGlobal('URL', {
-            createObjectURL: vi.fn().mockReturnValue('mock-url'),
-            revokeObjectURL: vi.fn()
-        });
+        // Mock URL methods for download. Keep the URL constructor: react-router
+        // builds URLs with it when the page updates its search params.
+        URL.createObjectURL = vi.fn().mockReturnValue('mock-url');
+        URL.revokeObjectURL = vi.fn();
     });
 
     it('renders and shows Export button in Persistence tab', () => {

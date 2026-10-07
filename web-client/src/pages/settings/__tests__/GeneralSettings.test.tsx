@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { GeneralSettings } from '../GeneralSettings';
@@ -32,8 +32,8 @@ const baseSettings: Settings = {
 };
 
 describe('GeneralSettings', () => {
-  let updateFormData: ReturnType<typeof vi.fn>;
-  let onUpdateSettings: ReturnType<typeof vi.fn>;
+  let updateFormData: Mock<(path: string, value: unknown) => void>;
+  let onUpdateSettings: Mock<(updates: Partial<Settings>) => void>;
 
   beforeEach(() => {
     updateFormData = vi.fn();
@@ -81,9 +81,9 @@ describe('GeneralSettings', () => {
 
     expect(onUpdateSettings).toHaveBeenCalled();
     const lastCall = onUpdateSettings.mock.calls.at(-1)![0];
-    const defs = lastCall.general.theme_definitions;
+    const defs = lastCall.general?.theme_definitions;
     expect(defs).toHaveLength(1);
-    expect(defs[0]).toMatchObject({ id: 'custom-1', builtin: false, base: 'dark' });
+    expect(defs?.[0]).toMatchObject({ id: 'custom-1', builtin: false, base: 'dark' });
   });
 
   it('lists custom themes in the User subtab theme dropdown', () => {

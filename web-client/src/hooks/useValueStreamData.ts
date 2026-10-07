@@ -618,9 +618,10 @@ export function useValueStreamData(
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, persistenceDebounceMs), [persistenceDebounceMs, showAlert]);
 
+    // Callers set loading: a change of the fetch inputs during render (below),
+    // refreshData when it starts. Not here: fetchData runs inside an effect.
     const fetchData = async () => {
         try {
-            setLoading(true);
             // Only send valueStreamId — the backend looks up the ValueStream's saved parameters
             // and applies them as hard filters. Dynamic/transient filters are applied client-side.
             const params = new URLSearchParams();
@@ -727,16 +728,25 @@ export function useValueStreamData(
         }
     };
 
-    useEffect(() => {
-        fetchData();
-     
-     
     // Re-fetch when valueStreamId changes (backend applies its static filters)
     // or when requestedCollections change. Dynamic filters are applied client-side.
+    const fetchKey = `${valueStreamId}|${JSON.stringify(requestedCollections)}|${JSON.stringify(collectionQueryParams)}`;
+    // Show loading for new fetch inputs in the same render, not after an effect.
+    const [loadingKey, setLoadingKey] = useState(fetchKey);
+    if (fetchKey !== loadingKey) {
+        setLoadingKey(fetchKey);
+        setLoading(true);
+    }
+
+    useEffect(() => {
+        // Start on a microtask so none of fetchData's state updates (even its
+        // catch/finally on a synchronous throw) run inside the effect body.
+        Promise.resolve().then(fetchData);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [valueStreamId, JSON.stringify(requestedCollections), JSON.stringify(collectionQueryParams)]);
+    }, [fetchKey]);
 
     const refreshData = () => {
+        setLoading(true);
         fetchData();
     };
 
