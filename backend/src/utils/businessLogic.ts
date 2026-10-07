@@ -1,58 +1,10 @@
 import { parseISO, differenceInDays, max, min, format } from 'date-fns';
-import type { WorkItem, Issue, Customer, Sprint, Team } from '@valuestream/shared-types';
+import type { WorkItem, Issue, Customer, Sprint } from '@valuestream/shared-types';
 import { countBusinessDays } from './dateHelpers';
 
 /**
  * Reusable business logic for metrics calculation.
  */
-
-/**
- * Parses Jira issue data into a partial Issue object.
- */
-export const parseJiraIssue = (issue: any, teams: Team[]): Partial<Issue> => {
-    const fields = issue.fields;
-    const names = issue.names || {};
-    let targetStartKey = "";
-    let targetEndKey = "";
-    let teamKey = "";
-    
-    Object.entries(names as Record<string, string>).forEach(([key, name]) => {
-        if (name === "Target start") targetStartKey = key;
-        if (name === "Target end") targetEndKey = key;
-        if (name === "Team") teamKey = key;
-    });
-
-    const updates: Partial<Issue> = {};
-    if (fields.summary) updates.name = fields.summary;
-    
-    // Effort: Jira is source of truth (even if 0)
-    if (fields.timeestimate !== undefined && fields.timeestimate !== null) {
-        updates.effort_md = Math.round(fields.timeestimate / 28800);
-    } else if (fields.aggregatetimeestimate !== undefined && fields.aggregatetimeestimate !== null) {
-        updates.effort_md = Math.round(fields.aggregatetimeestimate / 28800);
-    }
-
-    // Dates: Jira is source of truth (even if null)
-    if (targetStartKey) {
-        updates.target_start = fields[targetStartKey] || undefined;
-    }
-    if (targetEndKey) {
-        updates.target_end = fields[targetEndKey] || undefined;
-    }
-
-    if (teamKey && fields[teamKey]) {
-        const teamField = fields[teamKey];
-        const jiraTeamId = (teamField.id || teamField.value || teamField.toString()).toString();
-        const jiraTeamName = teamField.name || "";
-        const matchedTeam = teams.find(t =>
-            (t.jira_team_id && t.jira_team_id.toString() === jiraTeamId) ||
-            t.name === jiraTeamId ||
-            (jiraTeamName && t.name === jiraTeamName)
-        );
-        if (matchedTeam) updates.team_id = matchedTeam.id;
-    }
-    return updates;
-};
 
 /**
  * Calculates the proportional effort for an issue within a specific sprint
