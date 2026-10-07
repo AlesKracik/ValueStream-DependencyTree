@@ -25,6 +25,10 @@ export interface PageUiState {
      * persistence rules as the rest of PageUiState.
      */
     pageFilters?: unknown;
+    /** Work Items list: show the parent/child tree instead of a flat list. */
+    treeView?: boolean;
+    /** Work Items list tree view: ids of expanded rows. */
+    expandedIds?: string[];
 }
 
 interface UIStateContextType {
@@ -62,11 +66,11 @@ export const UIStateProvider: React.FC<{ children: React.ReactNode }> = ({ child
         teamFilter: '',
         issueFilter: '',
         showDependencies: false,
+        showHierarchy: false,
         disableHoverHighlight: true,
         prioritizationMetric: 'score',
         isInitialOffsetSet: false,
         filtersCollapsed: false,
-        showHierarchy: false,
         // Default to all active statuses (everything except Done) so the dashboard
         // opens focused on in-flight work. Users can still tick Done back on.
         statusFilter: ['Backlog', 'Planning', 'Development'],

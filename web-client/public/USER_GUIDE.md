@@ -134,6 +134,7 @@ A prioritisation dashboard for the product organisation.
 *   **RICE Score:** Calculated as `(Total Impact TCV / Combined Effort MDs)`.
 *   **Sorting:** Sort the list to identify high-ROI opportunities.
 *   **Source filter:** Show only work items from Aha! or only local ones (not in Aha!). Items from Aha! show a small "Aha!" label after their name.
+*   **Tree view:** Shows work items under their parents. Pages count top-level items; click ▸ to load a row's children (sorted the same way). Filters still apply at every level: when a child matches but its parent does not, the parent is shown greyed out and marked *(parent)* so the match stays reachable.
 
 #### Work Item Detail
 
@@ -342,8 +343,8 @@ The Live Graph is a multi-layered dependency tree that maps demand (Customers) t
 *   **Edge Thickness:**
     *   **Demand (Customer → Work Item):** Thickness represents the ROI of the connection (TCV / Work Item Effort).
     *   **Execution (Work Item → Team):** Thickness represents the relative effort (Man-Days) required by that specific Issue.
-*   **Dependency Tracing:** Explicit Issue-to-Issue dependencies (Finish-to-Start or Finish-to-Finish) are shown as animated orange lines, highlighting critical paths and potential bottlenecks.
 *   **Show Hierarchy:** Orders the Work Items column as the parent/child tree: children sit under their parent, indented, joined by dashed lines on the left. Siblings keep the chosen priority order. Hover a work item to highlight its parent and children.
+*   **Dependency Tracing:** Explicit Issue-to-Issue dependencies (Finish-to-Start or Finish-to-Finish) are shown as animated orange lines, highlighting critical paths and potential bottlenecks.
 
 ---
 

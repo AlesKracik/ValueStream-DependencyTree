@@ -108,6 +108,8 @@ interface GenericListPageProps<T> {
      * related Settings subtab.
      */
     titleAction?: React.ReactNode;
+    /** Extra style for one row (e.g. to grey out context rows). */
+    getRowStyle?: (item: T) => React.CSSProperties | undefined;
 }
 
 export function GenericListPage<T extends { id: string }>({
@@ -142,6 +144,7 @@ export function GenericListPage<T extends { id: string }>({
     renderFilterBarHeader,
     nameFilterLabel = 'Filter',
     titleAction,
+    getRowStyle,
 }: GenericListPageProps<T>) {
     const { uiState, updateUiState } = useUIStateContext();
     const listRef = useRef<HTMLDivElement>(null);
@@ -584,7 +587,7 @@ export function GenericListPage<T extends { id: string }>({
                         key={item.id} 
                         className={styles.listItem} 
                         onClick={() => handleItemClick(item)}
-                        style={columns ? { display: 'grid', gridTemplateColumns, gap: '16px', alignItems: 'center' } : {}}
+                        style={{ ...(columns ? { display: 'grid', gridTemplateColumns, gap: '16px', alignItems: 'center' } : {}), ...getRowStyle?.(item) }}
                     >
                         {columns ? (
                             columns.map((col, i) => (

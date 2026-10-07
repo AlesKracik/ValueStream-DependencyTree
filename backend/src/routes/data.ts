@@ -5,7 +5,7 @@ import { computeMetricsFromPrecomputed, recomputeScoresForWorkItems } from '../s
 import { assignMissingQuarters } from '../services/sprintService';
 import { fetchWithThreshold, buildMongoQuery, applyValueStreamFilters, buildWorkspaceQueries, buildWorkItemSort, buildCustomerSort } from '../utils/dbHelpers';
 import { WorkItemListQuery, WorkItemListQueryType, CustomerListQuery, CustomerListQueryType } from './schemas';
-import { getDescendantIdsForRoots, ensureHierarchyIndex } from '../utils/workItemHierarchy';
+import { getDescendantIdsForRoots, ensureHierarchyIndex, planWorkItemTreeLevel } from '../utils/workItemHierarchy';
 import { migrateLegacyAhaFields } from '../utils/workItemOrigin';
 import { migrateLegacyEffort } from '../utils/effortSize';
 
@@ -134,6 +134,35 @@ export const dataRoutes: FastifyPluginAsync = async (fastify) => {
     const paginate =
       Number.isFinite(pageNum) && pageNum >= 1 &&
       Number.isFinite(pageSizeNum) && pageSizeNum >= 1;
+
+    if (q.tree === 'true') {
+      const collection = db.collection('workItems');
+      const matchedDocs = await collection.find(query).toArray();
+      const metrics = computeMetricsFromPrecomputed(matchedDocs.map(({ _id, ...rest }) => rest));
+      const links = await collection.find({}, { projection: { _id: 0, id: 1, parent_id: 1 } }).toArray();
+      const plan = planWorkItemTreeLevel(
+        links as unknown as { id: string; parent_id?: string | null }[],
+        matchedDocs.map(d => d.id as string),
+        q.treeParent || undefined,
+      );
+
+      let cursor = collection.find({ id: { $in: plan.levelIds } });
+      if (sort) cursor = cursor.sort(sort);
+      if (paginate) cursor = cursor.skip((pageNum - 1) * pageSizeNum).limit(pageSizeNum);
+      const workItems = (await cursor.toArray()).map(({ _id, ...rest }) => rest);
+
+      const childCounts: Record<string, number> = {};
+      const contextIds: string[] = [];
+      for (const w of workItems) {
+        const n = plan.childCounts.get(w.id);
+        if (n) childCounts[w.id] = n;
+        if (plan.contextIds.has(w.id)) contextIds.push(w.id);
+      }
+      return reply.send({
+        workItems, metrics, total: plan.levelIds.length, childCounts, contextIds,
+        ...(paginate ? { page: pageNum, pageSize: pageSizeNum } : {}),
+      });
+    }
 
     if (paginate) {
       const collection = db.collection('workItems');

@@ -98,3 +98,54 @@ export async function wouldCreateCycle(
 
   return false;
 }
+
+export interface TreeLevelPlan {
+  /** Ids of the requested level (top level, or the children of `parentId`). */
+  levelIds: string[];
+  /** Visible children per work item id, for the expand chevrons. */
+  childCounts: Map<string, number>;
+  /** Shown only as an ancestor of a match (not a match itself). */
+  contextIds: Set<string>;
+}
+
+/**
+ * Plans one level of the work-items tree view. Visible = items matching the
+ * filters plus every ancestor of a match, so a matching child is never hidden
+ * behind a parent that does not match. An item's tree parent is its
+ * parent_id when that parent is visible; otherwise it sits at the top level.
+ * Pure: `links` is every work item's id + parent_id.
+ */
+export function planWorkItemTreeLevel(
+  links: { id: string; parent_id?: string | null }[],
+  matchedIds: Iterable<string>,
+  parentId?: string,
+): TreeLevelPlan {
+  const parentOf = new Map(links.map(l => [l.id, l.parent_id || undefined]));
+  const matched = new Set(matchedIds);
+  const visible = new Set(matched);
+  for (const id of matched) {
+    const seen = new Set([id]);
+    let p = parentOf.get(id);
+    // A visible ancestor's own ancestors are already in (or will be walked).
+    while (p && parentOf.has(p) && !seen.has(p) && !visible.has(p)) {
+      visible.add(p);
+      seen.add(p);
+      p = parentOf.get(p);
+    }
+  }
+
+  const treeParent = (id: string): string | undefined => {
+    const p = parentOf.get(id);
+    return p && p !== id && visible.has(p) ? p : undefined;
+  };
+
+  const levelIds: string[] = [];
+  const childCounts = new Map<string, number>();
+  for (const id of visible) {
+    const p = treeParent(id);
+    if (p) childCounts.set(p, (childCounts.get(p) ?? 0) + 1);
+    if (p === parentId) levelIds.push(id);
+  }
+  const contextIds = new Set([...visible].filter(id => !matched.has(id)));
+  return { levelIds, childCounts, contextIds };
+}

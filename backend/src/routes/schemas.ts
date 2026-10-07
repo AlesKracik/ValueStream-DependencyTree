@@ -244,6 +244,12 @@ export const WorkItemListQuery = Type.Object({
   subtreeOf: Type.Optional(Type.Union([Type.Array(Type.String()), Type.String()])),
   rootsOnly: Type.Optional(Type.String()),
 
+  // Tree view: 'true' returns one level of the hierarchy of the filtered set
+  // (matches plus their ancestors), paged and sorted like the flat list.
+  //   treeParent — the level's parent id; omitted for the top level.
+  tree: Type.Optional(Type.String()),
+  treeParent: Type.Optional(Type.String()),
+
   // Legacy params kept for backward compatibility with workspace endpoint callers
   releasedFilter: Type.Optional(Type.String()),
   minScoreFilter: Type.Optional(Type.String()),

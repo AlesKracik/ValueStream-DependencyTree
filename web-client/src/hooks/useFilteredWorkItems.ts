@@ -46,8 +46,21 @@ export interface WorkItemPagination {
     pageSize?: number;
 }
 
+/**
+ * Tree view: request one level of the hierarchy of the filtered set (matches
+ * plus their ancestors) instead of a flat list. `parentId` picks the level;
+ * omitted = top level.
+ */
+export interface WorkItemTreeLevel {
+    parentId?: string;
+}
+
 export interface FilteredWorkItemsResult {
     workItems: WorkItem[];
+    /** Tree view only: visible children per returned work item id. */
+    childCounts: Record<string, number>;
+    /** Tree view only: returned ids shown only as ancestors of a match. */
+    contextIds: string[];
     metrics: { maxScore: number; maxRoi: number };
     /** Total number of items matching filters across all pages. */
     total: number;
@@ -69,7 +82,12 @@ export interface FilteredWorkItemsResult {
  * params (?status=A&status=B) so Fastify normalizes them back into arrays
  * server-side. Empty / undefined values are omitted.
  */
-function buildQueryString(filters: WorkItemFilters, sort: WorkItemSort, pagination: WorkItemPagination): string {
+export function buildQueryString(
+    filters: WorkItemFilters,
+    sort: WorkItemSort,
+    pagination: WorkItemPagination,
+    tree?: WorkItemTreeLevel,
+): string {
     const params = new URLSearchParams();
     const appendIfSet = (key: string, value: string | undefined) => {
         if (value !== undefined && value !== '') params.append(key, value);
@@ -97,6 +115,11 @@ function buildQueryString(filters: WorkItemFilters, sort: WorkItemSort, paginati
     appendIfSet('sortBy', sort.sortBy);
     appendIfSet('sortOrder', sort.sortOrder);
 
+    if (tree) {
+        params.append('tree', 'true');
+        appendIfSet('treeParent', tree.parentId);
+    }
+
     if (pagination.page !== undefined && pagination.pageSize !== undefined) {
         params.append('page', String(pagination.page));
         params.append('pageSize', String(pagination.pageSize));
@@ -117,9 +140,12 @@ const DEBOUNCE_MS = 250;
 export function useFilteredWorkItems(
     filters: WorkItemFilters,
     sort: WorkItemSort,
-    pagination: WorkItemPagination = {}
+    pagination: WorkItemPagination = {},
+    tree?: WorkItemTreeLevel,
 ): FilteredWorkItemsResult {
     const [workItems, setWorkItems] = useState<WorkItem[]>([]);
+    const [childCounts, setChildCounts] = useState<Record<string, number>>({});
+    const [contextIds, setContextIds] = useState<string[]>([]);
     const [metrics, setMetrics] = useState<{ maxScore: number; maxRoi: number }>({ maxScore: 1, maxRoi: 1 });
     const [total, setTotal] = useState<number>(0);
     const [loading, setLoading] = useState<boolean>(true);
@@ -134,7 +160,7 @@ export function useFilteredWorkItems(
     // user keeps typing.
     const hasFetchedRef = useRef(false);
 
-    const queryString = buildQueryString(filters, sort, pagination);
+    const queryString = buildQueryString(filters, sort, pagination, tree);
 
     useEffect(() => {
         let cancelled = false;
@@ -152,6 +178,8 @@ export function useFilteredWorkItems(
                 }
                 const items = json.workItems || [];
                 setWorkItems(items);
+                setChildCounts(json.childCounts || {});
+                setContextIds(json.contextIds || []);
                 setMetrics(json.metrics || { maxScore: 1, maxRoi: 1 });
                 setTotal(typeof json.total === 'number' ? json.total : items.length);
             } catch (e) {
@@ -177,6 +205,8 @@ export function useFilteredWorkItems(
 
     return {
         workItems,
+        childCounts,
+        contextIds,
         metrics,
         total,
         loading,

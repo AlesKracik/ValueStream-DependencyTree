@@ -545,6 +545,51 @@ describe('Data Routes', () => {
     expect(observedLimit).toBe(10);
   });
 
+  it('GET /api/data/workItems?tree=true pages the top level of matches plus their ancestors', async () => {
+    const docs = [
+      { id: 'R', name: 'Root' },
+      { id: 'A', name: 'Mid', parent_id: 'R' },
+      { id: 'A1', name: 'Leaf match', parent_id: 'A' },
+      { id: 'S', name: 'Other root' },
+    ];
+    let observedLevelQuery: any;
+    let observedSkip: number | undefined;
+    mockDb.collection = vi.fn((colName: string) => {
+      if (colName !== 'workItems') {
+        return { find: vi.fn().mockReturnValue({ sort: vi.fn().mockReturnThis(), toArray: vi.fn().mockResolvedValue([]) }) };
+      }
+      return {
+        find: vi.fn().mockImplementation((filter: any) => {
+          let rows = docs;
+          if (filter?.id?.$in) { observedLevelQuery = filter; rows = docs.filter(d => filter.id.$in.includes(d.id)); }
+          else if (filter?.name) rows = docs.filter(d => d.id === 'A1'); // the name filter matches only the leaf
+          const cursor: any = {
+            sort: vi.fn().mockReturnThis(),
+            skip: vi.fn().mockImplementation((n: number) => { observedSkip = n; return cursor; }),
+            limit: vi.fn().mockReturnThis(),
+            toArray: vi.fn().mockResolvedValue(rows),
+          };
+          return cursor;
+        }),
+      };
+    });
+
+    const top = await app.inject({ method: 'GET', url: '/api/data/workItems?tree=true&name=leaf&page=1&pageSize=10&sortBy=name' });
+    expect(top.statusCode).toBe(200);
+    const json = JSON.parse(top.payload);
+    expect(observedLevelQuery).toEqual({ id: { $in: ['R'] } });
+    expect(observedSkip).toBe(0);
+    expect(json.workItems.map((w: any) => w.id)).toEqual(['R']);
+    expect(json.total).toBe(1);
+    expect(json.childCounts).toEqual({ R: 1 });
+    expect(json.contextIds).toEqual(['R']);
+
+    const child = await app.inject({ method: 'GET', url: '/api/data/workItems?tree=true&name=leaf&treeParent=A' });
+    const childJson = JSON.parse(child.payload);
+    expect(childJson.workItems.map((w: any) => w.id)).toEqual(['A1']);
+    expect(childJson.contextIds).toEqual([]);
+  });
+
   it('GET /api/data/workItems?subtreeOf=X resolves descendants via $graphLookup and ANDs id $in', async () => {
     let observedFilter: any = undefined;
     let observedAggregatePipeline: any = undefined;

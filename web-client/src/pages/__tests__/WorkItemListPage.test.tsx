@@ -4,6 +4,7 @@ import { WorkItemListPage } from '../WorkItemListPage';
 import { renderWithProviders } from '../../test/testUtils';
 import type { ValueStreamData } from '@valuestream/shared-types';
 import * as filteredWorkItemsModule from '../../hooks/useFilteredWorkItems';
+import * as treeChildrenModule from '../../hooks/useWorkItemTreeChildren';
 
 const mockedNavigate = vi.fn();
 
@@ -19,6 +20,8 @@ vi.mock('react-router-dom', async () => {
 // without exercising the fetch path twice (the hook has its own coverage).
 vi.mock('../../hooks/useFilteredWorkItems');
 const useFilteredWorkItemsMock = vi.mocked(filteredWorkItemsModule.useFilteredWorkItems);
+vi.mock('../../hooks/useWorkItemTreeChildren');
+const useTreeChildrenMock = vi.mocked(treeChildrenModule.useWorkItemTreeChildren);
 
 const mockData: ValueStreamData = {
     settings: {
@@ -57,9 +60,11 @@ const mockData: ValueStreamData = {
 };
 
 /** Helper: install a mock for useFilteredWorkItems that just returns the items it was given. */
-function mockHook(items = mockData.workItems, opts: { loading?: boolean; refetching?: boolean; error?: string | null; total?: number } = {}) {
+function mockHook(items = mockData.workItems, opts: { loading?: boolean; refetching?: boolean; error?: string | null; total?: number; childCounts?: Record<string, number>; contextIds?: string[] } = {}) {
     useFilteredWorkItemsMock.mockReturnValue({
         workItems: items,
+        childCounts: opts.childCounts ?? {},
+        contextIds: opts.contextIds ?? [],
         metrics: { maxScore: 100, maxRoi: 10 },
         total: opts.total ?? items.length,
         loading: opts.loading ?? false,
@@ -533,6 +538,8 @@ describe('WorkItemListPage', () => {
             const reload = vi.fn();
             useFilteredWorkItemsMock.mockReturnValue({
                 workItems: mockData.workItems,
+                childCounts: {},
+                contextIds: [],
                 metrics: { maxScore: 100, maxRoi: 10 },
                 total: mockData.workItems.length,
                 loading: false,
@@ -582,6 +589,41 @@ describe('WorkItemListPage', () => {
         it('button is not shown when toggle is set to Score (default)', () => {
             renderWithProviders(<WorkItemListPage data={mockData} loading={false} />);
             expect(screen.queryByRole('button', { name: /Compact Ranks/i })).toBeNull();
+        });
+    });
+
+    describe('Tree view', () => {
+        const [alpha, gamma] = mockData.workItems;
+
+        it('requests the top level, shows chevrons, greys context rows and loads children on expand', () => {
+            useTreeChildrenMock.mockImplementation((_f, _s, expandedIds): Record<string, treeChildrenModule.WorkItemTreeChildren> => (
+                expandedIds.includes('w1')
+                    ? { w1: { workItems: [{ ...gamma, parent_id: 'w1' }], childCounts: {}, contextIds: [] } }
+                    : {}
+            ));
+            mockHook([alpha], { childCounts: { w1: 1 }, contextIds: ['w1'] });
+            renderWithProviders(<WorkItemListPage data={mockData} loading={false} />);
+
+            fireEvent.click(screen.getByLabelText('Tree view'));
+            expect(lastHookCall()[3]).toEqual({});
+            expect(screen.getByText('(parent)')).toBeTruthy();
+            expect(screen.queryByText('Gamma Item')).toBeNull();
+
+            fireEvent.click(screen.getByLabelText('Expand Alpha Item'));
+            expect(mockedNavigate).not.toHaveBeenCalled();
+            expect(screen.getByText('Gamma Item')).toBeTruthy();
+            expect(screen.getByLabelText('Collapse Alpha Item')).toBeTruthy();
+
+            const alphaRow = screen.getByText('Alpha Item').closest('[style*="grid"]') as HTMLElement;
+            expect(alphaRow.style.opacity).toBe('0.55');
+        });
+
+        it('flat view sends no tree level', () => {
+            useTreeChildrenMock.mockReturnValue({});
+            mockHook();
+            renderWithProviders(<WorkItemListPage data={mockData} loading={false} />);
+            expect(lastHookCall()[3]).toBeUndefined();
+            expect(screen.queryByText('(parent)')).toBeNull();
         });
     });
 });
