@@ -432,7 +432,8 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
             const newIssue: Issue = {
               id: newId,
               jira_key: jiraKey,
-              team_id: updates.team_id || (data.teams.length > 0 ? data.teams[0].id : ""),
+              // '' = unassigned when the Jira issue maps to no team.
+              team_id: updates.team_id || '',
               effort_md: updates.effort_md || 0,
               name: updates.name,
               target_start: updates.target_start,

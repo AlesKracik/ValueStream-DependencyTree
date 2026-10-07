@@ -52,7 +52,7 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
                 setNewWorkItemIssues(prev => prev.map(e => e.id === id ? {
                     ...e,
                     ...updates,
-                    team_id: updates.team_id || e.team_id || (data?.teams[0]?.id || '')
+                    team_id: updates.team_id || e.team_id || ''
                 } : e));
             } else {
                 updateIssue(id, updates);
@@ -107,7 +107,8 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
             jira_key: '',
             name: '',
             effort_md: 0,
-            team_id: data?.teams[0]?.id || '',
+            // No team until one is picked or a Jira sync maps one ('' = unassigned).
+            team_id: '',
             work_item_id: workItemId
         };
         if (isNew) {
@@ -192,7 +193,7 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '25%' }}>
                             <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Team:</span>
                             <select
-                                value={issue.team_id}
+                                value={issue.team_id || ''}
                                 onChange={e => {
                                     if (isNew) {
                                         setNewWorkItemIssues(prev => prev.map(ev => ev.id === issue.id ? { ...ev, team_id: e.target.value } : ev));
@@ -202,6 +203,7 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
                                 }}
                                 style={{ width: '100%' }}
                             >
+                                <option value="">Unassigned</option>
                                 {data?.teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                             </select>
                         </div>

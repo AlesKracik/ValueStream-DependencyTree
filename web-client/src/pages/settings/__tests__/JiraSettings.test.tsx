@@ -107,6 +107,34 @@ describe('JiraSettings — Import JQL', () => {
   });
 });
 
+describe('JiraSettings — Import team', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('leaves an imported issue without a team mapping unassigned instead of taking the first team', async () => {
+    (api.authorizedFetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, data: { issues: [{ key: 'PROJ-1', fields: { summary: 'No team' } }], names: {} } })
+    });
+    const addIssue = vi.fn().mockResolvedValue({ id: 'i1' });
+    const settings = baseSettings;
+    render(
+      <MemoryRouter initialEntries={['/?subtab=work-items']}>
+        <JiraSettings
+          localFormData={settings} updateFormData={vi.fn()} onUpdateSettings={vi.fn()} settings={settings}
+          data={mockData} updateIssue={vi.fn()} addIssue={addIssue} updateCustomer={vi.fn()}
+          updateWorkItem={vi.fn()} addWorkItem={vi.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.change(screen.getByPlaceholderText(/project = PROJ/i), { target: { value: 'project = PROJ' } });
+    fireEvent.click(screen.getByRole('button', { name: /import from jira/i }));
+
+    await waitFor(() => expect(addIssue).toHaveBeenCalled());
+    expect(addIssue.mock.calls[0][0]).toMatchObject({ jira_key: 'PROJ-1', team_id: '' });
+  });
+});
+
 describe('JiraSettings — Cloud vs Data Center', () => {
   beforeEach(() => {
     vi.clearAllMocks();

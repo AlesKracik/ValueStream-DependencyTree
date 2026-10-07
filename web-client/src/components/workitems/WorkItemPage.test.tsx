@@ -822,6 +822,24 @@ describe('WorkItemPage', () => {
         expect(mockShowConfirm).not.toHaveBeenCalledWith('Unlink Aha!', expect.any(String));
     });
 
+    it('lets an issue be unassigned from a team, and new issues start unassigned', async () => {
+        const withTeams: ValueStreamData = {
+            ...mockData,
+            teams: [{ id: 't1', name: 'Team 1', total_capacity_mds: 10 }, { id: 't2', name: 'Team 2', total_capacity_mds: 10 }],
+            issues: [{ id: 'e1', jira_key: 'J-1', team_id: 't2', effort_md: 3, work_item_id: 'f1' }],
+        };
+        renderPage({ ...defaultProps, data: withTeams }, 'f1');
+        fireEvent.click(screen.getByText(/Engineering Issues \(/i));
+
+        const select = screen.getByDisplayValue('Team 2') as HTMLSelectElement;
+        expect(Array.from(select.options).map(o => o.text)).toEqual(['Unassigned', 'Team 1', 'Team 2']);
+        fireEvent.change(select, { target: { value: '' } });
+        expect(defaultProps.updateIssue).toHaveBeenCalledWith('e1', { team_id: '' });
+
+        fireEvent.click(screen.getByText('+ New Issue'));
+        await waitFor(() => expect(defaultProps.addIssue).toHaveBeenCalledWith(expect.objectContaining({ team_id: '' })));
+    });
+
     it('saves new work item with draft issues', async () => {
         renderPage(defaultProps, 'new');
 
