@@ -204,7 +204,48 @@ export const parseJiraIssue = (issue: any, teams: Team[], deployment: JiraDeploy
 
     // Parent: Jira is source of truth (null clears it)
     updates.parent_jira_key = extractJiraParentKey(issue, deployment) ?? null;
+    // Status: Jira is source of truth (null clears it)
+    updates.jira_status = typeof fields.status?.name === 'string' && fields.status.name !== '' ? fields.status.name : null;
     return updates;
+};
+
+type WorkItemStatus = WorkItem['status'];
+
+/**
+ * Jira status (lower-cased) -> work item status; any other status is
+ * Development. Mirrors the backend's map (backend/src/utils/businessLogic.ts),
+ * which persists the derived status.
+ */
+const JIRA_STATUS_TO_WORK_ITEM_STATUS: Record<string, WorkItemStatus> = {
+    draft: 'Backlog',
+    open: 'Planning',
+    done: 'Done',
+    closed: 'Done',
+    cancelled: 'Done',
+    canceled: 'Done',
+};
+
+/** Maps one Jira status name to a work item status (case-insensitive). */
+export const mapJiraStatusToWorkItemStatus = (jiraStatus: string): WorkItemStatus =>
+    JIRA_STATUS_TO_WORK_ITEM_STATUS[jiraStatus.trim().toLowerCase()] ?? 'Development';
+
+/**
+ * Derives a work item's status from the Jira status of its linked issues.
+ * Done when every issue is done (Done / Closed / Cancelled); otherwise the
+ * most advanced of the rest wins: Development, then Planning, then Backlog.
+ * Issues without a Jira status are ignored; undefined when none has one (the
+ * work item keeps its own, user-edited status).
+ */
+export const deriveWorkItemStatusFromJira = (workItemId: string, issues: Issue[]): WorkItemStatus | undefined => {
+    const statuses = issues
+        .filter(i => i.work_item_id === workItemId && typeof i.jira_status === 'string' && i.jira_status.trim() !== '')
+        .map(i => mapJiraStatusToWorkItemStatus(i.jira_status as string));
+    if (statuses.length === 0) return undefined;
+    const open = statuses.filter(s => s !== 'Done');
+    if (open.length === 0) return 'Done';
+    if (open.includes('Development')) return 'Development';
+    if (open.includes('Planning')) return 'Planning';
+    return 'Backlog';
 };
 
 /**

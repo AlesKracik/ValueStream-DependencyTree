@@ -17,6 +17,7 @@ export interface Issue {
   dependencies?: IssueDependency[];
   sprint_effort_overrides?: Record<string, number>;
   parent_jira_key?: string | null; // Jira-owned parent key
+  jira_status?: string | null;     // Jira-owned status name
 }
 ```
 
@@ -46,5 +47,5 @@ graph LR
   - **Quick Clear:** Users can click the "×" button to revert to the proportional calculation.
 - **Historical Actuals (Auto-Freeze):** Sprints older than the active sprint are automatically "frozen". If an issue has effort in a past sprint but no manual override, the system snapshots the current calculation as a permanent override to prevent historical data from shifting when dates are changed.
 - **Centralized Math:** All effort calculations (Gantt heat-mapping, team capacity usage, and detail page tables) are powered by a centralized business logic utility (`calculateIssueEffortPerSprint`) ensuring perfect consistency across the UI.
-- **Sync:** Can be updated from Jira to pull latest dates, team, and effort.
+- **Sync:** Can be updated from Jira to pull latest dates, team, effort, and status (`jira_status`). The Jira status of an issue drives its work item's status (see [Work Items](WORKITEMS.md#status-from-jira)).
 - **Unique Jira key:** No two issues share a `jira_key` (compared trimmed, case-insensitive; blank and `TBD` exempt). The server rejects a create or edit that would duplicate one with `400`. Typing an existing key on a work item's Issues tab links that issue instead.

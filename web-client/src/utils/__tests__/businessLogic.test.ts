@@ -5,6 +5,8 @@ import {
     calculateIssueEffortPerSprint,
     calculateIssueIntensityRatio,
     parseJiraIssue,
+    deriveWorkItemStatusFromJira,
+    mapJiraStatusToWorkItemStatus,
     buildSupportStatusPatch,
     SUPPORT_DONE_RETENTION_DAYS,
     estimateTeamCapacityMds,
@@ -87,7 +89,7 @@ describe('businessLogic', () => {
         it('handles missing fields gracefully', () => {
             const jiraIssue = { fields: {} };
             const result = parseJiraIssue(jiraIssue, mockTeams);
-            expect(result).toEqual({ parent_jira_key: null });
+            expect(result).toEqual({ parent_jira_key: null, jira_status: null });
         });
 
         describe('parent_jira_key', () => {
@@ -109,6 +111,11 @@ describe('businessLogic', () => {
                 expect(parseJiraIssue({ names, fields: { summary: 'x' } }, mockTeams).parent_jira_key).toBeNull();
                 expect(parseJiraIssue({ fields: { summary: 'x' } }, mockTeams, 'cloud').parent_jira_key).toBeNull();
             });
+        });
+
+        it('reads the Jira status name, null when Jira has none', () => {
+            expect(parseJiraIssue({ fields: { status: { name: 'In Review' } } }, mockTeams).jira_status).toBe('In Review');
+            expect(parseJiraIssue({ fields: {} }, mockTeams).jira_status).toBeNull();
         });
 
         it('treats 0 effort in Jira as source of truth', () => {
@@ -156,6 +163,43 @@ describe('businessLogic', () => {
             };
             const result = parseJiraIssue(jiraIssue, mockTeams);
             expect(result.effort_md).toBe(10);
+        });
+    });
+
+    describe('mapJiraStatusToWorkItemStatus', () => {
+        it('maps Draft, Open and the done statuses; anything else is Development', () => {
+            expect(mapJiraStatusToWorkItemStatus('Draft')).toBe('Backlog');
+            expect(mapJiraStatusToWorkItemStatus('open')).toBe('Planning');
+            expect(mapJiraStatusToWorkItemStatus('Done')).toBe('Done');
+            expect(mapJiraStatusToWorkItemStatus('CLOSED')).toBe('Done');
+            expect(mapJiraStatusToWorkItemStatus(' Cancelled ')).toBe('Done');
+            expect(mapJiraStatusToWorkItemStatus('In Progress')).toBe('Development');
+            expect(mapJiraStatusToWorkItemStatus('Reopened')).toBe('Development');
+        });
+    });
+
+    describe('deriveWorkItemStatusFromJira', () => {
+        const mk = (id: string, jira_status: string | null | undefined, work_item_id = 'w1'): Issue =>
+            ({ id, jira_key: id, work_item_id, team_id: '', effort_md: 0, jira_status });
+
+        it('is undefined when no linked issue has a Jira status', () => {
+            expect(deriveWorkItemStatusFromJira('w1', [])).toBeUndefined();
+            expect(deriveWorkItemStatusFromJira('w1', [mk('a', null), mk('b', undefined), mk('c', 'Done', 'w2')])).toBeUndefined();
+        });
+
+        it('is Done only when every issue is done', () => {
+            expect(deriveWorkItemStatusFromJira('w1', [mk('a', 'Done'), mk('b', 'Closed'), mk('c', 'Cancelled')])).toBe('Done');
+            expect(deriveWorkItemStatusFromJira('w1', [mk('a', 'Done'), mk('b', 'Draft')])).toBe('Backlog');
+        });
+
+        it('otherwise the most advanced status wins', () => {
+            expect(deriveWorkItemStatusFromJira('w1', [mk('a', 'Draft'), mk('b', 'In Progress'), mk('c', 'Done')])).toBe('Development');
+            expect(deriveWorkItemStatusFromJira('w1', [mk('a', 'Draft'), mk('b', 'Open')])).toBe('Planning');
+            expect(deriveWorkItemStatusFromJira('w1', [mk('a', 'Draft')])).toBe('Backlog');
+        });
+
+        it('ignores issues without a Jira status', () => {
+            expect(deriveWorkItemStatusFromJira('w1', [mk('a', 'Done'), mk('b', null)])).toBe('Done');
         });
     });
 

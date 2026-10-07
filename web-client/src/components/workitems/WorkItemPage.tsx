@@ -9,6 +9,7 @@ import { WorkItemIssuesTab } from './tabs/WorkItemIssuesTab';
 import { WorkItemAhaTab } from './tabs/WorkItemAhaTab';
 import { WorkItemHierarchyTab } from './tabs/WorkItemHierarchyTab';
 import { isOwnedField } from '../../utils/workItemOrigin';
+import { deriveWorkItemStatusFromJira } from '../../utils/businessLogic';
 import { EFFORT_SIZE_OPTIONS, effortSizeUpdate } from '../../utils/effortSize';
 
 export interface WorkItemPageProps {
@@ -57,6 +58,8 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     const [newWorkItemIssues, setNewWorkItemIssues] = useState<Issue[]>([]);
 
     const workItem = isNew ? newWorkItemDraft as WorkItem : data?.workItems.find(f => f.id === workItemId);
+    // Linked issues with a Jira status own the status (the server persists it).
+    const jiraStatus = isNew ? undefined : deriveWorkItemStatusFromJira(workItemId, data?.issues || []);
 
     const targetedCustomers = (isNew && data)
         ? newWorkItemCustomers.map(nfc => data.customers.find(c => c.id === nfc.customerId)!).filter(Boolean)
@@ -159,7 +162,9 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     <div style={{ flex: 1 }}>
                         <FormSelectField
                             label="Status:"
-                            value={workItem?.status || 'Backlog'}
+                            readOnly={jiraStatus !== undefined}
+                            helperText={jiraStatus !== undefined ? 'Derived from linked Jira issues' : undefined}
+                            value={jiraStatus ?? workItem?.status ?? 'Backlog'}
                             onChange={v => {
                                 const val = v as WorkItem['status'];
                                 if (isNew) setNewWorkItemDraft(prev => ({ ...prev, status: val }));

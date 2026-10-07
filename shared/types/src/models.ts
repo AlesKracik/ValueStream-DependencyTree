@@ -220,6 +220,13 @@ export interface Issue {
    * Children are derived: issues whose parent_jira_key is this jira_key.
    */
   parent_jira_key?: string | null;
+  /**
+   * Status name of the Jira issue (e.g. "Draft", "Open", "In Progress",
+   * "Done"), or null when Jira has none. Jira owns it: every Jira sync
+   * overwrites it. A work item with linked issues that carry it takes its
+   * status from them (see deriveWorkItemStatusFromJira).
+   */
+  jira_status?: string | null;
 }
 
 export interface Sprint {

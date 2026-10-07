@@ -159,6 +159,7 @@ Define exactly which accounts this initiative is for. Choose the TCV type (Exist
 *   Break down strategy into deliverable technical units.
 *   **Issue Linkage:** Add new Issues or link existing ones.
 *   **Estimate Roll-up:** Set individual Man-Day estimates for each Issue. The Work Item's total effort is automatically updated.
+*   **Status from Jira:** Once linked issues are synced from Jira, the Work Item's status follows their Jira status and is read-only: Draft → Backlog, Open → Planning, Done / Closed / Cancelled → Done, anything else → Development. With several issues it is Done only when all are done; otherwise the most advanced issue wins.
 
 **Tab: Aha! Integration** *(appears only when Aha! is configured in Settings)*
 

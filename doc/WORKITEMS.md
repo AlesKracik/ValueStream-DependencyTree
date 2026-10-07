@@ -77,6 +77,26 @@ truth for the PM-facing fields of work items that exist in Aha!.
   derived, and the old fields are removed. The migration code is marked
   `TODO(remove)` and goes away once every record is migrated.
 
+### Status from Jira
+When a work item's linked issues carry a Jira status (`Issue.jira_status`, set by
+every Jira sync and import), Jira owns the work item's `status`:
+
+| Jira status (case-insensitive) | Work item status |
+| ------------------------------ | ---------------- |
+| Draft                          | Backlog          |
+| Open                           | Planning         |
+| Done, Closed, Cancelled        | Done             |
+| any other                      | Development      |
+
+- **Several issues:** Done when every issue is done; otherwise the most advanced
+  of the rest wins (Development, then Planning, then Backlog).
+- Issues without a Jira status are ignored. With none, the status stays
+  user-edited.
+- **Server-owned.** The backend persists it in the recompute pass that runs after
+  every work item / issue write (`recomputeScoresForWorkItems`,
+  `deriveWorkItemStatusFromJira`). The work item page shows it read-only
+  ("Derived from linked Jira issues").
+
 ### Lifecycle Timestamps (`created_at` / `updated_at`)
 `created_at` and `updated_at` are **server-owned** — clients never send them. The
 backend stamps both on the initial insert and refreshes `updated_at` on every

@@ -41,6 +41,7 @@ The system maps the following fields from Jira to the local model:
 - **`Target end`** (Custom Field) -> `target_end`
 - **`Remaining Estimate`** -> `effort_md` (converted to man-days)
 - **`Team`** (Custom Field) -> `team_id` (matched via name)
+- **`Status`** -> `jira_status` (status name; `null` when none). Every sync overwrites it. It drives the linked work item's status: Draft → Backlog, Open → Planning, Done / Closed / Cancelled → Done, anything else → Development; with several issues, Done only when all are done, else the most advanced wins (see [Work Items](WORKITEMS.md#status-from-jira)).
 - **Parent** -> `parent_jira_key` (Jira key, `null` when none). Cloud: system `parent`, falling back to a lingering Parent Link. Data Center: **Parent Link**, then **Epic Link**, then a sub-task's `parent`. Jira owns it: every sync (single issue, Sync Issues, Import) overwrites it, and the issue page's **Hierarchy** tab shows it read-only. The optional *Align work-item hierarchy to Jira* (below) follows the same parent.
 
 ## Customer Issue Tracking

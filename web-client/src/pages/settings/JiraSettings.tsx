@@ -443,6 +443,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
               target_start: updates.target_start,
               target_end: updates.target_end,
               parent_jira_key: updates.parent_jira_key,
+              jira_status: updates.jira_status,
             };
             addIssue(newIssue);
             createCount++;

@@ -1,5 +1,5 @@
 import { Db } from 'mongodb';
-import { calculateWorkItemTcv, calculateWorkItemEffort } from '../utils/businessLogic';
+import { calculateWorkItemTcv, calculateWorkItemEffort, deriveWorkItemStatusFromJira } from '../utils/businessLogic';
 
 /**
  * Computes metrics from pre-computed score fields on workItems.
@@ -18,7 +18,8 @@ export function computeMetricsFromPrecomputed(workItems: any[]): { maxScore: num
 }
 
 /**
- * Re-computes calculated_tcv, calculated_effort, calculated_score for ALL workItems
+ * Re-computes calculated_tcv, calculated_effort, calculated_score (and the
+ * Jira-derived status, when linked issues carry one) for ALL workItems
  * and persists them via bulkWrite. Must fetch full dataset because Should-have TCV
  * depends on a global count across all workItems.
  *
@@ -38,11 +39,13 @@ export async function recomputeScoresForWorkItems(db: Db): Promise<void> {
         const calculated_tcv = calculateWorkItemTcv(wi, customers as any, workItems as any);
         const calculated_effort = calculateWorkItemEffort(wi, issues as any);
         const calculated_score = calculated_tcv / Math.max(calculated_effort, 1);
+        // Linked Jira issues own the status when any carries a Jira status.
+        const status = deriveWorkItemStatusFromJira(wi.id, issues as any);
 
         return {
             updateOne: {
                 filter: { id: wi.id },
-                update: { $set: { calculated_tcv, calculated_effort, calculated_score } }
+                update: { $set: { calculated_tcv, calculated_effort, calculated_score, ...(status ? { status } : {}) } }
             }
         };
     });

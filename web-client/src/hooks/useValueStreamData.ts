@@ -6,6 +6,7 @@ import { calculateQuarter } from '../utils/dateHelpers';
 import { applyTheme } from '../utils/themeApply';
 import { mergeForRetry, findContestedKeys, type AnyEntity } from '../utils/entityMerge';
 import { generateId } from '../utils/security';
+import { deriveWorkItemStatusFromJira } from '../utils/businessLogic';
 
 const CLIENT_SETTINGS_FALLBACK_KEY = 'vst-client-settings-pending';
 
@@ -882,7 +883,46 @@ export function useValueStreamData(
         issues: (prev.issues || []).map(issue => issue.team_id === id ? bumped({ ...issue, team_id: '' }) : issue)
     }));
 
-    const issueCRUD = createEntityCRUD<Issue>('issues', 'issues');
+    const rawIssueCRUD = createEntityCRUD<Issue>('issues', 'issues');
+
+    // The server re-derives a work item's status from its issues' Jira status
+    // after every issue write (recomputeScoresForWorkItems); mirror it locally
+    // so the change shows without a reload.
+    const applyJiraDerivedStatus = (workItemIds: (string | null | undefined)[]) => {
+        const ids = new Set(workItemIds.filter((id): id is string => !!id));
+        if (ids.size === 0) return;
+        setData(prev => {
+            if (!prev) return prev;
+            let changed = false;
+            const workItems = (prev.workItems || []).map(workItem => {
+                if (!ids.has(workItem.id)) return workItem;
+                const status = deriveWorkItemStatusFromJira(workItem.id, prev.issues || []);
+                if (!status || status === workItem.status) return workItem;
+                changed = true;
+                return { ...workItem, status };
+            });
+            return changed ? { ...prev, workItems } : prev;
+        });
+    };
+    const issueOf = (id: string) => data?.issues?.find(issue => issue.id === id);
+    const issueCRUD = {
+        add: async (entity: Omit<Issue, 'id'> & { id?: string }) => {
+            const created = await rawIssueCRUD.add(entity);
+            if (created) applyJiraDerivedStatus([created.work_item_id]);
+            return created;
+        },
+        update: async (id: string, updates: Partial<Issue>, immediate = false) => {
+            const before = issueOf(id)?.work_item_id;
+            const pending = rawIssueCRUD.update(id, updates, immediate);
+            applyJiraDerivedStatus([before, updates.work_item_id]);
+            await pending;
+        },
+        remove: (id: string) => {
+            const before = issueOf(id)?.work_item_id;
+            rawIssueCRUD.remove(id);
+            applyJiraDerivedStatus([before]);
+        },
+    };
 
     const valueStreamCRUD = createEntityCRUD<ValueStreamEntity>('valueStreams', 'valueStreams');
 

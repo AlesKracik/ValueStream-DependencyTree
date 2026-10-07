@@ -3,7 +3,8 @@ import {
     calculateWorkItemEffort, 
     calculateWorkItemTcv, 
     calculateIssueEffortPerSprint, 
-    calculateIssueIntensityRatio
+    calculateIssueIntensityRatio,
+    deriveWorkItemStatusFromJira
 } from '../businessLogic';
 import type { WorkItem, Issue, Customer, Sprint } from '@valuestream/shared-types';
 
@@ -270,6 +271,31 @@ describe('businessLogic', () => {
 
         it('returns 1 if both actual and baseline are 0', () => {
             expect(calculateIssueIntensityRatio(0, 0)).toBe(1);
+        });
+    });
+
+    describe('deriveWorkItemStatusFromJira', () => {
+        const mk = (id: string, jira_status: string | null | undefined, work_item_id = 'w1'): Issue =>
+            ({ id, jira_key: id, work_item_id, team_id: '', effort_md: 0, jira_status });
+
+        it('is undefined when no linked issue has a Jira status', () => {
+            expect(deriveWorkItemStatusFromJira('w1', [mk('a', null), mk('b', 'Done', 'w2')])).toBeUndefined();
+        });
+
+        it('maps Draft to Backlog, Open to Planning, any other open status to Development', () => {
+            expect(deriveWorkItemStatusFromJira('w1', [mk('a', 'Draft')])).toBe('Backlog');
+            expect(deriveWorkItemStatusFromJira('w1', [mk('a', 'Open')])).toBe('Planning');
+            expect(deriveWorkItemStatusFromJira('w1', [mk('a', 'In Review')])).toBe('Development');
+        });
+
+        it('is Done only when every issue is Done, Closed or Cancelled', () => {
+            expect(deriveWorkItemStatusFromJira('w1', [mk('a', 'done'), mk('b', 'Closed'), mk('c', 'Cancelled')])).toBe('Done');
+            expect(deriveWorkItemStatusFromJira('w1', [mk('a', 'Done'), mk('b', 'Open')])).toBe('Planning');
+        });
+
+        it('otherwise the most advanced status wins', () => {
+            expect(deriveWorkItemStatusFromJira('w1', [mk('a', 'Draft'), mk('b', 'In Progress'), mk('c', 'Done')])).toBe('Development');
+            expect(deriveWorkItemStatusFromJira('w1', [mk('a', 'Draft'), mk('b', 'Open')])).toBe('Planning');
         });
     });
 });

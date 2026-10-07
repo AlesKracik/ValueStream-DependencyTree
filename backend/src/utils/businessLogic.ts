@@ -46,6 +46,41 @@ export const calculateWorkItemEffort = (workItem: WorkItem, issues: Issue[]): nu
     return issueMdsSum > 0 ? issueMdsSum : (workItem.total_effort_mds || 0);
 };
 
+type WorkItemStatus = WorkItem['status'];
+
+/** Jira status (lower-cased) -> work item status; any other status is Development. */
+const JIRA_STATUS_TO_WORK_ITEM_STATUS: Record<string, WorkItemStatus> = {
+    draft: 'Backlog',
+    open: 'Planning',
+    done: 'Done',
+    closed: 'Done',
+    cancelled: 'Done',
+    canceled: 'Done',
+};
+
+/** Maps one Jira status name to a work item status (case-insensitive). */
+export const mapJiraStatusToWorkItemStatus = (jiraStatus: string): WorkItemStatus =>
+    JIRA_STATUS_TO_WORK_ITEM_STATUS[jiraStatus.trim().toLowerCase()] ?? 'Development';
+
+/**
+ * Derives a work item's status from the Jira status of its linked issues.
+ * Done when every issue is done (Done / Closed / Cancelled); otherwise the
+ * most advanced of the rest wins: Development, then Planning, then Backlog.
+ * Issues without a Jira status are ignored; undefined when none has one (the
+ * work item keeps its own status).
+ */
+export const deriveWorkItemStatusFromJira = (workItemId: string, issues: Issue[]): WorkItemStatus | undefined => {
+    const statuses = issues
+        .filter(i => i.work_item_id === workItemId && typeof i.jira_status === 'string' && i.jira_status.trim() !== '')
+        .map(i => mapJiraStatusToWorkItemStatus(i.jira_status as string));
+    if (statuses.length === 0) return undefined;
+    const open = statuses.filter(s => s !== 'Done');
+    if (open.length === 0) return 'Done';
+    if (open.includes('Development')) return 'Development';
+    if (open.includes('Planning')) return 'Planning';
+    return 'Backlog';
+};
+
 /**
  * A target without a priority is Should-have (DEC-008) — both for its own
  * share and for every Should-have divisor it counts toward.
