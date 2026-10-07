@@ -19,7 +19,8 @@ export function useGraphLayout(
     selectedNodeId: string | null = null,
     baseParams: ValueStreamParameters | null = null,
     prioritizationMetric: WorkItemPriorityMetric = 'score',
-    dashboardFilters?: DashboardFilters
+    dashboardFilters?: DashboardFilters,
+    showHierarchy: boolean = false
 ) {
     const filters = useGraphFilters(
         data,
@@ -36,5 +37,5 @@ export function useGraphLayout(
         dashboardFilters
     );
 
-    return useGraphBuilder(data, filters, hoveredNodeId, sprintOffset, showDependencies, prioritizationMetric);
+    return useGraphBuilder(data, filters, hoveredNodeId, sprintOffset, showDependencies, prioritizationMetric, showHierarchy);
 }

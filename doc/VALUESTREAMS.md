@@ -72,6 +72,8 @@ graph TD
 ## Visualization controls
 The dashboard's filter bar exposes a **Prioritize by** select (Score · Product Value · Stack Rank) that drives work-item ordering and node sizing. The choice is held in `ValueStreamViewState.prioritizationMetric` on `UIStateContext`, so it stays in sync with the matching toggle on the Work Items list page. See [WORKITEMS.md](WORKITEMS.md#prioritization-toggle) for the metric semantics.
 
+**Show Hierarchy** (`ValueStreamViewState.showHierarchy`, off by default) lays the work-item column out as the `parent_id` tree: each parent is followed by its children depth-first, siblings and roots keep the metric order, and each level is indented 40px (capped at 4 levels). Dashed lines on the left of the column join parent and child (edge ids `hierarchy__<parent>-<child>`, handles `hierarchy-out` / `hierarchy-in`). A child whose parent is filtered out starts its own tree. Hover tracing skips these lines, so a customer does not light up the children of its work items; hovering a work item highlights its direct parent and children. Ordering lives in `orderAsTree` (`web-client/src/hooks/useGraphBuilder.ts`).
+
 
 
 

@@ -35,6 +35,45 @@ function getMetricSizeValue(wi: WorkItem, metric: WorkItemPriorityMetric): numbe
     return wi.stackrank ?? 0;
 }
 
+const HIERARCHY_EDGE_PREFIX = 'hierarchy__';
+const HIERARCHY_INDENT_PX = 40;
+/** Deeper levels stop indenting so the column never reaches the teams. */
+const MAX_HIERARCHY_INDENT_LEVELS = 4;
+
+const isHierarchyEdge = (edge: Edge) => edge.id.startsWith(HIERARCHY_EDGE_PREFIX);
+
+/**
+ * Depth-first parent → children order over `sorted` (already in metric
+ * order, which siblings keep). Items whose parent is absent are roots; a
+ * cycle is broken where it is first entered.
+ */
+export function orderAsTree<T extends WorkItem>(sorted: T[]): { workItem: T; depth: number }[] {
+    const ids = new Set(sorted.map(w => w.id));
+    const childrenOf = new Map<string, T[]>();
+    const roots: T[] = [];
+    for (const w of sorted) {
+        const parentId = w.parent_id;
+        if (parentId && parentId !== w.id && ids.has(parentId)) {
+            const siblings = childrenOf.get(parentId);
+            if (siblings) siblings.push(w); else childrenOf.set(parentId, [w]);
+        } else {
+            roots.push(w);
+        }
+    }
+    const out: { workItem: T; depth: number }[] = [];
+    const seen = new Set<string>();
+    const visit = (w: T, depth: number) => {
+        if (seen.has(w.id)) return;
+        seen.add(w.id);
+        out.push({ workItem: w, depth });
+        childrenOf.get(w.id)?.forEach(c => visit(c, depth + 1));
+    };
+    roots.forEach(r => visit(r, 0));
+    // Items only reachable through a cycle.
+    sorted.forEach(w => visit(w, 0));
+    return out;
+}
+
 interface Holiday {
     date: string;
     type: string;
@@ -50,7 +89,8 @@ export function useGraphBuilder(
     hoveredNodeId: string | null,
     sprintOffset: number,
     showDependencies: boolean,
-    prioritizationMetric: WorkItemPriorityMetric = 'score'
+    prioritizationMetric: WorkItemPriorityMetric = 'score',
+    showHierarchy: boolean = false
 ): { nodes: Node[]; edges: Edge[] } {
     return useMemo(() => {
         if (!data) return { nodes: [], edges: [] };
@@ -183,16 +223,40 @@ export function useGraphBuilder(
             (a, b) => getMetricSortValue(b, prioritizationMetric) - getMetricSortValue(a, prioritizationMetric)
         );
 
-        sortedWorkItems.forEach((workItem, index) => {
+        // Hierarchy view: each parent is followed by its children (depth-first),
+        // siblings keep the metric order. A child whose parent is not visible
+        // starts a tree of its own.
+        const laidOutWorkItems = showHierarchy
+            ? orderAsTree(sortedWorkItems)
+            : sortedWorkItems.map(workItem => ({ workItem, depth: 0 }));
+
+        laidOutWorkItems.forEach(({ workItem, depth }, index) => {
             const sizeValue = getMetricSizeValue(workItem, prioritizationMetric);
             const displayValue = getMetricDisplayValue(workItem, prioritizationMetric);
             const sizeRatio = maxMetricValue > 0 ? sizeValue / maxMetricValue : 0.5;
             const nodeSize = 100 * 0.6 + (100 * 0.8 * sizeRatio);
+            const indent = Math.min(depth, MAX_HIERARCHY_INDENT_LEVELS) * HIERARCHY_INDENT_PX;
+
+            if (depth > 0 && workItem.parent_id) {
+                edges.push({
+                    id: `${HIERARCHY_EDGE_PREFIX}${workItem.parent_id}-${workItem.id}`,
+                    source: `workitem-${workItem.parent_id}`,
+                    sourceHandle: 'hierarchy-out',
+                    target: `workitem-${workItem.id}`,
+                    targetHandle: 'hierarchy-in',
+                    type: 'smoothstep',
+                    style: {
+                        strokeWidth: 1.5,
+                        stroke: 'var(--text-muted)',
+                        strokeDasharray: '4 4',
+                    },
+                });
+            }
 
             nodes.push({
                 id: `workitem-${workItem.id}`,
                 type: 'workItemNode',
-                position: { x: COL_WORKITEM_X - (nodeSize / 2), y: index * 180 + START_Y - (nodeSize / 2) },
+                position: { x: COL_WORKITEM_X + indent - (nodeSize / 2), y: index * 180 + START_Y - (nodeSize / 2) },
                 data: {
                     label: workItem.name,
                     description: workItem.description,
@@ -673,7 +737,7 @@ export function useGraphBuilder(
                     visitedTarget.add(contextKey);
 
                     hNodes.add(currentNodeId);
-                    let outgoingEdges = edges.filter(edge => edge.source === currentNodeId);
+                    let outgoingEdges = edges.filter(edge => edge.source === currentNodeId && !isHierarchyEdge(edge));
 
                     // If at a team node, only follow edges to the specific issue's Gantt bar
                     if (currentNodeId.startsWith('team-') && sourceIssueId) {
@@ -704,7 +768,7 @@ export function useGraphBuilder(
                     visitedSource.add(contextKey);
 
                     hNodes.add(currentNodeId);
-                    let incomingEdges = edges.filter(edge => edge.target === currentNodeId);
+                    let incomingEdges = edges.filter(edge => edge.target === currentNodeId && !isHierarchyEdge(edge));
 
                     // If at a team node, only follow incoming edges from the workitem that owns this issue
                     if (currentNodeId.startsWith('team-') && sourceIssueId) {
@@ -728,6 +792,17 @@ export function useGraphBuilder(
                 // Start traversal from hovered node in both directions
                 traceDownstream(hoveredNodeId);
                 traceUpstream(hoveredNodeId);
+
+                // Hierarchy lines are not traced (a customer would light up the
+                // children of its work items); show only the hovered work
+                // item's direct parent and children.
+                edges.forEach(edge => {
+                    if (!isHierarchyEdge(edge)) return;
+                    if (edge.source !== hoveredNodeId && edge.target !== hoveredNodeId) return;
+                    hEdges.add(edge.id);
+                    hNodes.add(edge.source);
+                    hNodes.add(edge.target);
+                });
             }
 
             // Apply styles to all nodes and edges based on sets
@@ -781,5 +856,5 @@ export function useGraphBuilder(
         }
 
         return { nodes, edges };
-    }, [data, filters, hoveredNodeId, sprintOffset, showDependencies, prioritizationMetric]);
+    }, [data, filters, hoveredNodeId, sprintOffset, showDependencies, prioritizationMetric, showHierarchy]);
 }

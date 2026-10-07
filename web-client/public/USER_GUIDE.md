@@ -343,6 +343,7 @@ The Live Graph is a multi-layered dependency tree that maps demand (Customers) t
     *   **Demand (Customer → Work Item):** Thickness represents the ROI of the connection (TCV / Work Item Effort).
     *   **Execution (Work Item → Team):** Thickness represents the relative effort (Man-Days) required by that specific Issue.
 *   **Dependency Tracing:** Explicit Issue-to-Issue dependencies (Finish-to-Start or Finish-to-Finish) are shown as animated orange lines, highlighting critical paths and potential bottlenecks.
+*   **Show Hierarchy:** Orders the Work Items column as the parent/child tree: children sit under their parent, indented, joined by dashed lines on the left. Siblings keep the chosen priority order. Hover a work item to highlight its parent and children.
 
 ---
 

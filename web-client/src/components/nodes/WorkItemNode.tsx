@@ -24,7 +24,11 @@ export const WorkItemNode = memo(({ data }: { data: WorkItemNodeData }) => {
 
     const handles = [
         { type: 'target' as const, position: Position.Left },
-        { type: 'source' as const, position: Position.Right }
+        { type: 'source' as const, position: Position.Right },
+        // Parent → child lines of the hierarchy view, both on the left so they
+        // draw as a bracket beside the column.
+        { type: 'source' as const, position: Position.Left, id: 'hierarchy-out' },
+        { type: 'target' as const, position: Position.Left, id: 'hierarchy-in' },
     ];
 
     const formatScore = (val: number) => {

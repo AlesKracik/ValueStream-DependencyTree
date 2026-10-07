@@ -66,6 +66,7 @@ export const UIStateProvider: React.FC<{ children: React.ReactNode }> = ({ child
         prioritizationMetric: 'score',
         isInitialOffsetSet: false,
         filtersCollapsed: false,
+        showHierarchy: false,
         // Default to all active statuses (everything except Done) so the dashboard
         // opens focused on in-flight work. Users can still tick Done back on.
         statusFilter: ['Backlog', 'Planning', 'Development'],
