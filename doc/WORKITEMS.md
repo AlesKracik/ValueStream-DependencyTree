@@ -10,7 +10,8 @@ export interface WorkItem {
   name: string;
   description?: string; // Detailed context/requirements
   status: 'Backlog' | 'Planning' | 'Development' | 'Done';
-  total_effort_mds: number; // Estimated man-days
+  effort_size?: 'XS' | 'S' | 'M' | 'L' | 'XL' | null; // Baseline T-shirt estimate; absent/null = not estimated
+  total_effort_mds: number; // Baseline MDs — server-derived from effort_size (0 when not estimated)
   score: number;            // Calculated RICE score
   stackrank?: number;       // Manual priority order (higher = higher priority); undefined = unranked
   customer_targets: {
@@ -97,7 +98,7 @@ The score is calculated server-side in `backend/src/services/metricsService.ts`:
     - **Must-have**: Contributes **100%** of the associated Customer TCV.
     - **Should-have**: Contributes a **shared portion** of the Customer TCV. Calculated as: `(Customer TCV) / (Total number of 'Should-have' Work Items for that particular Customer)`.
     - **Nice-to-have**: Contributes **0%** (does not add to the TCV/Impact).
-- **Effort:** The `total_effort_mds` defined on the Work Item.
+- **Effort:** `calculated_effort`: the sum of the linked Jira issues' `effort_md` when that is above 0, otherwise the baseline `total_effort_mds` (see [Baseline Effort](#baseline-effort-t-shirt-sizes)).
 - **Safety:** To avoid division by zero, the effective effort used in the calculation has a floor of 1 Man-Day. Reach and Confidence are currently implicitly 1.0.
 
 ### Historical Targeting
@@ -119,6 +120,34 @@ The `stackrank` field is a manual integer ordering used alongside the calculated
 
 ### Sparse spacing & inserting between items
 New work items default to `max(stackrank) + 1000`, giving 1000-unit gaps between consecutive ranks. To insert an item between two neighbors, just type any integer in the gap (e.g. between 2000 and 3000, use 2500). Over time the gaps shrink. When that happens, the **Compact Ranks** button on the Work Items list page renumbers all currently-ranked items to clean multiples of 1000 (1000, 2000, 3000, …) preserving their existing order. Unranked items are left untouched.
+
+## Baseline Effort (T-shirt Sizes)
+A work item's baseline effort is a rough estimate for before engineering has
+broken it into estimated Jira issues. It is set as a T-shirt size
+(`effort_size`):
+
+| Size | MDs |
+| ---- | --- |
+| XS   | 1   |
+| S    | 10  |
+| M    | 40  |
+| L    | 120 |
+| XL   | 360 |
+
+- **Server-derived number.** On every write the backend sets
+  `total_effort_mds` from the size (`backend/src/utils/effortSize.ts`), so effort,
+  score, filters and sorting keep working on MDs. A write that sends only
+  `total_effort_mds` (an older client) is converted to the nearest size.
+- **Not estimated.** No size (absent or `null`) means 0 MDs: the item is flagged
+  📏 and its score uses the 1 MD floor.
+- **Jira override.** Once the linked Jira issues' efforts add up to more than 0,
+  their sum is the effort and the size is ignored; the work item page says so.
+- **Legacy conversion.** Numeric baselines from before sizes existed are converted
+  lazily when work items are read (`GET /api/data/workItems`, `GET /api/workspace`):
+  each goes to the nearest size on a log scale (boundaries are the geometric means
+  of neighbouring sizes: ≈3.2, 20, 69, 208 MDs), `total_effort_mds` becomes that
+  size's MDs, and scores are recomputed. 0 or missing stays not estimated. The
+  code is marked `TODO(remove)`.
 
 ## Prioritization Toggle
 Both the Work Items list and the ValueStream dashboard expose a single toggle (`prioritizationMetric`, stored on `ValueStreamViewState` and shared across the two views via `UIStateContext`) that selects which metric drives ordering and visual sizing:

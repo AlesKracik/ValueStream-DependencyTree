@@ -3,9 +3,14 @@ import { FastifyInstance } from 'fastify';
 import { buildApp } from '../../app';
 import * as mongoServer from '../../utils/mongoServer';
 import { invalidateSettingsCache } from '../../services/secretManager';
+import * as metricsService from '../../services/metricsService';
+import { migrateLegacyEffort } from '../../utils/effortSize';
 
 vi.mock('../../utils/workItemOrigin', () => ({
   migrateLegacyAhaFields: vi.fn().mockResolvedValue(0),
+}));
+vi.mock('../../utils/effortSize', () => ({
+  migrateLegacyEffort: vi.fn().mockResolvedValue(0),
 }));
 
 const mockSettings = { persistence: { mongo: { app: { uri: 'mongodb://mock' } } } };
@@ -55,6 +60,16 @@ describe('Data Routes', () => {
     };
 
     vi.spyOn(mongoServer, 'getDb').mockResolvedValue(mockDb);
+  });
+
+  it('recomputes scores after converting legacy numeric baselines', async () => {
+    vi.mocked(migrateLegacyEffort).mockResolvedValueOnce(2);
+    const recompute = vi.spyOn(metricsService, 'recomputeScoresForWorkItems').mockResolvedValue();
+
+    const response = await app.inject({ method: 'GET', url: '/api/data/workItems' });
+
+    expect(response.statusCode).toBe(200);
+    expect(recompute).toHaveBeenCalledWith(mockDb);
   });
 
   it('should load data with pre-computed scores and metrics', async () => {

@@ -1,6 +1,6 @@
 import type { Db } from 'mongodb';
 import { AppError } from './errors';
-import { WORK_ITEM_STATUSES, SUPPORT_ISSUE_STATUSES } from './constants';
+import { WORK_ITEM_STATUSES, SUPPORT_ISSUE_STATUSES, EFFORT_SIZE_MDS } from './constants';
 
 /**
  * Rejects a status outside its closed set. A missing (undefined/null) status
@@ -21,13 +21,16 @@ export function assertSupportIssueStatus(item: unknown): void {
 
 /**
  * Validates the closed status sets carried by a document (or patch) being
- * written to `collection`: work-item `status`, and every customer
+ * written to `collection`: work-item `status` and `effort_size`, and every customer
  * `support_issues[].status`.
  */
 // REQ-039
 export function assertDocumentStatuses(collection: string, doc: Record<string, unknown>): void {
   if (collection === 'workItems' && 'status' in doc) {
     assertStatus(doc.status, WORK_ITEM_STATUSES, 'status');
+  }
+  if (collection === 'workItems' && 'effort_size' in doc) {
+    assertStatus(doc.effort_size, Object.keys(EFFORT_SIZE_MDS), 'effort_size');
   }
   if (collection === 'customers' && Array.isArray(doc.support_issues)) {
     for (const item of doc.support_issues) assertSupportIssueStatus(item);

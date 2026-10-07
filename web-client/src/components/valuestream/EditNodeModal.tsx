@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { Node } from '@xyflow/react';
 import type { ValueStreamData, Customer, WorkItem, Team } from '@valuestream/shared-types';
 import { SearchableDropdown } from '../common/SearchableDropdown';
+import { EFFORT_SIZE_OPTIONS, effortSizeUpdate } from '../../utils/effortSize';
 
 interface EditNodeModalProps {
     node: Node;
@@ -57,7 +58,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
             if (workItem) {
                 return {
                     name: workItem.name,
-                    total_effort_mds: workItem.total_effort_mds,
+                    effort_size: workItem.effort_size ?? '',
                     released_in_sprint_id: workItem.released_in_sprint_id || '',
                     all_customers_target: workItem.all_customers_target ? { ...workItem.all_customers_target } : undefined,
                     customer_targets: workItem.customer_targets ? JSON.parse(JSON.stringify(workItem.customer_targets)) : []
@@ -105,7 +106,7 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
         } else if (node.type === 'workItemNode') {
             await onUpdateWorkItem(domainId, {
                 name: formData.name,
-                total_effort_mds: Number(formData.total_effort_mds),
+                ...effortSizeUpdate(formData.effort_size || ''),
                 released_in_sprint_id: formData.released_in_sprint_id,
                 all_customers_target: formData.all_customers_target
             });
@@ -172,8 +173,10 @@ export const EditNodeModal: React.FC<EditNodeModalProps> = ({
                         />
                     </label>
                     <label style={styles.label}>
-                        Total Effort (MDs):
-                        <input style={styles.input} type="number" value={formData.total_effort_mds || 0} onChange={e => setFormData({ ...formData, total_effort_mds: e.target.value })} required />
+                        Baseline Effort (T-shirt):
+                        <select style={styles.input} value={formData.effort_size || ''} onChange={e => setFormData({ ...formData, effort_size: e.target.value })}>
+                            {EFFORT_SIZE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
                     </label>
 
                     {(() => {

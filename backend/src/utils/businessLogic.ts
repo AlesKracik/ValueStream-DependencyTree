@@ -82,9 +82,10 @@ export const calculateProportionalEffort = (issue: Issue, sprint: Sprint, countr
 };
 
 /**
- * Calculates the total effort for a work item in man-days (MDs).
- * It is the maximum of the work item's own 'total_effort_mds' 
- * or the sum of all its related issues' effort.
+ * Calculates the total effort for a work item in man-days (MDs): the sum of
+ * its related issues' effort when that is above 0, otherwise the baseline
+ * 'total_effort_mds' (derived from the T-shirt 'effort_size'; 0 when not
+ * estimated).
  */
 // REQ-028
 export const calculateWorkItemEffort = (workItem: WorkItem, issues: Issue[]): number => {

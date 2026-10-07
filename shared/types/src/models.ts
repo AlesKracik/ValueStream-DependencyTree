@@ -58,6 +58,15 @@ export interface Customer {
   jira_support_issues?: JiraIssue[];
 }
 
+/** T-shirt size of a work item's baseline effort estimate. */
+export type EffortSize = 'XS' | 'S' | 'M' | 'L' | 'XL';
+
+/** Effort sizes, smallest first. */
+export const EFFORT_SIZES: readonly EffortSize[] = ['XS', 'S', 'M', 'L', 'XL'];
+
+/** Man-days each effort size stands for. */
+export const EFFORT_SIZE_MDS: Record<EffortSize, number> = { XS: 1, S: 10, M: 40, L: 120, XL: 360 };
+
 /** External systems a work item can be linked to. */
 export type WorkItemSource = 'aha';
 
@@ -114,6 +123,15 @@ export interface WorkItem {
   name: string;
   description?: string;
   status: 'Backlog' | 'Planning' | 'Development' | 'Done';
+  /**
+   * Baseline (T-shirt) effort estimate. Absent or null means not estimated.
+   * Linked Jira issues override it once their efforts add up to more than 0.
+   */
+  effort_size?: EffortSize | null;
+  /**
+   * Baseline effort in MDs. Server-derived from `effort_size` on every write
+   * (EFFORT_SIZE_MDS; 0 when not estimated) — clients set the size, not this.
+   */
   total_effort_mds: number;
   released_in_sprint_id?: string;
   score: number;

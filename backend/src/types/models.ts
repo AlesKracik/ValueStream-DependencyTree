@@ -6,6 +6,7 @@ export type {
   Customer,
   WorkItem,
   WorkItemSource,
+  EffortSize,
   WorkItemOrigin,
   ExternalLink,
   TeamMember,

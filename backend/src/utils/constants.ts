@@ -18,3 +18,10 @@ export const SUPPORT_ISSUE_STATUSES: readonly string[] = [
 export const SOURCE_OWNED_FIELDS: Record<'aha', readonly ('name' | 'description')[]> = {
   aha: ['name', 'description'],
 };
+
+/**
+ * Man-days per work item effort size (mirrors EFFORT_SIZE_MDS in shared-types;
+ * copied for the same CommonJS reason as SOURCE_OWNED_FIELDS). Key order is
+ * smallest first.
+ */
+export const EFFORT_SIZE_MDS: Record<string, number> = { XS: 1, S: 10, M: 40, L: 120, XL: 360 };

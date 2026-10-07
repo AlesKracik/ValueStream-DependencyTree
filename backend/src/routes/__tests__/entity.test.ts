@@ -943,6 +943,47 @@ describe('Entity Routes', () => {
     });
   });
 
+  // ── T-shirt effort (workItems) ─────────────────────────────────────────
+  describe('work item effort size', () => {
+    it('PATCH effort_size stamps total_effort_mds from the size', async () => {
+      mockCollection.findOneAndUpdate.mockResolvedValueOnce({ id: 'wi1', _version: 1, created_at: 'x' });
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: '/api/entity/workItems/wi1',
+        payload: { _version: 0, patch: { effort_size: 'M', total_effort_mds: 3 } },
+      });
+
+      expect(response.statusCode).toBe(200);
+      const set = mockCollection.findOneAndUpdate.mock.calls[0][1].$set;
+      expect(set).toMatchObject({ effort_size: 'M', total_effort_mds: 40 });
+    });
+
+    it('rejects an unknown effort_size', async () => {
+      const response = await app.inject({
+        method: 'PATCH',
+        url: '/api/entity/workItems/wi1',
+        payload: { _version: 0, patch: { effort_size: 'XXL' } },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(mockCollection.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('create converts a numeric baseline to the nearest size', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/entity/workItems',
+        payload: { _version: 0, name: 'Old client', total_effort_mds: 100 },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(mockCollection.insertOne).toHaveBeenCalledWith(expect.objectContaining({
+        effort_size: 'L', total_effort_mds: 120,
+      }));
+    });
+  });
+
   // ── Lifecycle timestamps (workItems) ───────────────────────────────────
   describe('created_at / updated_at timestamps', () => {
     it('POST replace bumps updated_at and preserves an existing created_at', async () => {

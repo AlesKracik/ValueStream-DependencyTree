@@ -9,6 +9,7 @@ import { WorkItemIssuesTab } from './tabs/WorkItemIssuesTab';
 import { WorkItemAhaTab } from './tabs/WorkItemAhaTab';
 import { WorkItemHierarchyTab } from './tabs/WorkItemHierarchyTab';
 import { isOwnedField } from '../../utils/workItemOrigin';
+import { EFFORT_SIZE_OPTIONS, effortSizeUpdate } from '../../utils/effortSize';
 
 export interface WorkItemPageProps {
     workItemId: string;
@@ -65,6 +66,8 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
     // Derived values are computed by the backend only (DEC-016); show the stored ones.
     const calculatedEffort = workItem?.calculated_effort ?? 0;
     const calculatedTcv = workItem?.calculated_tcv ?? 0;
+    // Linked Jira issues override the T-shirt baseline once they carry effort.
+    const jiraEffort = issues.reduce((sum, e) => sum + (e.effort_md || 0), 0);
 
     const handleSave = async () => {
         if (!data) return;
@@ -131,15 +134,16 @@ export const WorkItemPage: React.FC<WorkItemPageProps> = ({
                     helperText={isOwnedField(workItem, 'name') ? 'Managed in Aha!' : undefined}
                     placeholder="New Work Item"
                 />
-                <FormNumberField
-                    label="Baseline Effort (MDs):"
-                    value={workItem?.total_effort_mds || 0}
+                <FormSelectField
+                    label="Baseline Effort (T-shirt):"
+                    helperText={jiraEffort > 0 ? `Overridden by linked Jira issues (${jiraEffort.toLocaleString()} MDs).` : undefined}
+                    value={workItem?.effort_size ?? ''}
                     onChange={v => {
-                        const val = v ?? 0;
-                        if (isNew) setNewWorkItemDraft(prev => ({ ...prev, total_effort_mds: val }));
-                        else updateWorkItem(workItemId, { total_effort_mds: val });
+                        const updates = effortSizeUpdate(v);
+                        if (isNew) setNewWorkItemDraft(prev => ({ ...prev, ...updates }));
+                        else updateWorkItem(workItemId, updates);
                     }}
-                    min={0}
+                    options={EFFORT_SIZE_OPTIONS}
                 />
                 <FormNumberField
                     label="Stack Rank:"

@@ -340,6 +340,18 @@ describe('WorkItemPage', () => {
         expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', { status: 'Done' });
     });
 
+    it('shows the T-shirt size and notes when linked Jira issues override it', () => {
+        const sized: ValueStreamData = {
+            ...mockData,
+            workItems: [{ ...mockData.workItems[0], effort_size: 'M', total_effort_mds: 40 }],
+            issues: [{ id: 'e1', jira_key: 'J-1', team_id: 't1', effort_md: 15, work_item_id: 'f1' }],
+        };
+        renderPage({ ...defaultProps, data: sized }, 'f1');
+
+        expect((screen.getByLabelText(/Baseline Effort \(T-shirt\):/i) as HTMLSelectElement).value).toBe('M');
+        expect(screen.getByText('Overridden by linked Jira issues (15 MDs).')).toBeDefined();
+    });
+
     it('renders core edit fields and handles updates', () => {
         const dataWithSprint: ValueStreamData = {
             ...mockData,
@@ -363,10 +375,12 @@ describe('WorkItemPage', () => {
         expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', { name: 'Renamed Item' });
 
         // 2. Effort Field
-        const effortInput = screen.getByLabelText(/Baseline Effort \(MDs\):/i) as HTMLInputElement;
-        expect(effortInput.value).toBe('10');
-        fireEvent.change(effortInput, { target: { value: '25' } });
-        expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', { total_effort_mds: 25 });
+        const effortInput = screen.getByLabelText(/Baseline Effort \(T-shirt\):/i) as HTMLSelectElement;
+        expect(effortInput.value).toBe('');
+        fireEvent.change(effortInput, { target: { value: 'L' } });
+        expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', { effort_size: 'L', total_effort_mds: 120 });
+        fireEvent.change(effortInput, { target: { value: '' } });
+        expect(defaultProps.updateWorkItem).toHaveBeenCalledWith('f1', { effort_size: null, total_effort_mds: 0 });
 
         // 3. Sprint Field (SearchableDropdown)
         expect(screen.getByText(/Released in Sprint:/i)).toBeDefined();
@@ -668,7 +682,7 @@ describe('WorkItemPage', () => {
             expect(descInput.readOnly).toBe(true);
             expect(screen.getAllByText('Managed in Aha!').length).toBe(2);
             // Effort is engineering data: the Aha! estimate is informational only.
-            expect((screen.getByLabelText(/Baseline Effort/i) as HTMLInputElement).value).toBe('0');
+            expect((screen.getByLabelText(/Baseline Effort/i) as HTMLSelectElement).value).toBe('');
 
             // Synced data should be visible in the Aha tab
             expect(screen.getAllByText('Aha Feature Name').length).toBeGreaterThan(0);

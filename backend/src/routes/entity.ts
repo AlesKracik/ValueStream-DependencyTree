@@ -22,6 +22,7 @@ import { AppError } from '../utils/errors';
 import { requireRole } from '../utils/roleGuard';
 import { wouldCreateCycle } from '../utils/workItemHierarchy';
 import { deriveForDocument, deriveForPatch } from '../utils/workItemOrigin';
+import { deriveEffort } from '../utils/effortSize';
 import {
   assertDocumentStatuses, assertSupportIssueStatus, assertParentExists, namesParent,
   assertReferencesExist, assertCustomerTargetExists, assertJiraKeyUnique
@@ -309,6 +310,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
     const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
     if (collection === 'workItems') {
       await deriveWorkItemWrite(db, data.id ? String(data.id) : undefined, data as Record<string, unknown>);
+      deriveEffort(data as Record<string, unknown>);
     }
 
     if (!data.id) {
@@ -368,6 +370,7 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
     const db = await getDb(augmentConfig(settings, 'app'), 'app', true);
     if (collection === 'workItems') {
       await deriveWorkItemWrite(db, entityId, data as Record<string, unknown>);
+      deriveEffort(data as Record<string, unknown>);
     }
 
     // Hierarchy guards for workItems: no cycles, and the parent must exist.
@@ -434,6 +437,8 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
         // Origin is server-owned; source-owned fields can't be edited locally.
         // A concurrent change before the write still fails the version check.
         delete (patch as Record<string, unknown>).origin;
+        // Baseline effort: total_effort_mds follows the T-shirt size.
+        deriveEffort(patch as Record<string, unknown>);
         if (['links', 'name', 'description'].some(k => k in patch)) {
           const current = await db.collection(collection).findOne({ id });
           derived = deriveForPatch(current, patch as Record<string, unknown>);
