@@ -15,7 +15,9 @@ import {
     extractParentLinkKey,
     planHierarchyAlignment,
     parseAhaFeature,
-    parseAhaEpic
+    parseAhaEpic,
+    findJiraParent,
+    findJiraChildren
 } from '../businessLogic';
 import type { WorkItem, Issue, Customer, Sprint, Team } from '@valuestream/shared-types';
 
@@ -85,7 +87,28 @@ describe('businessLogic', () => {
         it('handles missing fields gracefully', () => {
             const jiraIssue = { fields: {} };
             const result = parseJiraIssue(jiraIssue, mockTeams);
-            expect(result).toEqual({});
+            expect(result).toEqual({ parent_jira_key: null });
+        });
+
+        describe('parent_jira_key', () => {
+            const names = { customfield_1: 'Parent Link', customfield_2: 'Epic Link' };
+
+            it('Data Center: prefers Parent Link, then Epic Link, then a sub-task parent', () => {
+                expect(parseJiraIssue({ names, fields: { customfield_1: 'INIT-1', customfield_2: 'EPIC-1' } }, mockTeams).parent_jira_key).toBe('INIT-1');
+                expect(parseJiraIssue({ names, fields: { customfield_2: 'EPIC-1', parent: { key: 'P-1' } } }, mockTeams).parent_jira_key).toBe('EPIC-1');
+                expect(parseJiraIssue({ names, fields: { parent: { key: 'P-1' } } }, mockTeams).parent_jira_key).toBe('P-1');
+            });
+
+            it('Cloud: prefers the system parent over a lingering Parent Link', () => {
+                const issue = { names, fields: { parent: { key: 'EPIC-9' }, customfield_1: 'INIT-1' } };
+                expect(parseJiraIssue(issue, mockTeams, 'cloud').parent_jira_key).toBe('EPIC-9');
+                expect(parseJiraIssue({ names, fields: { customfield_1: 'INIT-1' } }, mockTeams, 'cloud').parent_jira_key).toBe('INIT-1');
+            });
+
+            it('clears the parent when Jira has none', () => {
+                expect(parseJiraIssue({ names, fields: { summary: 'x' } }, mockTeams).parent_jira_key).toBeNull();
+                expect(parseJiraIssue({ fields: { summary: 'x' } }, mockTeams, 'cloud').parent_jira_key).toBeNull();
+            });
         });
 
         it('treats 0 effort in Jira as source of truth', () => {
@@ -481,6 +504,8 @@ describe('businessLogic', () => {
 describe('Jira Parent Link hierarchy alignment', () => {
     const PL = 'customfield_99'; // Parent Link field id
     const names = { [PL]: 'Parent Link' };
+    // A raw Jira issue as /search returns it, with its `names` map attached.
+    type FetchedIssue = { key: string; names: Record<string, string>; fields: Record<string, unknown> };
 
     const issue = (id: string, jira_key: string, work_item_id?: string): Issue =>
         ({ id, jira_key, work_item_id, team_id: 't1', effort_md: 0 });
@@ -488,7 +513,7 @@ describe('Jira Parent Link hierarchy alignment', () => {
         ({ id, name: id, status: 'Backlog', total_effort_mds: 0, score: 0, customer_targets: [], parent_id });
     // Build a fetched-issue map; parent = the Parent Link key for that issue.
     const fetched = (entries: { key: string; parent?: string }[]) => {
-        const m = new Map<string, any>();
+        const m = new Map<string, FetchedIssue>();
         for (const e of entries) {
             m.set(e.key, { key: e.key, names, fields: e.parent ? { [PL]: e.parent } : {} });
         }
@@ -551,7 +576,33 @@ describe('Jira Parent Link hierarchy alignment', () => {
             expect(plan.updates).toEqual([{ workItemId: 'wiC', parentId: 'wiP' }]);
         });
 
-        it('Data Center: ignores the system parent field (sub-task parent)', () => {
+        it('Data Center: follows Epic Link and a sub-task parent, like the issue parent', () => {
+            const dcNames = { cf_pl: 'Parent Link', cf_el: 'Epic Link' };
+            const plan = planHierarchyAlignment({
+                fetchedByKey: new Map([
+                    ['S-1', { key: 'S-1', names: dcNames, fields: { cf_el: 'E-1' } }],
+                    ['T-1', { key: 'T-1', names: dcNames, fields: { parent: { key: 'S-2' } } }],
+                ]),
+                issues: [issue('i1', 'S-1', 'wiS'), issue('i2', 'E-1', 'wiE'), issue('i3', 'T-1', 'wiT'), issue('i4', 'S-2', 'wiS2')],
+                workItems: [wi('wiS'), wi('wiE'), wi('wiT'), wi('wiS2')],
+            });
+            expect(plan.parentFieldMissing).toBe(false);
+            expect(plan.updates).toEqual([
+                { workItemId: 'wiS', parentId: 'wiE' },
+                { workItemId: 'wiT', parentId: 'wiS2' },
+            ]);
+        });
+
+        it('Data Center: an Epic Link field alone is enough', () => {
+            const plan = planHierarchyAlignment({
+                fetchedByKey: new Map([['S-1', { key: 'S-1', names: { cf_el: 'Epic Link' }, fields: {} }]]),
+                issues: [issue('i1', 'S-1', 'wiS')],
+                workItems: [wi('wiS')],
+            });
+            expect(plan.parentFieldMissing).toBe(false);
+        });
+
+        it('Data Center: no hierarchy field means nothing aligns, even with a sub-task parent', () => {
             const plan = planHierarchyAlignment({
                 fetchedByKey: new Map([
                     ['C-1', { key: 'C-1', names: {}, fields: { parent: { key: 'P-1' } } }],
@@ -562,7 +613,7 @@ describe('Jira Parent Link hierarchy alignment', () => {
             expect(plan.parentFieldMissing).toBe(true);
         });
 
-        it('flags parentFieldMissing when no Parent Link field is present', () => {
+        it('flags parentFieldMissing when no Parent Link or Epic Link field is present', () => {
             const plan = planHierarchyAlignment({
                 fetchedByKey: new Map([['C-1', { key: 'C-1', names: { x: 'Team' }, fields: {} }]]),
                 issues: [issue('i1', 'C-1', 'wiC')],
@@ -670,7 +721,7 @@ describe('Jira Parent Link hierarchy alignment', () => {
         });
 
         it('handles object-shaped Parent Link values', () => {
-            const m = new Map<string, any>([
+            const m = new Map<string, FetchedIssue>([
                 ['C-1', { key: 'C-1', names, fields: { [PL]: { key: 'P-1' } } }],
             ]);
             const plan = planHierarchyAlignment({
@@ -679,6 +730,26 @@ describe('Jira Parent Link hierarchy alignment', () => {
                 workItems: [wi('wiC'), wi('wiP')],
             });
             expect(plan.updates).toEqual([{ workItemId: 'wiC', parentId: 'wiP' }]);
+        });
+    });
+
+    describe('findJiraParent / findJiraChildren', () => {
+        const mk = (id: string, jira_key: string, parent_jira_key?: string | null): Issue =>
+            ({ id, jira_key, parent_jira_key, team_id: '', effort_md: 0 });
+        const epic = mk('e', 'EPIC-1');
+        const story = mk('s', 'ST-1', 'epic-1 ');
+        const other = mk('o', 'ST-2', 'GONE-1');
+        const issues = [epic, story, other];
+
+        it('matches Jira keys case- and whitespace-insensitively', () => {
+            expect(findJiraParent(story, issues)).toBe(epic);
+            expect(findJiraChildren(epic, issues)).toEqual([story]);
+        });
+
+        it('returns no parent when it is not imported or unset', () => {
+            expect(findJiraParent(other, issues)).toBeUndefined();
+            expect(findJiraParent(epic, issues)).toBeUndefined();
+            expect(findJiraChildren(story, issues)).toEqual([]);
         });
     });
 });

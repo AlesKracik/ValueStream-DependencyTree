@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import type { Issue, ValueStreamData } from '@valuestream/shared-types';
+import { resolveJiraDeployment, type Issue, type ValueStreamData } from '@valuestream/shared-types';
 import { useNavigate, useParams } from 'react-router-dom';
-import { calculateIssueEffortPerSprint, parseJiraIssue } from '../../utils/businessLogic';
+import { calculateIssueEffortPerSprint, findJiraChildren, parseJiraIssue } from '../../utils/businessLogic';
 import { calculateWorkingDays, getHolidayImpact } from '../../utils/dateHelpers';
 import { useNotificationContext } from '../../contexts/NotificationContext';
 import { useDeleteWithConfirm } from '../../hooks/useDeleteWithConfirm';
@@ -10,6 +10,7 @@ import { GenericDetailPage, type DetailTab } from '../common/GenericDetailPage';
 import { FormTextField, FormDateField, FormNumberField } from '../common/FormFields';
 import { SearchableDropdown } from '../common/SearchableDropdown';
 import customerStyles from '../customers/CustomerPage.module.css';
+import { IssueHierarchyTab } from './IssueHierarchyTab';
 
 interface IssuePageProps {
     data: ValueStreamData | null;
@@ -33,14 +34,18 @@ export const IssuePage: React.FC<IssuePageProps> = ({ data, loading, updateIssue
         end: issue?.target_end || ''
     });
 
-    React.useEffect(() => {
-        if (issue) {
-            setLocalDates({
-                start: issue.target_start || '',
-                end: issue.target_end || ''
-            });
-        }
-    }, [issue, issue?.id, issue?.target_start, issue?.target_end]);
+    // Reset the local dates when the stored ones change (another issue, a sync,
+    // a save). Adjusted during render rather than in an effect, so the page
+    // never paints stale dates.
+    const storedDates = `${issue?.id}|${issue?.target_start || ''}|${issue?.target_end || ''}`;
+    const [syncedDates, setSyncedDates] = useState(storedDates);
+    if (issue && storedDates !== syncedDates) {
+        setSyncedDates(storedDates);
+        setLocalDates({
+            start: issue.target_start || '',
+            end: issue.target_end || ''
+        });
+    }
 
     if (!issue) {
         if (loading) return null;
@@ -72,7 +77,7 @@ export const IssuePage: React.FC<IssuePageProps> = ({ data, loading, updateIssue
         try {
             const jiraData = await syncJiraIssue(issue.jira_key || '', data?.settings?.jira || {});
             if (jiraData) {
-                const updates = parseJiraIssue(jiraData, data?.teams || []);
+                const updates = parseJiraIssue(jiraData, data?.teams || [], resolveJiraDeployment(data?.settings?.jira));
                 await updateIssue(issue.id, updates);
                 
                 // Update localDates to reflect synced values in the UI
@@ -285,6 +290,11 @@ export const IssuePage: React.FC<IssuePageProps> = ({ data, loading, updateIssue
                     </table>
                 </>
             )
+        },
+        {
+            id: 'hierarchy',
+            label: `Hierarchy (${findJiraChildren(issue, data?.issues ?? []).length})`,
+            content: <IssueHierarchyTab issue={issue} data={data} />
         }
     ];
 

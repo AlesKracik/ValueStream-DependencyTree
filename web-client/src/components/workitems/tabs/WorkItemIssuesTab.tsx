@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Issue, ValueStreamData } from '@valuestream/shared-types';
+import { resolveJiraDeployment, type Issue, type ValueStreamData } from '@valuestream/shared-types';
 import { syncJiraIssue } from '../../../utils/api';
 import { SearchableDropdown } from '../../common/SearchableDropdown';
 import { useNotificationContext } from '../../../contexts/NotificationContext';
@@ -46,7 +46,7 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
         setSyncingId(id);
         try {
             const issueData = await syncJiraIssue(jiraKey, data?.settings?.jira || {});
-            const updates = parseJiraIssue(issueData, data?.teams || []);
+            const updates = parseJiraIssue(issueData, data?.teams || [], resolveJiraDeployment(data?.settings?.jira));
 
             if (isNew) {
                 setNewWorkItemIssues(prev => prev.map(e => e.id === id ? {

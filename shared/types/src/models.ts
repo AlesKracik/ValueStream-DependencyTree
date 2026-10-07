@@ -212,6 +212,14 @@ export interface Issue {
   external_url?: string;
   sprint_effort_overrides?: Record<string, number>;
   dependencies?: IssueDependency[];
+  /**
+   * Jira key of this issue's parent in Jira, or null when it has none. Jira
+   * owns it: every Jira sync overwrites it and the UI shows it read-only.
+   * Cloud: the system `parent` field. Data Center: "Parent Link", then
+   * "Epic Link", then a sub-task's `parent`. The parent may not be imported.
+   * Children are derived: issues whose parent_jira_key is this jira_key.
+   */
+  parent_jira_key?: string | null;
 }
 
 export interface Sprint {

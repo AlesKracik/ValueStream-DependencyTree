@@ -49,6 +49,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
   const deployment = resolveJiraDeployment(localFormData.jira);
   const isCloud = deployment === "cloud";
   const hierarchyFieldLabel = isCloud ? "parent" : "Parent Link";
+  const alignFieldLabel = isCloud ? "parent" : "Parent Link / Epic Link";
 
   /** Returns an error message when required connection fields are missing. */
   const missingConnectionFields = (action: string): string | null => {
@@ -154,7 +155,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
       if (!issueData) continue; // already counted as failed above
       setSyncProgress(`Updating ${i + 1}/${issuesWithKeys.length}: ${issue.jira_key}`);
       try {
-        const updates = parseJiraIssue(issueData, data.teams);
+        const updates = parseJiraIssue(issueData, data.teams, deployment);
         await updateIssue(issue.id, updates, true);
         successCount++;
       } catch (err: unknown) {
@@ -173,7 +174,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
         deployment,
       });
       if (plan.parentFieldMissing) {
-        hierarchyNote = " Hierarchy: Parent Link field not found.";
+        hierarchyNote = " Hierarchy: Parent Link / Epic Link fields not found.";
       } else {
         // Resolve work-item ids → names for human-readable reporting.
         const nameById = new Map((data.workItems || []).map(w => [w.id, w.name]));
@@ -423,7 +424,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
 
         // Search response carries `names` at the top level; inject so parseJiraIssue
         // can resolve custom-field IDs (target_start, target_end, team).
-        const updates = parseJiraIssue({ ...issue, names }, data.teams);
+        const updates = parseJiraIssue({ ...issue, names }, data.teams, deployment);
 
         const existingIssue = existingByKey.get(jiraKey);
         try {
@@ -441,6 +442,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
               name: updates.name,
               target_start: updates.target_start,
               target_end: updates.target_end,
+              parent_jira_key: updates.parent_jira_key,
             };
             addIssue(newIssue);
             createCount++;
@@ -641,7 +643,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
                 onChange={(e) => setAlignHierarchy(e.target.checked)}
                 style={{ width: "auto" }}
               />
-              Align work-item hierarchy to Jira ({hierarchyFieldLabel})
+              Align work-item hierarchy to Jira ({alignFieldLabel})
             </label>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               <button

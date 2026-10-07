@@ -16,6 +16,7 @@ export interface Issue {
   target_end?: string;   // YYYY-MM-DD
   dependencies?: IssueDependency[];
   sprint_effort_overrides?: Record<string, number>;
+  parent_jira_key?: string | null; // Jira-owned parent key
 }
 ```
 
@@ -28,6 +29,7 @@ export interface Issue {
 ## Relationships
 - **Work Items:** Every Issue belongs to one parent Work Item.
 - **Teams:** Every Issue is assigned to one Team.
+- **Jira hierarchy:** `parent_jira_key` holds the issue's parent in Jira (see [Jira Integration](JIRA-INTEGRATION.md#data-mapping)). Jira is the source of truth: sync overwrites it and it is not editable. Children are derived (issues whose `parent_jira_key` matches this `jira_key`, case-insensitive). The parent may not be imported; the Hierarchy tab then links it to Jira.
 - **Dependencies:** Issues can depend on other Issues (`Finish-to-Start` or `Finish-to-Finish`), rendered as animated orange arrows.
 
 ```mermaid

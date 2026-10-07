@@ -196,6 +196,11 @@ The granular execution units that bridge Product strategy and Engineering delive
 *   **Team Capacity:** Shows effective capacity with holiday impact indicated by a holiday emoji and negative MDs (e.g., `🏖️ -2`). Overridden sprint capacities are labelled "(Override)".
 *   **Historical Auto-Freeze:** Sprints older than the active sprint are automatically frozen. If an issue has effort in a past sprint but no manual override, the system snapshots the current calculation as a permanent override to prevent historical data from shifting.
 
+**Tab: Hierarchy**
+
+*   Shows the issue's **Parent** and **Children** in Jira (epic, initiative, sub-task parent). Read-only: Jira is the source of truth, so click **Sync from Jira** (or run Sync Issues) to refresh it.
+*   Imported issues open their issue page; a parent that is not imported links to Jira. Children lists only imported issues.
+
 ---
 
 ### Teams & Capacity

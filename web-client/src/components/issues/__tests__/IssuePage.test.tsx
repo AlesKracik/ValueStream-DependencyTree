@@ -401,7 +401,44 @@ describe('IssuePage', () => {
             }));
         });
     });
+
+    describe('Hierarchy tab', () => {
+        const withHierarchy: ValueStreamData = {
+            ...mockData,
+            settings: { ...mockData.settings, jira: { ...mockData.settings.jira, base_url: 'https://jira.example.com' } },
+            issues: [
+                { ...mockData.issues[0], parent_jira_key: 'EPIC-1' },
+                { id: 'ep', name: 'Epic One', jira_key: 'EPIC-1', team_id: 't1', effort_md: 0 },
+                { id: 'c1', name: 'Child One', jira_key: 'J-2', team_id: 't1', effort_md: 0, parent_jira_key: 'J-1' },
+            ],
+        };
+
+        it('shows the Jira parent and children read-only', () => {
+            renderIssuePage({ ...defaultProps, data: withHierarchy });
+            fireEvent.click(screen.getByText('Hierarchy (1)'));
+            fireEvent.click(screen.getByText('Epic One'));
+            expect(mockNavigate).toHaveBeenCalledWith('/issue/ep');
+            fireEvent.click(screen.getByText('Child One'));
+            expect(mockNavigate).toHaveBeenCalledWith('/issue/c1');
+            expect(screen.getByText(/Managed in Jira/)).toBeTruthy();
+            expect(screen.queryByText(/Remove/)).toBeNull();
+        });
+
+        it('links a parent that is not imported to Jira', () => {
+            const data = { ...withHierarchy, issues: [{ ...mockData.issues[0], parent_jira_key: 'GONE-7' }] };
+            renderIssuePage({ ...defaultProps, data });
+            fireEvent.click(screen.getByText('Hierarchy (0)'));
+            expect(screen.getByText('GONE-7').closest('a')?.getAttribute('href')).toBe('https://jira.example.com/browse/GONE-7');
+            expect(screen.getByText('Not imported.')).toBeTruthy();
+        });
+    });
+
+    it('stores the Jira parent on sync', async () => {
+        vi.mocked(api.syncJiraIssue).mockResolvedValue({ fields: { summary: 'Issue 1', parent: { key: 'EPIC-3' } } });
+        renderIssuePage();
+        fireEvent.click(screen.getByText('Sync from Jira'));
+        await waitFor(() => {
+            expect(updateIssueSpy).toHaveBeenCalledWith('e1', expect.objectContaining({ parent_jira_key: 'EPIC-3' }));
+        });
+    });
 });
-
-
-

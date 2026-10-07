@@ -1,5 +1,5 @@
 import { parseISO, differenceInDays, max, min, format } from 'date-fns';
-import type { WorkItem, Issue, Customer, Sprint, Team, SupportIssue, ExternalLink } from '@valuestream/shared-types';
+import type { WorkItem, Issue, Customer, Sprint, Team, SupportIssue, ExternalLink, JiraDeployment } from '@valuestream/shared-types';
 import { countBusinessDays } from './dateHelpers';
 import { isParentOwned } from './workItemOrigin';
 
@@ -159,7 +159,7 @@ export const parseAhaEpic = (epic: any): ExternalLink => {
  * Parses Jira issue data into a partial Issue object.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const parseJiraIssue = (issue: any, teams: Team[]): Partial<Issue> => {
+export const parseJiraIssue = (issue: any, teams: Team[], deployment: JiraDeployment = 'datacenter'): Partial<Issue> => {
     const fields = issue.fields;
     const names = issue.names || {};
     let targetStartKey = "";
@@ -201,6 +201,9 @@ export const parseJiraIssue = (issue: any, teams: Team[]): Partial<Issue> => {
         );
         if (matchedTeam) updates.team_id = matchedTeam.id;
     }
+
+    // Parent: Jira is source of truth (null clears it)
+    updates.parent_jira_key = extractJiraParentKey(issue, deployment) ?? null;
     return updates;
 };
 
@@ -431,6 +434,40 @@ export const extractParentLinkKey = (value: any): string | undefined => {
     return undefined;
 };
 
+/**
+ * The Jira key of an issue's direct parent, from a raw Jira issue carrying a
+ * `names` map. Cloud models every level with the system `parent` field (a
+ * lingering Parent Link is the fallback). Data Center links an epic to its
+ * initiative with "Parent Link", a story to its epic with "Epic Link", and a
+ * sub-task to its issue with `parent`.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const extractJiraParentKey = (issue: any, deployment: JiraDeployment = 'datacenter'): string | undefined => {
+    const fields = issue?.fields;
+    if (!fields) return undefined;
+    const fieldValue = (label: string) => {
+        const id = resolveFieldId(issue.names, label);
+        return id ? extractParentLinkKey(fields[id]) : undefined;
+    };
+    if (deployment === 'cloud') {
+        return extractParentLinkKey(fields.parent) ?? fieldValue('Parent Link');
+    }
+    return fieldValue('Parent Link') ?? fieldValue('Epic Link') ?? extractParentLinkKey(fields.parent);
+};
+
+const sameJiraKey = (a?: string | null, b?: string | null): boolean =>
+    !!a && !!b && a.trim().toUpperCase() === b.trim().toUpperCase();
+
+/** The imported issue that is `issue`'s Jira parent, if any. */
+export const findJiraParent = (issue: Issue, issues: Issue[]): Issue | undefined =>
+    issue.parent_jira_key
+        ? issues.find(i => i.id !== issue.id && sameJiraKey(i.jira_key, issue.parent_jira_key))
+        : undefined;
+
+/** Imported issues whose Jira parent is `issue`. */
+export const findJiraChildren = (issue: Issue, issues: Issue[]): Issue[] =>
+    issues.filter(i => i.id !== issue.id && sameJiraKey(i.parent_jira_key, issue.jira_key));
+
 export interface HierarchyAlignmentInput {
     /** Successfully-fetched Jira issues this sync, keyed by issue key. Each
      *  value is a raw Jira issue augmented with a top-level `names` map. */
@@ -462,16 +499,17 @@ export interface HierarchyAlignmentPlan {
     cycles: string[];
     /** Work-item ids skipped because Aha! owns their parent (an Aha! feature follows its Aha! epic). */
     ahaOwned: string[];
-    /** True when no hierarchy field is available ("Parent Link" on Data Center) — nothing can align. */
+    /** True when no hierarchy field is available (Data Center: neither "Parent Link" nor "Epic Link") — nothing can align. */
     parentFieldMissing: boolean;
 }
 
 /**
- * Build a plan to align WorkItem.parent_id to the Jira "Parent Link" hierarchy,
+ * Build a plan to align WorkItem.parent_id to the Jira hierarchy (each jira's
+ * direct parent, see extractJiraParentKey — the same parent an issue stores),
  * treating Jira as the source of truth but only for issues/work items already
  * present in the system. Pure — performs no I/O; the caller applies `updates`.
  *
- * Rules (see plan): a child jira whose Parent Link points at an in-system
+ * Rules (see plan): a child jira whose parent is an in-system
  * parent jira makes the child jira's work item a child of the parent jira's
  * work item. Skips when either side is Unassigned, when both jiras share a work
  * item, on a work item whose child jiras disagree (conflict), when the edge
@@ -485,30 +523,15 @@ export const planHierarchyAlignment = (
         updates: [], conflicts: [], cycles: [], ahaOwned: [], parentFieldMissing: false,
     };
 
-    // Resolve the Parent Link field id from any fetched issue's names map
-    // (the id is instance-global, so the first one that has it wins).
-    let parentLinkFieldId: string | undefined;
-    for (const issue of fetchedByKey.values()) {
-        parentLinkFieldId = resolveFieldId(issue?.names, 'Parent Link');
-        if (parentLinkFieldId) break;
-    }
-    const isCloud = deployment === 'cloud';
-    // Cloud always has the system `parent` field, so it never "misses" one.
-    if (!parentLinkFieldId && !isCloud) {
+    // Data Center needs a hierarchy custom field: "Parent Link" (Advanced
+    // Roadmaps) or "Epic Link". Field ids are instance-global, so any fetched
+    // issue's names map tells. Cloud always has the system `parent` field.
+    const hasHierarchyField = [...fetchedByKey.values()].some(issue =>
+        resolveFieldId(issue?.names, 'Parent Link') || resolveFieldId(issue?.names, 'Epic Link'));
+    if (deployment !== 'cloud' && !hasHierarchyField) {
         plan.parentFieldMissing = true;
         return plan;
     }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const parentKeyOf = (issueData: any): string | undefined => {
-        const fields = issueData?.fields;
-        if (isCloud) {
-            // Prefer the system parent; fall back to a lingering Parent Link value.
-            return extractParentLinkKey(fields?.parent)
-                ?? (parentLinkFieldId ? extractParentLinkKey(fields?.[parentLinkFieldId]) : undefined);
-        }
-        return extractParentLinkKey(fields?.[parentLinkFieldId as string]);
-    };
 
     const issueByKey = new Map<string, Issue>();
     for (const issue of issues) {
@@ -524,7 +547,7 @@ export const planHierarchyAlignment = (
         const childIssue = issueByKey.get(childKey);
         if (!childIssue) continue;
 
-        const parentKey = parentKeyOf(issueData);
+        const parentKey = extractJiraParentKey(issueData, deployment);
         if (!parentKey) continue;                       // no parent
 
         const parentIssue = issueByKey.get(parentKey);
