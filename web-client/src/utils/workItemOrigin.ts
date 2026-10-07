@@ -41,6 +41,30 @@ export const htmlToText = (html: string): string =>
         .trim();
 
 /**
+ * Aha! record type for a typed reference number: Aha! numbers epics
+ * PREFIX-E-N (e.g. DR-E-12), features PREFIX-N. Aha! terms only — unrelated
+ * to the work item hierarchy or Jira's epic level.
+ */
+export const ahaRecordTypeForKey = (key: string): 'feature' | 'epic' => /-E-\d+$/i.test(key.trim()) ? 'epic' : 'feature';
+
+/**
+ * Whether Aha! owns the work item's parent: an Aha! feature whose epic is
+ * known (`epic_id` synced, null when it has none). Mirrors the server's
+ * deriveAhaParent; epics and local items keep a local parent.
+ */
+export const isParentOwned = (wi: Partial<WorkItem> | undefined): boolean => {
+    const link = wi?.links?.aha;
+    return workItemOrigin(wi) === 'aha' && link?.record_type !== 'epic' && link?.data?.epic_id !== undefined;
+};
+
+/** The parent Aha! gives a feature: the work item linked to its epic, or none. */
+const ahaParent = (link: ExternalLink, workItems: WorkItem[]): string | null => {
+    const epicId = link.data?.epic_id;
+    if (!epicId) return null;
+    return workItems.find(w => w.links?.aha?.record_type === 'epic' && w.links.aha.external_id === epicId)?.id ?? null;
+};
+
+/**
  * Merge a fresh link onto the stored one when both point at the same Aha!
  * feature: each data field the new payload lacks (undefined) keeps its stored
  * value; a present field always overwrites, even null, '' or 0. A sparse
@@ -56,8 +80,10 @@ const mergeLink = (stored: ExternalLink | null | undefined, link: ExternalLink):
  * The update that sets (or, with null, removes) the work item's Aha! link,
  * with the origin and Aha!-owned fields the server will derive from it. The
  * server derives from the merged data this sends, so both sides agree.
+ * `workItems` resolves an Aha! feature's epic to its parent work item; without
+ * it the parent is left to the server.
  */
-export const withAhaLink = (wi: Partial<WorkItem> | undefined, next: ExternalLink | null): Partial<WorkItem> => {
+export const withAhaLink = (wi: Partial<WorkItem> | undefined, next: ExternalLink | null, workItems?: WorkItem[]): Partial<WorkItem> => {
     const link = next ? mergeLink(wi?.links?.aha, next) : null;
     const origin: WorkItemOrigin = link?.external_id ? 'aha' : 'local';
     const updates: Partial<WorkItem> = { links: { ...wi?.links, aha: link }, origin };
@@ -65,6 +91,7 @@ export const withAhaLink = (wi: Partial<WorkItem> | undefined, next: ExternalLin
         const data = link?.data;
         if (typeof data?.name === 'string' && data.name !== '') updates.name = data.name;
         if (typeof data?.description === 'string') updates.description = htmlToText(data.description);
+        if (workItems && isParentOwned(updates)) updates.parent_id = ahaParent(link!, workItems);
     }
     return updates;
 };

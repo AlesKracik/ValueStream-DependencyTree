@@ -8,7 +8,9 @@ import type { Settings, ValueStreamData, WorkItem } from '@valuestream/shared-ty
 vi.mock('../../../utils/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../utils/api')>()),
   importAhaFeatures: vi.fn(),
+  importAhaEpics: vi.fn(),
   syncAhaFeature: vi.fn(),
+  syncAhaEpic: vi.fn(),
 }));
 
 const settings = {
@@ -60,7 +62,10 @@ const renderAha = (workItems: WorkItem[]) => {
 };
 
 describe('AhaSettings — import and sync', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.importAhaEpics).mockResolvedValue([]);
+  });
 
   it('import with a sparse payload keeps the stored Aha! data of a matched item', async () => {
     vi.mocked(api.importAhaFeatures).mockResolvedValue([
@@ -109,5 +114,46 @@ describe('AhaSettings — import and sync', () => {
     });
     expect(created.links.aha).toMatchObject({ external_id: '7001', key: 'DR-106', data: { score: 36 } });
     expect(await screen.findByText(/Created 1, updated 0, failed 0/)).toBeDefined();
+  });
+
+  it('imports epics first and puts each feature under its epic\'s work item', async () => {
+    vi.mocked(api.importAhaEpics).mockResolvedValue([
+      { id: '900', reference_num: 'DR-E-1', name: 'Restore set', description: { body: '' }, score: 5 },
+    ]);
+    vi.mocked(api.importAhaFeatures).mockResolvedValue([
+      { ...fullFeature, epic: { id: '900', reference_num: 'DR-E-1' } },
+      { ...fullFeature, id: '7002', reference_num: 'DR-107', name: 'Loose', epic: null },
+    ]);
+    const props = renderAha([]);
+    props.addWorkItem
+      .mockResolvedValueOnce({ id: 'wi-epic' })
+      .mockResolvedValueOnce({ id: 'wi-f1' })
+      .mockResolvedValueOnce({ id: 'wi-f2' });
+
+    fireEvent.click(screen.getByText('Import from Aha!'));
+
+    await waitFor(() => expect(props.addWorkItem).toHaveBeenCalledTimes(3));
+    const [epic, inEpic, loose] = props.addWorkItem.mock.calls.map(c => c[0]);
+    expect(epic).toMatchObject({ origin: 'aha', name: 'Restore set', links: { aha: { record_type: 'epic', key: 'DR-E-1' } } });
+    expect(epic).not.toHaveProperty('parent_id');
+    expect(inEpic).toMatchObject({ name: 'Faster restore', parent_id: 'wi-epic', links: { aha: { record_type: 'feature', data: { epic_id: '900' } } } });
+    expect(loose).toMatchObject({ name: 'Loose', parent_id: null });
+    expect(await screen.findByText(/Created 3, updated 0, failed 0 \(epics: 1 created.*features: 2 created/)).toBeDefined();
+  });
+
+  it('sync all refreshes an Aha! epic through the epic endpoint', async () => {
+    vi.mocked(api.syncAhaEpic).mockResolvedValue({ id: '900', reference_num: 'DR-E-1', name: 'Renamed set', description: { body: '<p>d</p>' } });
+    const epicItem: WorkItem = {
+      id: 'wi-epic', name: 'Old', status: 'Backlog', total_effort_mds: 0, score: 0, customer_targets: [], origin: 'aha',
+      links: { aha: { external_id: '900', key: 'DR-E-1', record_type: 'epic', data: { name: 'Old' } } },
+    };
+    const props = renderAha([epicItem]);
+
+    fireEvent.click(screen.getByText('Sync Work Items from Aha!'));
+
+    await waitFor(() => expect(props.updateWorkItem).toHaveBeenCalled());
+    expect(api.syncAhaEpic).toHaveBeenCalledWith('DR-E-1', expect.any(Object));
+    expect(api.syncAhaFeature).not.toHaveBeenCalled();
+    expect(props.updateWorkItem.mock.calls[0][1]).toMatchObject({ name: 'Renamed set', description: 'd' });
   });
 });

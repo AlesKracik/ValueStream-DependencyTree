@@ -929,6 +929,24 @@ describe('WorkItemPage', () => {
             expect(screen.getByPlaceholderText(/Pick a parent work item/i)).toBeDefined();
         });
 
+        it('shows an Aha!-owned parent read-only', () => {
+            const owned: ValueStreamData = {
+                ...mockData,
+                workItems: [
+                    { ...mockData.workItems[0], origin: 'aha', parent_id: 'wi-epic',
+                      links: { aha: { external_id: '42', key: 'DR-42', data: { name: 'Work Item A', epic_id: '900' } } } },
+                    { id: 'wi-epic', name: 'Restore set', status: 'Backlog', total_effort_mds: 0, score: 0, customer_targets: [],
+                      origin: 'aha', links: { aha: { external_id: '900', key: 'DR-E-1', record_type: 'epic' } } },
+                ],
+            };
+            renderPage({ ...defaultProps, data: owned }, 'f1');
+            fireEvent.click(screen.getByText(/^Hierarchy/i));
+
+            expect(screen.getByText('Restore set')).toBeDefined();
+            expect(screen.getByText(/Managed in Aha!: an Aha! feature sits under the work item of its Aha! epic/)).toBeDefined();
+            expect(screen.queryByText('Remove parent')).toBeNull();
+        });
+
         it('renders the existing parent and removes it via Remove parent', () => {
             const dataWithParent: ValueStreamData = {
                 ...mockData,
@@ -945,7 +963,7 @@ describe('WorkItemPage', () => {
 
             fireEvent.click(screen.getByText('Remove parent'));
 
-            expect(updateWorkItem).toHaveBeenCalledWith('f1', { parent_id: undefined }, true);
+            expect(updateWorkItem).toHaveBeenCalledWith('f1', { parent_id: null }, true);
         });
 
         it('lists children and detaches one via Remove', () => {
@@ -968,7 +986,7 @@ describe('WorkItemPage', () => {
             const removeButtons = screen.getAllByText('Remove');
             fireEvent.click(removeButtons[0]);
 
-            expect(updateWorkItem).toHaveBeenCalledWith('f-child-1', { parent_id: undefined }, true);
+            expect(updateWorkItem).toHaveBeenCalledWith('f-child-1', { parent_id: null }, true);
         });
 
         it('omits descendants from the parent picker to prevent cycles', () => {

@@ -926,6 +926,40 @@ describe('Entity Routes', () => {
       }));
     });
 
+    it('PATCH rejects moving an Aha! feature away from its epic', async () => {
+      const link = { ...ahaLink('Aha name'), data: { ...ahaLink('Aha name').data, epic_id: '900' } };
+      mockCollection.findOne
+        .mockResolvedValueOnce({ id: 'wi1', _version: 2, origin: 'aha', parent_id: 'wi-epic', links: { aha: link } })
+        .mockResolvedValueOnce({ id: 'wi-epic' }); // epic lookup
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: '/api/entity/workItems/wi1',
+        payload: { _version: 2, patch: { parent_id: null } },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(JSON.parse(response.payload).error).toContain('"parent_id" is owned by Aha!');
+      expect(mockCollection.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('create of an Aha! feature puts it under its epic\'s work item', async () => {
+      const link = { ...ahaLink('Aha name'), data: { ...ahaLink('Aha name').data, epic_id: '900' } };
+      mockCollection.findOne.mockResolvedValue(null);
+      mockCollection.findOne
+        .mockResolvedValueOnce({ id: 'wi-epic' })        // epic lookup
+        .mockResolvedValueOnce({ _id: 'p' });           // parent-exists check
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/entity/workItems',
+        payload: { _version: 0, name: 'x', parent_id: 'ignored', links: { aha: link } },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(mockCollection.insertOne).toHaveBeenCalledWith(expect.objectContaining({ origin: 'aha', parent_id: 'wi-epic' }));
+    });
+
     it('upsert without links keeps the stored Aha! origin', async () => {
       mockCollection.findOne.mockResolvedValueOnce({ links: { aha: ahaLink('Aha name') } });
       mockCollection.findOneAndUpdate.mockResolvedValueOnce({ id: 'wi1', _version: 3, created_at: 'x' });

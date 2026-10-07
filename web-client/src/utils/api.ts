@@ -161,6 +161,53 @@ export const syncAhaFeature = async (
     );
 };
 
+export const syncAhaEpic = async (
+    referenceNum: string,
+    ahaSettings: { subdomain?: string; api_key?: string }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any> => {
+    if (!referenceNum) {
+        throw new Error('Please enter a valid Aha! Reference Number before syncing.');
+    }
+
+    return apiPost(
+        "/api/aha/epic",
+        {
+            reference_num: referenceNum,
+            aha: {
+                subdomain: ahaSettings.subdomain,
+                api_key: ahaSettings.api_key,
+            }
+        },
+        (resData) => resData.epic,
+        "Failed to fetch Aha! data"
+    );
+};
+
+export const importAhaEpics = async (
+    workspace: string,
+    ahaSettings: { subdomain?: string; api_key?: string }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any[]> => {
+    if (!workspace) {
+        throw new Error('Please enter a valid Aha! Workspace before importing.');
+    }
+
+    return apiPost(
+        "/api/aha/epics",
+        {
+            workspace,
+            aha: {
+                subdomain: ahaSettings.subdomain,
+                api_key: ahaSettings.api_key,
+            }
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (resData) => (resData.epics as any[]) || [],
+        "Failed to fetch Aha! epics"
+    );
+};
+
 export const importAhaFeatures = async (
     workspace: string,
     ahaSettings: { subdomain?: string; api_key?: string }

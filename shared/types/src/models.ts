@@ -81,12 +81,24 @@ export interface ExternalLink {
   key: string;
   url?: string;
   synced_at?: string; // ISO datetime
+  /**
+   * Kind of record in the source. Aha!: 'feature' (default when absent) or
+   * 'epic' (shown as "feature set" in some Aha! workspaces). Source terms
+   * only — unrelated to the work item hierarchy or Jira's epic level.
+   */
+  record_type?: 'feature' | 'epic';
   /** Last data synced from the source. */
   data?: {
     name?: string;
     description?: string; // HTML
     score?: number; // Product Value
     estimate_mds?: number | null; // informational only; null when Aha! has no estimate
+    /**
+     * Aha! feature only: id of the Aha! epic the feature belongs to, null
+     * when it has none. Once set, Aha! owns the work item's parent_id: the
+     * work item linked to that epic, or no parent.
+     */
+    epic_id?: string | null;
     requirements?: {
       id: string;
       reference_num: string;
@@ -141,7 +153,7 @@ export interface WorkItem {
    * Children are *derived* by querying `workItems` where `parent_id === this.id` —
    * the relationship is stored only on the child to keep the data single-sourced.
    */
-  parent_id?: string;
+  parent_id?: string | null; // null clears it (undefined is dropped from JSON bodies)
   all_customers_target?: {
     tcv_type: 'existing' | 'potential';
     priority?: 'Must-have' | 'Should-have' | 'Nice-to-have';

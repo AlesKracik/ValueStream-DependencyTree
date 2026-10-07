@@ -1,6 +1,7 @@
 import { parseISO, differenceInDays, max, min, format } from 'date-fns';
 import type { WorkItem, Issue, Customer, Sprint, Team, SupportIssue, ExternalLink } from '@valuestream/shared-types';
 import { countBusinessDays } from './dateHelpers';
+import { isParentOwned } from './workItemOrigin';
 
 /**
  * Reusable business logic for metrics calculation.
@@ -123,6 +124,8 @@ export const parseAhaFeature = (feature: any): ExternalLink => {
             description: r.description?.body || '',
             url: r.url,
         })) : undefined,
+        // The feature's Aha! epic ("feature set"); null when it has none.
+        epic_id: 'epic' in feature ? (feature.epic?.id != null ? String(feature.epic.id) : null) : undefined,
     };
     if ('original_estimate' in feature) {
         // Aha! original_estimate is in minutes; 480 minutes = 1 person-day.
@@ -134,8 +137,22 @@ export const parseAhaFeature = (feature: any): ExternalLink => {
         key: feature.reference_num,
         url: feature.url,
         synced_at: new Date().toISOString(),
+        record_type: 'feature',
         data,
     };
+};
+
+/**
+ * Maps an Aha! epic payload (a "feature set" in some Aha! workspaces) to the
+ * work item's Aha! link. Same fields as a feature; epics carry no epic of
+ * their own and no requirements.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const parseAhaEpic = (epic: any): ExternalLink => {
+    const link = parseAhaFeature(epic);
+    const { epic_id: _e, requirements: _r, ...data } = link.data ?? {};
+    void _e; void _r;
+    return { ...link, record_type: 'epic', data };
 };
 
 /**
@@ -443,6 +460,8 @@ export interface HierarchyAlignmentPlan {
     conflicts: { workItemId: string; parentIds: string[] }[];
     /** Work-item ids skipped because the change would create a cycle. */
     cycles: string[];
+    /** Work-item ids skipped because Aha! owns their parent (an Aha! feature follows its Aha! epic). */
+    ahaOwned: string[];
     /** True when no hierarchy field is available ("Parent Link" on Data Center) — nothing can align. */
     parentFieldMissing: boolean;
 }
@@ -455,14 +474,15 @@ export interface HierarchyAlignmentPlan {
  * Rules (see plan): a child jira whose Parent Link points at an in-system
  * parent jira makes the child jira's work item a child of the parent jira's
  * work item. Skips when either side is Unassigned, when both jiras share a work
- * item, on a work item whose child jiras disagree (conflict), and when the edge
- * would form a cycle. Never clears an existing parent_id.
+ * item, on a work item whose child jiras disagree (conflict), when the edge
+ * would form a cycle, and on a work item whose parent Aha! owns (an Aha!
+ * feature follows its Aha! epic). Never clears an existing parent_id.
  */
 export const planHierarchyAlignment = (
     { fetchedByKey, issues, workItems, deployment = 'datacenter' }: HierarchyAlignmentInput,
 ): HierarchyAlignmentPlan => {
     const plan: HierarchyAlignmentPlan = {
-        updates: [], conflicts: [], cycles: [], parentFieldMissing: false,
+        updates: [], conflicts: [], cycles: [], ahaOwned: [], parentFieldMissing: false,
     };
 
     // Resolve the Parent Link field id from any fetched issue's names map
@@ -515,6 +535,10 @@ export const planHierarchyAlignment = (
         if (!childWI || !parentWI) continue;            // either side Unassigned
         if (childWI === parentWI) continue;             // same work item
         if (!workItemById.has(childWI) || !workItemById.has(parentWI)) continue; // stale ref
+        if (isParentOwned(workItemById.get(childWI))) {          // Aha! owns this parent
+            if (!plan.ahaOwned.includes(childWI)) plan.ahaOwned.push(childWI);
+            continue;
+        }
 
         let set = proposals.get(childWI);
         if (!set) { set = new Set(); proposals.set(childWI, set); }
@@ -525,7 +549,7 @@ export const planHierarchyAlignment = (
     // `pendingParent` tracks parent_ids as we apply, so the cycle check sees
     // the resulting graph within this run.
     const pendingParent = new Map<string, string | undefined>(
-        workItems.map(w => [w.id, w.parent_id]),
+        workItems.map(w => [w.id, w.parent_id ?? undefined]),
     );
 
     const wouldCycle = (childWI: string, parentWI: string): boolean => {

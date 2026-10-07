@@ -13,7 +13,9 @@ import {
     moneyBagFillRatio,
     resolveFieldId,
     extractParentLinkKey,
-    planHierarchyAlignment
+    planHierarchyAlignment,
+    parseAhaFeature,
+    parseAhaEpic
 } from '../businessLogic';
 import type { WorkItem, Issue, Customer, Sprint, Team } from '@valuestream/shared-types';
 
@@ -519,6 +521,22 @@ describe('Jira Parent Link hierarchy alignment', () => {
         });
     });
 
+    describe('parseAhaFeature / parseAhaEpic', () => {
+        it('reads a feature\'s Aha! epic, null without one, undefined when the payload lacks it', () => {
+            expect(parseAhaFeature({ id: 1, reference_num: 'DR-1', epic: { id: 900 } }).data?.epic_id).toBe('900');
+            expect(parseAhaFeature({ id: 1, reference_num: 'DR-1', epic: null }).data?.epic_id).toBeNull();
+            expect(parseAhaFeature({ id: 1, reference_num: 'DR-1' }).data?.epic_id).toBeUndefined();
+            expect(parseAhaFeature({ id: 1, reference_num: 'DR-1' }).record_type).toBe('feature');
+        });
+
+        it('marks an epic and drops feature-only fields', () => {
+            const link = parseAhaEpic({ id: 900, reference_num: 'DR-E-1', name: 'Set', score: 4, description: { body: '<p>x</p>' } });
+            expect(link).toMatchObject({ external_id: '900', key: 'DR-E-1', record_type: 'epic', data: { name: 'Set', score: 4, description: '<p>x</p>' } });
+            expect(link.data).not.toHaveProperty('epic_id');
+            expect(link.data).not.toHaveProperty('requirements');
+        });
+    });
+
     describe('planHierarchyAlignment', () => {
         it('Cloud: uses the system parent field even without a Parent Link field', () => {
             const plan = planHierarchyAlignment({
@@ -561,6 +579,20 @@ describe('Jira Parent Link hierarchy alignment', () => {
                 workItems: [wi('wiC'), wi('wiP')],
             });
             expect(plan.updates).toEqual([{ workItemId: 'wiC', parentId: 'wiP' }]);
+        });
+
+        it('skips a work item whose parent Aha! owns (Jira never overrides the Aha! epic)', () => {
+            const ahaFeature = {
+                ...wi('wiC'), origin: 'aha' as const,
+                links: { aha: { external_id: '42', key: 'DR-42', data: { epic_id: null } } },
+            };
+            const plan = planHierarchyAlignment({
+                fetchedByKey: fetched([{ key: 'C-1', parent: 'P-1' }]),
+                issues: [issue('i1', 'C-1', 'wiC'), issue('i2', 'P-1', 'wiP')],
+                workItems: [ahaFeature, wi('wiP')],
+            });
+            expect(plan.updates).toEqual([]);
+            expect(plan.ahaOwned).toEqual(['wiC']);
         });
 
         it('is a no-op when parent_id already correct', () => {

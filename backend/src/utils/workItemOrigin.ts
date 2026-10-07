@@ -93,6 +93,43 @@ export function deriveForPatch(existing: Doc | null, patch: Doc): Doc {
   return {};
 }
 
+/**
+ * Aha! owns a feature's parent: the work item linked to the feature's Aha!
+ * epic, or none (null) when the feature has no epic or that epic isn't a work
+ * item here. undefined means the parent is not owned: a local item, an Aha!
+ * epic (initiatives above epics aren't brought over), or a feature synced
+ * before epics were tracked (no `epic_id` in its data yet).
+ */
+export async function deriveAhaParent(db: Db, links: Links): Promise<string | null | undefined> {
+  if (deriveOrigin(links) !== 'aha') return undefined;
+  const link = links?.aha;
+  if (link?.record_type === 'epic') return undefined;
+  const epicId = link?.data?.epic_id;
+  if (epicId === undefined) return undefined;
+  if (!epicId) return null;
+  const epic = await db.collection('workItems').findOne(
+    { 'links.aha.external_id': String(epicId), 'links.aha.record_type': 'epic' },
+    { projection: { id: 1 } }
+  );
+  return epic ? String(epic.id) : null;
+}
+
+/**
+ * Parent for a PATCH of a work item whose parent Aha! owns, or undefined when
+ * the patch needs no parent change. Rejects a patch that sets a different
+ * parent without also setting links (the source's value wins with links).
+ */
+export async function deriveParentForPatch(db: Db, existing: Doc | null, patch: Doc): Promise<string | null | undefined> {
+  const touchesLinks = 'links' in patch;
+  const parent = await deriveAhaParent(db, touchesLinks ? patch.links : existing?.links);
+  if (parent === undefined) return undefined;
+  if (!touchesLinks && 'parent_id' in patch && (patch.parent_id || null) !== parent) {
+    throw new AppError('"parent_id" is owned by Aha! for this work item (it follows the Aha! epic); change it in Aha!.', 400);
+  }
+  if (touchesLinks || 'parent_id' in patch || (existing?.parent_id || null) !== parent) return parent;
+  return undefined;
+}
+
 // ── Legacy migration ──────────────────────────────────────────────────────
 // TODO(remove): delete this block (and its callers in routes/data.ts) once
 // every record is migrated. Check with:

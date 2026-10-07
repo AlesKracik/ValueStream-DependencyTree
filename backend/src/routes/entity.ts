@@ -21,7 +21,7 @@ import { ALLOWED_COLLECTIONS } from '../utils/constants';
 import { AppError } from '../utils/errors';
 import { requireRole } from '../utils/roleGuard';
 import { wouldCreateCycle } from '../utils/workItemHierarchy';
-import { deriveForDocument, deriveForPatch } from '../utils/workItemOrigin';
+import { deriveForDocument, deriveForPatch, deriveAhaParent, deriveParentForPatch } from '../utils/workItemOrigin';
 import { deriveEffort } from '../utils/effortSize';
 import {
   assertDocumentStatuses, assertSupportIssueStatus, assertParentExists, namesParent,
@@ -206,6 +206,10 @@ async function deriveWorkItemWrite(
     links = stored?.links;
   }
   Object.assign(data, deriveForDocument({ links }));
+  // Aha! owns a feature's parent (its epic's work item). Runs before the
+  // hierarchy guards, which then check the derived parent.
+  const parent = await deriveAhaParent(db, links);
+  if (parent !== undefined) data.parent_id = parent;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -433,16 +437,18 @@ export const entityRoutes: FastifyPluginAsync = async (fastify) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let derived: Record<string, any> = {};
       if (collection === 'workItems') {
-        await guardParent(db, id, (patch as { parent_id?: unknown }).parent_id);
         // Origin is server-owned; source-owned fields can't be edited locally.
         // A concurrent change before the write still fails the version check.
         delete (patch as Record<string, unknown>).origin;
         // Baseline effort: total_effort_mds follows the T-shirt size.
         deriveEffort(patch as Record<string, unknown>);
-        if (['links', 'name', 'description'].some(k => k in patch)) {
+        if (['links', 'name', 'description', 'parent_id'].some(k => k in patch)) {
           const current = await db.collection(collection).findOne({ id });
           derived = deriveForPatch(current, patch as Record<string, unknown>);
+          const parent = await deriveParentForPatch(db, current, patch as Record<string, unknown>);
+          if (parent !== undefined) derived.parent_id = parent;
         }
+        await guardParent(db, id, 'parent_id' in derived ? derived.parent_id : (patch as { parent_id?: unknown }).parent_id);
       }
       await assertReferencesExist(db, collection, patch as Record<string, unknown>);
       await assertJiraKeyUnique(db, collection, patch as Record<string, unknown>, id);

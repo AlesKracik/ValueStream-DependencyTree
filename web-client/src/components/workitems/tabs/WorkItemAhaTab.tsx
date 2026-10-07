@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import type { WorkItem, ValueStreamData, ExternalLink } from '@valuestream/shared-types';
-import { syncAhaFeature } from '../../../utils/api';
-import { parseAhaFeature } from '../../../utils/businessLogic';
-import { withAhaLink } from '../../../utils/workItemOrigin';
+import { syncAhaFeature, syncAhaEpic } from '../../../utils/api';
+import { parseAhaFeature, parseAhaEpic } from '../../../utils/businessLogic';
+import { withAhaLink, ahaRecordTypeForKey } from '../../../utils/workItemOrigin';
 import { useNotificationContext } from '../../../contexts/NotificationContext';
 import { SettingsLink } from '../../common/SettingsLink';
 
@@ -27,13 +27,15 @@ export const WorkItemAhaTab: React.FC<Props> = ({
     const [isSyncingAha, setIsSyncingAha] = useState(false);
 
     const link = workItem?.links?.aha ?? undefined;
-    // Synced data is shown only once the link points at a real Aha! feature.
+    // Synced data is shown only once the link points at a real Aha! record.
     const synced = link?.external_id ? link.data : undefined;
+    // Aha! epic ("feature set") or feature — Aha! terms, not the work item hierarchy.
+    const isEpic = link?.record_type === 'epic';
 
     // Every write of the link goes through here, so the origin and the
     // Aha!-owned fields stay in step with what the server derives.
     const applyLink = (next: ExternalLink | null) => {
-        const updates = withAhaLink(workItem, next);
+        const updates = withAhaLink(workItem, next, data?.workItems);
         if (isNew) {
             setNewWorkItemDraft(prev => ({ ...prev, ...updates }));
         } else {
@@ -49,11 +51,12 @@ export const WorkItemAhaTab: React.FC<Props> = ({
 
         setIsSyncingAha(true);
         try {
-            const feature = await syncAhaFeature(link.key, data?.settings?.aha || {});
+            const aha = data?.settings?.aha || {};
+            const record = isEpic ? await syncAhaEpic(link.key, aha) : await syncAhaFeature(link.key, aha);
             // Preserve the user-typed key verbatim — Aha! sometimes returns a
             // normalized casing that diverges from what's stored.
-            applyLink({ ...parseAhaFeature(feature), key: link.key });
-            await showAlert('Aha! Sync', `Successfully synced data from ${feature.reference_num}.`);
+            applyLink({ ...(isEpic ? parseAhaEpic(record) : parseAhaFeature(record)), key: link.key });
+            await showAlert('Aha! Sync', `Successfully synced data from ${record.reference_num}.`);
         } catch (err: unknown) {
             console.error('Aha! Sync failed', err);
             const msg = err instanceof Error ? err.message : 'An unexpected error occurred during Aha! sync.';
@@ -82,11 +85,11 @@ export const WorkItemAhaTab: React.FC<Props> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div style={{ padding: '16px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-secondary)' }}>
                 <h3 style={{ margin: '0 0 12px 0', fontSize: '15px', display: 'flex', alignItems: 'center' }}>
-                    Link to Aha! Feature
+                    Link to Aha! Feature or Epic
                     <SettingsLink tab="aha" title="Configure Aha! integration" />
                 </h3>
                 <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                    Enter the Aha! Reference Number (e.g., <code>PROD-123</code>) to link this work item and sync its details.
+                    Enter the Aha! Reference Number of a feature (e.g., <code>PROD-123</code>) or an epic (e.g., <code>PROD-E-12</code>) to link this work item and sync its details. A synced feature sits under the work item of its Aha! epic.
                 </p>
 
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '16px' }}>
@@ -103,8 +106,8 @@ export const WorkItemAhaTab: React.FC<Props> = ({
                                     clearAhaLink(true);
                                     return;
                                 }
-                                // A new key no longer names the synced feature: keep only the key.
-                                applyLink({ key: next });
+                                // A new key no longer names the synced record: keep only the key.
+                                applyLink({ key: next, record_type: ahaRecordTypeForKey(next) });
                             }}
                             style={{ width: '100%' }}
                         />
@@ -186,6 +189,11 @@ export const WorkItemAhaTab: React.FC<Props> = ({
                         </div>
                     </div>
 
+                    {isEpic ? (
+                    <div style={{ padding: '16px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-secondary)', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                        This work item is an Aha! epic. Its Aha! features are its child work items (see the Hierarchy tab).
+                    </div>
+                    ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         <div style={{ padding: '16px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '8px', border: '1px solid var(--border-secondary)' }}>
                             <h3 style={{ margin: '0 0 12px 0', fontSize: '15px' }}>Requirements ({synced.requirements?.length || 0})</h3>
@@ -213,6 +221,7 @@ export const WorkItemAhaTab: React.FC<Props> = ({
                             </div>
                         </div>
                     </div>
+                    )}
                 </div>
             )}
         </div>

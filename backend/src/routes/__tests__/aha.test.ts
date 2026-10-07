@@ -172,11 +172,11 @@ describe('Aha! Routes', () => {
     expect(body.features).toHaveLength(205);
     expect(mockFetch).toHaveBeenCalledTimes(2);
     expect(mockFetch).toHaveBeenNthCalledWith(1,
-      'https://test-subdomain.aha.io/api/v1/products/PROD/features?per_page=200&page=1&fields=id,reference_num,name,url,score,description,original_estimate,requirements',
+      'https://test-subdomain.aha.io/api/v1/products/PROD/features?per_page=200&page=1&fields=id,reference_num,name,url,score,description,original_estimate,requirements,epic',
       expect.any(Object)
     );
     expect(mockFetch).toHaveBeenNthCalledWith(2,
-      'https://test-subdomain.aha.io/api/v1/products/PROD/features?per_page=200&page=2&fields=id,reference_num,name,url,score,description,original_estimate,requirements',
+      'https://test-subdomain.aha.io/api/v1/products/PROD/features?per_page=200&page=2&fields=id,reference_num,name,url,score,description,original_estimate,requirements,epic',
       expect.any(Object)
     );
   });
@@ -191,8 +191,34 @@ describe('Aha! Routes', () => {
     const url = new URL(mockFetch.mock.calls[0][0]);
     expect(url.searchParams.get('per_page')).toBe('200');
     expect(url.searchParams.get('fields')!.split(',').sort()).toEqual(
-      ['description', 'id', 'name', 'original_estimate', 'reference_num', 'requirements', 'score', 'url']
+      ['description', 'epic', 'id', 'name', 'original_estimate', 'reference_num', 'requirements', 'score', 'url']
     );
+  });
+
+  it('POST /api/aha/epics lists a workspace\'s epics with full fields', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve({ epics: [{ id: 'e1', reference_num: 'DR-E-1' }] }) });
+    global.fetch = mockFetch;
+
+    const response = await app.inject({ method: 'POST', url: '/api/aha/epics', payload: { workspace: 'DR' } });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body).epics).toEqual([{ id: 'e1', reference_num: 'DR-E-1' }]);
+    const url = new URL(mockFetch.mock.calls[0][0]);
+    expect(url.pathname).toBe('/api/v1/products/DR/epics');
+    expect(url.searchParams.get('fields')!.split(',').sort()).toEqual(
+      ['description', 'id', 'name', 'original_estimate', 'reference_num', 'score', 'url']
+    );
+  });
+
+  it('POST /api/aha/epic fetches one epic by reference number', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve({ epic: { id: 'e1', reference_num: 'DR-E-1' } }) });
+    global.fetch = mockFetch;
+
+    const response = await app.inject({ method: 'POST', url: '/api/aha/epic', payload: { reference_num: 'DR-E-1' } });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body).epic).toEqual({ id: 'e1', reference_num: 'DR-E-1' });
+    expect(mockFetch.mock.calls[0][0]).toBe('https://test-subdomain.aha.io/api/v1/epics/DR-E-1');
   });
 
   it('POST /api/aha/features should return 404 error when workspace not found', async () => {

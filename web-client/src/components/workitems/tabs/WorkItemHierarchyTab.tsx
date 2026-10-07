@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ValueStreamData, WorkItem } from '@valuestream/shared-types';
 import { SearchableDropdown } from '../../common/SearchableDropdown';
+import { isParentOwned } from '../../../utils/workItemOrigin';
 
 interface Props {
   workItem: WorkItem | undefined;
@@ -110,11 +111,17 @@ export const WorkItemHierarchyTab: React.FC<Props> = ({
       w.id !== currentId &&
       !descendantIds.has(w.id) &&
       !ancestorIds.has(w.id) &&
-      w.parent_id !== currentId,
+      w.parent_id !== currentId &&
+      // Aha! owns the parent of an Aha! feature (its epic's work item).
+      !isParentOwned(w),
     )
     .map(w => ({ id: w.id, label: w.parent_id ? `${w.name} (currently child of ${allWorkItems.find(x => x.id === w.parent_id)?.name ?? '?'})` : w.name }));
 
-  const setParent = (newParentId: string | undefined) => {
+  // Aha! owns this work item's parent: it follows the Aha! epic.
+  const parentOwned = isParentOwned(workItem);
+
+  // null (not undefined) clears the parent: JSON.stringify drops undefined.
+  const setParent = (newParentId: string | null) => {
     if (isNew) {
       setNewWorkItemDraft(prev => ({ ...prev, parent_id: newParentId }));
     } else {
@@ -128,7 +135,7 @@ export const WorkItemHierarchyTab: React.FC<Props> = ({
   };
 
   const removeChild = (childId: string) => {
-    updateWorkItem(childId, { parent_id: undefined }, true);
+    updateWorkItem(childId, { parent_id: null }, true);
   };
 
   return (
@@ -136,7 +143,18 @@ export const WorkItemHierarchyTab: React.FC<Props> = ({
       {/* Parent section */}
       <section style={sectionStyle}>
         <h3 style={headingStyle}>Parent</h3>
-        {parent ? (
+        {parentOwned ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {parent ? (
+              <button type="button" style={{ ...linkButtonStyle, alignSelf: 'flex-start' }} onClick={() => navigate(`/workitem/${parent.id}`)} title="Open parent">
+                {parent.name}
+              </button>
+            ) : (
+              <div>No parent.</div>
+            )}
+            <div style={helperStyle}>Managed in Aha!: an Aha! feature sits under the work item of its Aha! epic.</div>
+          </div>
+        ) : parent ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button
               type="button"
@@ -148,7 +166,7 @@ export const WorkItemHierarchyTab: React.FC<Props> = ({
             </button>
             <button
               type="button"
-              onClick={() => setParent(undefined)}
+              onClick={() => setParent(null)}
               style={{
                 background: 'var(--status-danger-bg)',
                 color: 'var(--status-danger-text)',
@@ -164,7 +182,7 @@ export const WorkItemHierarchyTab: React.FC<Props> = ({
           </div>
         ) : parentId && !isNew ? (
           <div style={helperStyle}>
-            Parent <code>{parentId}</code> not found. <button type="button" style={{ ...linkButtonStyle, fontSize: 12 }} onClick={() => setParent(undefined)}>Clear</button>
+            Parent <code>{parentId}</code> not found. <button type="button" style={{ ...linkButtonStyle, fontSize: 12 }} onClick={() => setParent(null)}>Clear</button>
           </div>
         ) : (
           <div style={{ maxWidth: 420 }}>
@@ -213,7 +231,7 @@ export const WorkItemHierarchyTab: React.FC<Props> = ({
                     >
                       {c.name}
                     </button>
-                    <button
+                    {!isParentOwned(c) && <button
                       type="button"
                       onClick={() => removeChild(c.id)}
                       style={{
@@ -228,7 +246,7 @@ export const WorkItemHierarchyTab: React.FC<Props> = ({
                       title="Detach this child"
                     >
                       Remove
-                    </button>
+                    </button>}
                   </li>
                 ))}
               </ul>
@@ -243,6 +261,7 @@ export const WorkItemHierarchyTab: React.FC<Props> = ({
               <div style={{ ...helperStyle, marginTop: 4 }}>
                 Self, ancestors, descendants, and existing children are excluded.
                 Adding a work item that already has a parent will move it under this one.
+                Aha! features are excluded: their parent follows their Aha! epic.
               </div>
             </div>
           </>

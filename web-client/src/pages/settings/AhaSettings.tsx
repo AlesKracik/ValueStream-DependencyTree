@@ -1,8 +1,9 @@
+import type { WorkItem, ExternalLink } from '@valuestream/shared-types';
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { authorizedFetch, importAhaFeatures, syncAhaFeature } from "../../utils/api";
-import { parseAhaFeature } from '../../utils/businessLogic';
-import { withAhaLink } from '../../utils/workItemOrigin';
+import { authorizedFetch, importAhaFeatures, importAhaEpics, syncAhaFeature, syncAhaEpic } from "../../utils/api";
+import { parseAhaFeature, parseAhaEpic } from '../../utils/businessLogic';
+import { withAhaLink, ahaRecordTypeForKey } from '../../utils/workItemOrigin';
 import { ScopeIndicator } from '../../components/common/ScopeIndicator';
 import styles from '../List.module.css';
 import type { SettingsTabWithDataProps } from './types';
@@ -87,48 +88,66 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
     setImportSyncResult(null);
     setImportProgress("Fetching features from Aha!…");
     try {
-      const features = await importAhaFeatures(workspace, { subdomain: aha.subdomain, api_key: aha.api_key });
-      if (features.length === 0) {
-        setImportSyncResult({ success: true, message: `No features found in workspace "${workspace}".` });
+      const ahaCreds = { subdomain: aha.subdomain, api_key: aha.api_key };
+      // Aha! epics ("feature sets") first: features then find their epic's
+      // work item, which becomes their parent.
+      const epics = await importAhaEpics(workspace, ahaCreds);
+      const features = await importAhaFeatures(workspace, ahaCreds);
+      if (epics.length === 0 && features.length === 0) {
+        setImportSyncResult({ success: true, message: `No epics or features found in workspace "${workspace}".` });
         return;
       }
 
-      let createCount = 0;
-      let updateCount = 0;
-      let failCount = 0;
+      // Work items known so far, including the ones this import creates.
+      const known: WorkItem[] = [...(data.workItems || [])];
+      const counts = { epics: { created: 0, updated: 0, failed: 0 }, features: { created: 0, updated: 0, failed: 0 } };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const records: { record: any; link: ExternalLink; kind: 'epics' | 'features' }[] = [
+        ...epics.map(e => ({ record: e, link: parseAhaEpic(e), kind: 'epics' as const })),
+        ...features.map(f => ({ record: f, link: parseAhaFeature(f), kind: 'features' as const })),
+      ];
 
-      for (let i = 0; i < features.length; i++) {
-        const feature = features[i];
-        setImportProgress(`Processing ${i + 1}/${features.length}: ${feature.reference_num}`);
+      for (let i = 0; i < records.length; i++) {
+        const { record, link, kind } = records[i];
+        const c = counts[kind];
+        setImportProgress(`Processing ${i + 1}/${records.length}: ${record.reference_num}`);
         try {
-          const link = parseAhaFeature(feature);
           // Match by the stable Aha! id first, then by a typed-but-unsynced key.
-          const workItems = data.workItems || [];
           const existing =
-            workItems.find(w => w.links?.aha?.external_id === link.external_id) ??
-            workItems.find(w => !w.links?.aha?.external_id && w.links?.aha?.key?.toLowerCase() === link.key.toLowerCase());
+            known.find(w => w.links?.aha?.external_id === link.external_id) ??
+            known.find(w => !w.links?.aha?.external_id && w.links?.aha?.key?.toLowerCase() === link.key.toLowerCase());
           if (existing) {
-            await updateWorkItem(existing.id, withAhaLink(existing, link), true);
-            updateCount++;
+            const updates = withAhaLink(existing, link, known);
+            await updateWorkItem(existing.id, updates, true);
+            known[known.indexOf(existing)] = { ...existing, ...updates };
+            c.updated++;
           } else {
-            const created = await addWorkItem({
-              name: feature.reference_num,
-              status: 'Backlog',
+            const fields = {
+              name: record.reference_num,
+              status: 'Backlog' as const,
               total_effort_mds: 0,
               score: 0,
               customer_targets: [],
-              ...withAhaLink(undefined, link),
-            });
-            if (created) createCount++;
-            else failCount++;
+              ...withAhaLink(undefined, link, known),
+            };
+            const created = await addWorkItem(fields);
+            if (created) {
+              known.push({ ...fields, ...created });
+              c.created++;
+            } else c.failed++;
           }
         } catch (err: unknown) {
-          console.error(`Error processing ${feature.reference_num}:`, err);
-          failCount++;
+          console.error(`Error processing ${record.reference_num}:`, err);
+          c.failed++;
         }
       }
 
-      setImportSyncResult({ success: failCount === 0, message: `Import complete. Created ${createCount}, updated ${updateCount}, failed ${failCount}.` });
+      const total = (k: 'created' | 'updated' | 'failed') => counts.epics[k] + counts.features[k];
+      const part = (k: 'epics' | 'features') => `${k}: ${counts[k].created} created, ${counts[k].updated} updated, ${counts[k].failed} failed`;
+      setImportSyncResult({
+        success: total('failed') === 0,
+        message: `Import complete. Created ${total('created')}, updated ${total('updated')}, failed ${total('failed')} (${part('epics')}; ${part('features')}).`,
+      });
     } catch (err: unknown) {
       console.error("Aha! import error:", err);
       const msg = err instanceof Error ? err.message : "Import failed.";
@@ -148,7 +167,11 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
       return;
     }
 
-    const workItemsWithRef = (data.workItems || []).filter(w => w.links?.aha?.key);
+    const isEpicLink = (w: WorkItem) => (w.links?.aha?.record_type ?? ahaRecordTypeForKey(w.links?.aha?.key || '')) === 'epic';
+    // Epics first, so a feature that moved to another epic finds its new parent.
+    const workItemsWithRef = (data.workItems || []).filter(w => w.links?.aha?.key)
+      .sort((a, b) => Number(isEpicLink(b)) - Number(isEpicLink(a)));
+    const known: WorkItem[] = [...(data.workItems || [])];
     if (workItemsWithRef.length === 0) {
       setImportSyncResult({ success: true, message: "No work items with Aha! references found to sync." });
       return;
@@ -165,9 +188,14 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
       const refNum = w.links!.aha!.key;
       setSyncProgress(`Syncing ${i + 1}/${workItemsWithRef.length}: ${refNum}`);
       try {
-        const feature = await syncAhaFeature(refNum, { subdomain: aha.subdomain, api_key: aha.api_key });
+        const creds = { subdomain: aha.subdomain, api_key: aha.api_key };
+        const link = isEpicLink(w)
+          ? parseAhaEpic(await syncAhaEpic(refNum, creds))
+          : parseAhaFeature(await syncAhaFeature(refNum, creds));
         // Preserve the user-typed key verbatim.
-        await updateWorkItem(w.id, withAhaLink(w, { ...parseAhaFeature(feature), key: refNum }), true);
+        const updates = withAhaLink(w, { ...link, key: refNum }, known);
+        await updateWorkItem(w.id, updates, true);
+        known[known.findIndex(k => k.id === w.id)] = { ...w, ...updates };
         successCount++;
       } catch (err: unknown) {
         console.error(`Error syncing ${refNum}:`, err);

@@ -28,6 +28,8 @@ Configured in the UI via **Settings > Aha!** tab.
 | `POST` | `/api/aha/test` | Validates connection by listing features |
 | `POST` | `/api/aha/feature` | Fetches a specific feature by `reference_num` |
 | `POST` | `/api/aha/features` | Lists every feature of a workspace (product), with full feature fields |
+| `POST` | `/api/aha/epic` | Fetches a specific epic by `reference_num` |
+| `POST` | `/api/aha/epics` | Lists every epic of a workspace (product), with full fields |
 
 ### Test Connection
 
@@ -61,21 +63,51 @@ item by `links.aha.external_id` first, then by an unsynced `links.aha.key`
 (case-insensitive). A match gets the refreshed link; an unmatched feature becomes
 a new `Backlog` work item with origin `aha`.
 
-Import and sync never clear stored data that a response lacks. When the new link
+The import counts are reported per kind (epics, features). Import and sync never clear stored data that a response lacks. When the new link
 points at the same feature as the stored one (same `external_id`), its `data` is
 merged onto the stored `links.aha.data` field by field: a field missing from the
 response keeps its stored value, while a field that is present always overwrites,
 even with `null`, `''` or `0`. Effort is never taken from Aha!. **Sync all** refreshes every work item
 that has a `links.aha.key`.
 
+### Epics
+
+Aha! **epics** are what some Aha! workspaces call **feature sets** (Aha! lets a
+workspace rename its record types; the REST API always says epics). Epics are
+fetched like features: `GET /api/v1/epics/{reference_num}` for one, and
+`GET /api/v1/products/{workspace}/epics` with
+`fields=id,reference_num,name,url,score,description,original_estimate` for the
+import. Aha! numbers epics `PREFIX-E-N` (e.g. `DR-E-12`).
+
+> Aha! terms only. Aha! epics are unrelated to Jira's Epic level or to Jira's
+> Parent Link hierarchy; in this app both meet only through the generic
+> work item `parent_id`.
+
 ### List Features (Import)
 
 Fetches `https://{subdomain}.aha.io/api/v1/products/{workspace}/features` page by page
 (`per_page=200`, at most 50 pages). Aha!'s list endpoint returns only summary fields
 by default, so the request passes
-`fields=id,reference_num,name,url,score,description,original_estimate,requirements`:
+`fields=id,reference_num,name,url,score,description,original_estimate,requirements,epic`:
 every field the import reads, so an imported feature carries the same data as a
 per-feature sync (Product Value, HTML description, estimate, requirements).
+
+## Epics and the Work Item Hierarchy
+
+- An Aha! epic is imported as a work item like a feature (`links.aha.record_type:
+  'epic'`, origin `aha`, Aha! owns its name and description). It has no
+  requirements, and Aha! initiatives above epics are not brought over, so an
+  epic's own parent stays local.
+- A feature's link records its epic (`links.aha.data.epic_id`, `null` when it has
+  none). Once that is synced, **Aha! owns the feature's `parent_id`**: the work
+  item linked to the epic, or no parent when the feature has no epic or its epic
+  isn't a work item here. The server derives it on every write and rejects a
+  PATCH that sets a different parent (400); the Hierarchy tab shows it
+  read-only, and Jira's hierarchy alignment skips such work items.
+- **Import** fetches epics first, then features, so each feature finds its
+  epic's work item. **Sync all** also syncs epics before features, so a feature
+  moved to another epic in Aha! moves to that epic's work item. A per-item Sync
+  uses the epic endpoint for an epic.
 
 ## Data Flow
 

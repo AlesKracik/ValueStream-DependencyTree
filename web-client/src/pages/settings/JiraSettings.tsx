@@ -211,6 +211,9 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
           + (cycleNames.length > 0
               ? `, ${cycleNames.length} cycles skipped (${summarize(cycleNames)})`
               : "")
+          + (plan.ahaOwned.length > 0
+              ? `, ${plan.ahaOwned.length} skipped (parent managed in Aha!: ${summarize(plan.ahaOwned.map(nameOf))})`
+              : "")
           + ".";
 
         // Full breakdown to the console — the toast only carries a summary.

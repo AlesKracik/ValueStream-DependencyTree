@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
-  deriveOrigin, htmlToText, deriveForDocument, deriveForPatch,
+  deriveOrigin, htmlToText, deriveForDocument, deriveForPatch, deriveAhaParent, deriveParentForPatch,
   legacyAhaLink, migrateLegacyAhaFields, LEGACY_AHA_FILTER,
 } from '../workItemOrigin';
 
@@ -74,6 +74,50 @@ describe('workItemOrigin', () => {
 
     it('leaves a local item editable', () => {
       expect(deriveForPatch({ id: 'w1', name: 'x' }, { name: 'y', description: 'z' })).toEqual({});
+    });
+  });
+
+  describe('Aha!-owned parent', () => {
+    const dbWithEpic = (epic: unknown) => {
+      const coll = { findOne: vi.fn().mockResolvedValue(epic) };
+      return { db: { collection: vi.fn().mockReturnValue(coll) } as never, coll };
+    };
+    const feature = (epic_id: string | null | undefined) => ({
+      aha: { external_id: '42', key: 'DR-42', data: epic_id === undefined ? { name: 'F' } : { name: 'F', epic_id } },
+    });
+
+    it('is the work item linked to the feature\'s epic', async () => {
+      const { db, coll } = dbWithEpic({ id: 'wi-epic' });
+      expect(await deriveAhaParent(db, feature('900'))).toBe('wi-epic');
+      expect(coll.findOne).toHaveBeenCalledWith(
+        { 'links.aha.external_id': '900', 'links.aha.record_type': 'epic' }, { projection: { id: 1 } });
+    });
+
+    it('is none when the feature has no epic or the epic is not a work item here', async () => {
+      expect(await deriveAhaParent(dbWithEpic(null).db, feature(null))).toBeNull();
+      expect(await deriveAhaParent(dbWithEpic(null).db, feature('900'))).toBeNull();
+    });
+
+    it('is not owned for local items, epics, or features synced before epics were tracked', async () => {
+      const { db } = dbWithEpic({ id: 'x' });
+      expect(await deriveAhaParent(db, undefined)).toBeUndefined();
+      expect(await deriveAhaParent(db, { aha: { external_id: '7', key: 'DR-E-7', record_type: 'epic', data: {} } })).toBeUndefined();
+      expect(await deriveAhaParent(db, feature(undefined))).toBeUndefined();
+    });
+
+    it('PATCH rejects a different parent and accepts the derived one', async () => {
+      const { db } = dbWithEpic({ id: 'wi-epic' });
+      const stored = { id: 'w1', origin: 'aha', parent_id: 'wi-epic', links: feature('900') };
+      await expect(deriveParentForPatch(db, stored, { parent_id: 'other' })).rejects.toThrow('"parent_id" is owned by Aha!');
+      await expect(deriveParentForPatch(db, stored, { parent_id: null })).rejects.toThrow('"parent_id" is owned by Aha!');
+      expect(await deriveParentForPatch(db, stored, { parent_id: 'wi-epic' })).toBe('wi-epic');
+      expect(await deriveParentForPatch(db, stored, { score: 1 })).toBeUndefined();
+    });
+
+    it('PATCH of links moves the feature to its new epic, or to no parent', async () => {
+      const { db } = dbWithEpic(null);
+      const stored = { id: 'w1', origin: 'aha', parent_id: 'wi-epic', links: feature('900') };
+      expect(await deriveParentForPatch(db, stored, { links: feature(null), parent_id: 'whatever' })).toBeNull();
     });
   });
 
