@@ -69,9 +69,9 @@ const DATA: ValueStreamData = {
     issues: [],
 };
 
-const layout = (showHierarchy: boolean, hovered: string | null = null) =>
+const layout = (hovered: string | null = null) =>
     renderHook(() => useGraphLayout(
-        DATA, hovered, 0, '', '', 'all', '', '', false, 0, 0, null, null, 'score', undefined, showHierarchy,
+        DATA, hovered, 0, '', '', 'all', '', '', false, 0, 0, null, null, 'score', undefined,
     )).result.current;
 
 const workItemOrder = (nodes: ReturnType<typeof layout>['nodes']) =>
@@ -86,14 +86,8 @@ const centerX = (nodes: ReturnType<typeof layout>['nodes'], id: string) => {
 };
 
 describe('useGraphLayout hierarchy view', () => {
-    it('off: flat metric order, no hierarchy edges', () => {
-        const { nodes, edges } = layout(false);
-        expect(workItemOrder(nodes)).toEqual(['A1', 'B', 'A', 'A1a', 'A2']);
-        expect(edges.some(e => e.id.startsWith('hierarchy__'))).toBe(false);
-    });
-
-    it('on: parents before children, siblings and roots in metric order, indented by depth', () => {
-        const { nodes, edges } = layout(true);
+    it('parents before children, siblings and roots in metric order, indented by depth', () => {
+        const { nodes, edges } = layout();
         expect(workItemOrder(nodes)).toEqual(['B', 'A', 'A1', 'A1a', 'A2']);
         expect(centerX(nodes, 'A')).toBe(350);
         expect(centerX(nodes, 'A1')).toBe(390);
@@ -104,7 +98,7 @@ describe('useGraphLayout hierarchy view', () => {
     });
 
     it('hovering a work item lights its direct parent and children only', () => {
-        const { nodes } = layout(true, 'workitem-A1');
+        const { nodes } = layout('workitem-A1');
         const bright = nodes.filter(n => n.type === 'workItemNode' && n.style?.opacity === 1).map(n => n.id).sort();
         expect(bright).toEqual(['workitem-A', 'workitem-A1', 'workitem-A1a']);
     });

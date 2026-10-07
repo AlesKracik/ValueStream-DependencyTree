@@ -151,7 +151,6 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
     const [page, setPage] = useState<number>(() => savedState?.page ?? 1);
 
     // Tree view: pages over top-level rows; expanded rows load their children.
-    const [treeView, setTreeView] = useState<boolean>(() => !!savedState?.treeView);
     const [expandedIds, setExpandedIds] = useState<string[]>(() => savedState?.expandedIds ?? []);
     const toggleExpanded = (id: string) =>
         setExpandedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -159,8 +158,8 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
     // Persist filters + page back into uiState so subsequent in-app remounts
     // (i.e. coming back from a detail page) restore them.
     useEffect(() => {
-        updateUiState(PAGE_ID, { pageFilters: filters, page, treeView, expandedIds });
-    }, [filters, page, treeView, expandedIds, updateUiState]);
+        updateUiState(PAGE_ID, { pageFilters: filters, page, expandedIds });
+    }, [filters, page, expandedIds, updateUiState]);
 
     const setFilterField = <K extends keyof WorkItemFilters>(key: K, value: WorkItemFilters[K]) => {
         setFilters(prev => ({ ...prev, [key]: value }));
@@ -215,15 +214,13 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
         filtersWithMetric,
         sort,
         { page, pageSize },
-        treeView ? {} : undefined
+        {}
     );
     const [childrenReload, setChildrenReload] = useState(0);
-    const treeChildren = useWorkItemTreeChildren(filtersWithMetric, sort, expandedIds, treeView, childrenReload);
+    const treeChildren = useWorkItemTreeChildren(filtersWithMetric, sort, expandedIds, childrenReload);
     const rows: WorkItemRow[] = useMemo(
-        () => treeView
-            ? flattenTree(workItems, childCounts, contextIds, new Set(expandedIds), treeChildren)
-            : workItems,
-        [treeView, workItems, childCounts, contextIds, expandedIds, treeChildren]
+        () => flattenTree(workItems, childCounts, contextIds, new Set(expandedIds), treeChildren),
+        [workItems, childCounts, contextIds, expandedIds, treeChildren]
     );
     const loading = outerLoading || hookLoading;
 
@@ -237,11 +234,6 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
         setPrevResetKey(resetKey);
         if (page !== 1) setPage(1);
     }
-
-    const setTreeViewMode = (on: boolean) => {
-        setTreeView(on);
-        setPage(1);
-    };
 
     const setMetric = (m: WorkItemPriorityMetric) => {
         setViewState(s => ({ ...s, prioritizationMetric: m }));
@@ -301,24 +293,22 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
                 header: 'Name',
                 render: (w) => (
                     <>
-                        {treeView && (
-                            <span style={{ display: 'inline-block', paddingLeft: (w.treeDepth ?? 0) * TREE_INDENT_PX }}>
-                                {w.treeChildCount ? (
-                                    <button
-                                        type="button"
-                                        className={treeStyles.chevron}
-                                        aria-expanded={expandedIds.includes(w.id)}
-                                        aria-label={`${expandedIds.includes(w.id) ? 'Collapse' : 'Expand'} ${w.name}`}
-                                        title={`${w.treeChildCount} child${w.treeChildCount === 1 ? '' : 'ren'}`}
-                                        onClick={(e) => { e.stopPropagation(); toggleExpanded(w.id); }}
-                                    >
-                                        {expandedIds.includes(w.id) ? '▾' : '▸'}
-                                    </button>
-                                ) : (
-                                    <span className={treeStyles.chevronSpacer} aria-hidden="true" />
-                                )}
-                            </span>
-                        )}
+                        <span style={{ display: 'inline-block', paddingLeft: (w.treeDepth ?? 0) * TREE_INDENT_PX }}>
+                            {w.treeChildCount ? (
+                                <button
+                                    type="button"
+                                    className={treeStyles.chevron}
+                                    aria-expanded={expandedIds.includes(w.id)}
+                                    aria-label={`${expandedIds.includes(w.id) ? 'Collapse' : 'Expand'} ${w.name}`}
+                                    title={`${w.treeChildCount} child${w.treeChildCount === 1 ? '' : 'ren'}`}
+                                    onClick={(e) => { e.stopPropagation(); toggleExpanded(w.id); }}
+                                >
+                                    {expandedIds.includes(w.id) ? '▾' : '▸'}
+                                </button>
+                            ) : (
+                                <span className={treeStyles.chevronSpacer} aria-hidden="true" />
+                            )}
+                        </span>
                         {w.name}
                         {w.treeContext && (
                             <span style={{ marginLeft: '6px', fontSize: '11px', color: 'var(--text-muted)' }} title="Shown because a child matches the filters">
@@ -368,7 +358,7 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
                 flex: 1.5,
             }
         ];
-    }, [data, metric, treeView, expandedIds]);
+    }, [data, metric, expandedIds]);
 
     const metricToggle = (
         <div
@@ -444,13 +434,6 @@ export const WorkItemListPage: React.FC<Props> = ({ data, loading: outerLoading,
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <span style={labelStyle}>Prioritize by</span>
             {metricToggle}
-            <label
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-secondary)', cursor: 'pointer', marginLeft: '12px' }}
-                title="Show work items under their parents. Filters keep the parents of matching items, greyed out."
-            >
-                <input type="checkbox" checked={treeView} onChange={(e) => setTreeViewMode(e.target.checked)} />
-                Tree view
-            </label>
         </div>
     );
 

@@ -89,8 +89,7 @@ export function useGraphBuilder(
     hoveredNodeId: string | null,
     sprintOffset: number,
     showDependencies: boolean,
-    prioritizationMetric: WorkItemPriorityMetric = 'score',
-    showHierarchy: boolean = false
+    prioritizationMetric: WorkItemPriorityMetric = 'score'
 ): { nodes: Node[]; edges: Edge[] } {
     return useMemo(() => {
         if (!data) return { nodes: [], edges: [] };
@@ -226,9 +225,7 @@ export function useGraphBuilder(
         // Hierarchy view: each parent is followed by its children (depth-first),
         // siblings keep the metric order. A child whose parent is not visible
         // starts a tree of its own.
-        const laidOutWorkItems = showHierarchy
-            ? orderAsTree(sortedWorkItems)
-            : sortedWorkItems.map(workItem => ({ workItem, depth: 0 }));
+        const laidOutWorkItems = orderAsTree(sortedWorkItems);
 
         laidOutWorkItems.forEach(({ workItem, depth }, index) => {
             const sizeValue = getMetricSizeValue(workItem, prioritizationMetric);
@@ -856,5 +853,5 @@ export function useGraphBuilder(
         }
 
         return { nodes, edges };
-    }, [data, filters, hoveredNodeId, sprintOffset, showDependencies, prioritizationMetric, showHierarchy]);
+    }, [data, filters, hoveredNodeId, sprintOffset, showDependencies, prioritizationMetric]);
 }

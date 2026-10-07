@@ -592,7 +592,7 @@ describe('WorkItemListPage', () => {
         });
     });
 
-    describe('Tree view', () => {
+    describe('Tree', () => {
         const [alpha, gamma] = mockData.workItems;
 
         it('requests the top level, shows chevrons, greys context rows and loads children on expand', () => {
@@ -604,7 +604,6 @@ describe('WorkItemListPage', () => {
             mockHook([alpha], { childCounts: { w1: 1 }, contextIds: ['w1'] });
             renderWithProviders(<WorkItemListPage data={mockData} loading={false} />);
 
-            fireEvent.click(screen.getByLabelText('Tree view'));
             expect(lastHookCall()[3]).toEqual({});
             expect(screen.getByText('(parent)')).toBeTruthy();
             expect(screen.queryByText('Gamma Item')).toBeNull();
@@ -616,14 +615,6 @@ describe('WorkItemListPage', () => {
 
             const alphaRow = screen.getByText('Alpha Item').closest('[style*="grid"]') as HTMLElement;
             expect(alphaRow.style.opacity).toBe('0.55');
-        });
-
-        it('flat view sends no tree level', () => {
-            useTreeChildrenMock.mockReturnValue({});
-            mockHook();
-            renderWithProviders(<WorkItemListPage data={mockData} loading={false} />);
-            expect(lastHookCall()[3]).toBeUndefined();
-            expect(screen.queryByText('(parent)')).toBeNull();
         });
     });
 });

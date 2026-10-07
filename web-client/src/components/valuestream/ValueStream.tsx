@@ -176,8 +176,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         viewState.selectedNodeId || null,
         baseParams,
         viewState.prioritizationMetric,
-        dashboardFilters,
-        !!viewState.showHierarchy
+        dashboardFilters
     );
 
     const handleFitView = useCallback(() => {
@@ -735,14 +734,6 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                                     onChange={e => setViewState((s: ValueStreamViewState) => ({ ...s, showDependencies: e.target.checked }))}
                                 />
                                 Show Dependencies
-                            </label>
-                            <label className={styles.toggleItem} title="Order work items as their parent/child tree">
-                                <input
-                                    type="checkbox"
-                                    checked={!!viewState.showHierarchy}
-                                    onChange={e => setViewState((s: ValueStreamViewState) => ({ ...s, showHierarchy: e.target.checked }))}
-                                />
-                                Show Hierarchy
                             </label>
                             <label className={styles.toggleItem}>
                                 <input

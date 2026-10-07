@@ -194,7 +194,7 @@ In all modes higher value = higher priority (top of the list, biggest node). On 
 ## Relationships
 - **Customers:** Linked via `customer_targets`.
 - **Issues:** One Work Item can spawn multiple Issues (execution units) across different Teams.
-- **Hierarchy:** `parent_id` makes work items a tree. The list page's **Tree view** pages over top-level items and loads children on expand; with filters it keeps the ancestors of matches (greyed, "(parent)") so no match is hidden (`tree=true` on `GET /api/data/workItems`, see [API-REFERENCE.md](API-REFERENCE.md)). The dashboard's **Show Hierarchy** lays the work-item column out as the same tree (see [VALUESTREAMS.md](VALUESTREAMS.md)).
+- **Hierarchy:** `parent_id` makes work items a tree. The list page always shows the tree: it pages over top-level items and loads children on expand; with filters it keeps the ancestors of matches (greyed, "(parent)") so no match is hidden (`tree=true` on `GET /api/data/workItems`, see [API-REFERENCE.md](API-REFERENCE.md)). The dashboard lays the work-item column out as the same tree (see [VALUESTREAMS.md](VALUESTREAMS.md)).
 
 ```mermaid
 erDiagram

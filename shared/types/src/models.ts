@@ -809,8 +809,6 @@ export interface ValueStreamViewState {
   teamFilter: string;
   issueFilter: string;
   showDependencies: boolean;
-  /** Lay work items out as their parent_id tree (indented, joined by lines). */
-  showHierarchy?: boolean;
   disableHoverHighlight: boolean;
   prioritizationMetric: WorkItemPriorityMetric;
   selectedNodeId?: string | null;

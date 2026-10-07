@@ -25,9 +25,7 @@ export interface PageUiState {
      * persistence rules as the rest of PageUiState.
      */
     pageFilters?: unknown;
-    /** Work Items list: show the parent/child tree instead of a flat list. */
-    treeView?: boolean;
-    /** Work Items list tree view: ids of expanded rows. */
+    /** Work Items list tree: ids of expanded rows. */
     expandedIds?: string[];
 }
 
@@ -66,7 +64,6 @@ export const UIStateProvider: React.FC<{ children: React.ReactNode }> = ({ child
         teamFilter: '',
         issueFilter: '',
         showDependencies: false,
-        showHierarchy: false,
         disableHoverHighlight: true,
         prioritizationMetric: 'score',
         isInitialOffsetSet: false,

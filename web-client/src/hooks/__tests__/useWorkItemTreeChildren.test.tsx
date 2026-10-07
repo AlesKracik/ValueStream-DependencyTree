@@ -19,7 +19,7 @@ describe('useWorkItemTreeChildren', () => {
         const filters = { status: ['Backlog'] };
         const sort = { sortBy: 'name', sortOrder: 'asc' as const };
         const expanded = ['p1'];
-        const { result, rerender } = renderHook(() => useWorkItemTreeChildren(filters, sort, expanded, true));
+        const { result, rerender } = renderHook(() => useWorkItemTreeChildren(filters, sort, expanded));
 
         await waitFor(() => expect(result.current.p1?.workItems).toHaveLength(1));
         expect(result.current.p1).toMatchObject({ childCounts: { c1: 2 }, contextIds: ['c1'] });
@@ -33,15 +33,10 @@ describe('useWorkItemTreeChildren', () => {
         expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
-    it('does nothing when the tree view is off', () => {
-        renderHook(() => useWorkItemTreeChildren({}, {}, ['p1'], false));
-        expect(fetchMock).not.toHaveBeenCalled();
-    });
-
     it('keeps a failed level as an error instead of refetching it', async () => {
         fetchMock.mockResolvedValue({ ok: false, status: 500, json: () => Promise.resolve({ error: 'boom' }) } as unknown as Response);
         const expanded = ['p1'];
-        const { result } = renderHook(() => useWorkItemTreeChildren({}, {}, expanded, true));
+        const { result } = renderHook(() => useWorkItemTreeChildren({}, {}, expanded));
         await waitFor(() => expect(result.current.p1?.error).toBe('boom'));
         expect(fetchMock).toHaveBeenCalledTimes(1);
     });

@@ -12,7 +12,7 @@ export interface WorkItemTreeChildren {
 }
 
 /**
- * Loads the children of every expanded work item in the tree view, with the
+ * Loads the children of every expanded work item in the tree, with the
  * same filters and sort as the top level. Children are not paged. Loaded
  * levels are kept until the filters, sort or `reloadToken` change.
  */
@@ -20,7 +20,6 @@ export function useWorkItemTreeChildren(
     filters: WorkItemFilters,
     sort: WorkItemSort,
     expandedIds: string[],
-    enabled: boolean,
     reloadToken = 0,
 ): Record<string, WorkItemTreeChildren> {
     const cacheKey = `${buildQueryString(filters, sort, {})}|${reloadToken}`;
@@ -33,7 +32,6 @@ export function useWorkItemTreeChildren(
     const inFlight = useRef(new Set<string>());
 
     useEffect(() => {
-        if (!enabled) return;
         const missing = expandedIds.filter(id => !(id in cache.byParent) && !inFlight.current.has(`${cacheKey}|${id}`));
         if (missing.length === 0) return;
         missing.forEach(id => inFlight.current.add(`${cacheKey}|${id}`));
@@ -57,7 +55,7 @@ export function useWorkItemTreeChildren(
         });
     // filters/sort are covered by cacheKey.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [cacheKey, enabled, expandedIds, cache.byParent]);
+    }, [cacheKey, expandedIds, cache.byParent]);
 
     return cache.key === cacheKey ? cache.byParent : {};
 }
