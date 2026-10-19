@@ -105,6 +105,13 @@ export const moneyBagFillRatio = (tcv: number, maxTcv: number): number => {
     return Math.sqrt(tcv / maxTcv);
 };
 
+/** A source timestamp (e.g. Jira's `2026-01-15T10:20:30.000+0000`) as an ISO datetime; undefined when absent or unparseable. */
+const toIsoDate = (value: unknown): string | undefined => {
+    if (typeof value !== 'string' || value === '') return undefined;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+};
+
 /**
  * Maps an Aha! feature payload to the work item's Aha! link (synced now).
  * A field the payload lacks stays undefined (it is not a cleared value), so a
@@ -137,6 +144,7 @@ export const parseAhaFeature = (feature: any): ExternalLink => {
         key: feature.reference_num,
         url: feature.url,
         synced_at: new Date().toISOString(),
+        source_updated_at: toIsoDate(feature.updated_at),
         record_type: 'feature',
         data,
     };
@@ -206,6 +214,8 @@ export const parseJiraIssue = (issue: any, teams: Team[], deployment: JiraDeploy
     updates.parent_jira_key = extractJiraParentKey(issue, deployment) ?? null;
     // Status: Jira is source of truth (null clears it)
     updates.jira_status = typeof fields.status?.name === 'string' && fields.status.name !== '' ? fields.status.name : null;
+    // Last update in Jira (null clears it)
+    updates.jira_updated_at = toIsoDate(fields.updated) ?? null;
     return updates;
 };
 

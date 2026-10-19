@@ -5,6 +5,8 @@ import { resolveJiraDeployment } from '@valuestream/shared-types';
 import { authorizedFetch, jiraConnectionPayload } from "../../utils/api";
 import { generateId } from '../../utils/security';
 import { ScopeIndicator } from '../../components/common/ScopeIndicator';
+import { jiraCleanupCandidates } from '../../utils/sourceCleanup';
+import { SourceCleanup } from './SourceCleanup';
 import { parseJiraIssue, planHierarchyAlignment } from "../../utils/businessLogic";
 import styles from '../List.module.css';
 import type { SettingsTabWithDataProps } from './types';
@@ -19,6 +21,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
   addIssue,
   updateCustomer,
   updateWorkItem,
+  deleteIssue,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeSubTab = searchParams.get("subtab") || "common";
@@ -444,6 +447,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
               target_end: updates.target_end,
               parent_jira_key: updates.parent_jira_key,
               jira_status: updates.jira_status,
+              jira_updated_at: updates.jira_updated_at,
             };
             addIssue(newIssue);
             createCount++;
@@ -672,6 +676,16 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
               >
                 {importSyncResult.message}
               </div>
+            )}
+
+            {deleteIssue && (
+              <SourceCleanup
+                sourceName="Jira"
+                noun="issues"
+                candidates={jiraCleanupCandidates(data?.issues || [])}
+                onDelete={deleteIssue}
+                disabled={isTesting || isSyncing || isImporting}
+              />
             )}
           </div>
         )}

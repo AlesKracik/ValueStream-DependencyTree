@@ -43,6 +43,12 @@ describe('businessLogic', () => {
             expect(result.effort_md).toBe(5);
         });
 
+        it('stores the Jira updated date as ISO, null when absent', () => {
+            expect(parseJiraIssue({ fields: { updated: '2026-01-15T10:20:30.000+0200' } }, mockTeams).jira_updated_at)
+                .toBe('2026-01-15T08:20:30.000Z');
+            expect(parseJiraIssue({ fields: {} }, mockTeams).jira_updated_at).toBeNull();
+        });
+
         it('parses custom date fields correctly', () => {
             const jiraIssue = {
                 fields: {
@@ -89,7 +95,7 @@ describe('businessLogic', () => {
         it('handles missing fields gracefully', () => {
             const jiraIssue = { fields: {} };
             const result = parseJiraIssue(jiraIssue, mockTeams);
-            expect(result).toEqual({ parent_jira_key: null, jira_status: null });
+            expect(result).toEqual({ parent_jira_key: null, jira_status: null, jira_updated_at: null });
         });
 
         describe('parent_jira_key', () => {
@@ -591,6 +597,14 @@ describe('Jira Parent Link hierarchy alignment', () => {
     });
 
     describe('parseAhaFeature / parseAhaEpic', () => {
+        it('stores the Aha! updated date as source_updated_at', () => {
+            expect(parseAhaFeature({ id: 1, reference_num: 'DR-1', updated_at: '2026-03-04T05:06:07Z' }).source_updated_at)
+                .toBe('2026-03-04T05:06:07.000Z');
+            expect(parseAhaEpic({ id: 2, reference_num: 'DR-E-1', updated_at: '2026-03-04T05:06:07Z' }).source_updated_at)
+                .toBe('2026-03-04T05:06:07.000Z');
+            expect(parseAhaFeature({ id: 1, reference_num: 'DR-1' }).source_updated_at).toBeUndefined();
+        });
+
         it('reads a feature\'s Aha! epic, null without one, undefined when the payload lacks it', () => {
             expect(parseAhaFeature({ id: 1, reference_num: 'DR-1', epic: { id: 900 } }).data?.epic_id).toBe('900');
             expect(parseAhaFeature({ id: 1, reference_num: 'DR-1', epic: null }).data?.epic_id).toBeNull();

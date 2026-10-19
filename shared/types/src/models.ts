@@ -82,6 +82,11 @@ export interface ExternalLink {
   url?: string;
   synced_at?: string; // ISO datetime
   /**
+   * When the record was last updated in the source (Aha! `updated_at`), as an
+   * ISO datetime. Refreshed by every import/sync; drives stale-item cleanup.
+   */
+  source_updated_at?: string;
+  /**
    * Kind of record in the source. Aha!: 'feature' (default when absent) or
    * 'epic' (shown as "feature set" in some Aha! workspaces). Source terms
    * only — unrelated to the work item hierarchy or Jira's epic level.
@@ -227,6 +232,12 @@ export interface Issue {
    * status from them (see deriveWorkItemStatusFromJira).
    */
   jira_status?: string | null;
+  /**
+   * When the Jira issue was last updated in Jira (its `updated` field), as an
+   * ISO datetime, or null when Jira has none. Jira owns it: every Jira sync
+   * overwrites it. Drives stale-issue cleanup.
+   */
+  jira_updated_at?: string | null;
 }
 
 export interface Sprint {

@@ -432,6 +432,7 @@ Icons only appear at the point where the scope is defined — on tab headers and
 *   **Issues:** Tools for bulk operations:
     *   **Import from Jira:** Execute a custom JQL query and create new Issues (and potentially Work Items) in the local database.
     *   **Sync Issues from Jira:** Iterate through all local issues with a `jira_key` and refresh their metadata.
+    *   **Clean up:** Delete imported issues that Jira has not updated for more than a chosen number of days (Jira's own *updated* date, stored on every import/sync). Issues assigned to a work item or that other issues depend on are skipped unless **Include linked issues** is checked. Shows a preview and asks for confirmation.
 *   **Customer:** Define JQL queries to automatically identify and track specific issue types linked to customers using the `{{CUSTOMER_ID}}` placeholder. Three categories: New (Untriaged), In-Progress, and No-op (Blocked/Pending).
 
 #### Aha! Integration
@@ -443,6 +444,8 @@ Icons only appear at the point where the scope is defined — on tab headers and
 *   **Test Connection:** Validates connectivity by querying the Aha! API.
 
 Once configured, Work Item detail pages gain an **Aha! Integration** tab for linking and syncing features.
+
+The **Work Items** subtab also has a **Clean up** section: it deletes work items imported from Aha! that Aha! has not updated for more than a chosen number of days (Aha!'s own *updated* date, stored on every import/sync). Work items with customer targets, Jira issues or child work items are skipped unless **Include linked work items** is checked. Children are deleted before their parents.
 
 #### AI & LLM
 

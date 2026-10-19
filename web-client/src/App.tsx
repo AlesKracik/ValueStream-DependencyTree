@@ -143,6 +143,8 @@ const SettingsPageRouteWrapper = createRouteWrapper({
         updateCustomer={state.updateCustomer}
         updateWorkItem={state.updateWorkItem}
         addWorkItem={state.addWorkItem}
+        deleteWorkItem={state.deleteWorkItem}
+        deleteIssue={state.deleteIssue}
       />
     );
   },

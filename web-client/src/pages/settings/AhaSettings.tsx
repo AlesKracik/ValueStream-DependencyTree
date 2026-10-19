@@ -5,6 +5,8 @@ import { authorizedFetch, importAhaFeatures, importAhaEpics, syncAhaFeature, syn
 import { parseAhaFeature, parseAhaEpic } from '../../utils/businessLogic';
 import { withAhaLink, ahaRecordTypeForKey } from '../../utils/workItemOrigin';
 import { ScopeIndicator } from '../../components/common/ScopeIndicator';
+import { ahaCleanupCandidates } from '../../utils/sourceCleanup';
+import { SourceCleanup } from './SourceCleanup';
 import styles from '../List.module.css';
 import type { SettingsTabWithDataProps } from './types';
 
@@ -16,6 +18,7 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
   data,
   updateWorkItem,
   addWorkItem,
+  deleteWorkItem,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeSubTab = searchParams.get("subtab") || "general";
@@ -336,6 +339,16 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
               >
                 {importSyncResult.message}
               </div>
+            )}
+
+            {deleteWorkItem && (
+              <SourceCleanup
+                sourceName="Aha!"
+                noun="work items"
+                candidates={ahaCleanupCandidates(data?.workItems || [], data?.issues || [])}
+                onDelete={deleteWorkItem}
+                disabled={isBusy}
+              />
             )}
           </div>
         )}

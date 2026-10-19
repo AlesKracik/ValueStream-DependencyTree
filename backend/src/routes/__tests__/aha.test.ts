@@ -172,11 +172,11 @@ describe('Aha! Routes', () => {
     expect(body.features).toHaveLength(205);
     expect(mockFetch).toHaveBeenCalledTimes(2);
     expect(mockFetch).toHaveBeenNthCalledWith(1,
-      'https://test-subdomain.aha.io/api/v1/products/PROD/features?per_page=200&page=1&fields=id,reference_num,name,url,score,description,original_estimate,requirements,epic',
+      'https://test-subdomain.aha.io/api/v1/products/PROD/features?per_page=200&page=1&fields=id,reference_num,name,url,score,description,original_estimate,requirements,epic,updated_at',
       expect.any(Object)
     );
     expect(mockFetch).toHaveBeenNthCalledWith(2,
-      'https://test-subdomain.aha.io/api/v1/products/PROD/features?per_page=200&page=2&fields=id,reference_num,name,url,score,description,original_estimate,requirements,epic',
+      'https://test-subdomain.aha.io/api/v1/products/PROD/features?per_page=200&page=2&fields=id,reference_num,name,url,score,description,original_estimate,requirements,epic,updated_at',
       expect.any(Object)
     );
   });
@@ -191,7 +191,7 @@ describe('Aha! Routes', () => {
     const url = new URL(mockFetch.mock.calls[0][0]);
     expect(url.searchParams.get('per_page')).toBe('200');
     expect(url.searchParams.get('fields')!.split(',').sort()).toEqual(
-      ['description', 'epic', 'id', 'name', 'original_estimate', 'reference_num', 'requirements', 'score', 'url']
+      ['description', 'epic', 'id', 'name', 'original_estimate', 'reference_num', 'requirements', 'score', 'updated_at', 'url']
     );
   });
 
@@ -206,7 +206,7 @@ describe('Aha! Routes', () => {
     const url = new URL(mockFetch.mock.calls[0][0]);
     expect(url.pathname).toBe('/api/v1/products/DR/epics');
     expect(url.searchParams.get('fields')!.split(',').sort()).toEqual(
-      ['description', 'id', 'name', 'original_estimate', 'reference_num', 'score', 'url']
+      ['description', 'id', 'name', 'original_estimate', 'reference_num', 'score', 'updated_at', 'url']
     );
   });
 

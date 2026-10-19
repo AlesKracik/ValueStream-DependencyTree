@@ -27,6 +27,8 @@ interface SettingsPageProps {
   updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
   updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
   addWorkItem: (workItem: Omit<WorkItem, 'id'> & { id?: string }) => Promise<WorkItem | undefined>;
+  deleteWorkItem?: (id: string) => void;
+  deleteIssue?: (id: string) => void;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -83,6 +85,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   updateCustomer,
   updateWorkItem,
   addWorkItem,
+  deleteWorkItem,
+  deleteIssue,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get("tab") as "general" | "persistence" | "jira" | "aha" | "ai" | "ldap" | "auth") || "general";
@@ -200,6 +204,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   updateCustomer={updateCustomer}
                   updateWorkItem={updateWorkItem}
                   addWorkItem={addWorkItem}
+                  deleteWorkItem={deleteWorkItem}
+                  deleteIssue={deleteIssue}
                 />
               )}
               {activeTab === "aha" && (
@@ -211,6 +217,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   updateCustomer={updateCustomer}
                   updateWorkItem={updateWorkItem}
                   addWorkItem={addWorkItem}
+                  deleteWorkItem={deleteWorkItem}
+                  deleteIssue={deleteIssue}
                 />
               )}
               {activeTab === "ai" && <AiSettings {...sharedProps} />}

@@ -16,6 +16,10 @@ export interface SettingsTabWithDataProps extends SettingsTabProps {
   updateCustomer: (id: string, updates: Partial<Customer>, immediate?: boolean) => Promise<void>;
   updateWorkItem: (id: string, updates: Partial<WorkItem>, immediate?: boolean) => Promise<void>;
   addWorkItem: (workItem: Omit<WorkItem, 'id'> & { id?: string }) => Promise<WorkItem | undefined>;
+  /** Enables the "Clean up" subsection when provided. */
+  deleteWorkItem?: (id: string) => void;
+  /** Enables the "Clean up" subsection when provided. */
+  deleteIssue?: (id: string) => void;
 }
 
 export interface MongoTestResult {

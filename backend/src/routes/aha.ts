@@ -100,8 +100,8 @@ export const ahaRoutes: FastifyPluginAsync = async (fastify) => {
     return all;
   };
 
-  const FEATURE_FIELDS = 'id,reference_num,name,url,score,description,original_estimate,requirements,epic';
-  const EPIC_FIELDS = 'id,reference_num,name,url,score,description,original_estimate';
+  const FEATURE_FIELDS = 'id,reference_num,name,url,score,description,original_estimate,requirements,epic,updated_at';
+  const EPIC_FIELDS = 'id,reference_num,name,url,score,description,original_estimate,updated_at';
 
   fastify.post<{ Body: AhaFeatureBodyType }>('/api/aha/feature', { schema: { body: AhaFeatureBody } }, async (request, reply) => {
     const feature = await fetchRecord(request.body, 'features');
