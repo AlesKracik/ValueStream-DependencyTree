@@ -65,6 +65,7 @@ export const UIStateProvider: React.FC<{ children: React.ReactNode }> = ({ child
         issueFilter: '',
         showDependencies: false,
         disableHoverHighlight: true,
+        showUnassignedIssues: false,
         // Default to Product Value (Aha! score) on both the dashboard and the Work Items list.
         prioritizationMetric: 'aha_score',
         isInitialOffsetSet: false,

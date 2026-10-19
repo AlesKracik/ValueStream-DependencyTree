@@ -258,3 +258,34 @@ describe('useGraphLayout - hierarchy filters', () => {
         expect(visible.has('w1')).toBe(false);
     });
 });
+
+describe('useGraphLayout - unassigned issues', () => {
+    const DATA: ValueStreamData = {
+        ...MOCK_DATA,
+        issues: [
+            ...MOCK_DATA.issues!,
+            { id: 'u1', jira_key: 'U1', team_id: 't1', effort_md: 3, target_start: '2026-01-01', target_end: '2026-01-14' },
+        ],
+    };
+    const run = (df: DashboardFilters, teamFilter = '') => renderHook(() =>
+        useGraphLayout(DATA, null, 0, '', '', 'all', teamFilter, '', true, 0, 0, null, null, 'score', df)
+    );
+    const hasGantt = (nodes: { id: string }[], id: string) => nodes.some(n => n.id === `gantt-${id}`);
+
+    it('hides issues with no work item under a status filter by default', () => {
+        const { result } = run({ statuses: ['Planning'] });
+        expect(hasGantt(result.current.nodes, 'u1')).toBe(false);
+        expect(hasGantt(result.current.nodes, 'e2')).toBe(true);
+    });
+
+    it('keeps issues with no work item under a status filter when showUnassignedIssues is on', () => {
+        const { result } = run({ statuses: ['Planning'], showUnassignedIssues: true });
+        expect(hasGantt(result.current.nodes, 'u1')).toBe(true);
+        expect(hasGantt(result.current.nodes, 'e1')).toBe(false); // assigned to a filtered-out work item
+    });
+
+    it('still applies the team filter to unassigned issues', () => {
+        const { result } = run({ statuses: ['Planning'], showUnassignedIssues: true }, 'no-such-team');
+        expect(hasGantt(result.current.nodes, 'u1')).toBe(false);
+    });
+});

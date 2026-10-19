@@ -821,6 +821,10 @@ export interface ValueStreamViewState {
   issueFilter: string;
   showDependencies: boolean;
   disableHoverHighlight: boolean;
+  /** When true, issues with no work item stay visible while customer or
+   *  work-item filters (e.g. status) are active. Team, issue and date filters
+   *  still apply to them. Off by default. */
+  showUnassignedIssues?: boolean;
   prioritizationMetric: WorkItemPriorityMetric;
   selectedNodeId?: string | null;
   isInitialOffsetSet: boolean;

@@ -316,6 +316,7 @@ The Live Graph is a multi-layered dependency tree that maps demand (Customers) t
     *   **Frozen History:** Segments in the past (before the active sprint) are marked with a diagonal stripe pattern and are automatically snapshotted to preserve historical accuracy.
     *   **Status Colours:** Issues are Slate Blue (Past) or Purple (Future/Active).
     *   **Unassigned Highlight:** Jiras that are not linked to any Work Item are outlined with an amber border and glow so they are easy to spot and triage.
+    *   **Show Unassigned Jiras:** Customer and Work Item filters (including the default Status filter) hide Jiras that are not linked to any Work Item. Tick **Show Unassigned Jiras** in the filter bar to keep them visible; Team, Issue and date filters still apply to them.
 
 *   **Sprint Capacity (Timeline Header):**
     *   **Visual Health:** Sprint headers change colour based on team utilisation:

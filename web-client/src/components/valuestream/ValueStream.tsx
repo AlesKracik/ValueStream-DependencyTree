@@ -151,6 +151,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
             parentIds: viewState.parentIds,
             subtreeOfIds: viewState.subtreeOfIds,
             rootsOnly: viewState.rootsOnly,
+            showUnassignedIssues: viewState.showUnassignedIssues,
         };
     }, [
         viewState.maxTcvFilter,
@@ -159,6 +160,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
         viewState.statusFilter, viewState.releasedSprintIds,
         viewState.prioritizationMetric,
         viewState.parentIds, viewState.subtreeOfIds, viewState.rootsOnly,
+        viewState.showUnassignedIssues,
     ]);
 
     const { nodes, edges } = useGraphLayout(
@@ -734,6 +736,14 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                                     onChange={e => setViewState((s: ValueStreamViewState) => ({ ...s, showDependencies: e.target.checked }))}
                                 />
                                 Show Dependencies
+                            </label>
+                            <label className={styles.toggleItem} title="Keep Jira issues with no work item visible when customer or work item filters (e.g. Status) are active">
+                                <input
+                                    type="checkbox"
+                                    checked={!!viewState.showUnassignedIssues}
+                                    onChange={e => setViewState((s: ValueStreamViewState) => ({ ...s, showUnassignedIssues: e.target.checked }))}
+                                />
+                                Show Unassigned Jiras
                             </label>
                             <label className={styles.toggleItem}>
                                 <input

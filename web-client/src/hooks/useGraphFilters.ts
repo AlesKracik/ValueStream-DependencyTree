@@ -44,6 +44,8 @@ export interface DashboardFilters {
     subtreeOfIds?: string[];
     /** Live hierarchy: limit to top-level work items (no parent). */
     rootsOnly?: boolean;
+    /** Keep issues with no work item visible while customer/work-item filters are active. */
+    showUnassignedIssues?: boolean;
 }
 
 const PRIORITY_FIELD = (metric: WorkItemPriorityMetric | undefined): 'calculated_score' | 'links.aha.data.score' | 'stackrank' => {
@@ -373,7 +375,8 @@ export function useGraphFilters(
 
             // Special case: WorkItemless Issues
             // If NO customer/workitem filters are applied, standalone valid issues should appear.
-            if (!hasCustomerFilter && !hasWorkItemFilter) {
+            // `showUnassignedIssues` keeps them under customer/workitem filters too.
+            if ((!hasCustomerFilter && !hasWorkItemFilter) || df.showUnassignedIssues) {
                 (data.issues || []).forEach(issue => {
                     if ((!issue.work_item_id || issue.work_item_id === 'UNASSIGNED') && validIssues.has(issue.id)) {
                         visibleIssues.add(issue.id);
