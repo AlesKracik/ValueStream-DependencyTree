@@ -61,6 +61,28 @@ describe('useGraphLayout - Customer Filters', () => {
         const hasC1 = nodes.some(n => n.id === 'customer-c1');
         expect(hasC1).toBe(false);
     });
+
+    it('should show only explicitly linked customers for a global work item when filtering', () => {
+        const data: ValueStreamData = {
+            ...MOCK_DATA,
+            workItems: [{
+                id: 'g1',
+                name: 'Global Item',
+                total_effort_mds: 1, score: 10, status: 'Backlog',
+                all_customers_target: { tcv_type: 'potential', priority: 'Must-have' },
+                customer_targets: [
+                    { customer_id: 'c1', tcv_type: 'potential', priority: 'Must-have' }
+                ]
+            }],
+            issues: [],
+        };
+        const { result } = renderHook(() => useGraphLayout(data, null, 0, '', 'Global'));
+
+        const nodes = result.current.nodes;
+        expect(nodes.some(n => n.id === 'workitem-g1')).toBe(true);
+        expect(nodes.some(n => n.id === 'customer-c1')).toBe(true);
+        expect(nodes.some(n => n.id === 'customer-c2')).toBe(false);
+    });
 });
 
 

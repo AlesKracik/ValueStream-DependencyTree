@@ -329,29 +329,17 @@ export function useGraphFilters(
             data.workItems.forEach(workItem => {
                 if (!validWorkItems.has(workItem.id)) return; // WorkItem intrinsically fails
 
-                // Find connected valid Customers
-                let connectedValidCustomers: string[] = [];
-                if (workItem.all_customers_target) {
-                    const type = workItem.all_customers_target.tcv_type;
-                    // All valid customers who match combinedMinTcv
-                    connectedValidCustomers = data.customers
-                        .filter(c => validCustomers.has(c.id))
-                        .filter(c => {
-                            const val = (type === 'existing' ? (c.existing_tcv || 0) : (c.potential_tcv || 0));
-                            return val >= combinedMinTcv && val > 0;
-                        })
-                        .map(c => c.id);
-                } else {
-                    connectedValidCustomers = workItem.customer_targets
-                        .filter(ct => {
-                            if (!validCustomers.has(ct.customer_id)) return false;
-                            const c = data.customers.find(cust => cust.id === ct.customer_id);
-                            if (!c) return false;
-                            const val = (ct.tcv_type === 'existing' ? (c.existing_tcv || 0) : (c.potential_tcv || 0));
-                            return val >= combinedMinTcv;
-                        })
-                        .map(ct => ct.customer_id);
-                }
+                // Find connected valid Customers. Only explicitly linked customers count —
+                // a global work item does not pull every customer into the filtered view.
+                const connectedValidCustomers = (workItem.customer_targets || [])
+                    .filter(ct => {
+                        if (!validCustomers.has(ct.customer_id)) return false;
+                        const c = data.customers.find(cust => cust.id === ct.customer_id);
+                        if (!c) return false;
+                        const val = (ct.tcv_type === 'existing' ? (c.existing_tcv || 0) : (c.potential_tcv || 0));
+                        return val >= combinedMinTcv;
+                    })
+                    .map(ct => ct.customer_id);
 
                 // Find connected valid Issues
                 const connectedValidIssues = (data.issues || [])
