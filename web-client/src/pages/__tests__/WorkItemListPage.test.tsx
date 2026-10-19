@@ -99,6 +99,8 @@ describe('WorkItemListPage', () => {
             expect(screen.getAllByText('TCV').length).toBeGreaterThanOrEqual(1);
             expect(screen.getAllByText('Released').length).toBeGreaterThanOrEqual(1);
 
+            // Default metric is Product Value; switch to Score to see calculated scores.
+            fireEvent.click(screen.getByRole('radio', { name: /^Score/i }));
             expect(screen.getByText('10')).toBeDefined();
             expect(screen.getByText('50')).toBeDefined();
             expect(screen.getByText('5 MDs')).toBeDefined();
@@ -121,13 +123,13 @@ describe('WorkItemListPage', () => {
 
         it('toggle switches the Priority column header label', () => {
             renderWithProviders(<WorkItemListPage data={mockData} loading={false} />);
-            expect(screen.getByRole('button', { name: /^Score/i })).toBeDefined();
+            expect(screen.getByRole('button', { name: /^Product Value/i })).toBeDefined();
 
             fireEvent.click(screen.getByRole('radio', { name: /Stack Rank/i }));
             expect(screen.getByRole('button', { name: /^Stack Rank/i })).toBeDefined();
 
-            fireEvent.click(screen.getByRole('radio', { name: /Product Value/i }));
-            expect(screen.getByRole('button', { name: /^Product Value/i })).toBeDefined();
+            fireEvent.click(screen.getByRole('radio', { name: /^Score/i }));
+            expect(screen.getByRole('button', { name: /^Score/i })).toBeDefined();
         });
 
         it('renders Product Value from links.aha.data.score when toggled to Product Value', () => {
@@ -232,15 +234,15 @@ describe('WorkItemListPage', () => {
 
         it('passes min/max priority range into the hook filters with the active metric', async () => {
             renderWithProviders(<WorkItemListPage data={mockData} loading={false} />);
-            // Default metric is Score.
-            fireEvent.change(screen.getByLabelText('Min Score'), { target: { value: '10' } });
-            fireEvent.change(screen.getByLabelText('Max Score'), { target: { value: '100' } });
+            // Default metric is Product Value.
+            fireEvent.change(screen.getByLabelText('Min Product Value'), { target: { value: '10' } });
+            fireEvent.change(screen.getByLabelText('Max Product Value'), { target: { value: '100' } });
 
             await waitFor(() => {
                 const [filters] = lastHookCall();
                 expect(filters.minPriority).toBe('10');
                 expect(filters.maxPriority).toBe('100');
-                expect(filters.priorityMetric).toBe('score');
+                expect(filters.priorityMetric).toBe('aha_score');
             });
         });
 
@@ -446,7 +448,7 @@ describe('WorkItemListPage', () => {
         it('Clear filters resets all filter fields and the count', async () => {
             renderWithProviders(<WorkItemListPage data={mockData} loading={false} />);
 
-            fireEvent.change(screen.getByLabelText('Min Score'), { target: { value: '10' } });
+            fireEvent.change(screen.getByLabelText('Min Product Value'), { target: { value: '10' } });
             fireEvent.click(screen.getByLabelText('Status filter'));
             fireEvent.click(screen.getByRole('option', { name: 'Done' }));
 

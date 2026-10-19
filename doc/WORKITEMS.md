@@ -175,8 +175,8 @@ Both the Work Items list and the ValueStream dashboard expose a single toggle (`
 
 | Mode | Field source | Notes |
 | ------------- | ------------------------------ | ----------------------------------------------------------------------------------------------- |
-| Score         | `calculated_score` (RICE)      | Default. Server provides the global `maxScore` for consistent sizing across filters.            |
-| Product Value | `links.aha.data.score`         | Pulled from Aha! when a work item is linked to and synced with an Aha! feature. Items without sync data show "—". |
+| Score         | `calculated_score` (RICE)      | Server provides the global `maxScore` for consistent sizing across filters.                     |
+| Product Value | `links.aha.data.score`         | Default. Pulled from Aha! when a work item is linked to and synced with an Aha! feature. Items without sync data show "—". |
 | Stack Rank    | `stackrank`                    | Higher value = higher priority. Unranked items sort to the bottom and show "—".                 |
 
 In all modes higher value = higher priority (top of the list, biggest node). On the Work Items list, the toggle drives a single dynamic "Priority" column whose header label matches the active metric. The **Compact Ranks** action lives in the upper-right header and only appears when the toggle is set to Stack Rank, since it has no meaning otherwise.
