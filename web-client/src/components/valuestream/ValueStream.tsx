@@ -486,13 +486,13 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                                 disabled={viewState.sprintOffset === 0}
                                 className="btn-secondary"
                                 style={{
-                                    padding: '8px 12px',
-                                    height: '37px'
+                                    padding: '4px 10px',
+                                    height: '30px'
                                 }}
                             >
                                 &lt;
                             </button>
-                            <span style={{ color: 'var(--text-muted)', fontSize: '14px', alignSelf: 'center', padding: '0 8px' }}>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '13px', alignSelf: 'center', padding: '0 6px' }}>
                                 Sprints
                             </span>
                             <button
@@ -500,8 +500,8 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                                 disabled={!data || viewState.sprintOffset + 6 >= data.sprints.length}
                                 className="btn-secondary"
                                 style={{
-                                    padding: '8px 12px',
-                                    height: '37px'
+                                    padding: '4px 10px',
+                                    height: '30px'
                                 }}
                             >
                                 &gt;
@@ -511,7 +511,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                             <button
                                 onClick={() => onNavigateToValueStreamEdit(currentValueStreamId)}
                                 className="btn-primary"
-                                style={{ height: '37px', padding: '0 12px', fontSize: '13px' }}
+                                style={{ height: '30px', padding: '0 10px', fontSize: '13px' }}
                             >
                                 Edit Parameters
                             </button>
@@ -612,6 +612,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                     <div className={styles.filterGroup}>
                         <label>Status</label>
                         <MultiSelectDropdown
+                            size="compact"
                             ariaLabel="Status filter"
                             placeholder="All statuses"
                             options={STATUS_OPTIONS}
@@ -624,6 +625,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                     <div className={styles.filterGroup}>
                         <label>Released in</label>
                         <MultiSelectDropdown
+                            size="compact"
                             ariaLabel="Released filter"
                             placeholder="All sprints"
                             options={releasedOptions}
@@ -638,6 +640,7 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                             <div style={{ opacity: viewState.rootsOnly ? 0.5 : 1, pointerEvents: viewState.rootsOnly ? 'none' : 'auto' }}>
                                 <MultiSelectDropdown
+                                    size="compact"
                                     ariaLabel="Hierarchy parents"
                                     placeholder="Children of..."
                                     options={sortedWorkItemsForPicker}
@@ -728,14 +731,6 @@ export const ValueStream: React.FC<ValueStreamProps> = ({
                                     <option value="aha_score">Product Value</option>
                                     <option value="stackrank">Stack Rank</option>
                                 </select>
-                            </label>
-                            <label className={styles.toggleItem}>
-                                <input
-                                    type="checkbox"
-                                    checked={viewState.showDependencies}
-                                    onChange={e => setViewState((s: ValueStreamViewState) => ({ ...s, showDependencies: e.target.checked }))}
-                                />
-                                Show Dependencies
                             </label>
                             <label className={styles.toggleItem} title="Keep Jira issues with no work item visible when customer or work item filters (e.g. Status) are active">
                                 <input
