@@ -104,6 +104,11 @@ export interface ExternalLink {
      * work item linked to that epic, or no parent.
      */
     epic_id?: string | null;
+    /**
+     * Jira keys Aha!'s Jira integration linked to this record (its `jira`
+     * integration fields named `key`); [] when it has none.
+     */
+    jira_keys?: string[];
     requirements?: {
       id: string;
       reference_num: string;
@@ -324,6 +329,13 @@ export interface AhaSettings {
   subdomain: string;
   api_key?: string;
   workspace?: string;
+  /**
+   * Use the Jira ↔ Aha! cross links kept by Aha!'s Jira integration (Aha!
+   * integration fields, Jira's `aha` issue property): import and sync then
+   * assign an unassigned Jira issue to the work item linked to its Aha!
+   * record. Offered only while both Jira and Aha! are configured.
+   */
+  use_jira_cross_links?: boolean;
 }
 
 export interface LdapSettings {

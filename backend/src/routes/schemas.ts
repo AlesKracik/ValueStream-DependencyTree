@@ -130,7 +130,10 @@ export const JiraSearchBody = Type.Intersect([
     jql: Type.String(),
     // When true, after the base JQL runs the backend fetches one level of
     // children (issues whose "Parent Link" points at a base-result key).
-    include_children: Type.Optional(Type.Boolean())
+    include_children: Type.Optional(Type.Boolean()),
+    // Issue entity properties to return with each issue (e.g. `aha`, the
+    // cross link written by Aha!'s Jira integration).
+    properties: Type.Optional(Type.Array(Type.String()))
   })
 ]);
 export type JiraSearchBodyType = Static<typeof JiraSearchBody>;

@@ -100,8 +100,9 @@ export const ahaRoutes: FastifyPluginAsync = async (fastify) => {
     return all;
   };
 
-  const FEATURE_FIELDS = 'id,reference_num,name,url,score,description,original_estimate,requirements,epic,updated_at';
-  const EPIC_FIELDS = 'id,reference_num,name,url,score,description,original_estimate,updated_at';
+  // integration_fields carries the Jira cross link kept by Aha!'s Jira integration.
+  const FEATURE_FIELDS = 'id,reference_num,name,url,score,description,original_estimate,requirements,epic,updated_at,integration_fields';
+  const EPIC_FIELDS = 'id,reference_num,name,url,score,description,original_estimate,updated_at,integration_fields';
 
   fastify.post<{ Body: AhaFeatureBodyType }>('/api/aha/feature', { schema: { body: AhaFeatureBody } }, async (request, reply) => {
     const feature = await fetchRecord(request.body, 'features');

@@ -114,6 +114,31 @@ per-feature sync (Product Value, HTML description, estimate, requirements).
   moved to another epic in Aha! moves to that epic's work item. A per-item Sync
   uses the epic endpoint for an epic.
 
+## Jira Cross Links
+
+Aha!'s own Jira integration keeps a link between an Aha! record and the Jira
+issue it syncs with, on both sides:
+
+- **Aha!**: `jira` integration fields on the record; the one named `key` holds
+  the Jira key. Import and sync request `integration_fields` and store the keys
+  as `links.aha.data.jira_keys`.
+- **Jira**: the issue entity property `aha`,
+  `{ "<integration id>": { "record_type": "feature", "reference_num": "DR-133" } }`.
+
+When both Jira and Aha! are configured, the **Work Items** sub-tab of both
+settings pages shows **Use Jira ↔ Aha! cross links** (`aha.use_jira_cross_links`,
+default off). With it on:
+
+- Aha! **Import** and **Sync** assign every unassigned Jira issue whose key a
+  record lists to that record's work item.
+- Jira **Import** and **Sync Issues** request the `aha` property with each issue
+  and assign an unassigned issue to the work item linked to the named Aha!
+  record (or to a work item whose record lists the issue's key).
+
+An issue that is already assigned keeps its work item; an issue cross linked to
+several work items is left untouched. The result message reports both.
+Pure logic lives in `web-client/src/utils/crossLinks.ts`.
+
 ## Data Flow
 
 ```mermaid

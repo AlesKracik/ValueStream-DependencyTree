@@ -2,6 +2,7 @@ import { parseISO, differenceInDays, max, min, format } from 'date-fns';
 import type { WorkItem, Issue, Customer, Sprint, Team, SupportIssue, ExternalLink, JiraDeployment } from '@valuestream/shared-types';
 import { countBusinessDays } from './dateHelpers';
 import { isParentOwned } from './workItemOrigin';
+import { ahaJiraKeys } from './crossLinks';
 
 /**
  * Reusable business logic for metrics calculation.
@@ -133,6 +134,7 @@ export const parseAhaFeature = (feature: any): ExternalLink => {
         })) : undefined,
         // The feature's Aha! epic ("feature set"); null when it has none.
         epic_id: 'epic' in feature ? (feature.epic?.id != null ? String(feature.epic.id) : null) : undefined,
+        jira_keys: 'integration_fields' in feature ? ahaJiraKeys(feature) : undefined,
     };
     if ('original_estimate' in feature) {
         // Aha! original_estimate is in minutes; 480 minutes = 1 person-day.

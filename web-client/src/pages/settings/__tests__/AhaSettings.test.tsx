@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AhaSettings } from '../AhaSettings';
 import * as api from '../../../utils/api';
-import type { Settings, ValueStreamData, WorkItem } from '@valuestream/shared-types';
+import type { Issue, Settings, ValueStreamData, WorkItem } from '@valuestream/shared-types';
 
 vi.mock('../../../utils/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../utils/api')>()),
@@ -40,14 +40,14 @@ const syncedItem: WorkItem = {
   },
 };
 
-const renderAha = (workItems: WorkItem[]) => {
+const renderAha = (workItems: WorkItem[], s: Settings = settings, issues: Issue[] = []) => {
   const props = {
-    localFormData: settings,
+    localFormData: s,
     updateFormData: vi.fn(),
     onUpdateSettings: vi.fn(),
-    settings,
-    data: { workItems } as unknown as ValueStreamData,
-    updateIssue: vi.fn(),
+    settings: s,
+    data: { workItems, issues } as unknown as ValueStreamData,
+    updateIssue: vi.fn().mockResolvedValue(undefined),
     addIssue: vi.fn(),
     updateCustomer: vi.fn(),
     updateWorkItem: vi.fn().mockResolvedValue(undefined),
@@ -156,5 +156,46 @@ describe('AhaSettings — import and sync', () => {
     expect(api.syncAhaEpic).toHaveBeenCalledWith('DR-E-1', expect.any(Object));
     expect(api.syncAhaFeature).not.toHaveBeenCalled();
     expect(props.updateWorkItem.mock.calls[0][1]).toMatchObject({ name: 'Renamed set', description: 'd' });
+  });
+});
+
+describe('AhaSettings — Jira cross links', () => {
+  const withJira = {
+    ...settings,
+    jira: { base_url: 'https://acme.atlassian.net', api_token: 't' },
+  } as unknown as Settings;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(api.importAhaEpics).mockResolvedValue([]);
+  });
+
+  it('offers the switch only when Jira is configured too', () => {
+    renderAha([]);
+    expect(screen.queryByText('Use Jira ↔ Aha! cross links')).toBeNull();
+  });
+
+  it('saves the switch', () => {
+    const props = renderAha([], withJira);
+    fireEvent.click(screen.getByRole('checkbox', { name: /Use Jira ↔ Aha! cross links/ }));
+    expect(props.onUpdateSettings).toHaveBeenCalledWith({ aha: expect.objectContaining({ use_jira_cross_links: true }) });
+  });
+
+  it('import assigns an unassigned cross-linked issue to the feature\'s work item', async () => {
+    vi.mocked(api.importAhaFeatures).mockResolvedValue([{
+      ...fullFeature,
+      integration_fields: [{ name: 'key', value: 'DRAAS-1', integration_id: 'i', service_name: 'jira' }],
+    }]);
+    const enabled = { ...withJira, aha: { ...withJira.aha, use_jira_cross_links: true } } as Settings;
+    const props = renderAha([syncedItem], enabled, [
+      { id: 'e1', jira_key: 'DRAAS-1', team_id: '', effort_md: 0 },
+      { id: 'e2', jira_key: 'DRAAS-2', team_id: '', effort_md: 0 },
+    ]);
+
+    fireEvent.click(screen.getByText('Import from Aha!'));
+
+    await waitFor(() => expect(screen.getByText(/Cross links: 1 assigned/)).toBeTruthy());
+    expect(props.updateIssue).toHaveBeenCalledTimes(1);
+    expect(props.updateIssue).toHaveBeenCalledWith('e1', { work_item_id: 'w1' }, true);
   });
 });

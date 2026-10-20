@@ -191,3 +191,56 @@ describe('JiraSettings — Cloud vs Data Center', () => {
     expect(screen.getByText(/follow Parent Link\)/)).toBeTruthy();
   });
 });
+
+describe('JiraSettings — Jira ↔ Aha! cross links', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const crossSettings: Settings = {
+    ...baseSettings,
+    aha: { subdomain: 'acme', api_key: 'k', use_jira_cross_links: true },
+  };
+  const renderCross = (settings: Settings) => {
+    const addIssue = vi.fn();
+    const data = {
+      ...mockData,
+      workItems: [{ id: 'w1', name: 'DR-133', status: 'Backlog', total_effort_mds: 0, score: 0, customer_targets: [], links: { aha: { key: 'DR-133' } } }],
+    } as unknown as ValueStreamData;
+    render(
+      <MemoryRouter initialEntries={['/?subtab=work-items']}>
+        <JiraSettings
+          localFormData={settings} updateFormData={vi.fn()} onUpdateSettings={vi.fn()} settings={settings}
+          data={data} updateIssue={vi.fn()} addIssue={addIssue} updateCustomer={vi.fn()}
+          updateWorkItem={vi.fn()} addWorkItem={vi.fn()}
+        />
+      </MemoryRouter>
+    );
+    return addIssue;
+  };
+
+  it('hides the switch while Aha! is not configured', () => {
+    renderCross(baseSettings);
+    expect(screen.queryByText('Use Jira ↔ Aha! cross links')).toBeNull();
+  });
+
+  it('import requests the aha property and assigns the issue to the linked work item', async () => {
+    (api.authorizedFetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, data: { issues: [{
+        key: 'DRAAS-49689',
+        fields: { summary: 'Linked' },
+        properties: { aha: { '7694707249561474905': { record_type: 'feature', reference_num: 'DR-133' } } },
+      }], names: {} } })
+    });
+    const addIssue = renderCross(crossSettings);
+    expect(screen.getByText('Use Jira ↔ Aha! cross links')).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText(/project = PROJ/i), { target: { value: 'project = DRAAS' } });
+    fireEvent.click(screen.getByRole('button', { name: /import from jira/i }));
+
+    await waitFor(() => expect(addIssue).toHaveBeenCalled());
+    const [, options] = (api.authorizedFetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(JSON.parse(options.body).properties).toEqual(['aha']);
+    expect(addIssue.mock.calls[0][0]).toMatchObject({ jira_key: 'DRAAS-49689', work_item_id: 'w1' });
+    await waitFor(() => expect(screen.getByText(/Cross links: 1 assigned/)).toBeTruthy());
+  });
+});

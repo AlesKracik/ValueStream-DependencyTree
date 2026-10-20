@@ -65,6 +65,14 @@ describe('buildChildrenJql / buildSearchRequest', () => {
     expect(dc.url).toBe('https://b/rest/api/2/search');
     expect(dc.body).toEqual({ jql: 'q', expand: ['names'], maxResults: 100, startAt: 200 });
   });
+  it('requests issue properties when asked', () => {
+    const cloud = buildSearchRequest({ deployment: 'cloud', apiBase: 'https://a/rest/api/3' }, 'q', 100, { startAt: 0 }, ['aha']);
+    expect(cloud.body.properties).toEqual(['aha']);
+    const dc = buildSearchRequest({ deployment: 'datacenter', apiBase: 'https://b/rest/api/2' }, 'q', 100, { startAt: 0 }, ['aha']);
+    expect(dc.body.properties).toEqual(['aha']);
+    const none = buildSearchRequest({ deployment: 'cloud', apiBase: 'https://a/rest/api/3' }, 'q', 100, { startAt: 0 }, []);
+    expect(none.body).not.toHaveProperty('properties');
+  });
 });
 
 describe('jiraErrorMessage', () => {

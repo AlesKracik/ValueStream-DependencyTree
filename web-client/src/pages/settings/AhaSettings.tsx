@@ -7,6 +7,8 @@ import { withAhaLink, ahaRecordTypeForKey } from '../../utils/workItemOrigin';
 import { ScopeIndicator } from '../../components/common/ScopeIndicator';
 import { ahaCleanupCandidates } from '../../utils/sourceCleanup';
 import { SourceCleanup } from './SourceCleanup';
+import { CrossLinksToggle } from './CrossLinksToggle';
+import { crossLinksEnabled, crossLinkNote, planCrossLinks } from '../../utils/crossLinks';
 import styles from '../List.module.css';
 import type { SettingsTabWithDataProps } from './types';
 
@@ -19,6 +21,7 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
   updateWorkItem,
   addWorkItem,
   deleteWorkItem,
+  updateIssue,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeSubTab = searchParams.get("subtab") || "general";
@@ -71,6 +74,24 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
     } finally {
       setIsTesting(false);
     }
+  };
+
+  // With cross links on, assign each unassigned issue to the work item whose
+  // Aha! record Aha!'s Jira integration linked it to. Returns a message suffix.
+  const applyCrossLinks = async (workItems: WorkItem[]): Promise<string> => {
+    if (!crossLinksEnabled(localFormData, settings)) return "";
+    const plan = planCrossLinks(data?.issues || [], workItems);
+    let failed = 0;
+    for (const a of plan.assign) {
+      try {
+        await updateIssue(a.issueId, { work_item_id: a.workItemId }, true);
+      } catch (err: unknown) {
+        console.error(`Error assigning issue ${a.issueId} to work item ${a.workItemId}:`, err);
+        failed++;
+      }
+    }
+    plan.counts.assigned -= failed;
+    return crossLinkNote(plan.counts) + (failed > 0 ? ` ${failed} cross-link assignments failed.` : "");
   };
 
   const handleImportFromAha = async () => {
@@ -145,11 +166,14 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
         }
       }
 
+      setImportProgress("Applying Jira cross links…");
+      const crossNote = await applyCrossLinks(known);
+
       const total = (k: 'created' | 'updated' | 'failed') => counts.epics[k] + counts.features[k];
       const part = (k: 'epics' | 'features') => `${k}: ${counts[k].created} created, ${counts[k].updated} updated, ${counts[k].failed} failed`;
       setImportSyncResult({
         success: total('failed') === 0,
-        message: `Import complete. Created ${total('created')}, updated ${total('updated')}, failed ${total('failed')} (${part('epics')}; ${part('features')}).`,
+        message: `Import complete. Created ${total('created')}, updated ${total('updated')}, failed ${total('failed')} (${part('epics')}; ${part('features')}).${crossNote}`,
       });
     } catch (err: unknown) {
       console.error("Aha! import error:", err);
@@ -206,9 +230,12 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
       }
     }
 
+    setSyncProgress("Applying Jira cross links…");
+    const crossNote = await applyCrossLinks(known);
+
     setIsSyncing(false);
     setSyncProgress("");
-    setImportSyncResult({ success: failCount === 0, message: `Sync complete. ${successCount} succeeded, ${failCount} failed.` });
+    setImportSyncResult({ success: failCount === 0, message: `Sync complete. ${successCount} succeeded, ${failCount} failed.${crossNote}` });
   };
 
   const isBusy = isTesting || isImporting || isSyncing;
@@ -303,6 +330,14 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
                 onBlur={() => onUpdateSettings({ aha: { ...localFormData.aha, workspace: localFormData.aha.workspace } })}
               />
             </label>
+
+            <CrossLinksToggle
+              localFormData={localFormData}
+              updateFormData={updateFormData}
+              onUpdateSettings={onUpdateSettings}
+              settings={settings}
+              disabled={isBusy}
+            />
 
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
               <button

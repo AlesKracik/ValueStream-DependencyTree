@@ -7,6 +7,10 @@ import { generateId } from '../../utils/security';
 import { ScopeIndicator } from '../../components/common/ScopeIndicator';
 import { jiraCleanupCandidates } from '../../utils/sourceCleanup';
 import { SourceCleanup } from './SourceCleanup';
+import { CrossLinksToggle } from './CrossLinksToggle';
+import {
+  AHA_JIRA_PROPERTY, countCrossLink, crossLinkNote, crossLinksEnabled, emptyCrossLinkCounts, jiraAhaRefs, resolveCrossLink,
+} from '../../utils/crossLinks';
 import { parseJiraIssue, planHierarchyAlignment } from "../../utils/businessLogic";
 import styles from '../List.module.css';
 import type { SettingsTabWithDataProps } from './types';
@@ -53,6 +57,9 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
   const isCloud = deployment === "cloud";
   const hierarchyFieldLabel = isCloud ? "parent" : "Parent Link";
   const alignFieldLabel = isCloud ? "parent" : "Parent Link / Epic Link";
+  // Jira ↔ Aha! cross links: fetch the `aha` issue property with each issue.
+  const useCrossLinks = crossLinksEnabled(localFormData, settings);
+  const crossLinkProperties = useCrossLinks ? { properties: [AHA_JIRA_PROPERTY] } : {};
 
   /** Returns an error message when required connection fields are missing. */
   const missingConnectionFields = (action: string): string | null => {
@@ -134,6 +141,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             jql: `key in (${keyList})`,
+            ...crossLinkProperties,
             jira: jiraConnectionPayload(jira)
           }),
         });
@@ -152,6 +160,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
       }
     }
 
+    const crossLinks = emptyCrossLinkCounts();
     for (let i = 0; i < issuesWithKeys.length; i++) {
       const issue = issuesWithKeys[i];
       const issueData = fetchedByKey.get(issue.jira_key);
@@ -159,7 +168,10 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
       setSyncProgress(`Updating ${i + 1}/${issuesWithKeys.length}: ${issue.jira_key}`);
       try {
         const updates = parseJiraIssue(issueData, data.teams, deployment);
+        const cross = useCrossLinks ? resolveCrossLink(issue, jiraAhaRefs(issueData), data.workItems || []) : null;
+        if (cross?.kind === 'assign') updates.work_item_id = cross.workItemId;
         await updateIssue(issue.id, updates, true);
+        if (cross) countCrossLink(crossLinks, issue.jira_key, cross);
         successCount++;
       } catch (err: unknown) {
         console.error(`Error updating ${issue.jira_key}:`, err);
@@ -242,7 +254,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
 
     setIsSyncing(false);
     setSyncProgress("");
-    setImportSyncResult({ success: failCount === 0, message: `Sync complete. ${successCount} succeeded, ${failCount} failed.${hierarchyNote}` });
+    setImportSyncResult({ success: failCount === 0, message: `Sync complete. ${successCount} succeeded, ${failCount} failed.${crossLinkNote(crossLinks)}${hierarchyNote}` });
   };
 
   const handleSyncSupportJiras = async () => {
@@ -401,6 +413,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
         body: JSON.stringify({
           jql: importJql,
           include_children: importChildren,
+          ...crossLinkProperties,
           jira: jiraConnectionPayload(jira)
         }),
       });
@@ -419,6 +432,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
       // Index existing issues by jira_key once (O(n)) so the per-issue dedupe
       // lookup stays O(1) even when child expansion balloons the result set.
       const existingByKey = new Map((data.issues || []).map((e) => [e.jira_key, e]));
+      const crossLinks = emptyCrossLinkCounts();
 
       for (let i = 0; i < issues.length; i++) {
         const issue = issues[i];
@@ -430,6 +444,10 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
         const updates = parseJiraIssue({ ...issue, names }, data.teams, deployment);
 
         const existingIssue = existingByKey.get(jiraKey);
+        const cross = useCrossLinks
+          ? resolveCrossLink({ jira_key: jiraKey, work_item_id: existingIssue?.work_item_id }, jiraAhaRefs(issue), data.workItems || [])
+          : null;
+        if (cross?.kind === 'assign') updates.work_item_id = cross.workItemId;
         try {
           if (existingIssue) {
             await updateIssue(existingIssue.id, updates, true);
@@ -439,6 +457,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
             const newIssue: Issue = {
               id: newId,
               jira_key: jiraKey,
+              ...(updates.work_item_id ? { work_item_id: updates.work_item_id } : {}),
               // '' = unassigned when the Jira issue maps to no team.
               team_id: updates.team_id || '',
               effort_md: updates.effort_md || 0,
@@ -452,6 +471,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
             addIssue(newIssue);
             createCount++;
           }
+          if (cross) countCrossLink(crossLinks, jiraKey, cross);
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           successCount++;
         } catch (err: unknown) {
@@ -460,7 +480,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
         }
       }
       const warning = resData.data.warning ? ` ${resData.data.warning}` : "";
-      setImportSyncResult({ success: failCount === 0, message: `Import complete. Created ${createCount}, Updated ${updateCount}, Failed ${failCount}.${warning}` });
+      setImportSyncResult({ success: failCount === 0, message: `Import complete. Created ${createCount}, Updated ${updateCount}, Failed ${failCount}.${crossLinkNote(crossLinks)}${warning}` });
     } catch (err: unknown) {
       console.error("Import error:", err);
       const msg = err instanceof Error ? err.message : "Import failed.";
@@ -609,6 +629,13 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
 
         {activeSubTab === "work-items" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <CrossLinksToggle
+              localFormData={localFormData}
+              updateFormData={updateFormData}
+              onUpdateSettings={onUpdateSettings}
+              settings={settings}
+              disabled={isTesting || isSyncing || isImporting}
+            />
             <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "14px", color: "var(--text-secondary)", maxWidth: "32rem" }}>
               Import JQL Query:
               <input

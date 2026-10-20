@@ -61,12 +61,13 @@ export const jiraRoutes: FastifyPluginAsync = async (fastify) => {
     const conn = buildJiraConnection(jira);
     const jql = config.jql;
     const includeChildren = config.include_children === true;
+    const properties = Array.isArray(config.properties) ? config.properties : undefined;
 
     // One page of a Jira search (Cloud: /search/jql + nextPageToken; Data
     // Center: /search + startAt). Throws (with statusCode) on a non-OK
     // response so callers can surface the original Jira error + HTTP status.
     const fetchPage: JiraFetchPage = async (q, startAt, nextPageToken) => {
-      const req = buildSearchRequest(conn, q, PAGE_SIZE, { startAt, nextPageToken });
+      const req = buildSearchRequest(conn, q, PAGE_SIZE, { startAt, nextPageToken }, properties);
       const jiraRes = await fetch(req.url, {
         method: 'POST',
         headers: { ...conn.headers, 'Content-Type': 'application/json' },

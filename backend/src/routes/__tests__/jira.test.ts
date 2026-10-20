@@ -61,6 +61,25 @@ describe('Jira Routes', () => {
     const [, options] = mockFetch.mock.calls[0];
     const sentBody = JSON.parse(options.body);
     expect(sentBody.jql).toBe('project = PROJ');
+    expect(sentBody).not.toHaveProperty('properties');
+  });
+
+  it('POST /api/jira/search forwards requested issue properties', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ issues: [{ key: 'PROJ-1', properties: { aha: {} } }], names: {} })
+    });
+    global.fetch = mockFetch;
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/jira/search',
+      payload: { jql: 'project = PROJ', properties: ['aha'], jira: mockJiraSettings.jira }
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body).properties).toEqual(['aha']);
   });
 
   it('POST /api/jira/search with include_children fetches Parent Link children and dedupes', async () => {

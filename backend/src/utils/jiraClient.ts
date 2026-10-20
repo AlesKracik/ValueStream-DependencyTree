@@ -136,7 +136,12 @@ export function buildSearchRequest(
   jql: string,
   pageSize: number,
   cursor: { startAt: number; nextPageToken?: string },
+  properties?: string[],
 ): { url: string; body: Record<string, unknown> } {
+  // Both endpoints return the requested issue entity properties per issue,
+  // under `issue.properties[<key>]`.
+  const withProperties = (body: Record<string, unknown>) =>
+    properties && properties.length > 0 ? { ...body, properties } : body;
   if (conn.deployment === 'cloud') {
     // The classic /search endpoint was removed from Jira Cloud. /search/jql
     // pages with nextPageToken, returns no `total`, returns only `id` unless
@@ -148,10 +153,10 @@ export function buildSearchRequest(
       expand: 'names',
     };
     if (cursor.nextPageToken) body.nextPageToken = cursor.nextPageToken;
-    return { url: `${conn.apiBase}/search/jql`, body };
+    return { url: `${conn.apiBase}/search/jql`, body: withProperties(body) };
   }
   return {
     url: `${conn.apiBase}/search`,
-    body: { jql, expand: ['names'], maxResults: pageSize, startAt: cursor.startAt },
+    body: withProperties({ jql, expand: ['names'], maxResults: pageSize, startAt: cursor.startAt }),
   };
 }
