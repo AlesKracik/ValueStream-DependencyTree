@@ -3,6 +3,8 @@ import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import { SettingsPage, DEFAULT_SETTINGS } from '../SettingsPage';
 import type { ValueStreamData, Settings } from '@valuestream/shared-types';
 import { MemoryRouter } from 'react-router-dom';
+import { useState } from 'react';
+import { deepMerge } from '../../utils/businessLogic';
 
 // Mock NotificationContext
 const mockShowAlert = vi.fn();
@@ -894,5 +896,34 @@ describe('SettingsPage', () => {
         expect(screen.getByLabelText(/LDAP URL:/i)).toBeDefined();
         const input = screen.getByLabelText(/LDAP URL:/i) as HTMLInputElement;
         expect(input.value).toBe('');
+    });
+});
+
+describe('SettingsPage — Jira ↔ Aha! cross links switch', () => {
+    // Stateful host shaped like App: settings are re-merged onto DEFAULT_SETTINGS,
+    // which keeps only keys the defaults declare.
+    const Host = () => {
+        const [s, setS] = useState<Partial<Settings>>({
+            jira: { base_url: 'https://x.atlassian.net', api_token: 't', username: 'u', api_version: '3' },
+            aha: { subdomain: 'acme', api_key: 'k', workspace: 'DR' },
+        });
+        return (
+            <SettingsPage
+                settings={deepMerge(DEFAULT_SETTINGS, s)}
+                onUpdateSettings={(u) => setS(p => ({ ...p, aha: { ...p.aha!, ...u.aha } }))}
+                data={{ workItems: [], issues: [], teams: [], customers: [] } as unknown as ValueStreamData}
+                updateIssue={vi.fn()} addIssue={vi.fn()} updateCustomer={vi.fn()}
+                updateWorkItem={vi.fn()} addWorkItem={vi.fn()}
+            />
+        );
+    };
+
+    it('stays checked after a click', () => {
+        render(<MemoryRouter initialEntries={['/?tab=aha&subtab=work-items']}><Host /></MemoryRouter>);
+        const cb = screen.getByRole('checkbox', { name: /cross links/ }) as HTMLInputElement;
+        fireEvent.click(cb);
+        expect(cb.checked).toBe(true);
+        fireEvent.click(cb);
+        expect(cb.checked).toBe(false);
     });
 });

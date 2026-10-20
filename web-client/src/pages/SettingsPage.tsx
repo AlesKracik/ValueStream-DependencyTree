@@ -62,7 +62,7 @@ export const DEFAULT_SETTINGS: Settings = {
     }
   },
   jira: { base_url: '', api_version: '3', username: '', api_token: '', customer: { jql_new: '', jql_in_progress: '', jql_noop: '' } },
-  aha: { subdomain: '', api_key: '', workspace: '' },
+  aha: { subdomain: '', api_key: '', workspace: '', use_jira_cross_links: false },
   ai: { provider: 'openai', api_key: '', model: '', glean_url: '', support: { prompt: '' } },
   ldap: { url: '', bind_dn: '', bind_password: '', team: { base_dn: '', search_filter: '' } },
   auth: {
