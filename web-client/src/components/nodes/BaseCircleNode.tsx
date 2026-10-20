@@ -2,6 +2,12 @@ import React, { memo, useMemo, useState } from 'react';
 import { Handle, Position, useNodeId } from '@xyflow/react';
 import { NodeHoverChips } from './NodeHoverActions';
 import { useNodeHoverActions, type NodeHoverAction } from './nodeHoverActionsContext';
+import {
+    NODE_LABEL_FONT_SIZE_PX,
+    NODE_LABEL_LINE_HEIGHT,
+    NODE_LABEL_OFFSET_PX,
+    NODE_LABEL_WIDTH_PX,
+} from '../../utils/nodeLabelLayout';
 
 export interface BaseCircleNodeHandle {
     type: 'source' | 'target';
@@ -130,15 +136,18 @@ export const BaseCircleNode = memo(({
             {label && (
                 <div style={{
                     position: 'absolute',
-                    top: `${size + 8}px`,
+                    top: `${size + NODE_LABEL_OFFSET_PX}px`,
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    width: '220px',
+                    width: `${NODE_LABEL_WIDTH_PX}px`,
                     textAlign: 'center',
                     color: 'var(--text-primary)',
-                    fontSize: '18px',
+                    fontSize: `${NODE_LABEL_FONT_SIZE_PX}px`,
                     fontWeight: 'bold',
-                    lineHeight: '1.2',
+                    lineHeight: `${NODE_LABEL_LINE_HEIGHT}`,
+                    // Long unbroken words wrap instead of spilling sideways;
+                    // the graph layout reserves vertical room for the lines.
+                    overflowWrap: 'anywhere',
                     textShadow: '0 2px 4px var(--bg-primary)',
                     pointerEvents: 'none',
                     ...labelStyle

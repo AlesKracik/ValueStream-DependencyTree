@@ -6,6 +6,7 @@ import Holidays from 'date-holidays';
 import { calculateIssueEffortPerSprint, calculateIssueIntensityRatio, hasUnestimatedWorkItemEffort } from '../utils/businessLogic';
 import type { GraphFilterResult } from './useGraphFilters';
 import { ahaScore } from '../utils/workItemOrigin';
+import { estimateLabelHeight, stackNodeCenters, NODE_ROW_GAP_PX } from '../utils/nodeLabelLayout';
 
 /**
  * Priority metric helpers
@@ -149,15 +150,25 @@ export function useGraphBuilder(
 
         // Add Customer node removed from canvas
 
-        sortedCustomers.forEach((customer, index) => {
+        const customerSizes = sortedCustomers.map(customer => {
             const totalTcv = customer.existing_tcv + customer.potential_tcv;
             const sizeRatio = maxTcv > 0 ? totalTcv / maxTcv : 0.5;
-            const nodeSize = 100 * 0.6 + (100 * 0.8 * sizeRatio);
+            return 100 * 0.6 + (100 * 0.8 * sizeRatio);
+        });
+        // Rows grow with long names so a wrapped label never runs into the next node.
+        const customerCenters = stackNodeCenters(
+            sortedCustomers.map((customer, i) => ({ size: customerSizes[i], label: customer.name })),
+            START_Y
+        );
+
+        sortedCustomers.forEach((customer, index) => {
+            const totalTcv = customer.existing_tcv + customer.potential_tcv;
+            const nodeSize = customerSizes[index];
 
             nodes.push({
                 id: `customer-${customer.id}`,
                 type: 'customerNode',
-                position: { x: COL_CUSTOMER_X - (nodeSize / 2), y: index * 180 + START_Y - (nodeSize / 2) }, // Adjusted starting Y
+                position: { x: COL_CUSTOMER_X - (nodeSize / 2), y: customerCenters[index] - (nodeSize / 2) },
                 data: {
                     label: customer.name,
                     existingTcv: customer.existing_tcv,
@@ -227,11 +238,19 @@ export function useGraphBuilder(
         // starts a tree of its own.
         const laidOutWorkItems = orderAsTree(sortedWorkItems);
 
-        laidOutWorkItems.forEach(({ workItem, depth }, index) => {
+        const workItemSizes = laidOutWorkItems.map(({ workItem }) => {
             const sizeValue = getMetricSizeValue(workItem, prioritizationMetric);
-            const displayValue = getMetricDisplayValue(workItem, prioritizationMetric);
             const sizeRatio = maxMetricValue > 0 ? sizeValue / maxMetricValue : 0.5;
-            const nodeSize = 100 * 0.6 + (100 * 0.8 * sizeRatio);
+            return 100 * 0.6 + (100 * 0.8 * sizeRatio);
+        });
+        const workItemCenters = stackNodeCenters(
+            laidOutWorkItems.map(({ workItem }, i) => ({ size: workItemSizes[i], label: workItem.name })),
+            START_Y
+        );
+
+        laidOutWorkItems.forEach(({ workItem, depth }, index) => {
+            const displayValue = getMetricDisplayValue(workItem, prioritizationMetric);
+            const nodeSize = workItemSizes[index];
             const indent = Math.min(depth, MAX_HIERARCHY_INDENT_LEVELS) * HIERARCHY_INDENT_PX;
 
             if (depth > 0 && workItem.parent_id) {
@@ -253,7 +272,7 @@ export function useGraphBuilder(
             nodes.push({
                 id: `workitem-${workItem.id}`,
                 type: 'workItemNode',
-                position: { x: COL_WORKITEM_X + indent - (nodeSize / 2), y: index * 180 + START_Y - (nodeSize / 2) },
+                position: { x: COL_WORKITEM_X + indent - (nodeSize / 2), y: workItemCenters[index] - (nodeSize / 2) },
                 data: {
                     label: workItem.name,
                     description: workItem.description,
@@ -416,19 +435,22 @@ export function useGraphBuilder(
 
         sortedTeams.forEach((team) => {
             const maxLanes = Math.max(teamMaxLanes[team.id] || 1, 1);
+            const sizeRatio = maxCapacity > 0 ? team.total_capacity_mds / maxCapacity : 0.5;
+            const nodeSize = 100 * 0.6 + (100 * 0.8 * sizeRatio);
+            // Circle + label below it are centered together in the band, which
+            // grows when a long wrapped label would not fit.
+            const labelHeight = estimateLabelHeight(team.name);
+            const labelBandHeight = nodeSize + labelHeight + NODE_ROW_GAP_PX;
             // Height needed for lanes: maxLanes * 45. Add padding for header (sprint capacity) and bottom space.
-            const teamHeight = Math.max(180, (maxLanes * 45) + 100);
+            const teamHeight = Math.max(180, (maxLanes * 45) + 100, labelBandHeight);
             const baseY = currentLaneTop + teamHeight / 2;
             teamBaseY[team.id] = baseY;
             currentLaneTop += teamHeight;
 
-            const sizeRatio = maxCapacity > 0 ? team.total_capacity_mds / maxCapacity : 0.5;
-            const nodeSize = 100 * 0.6 + (100 * 0.8 * sizeRatio);
-
             nodes.push({
                 id: `team-${team.id}`,
                 type: 'teamNode',
-                position: { x: COL_TEAM_X - (nodeSize / 2), y: baseY - (nodeSize / 2) },
+                position: { x: COL_TEAM_X - (nodeSize / 2), y: baseY - ((nodeSize + labelHeight) / 2) },
                 data: {
                     label: team.name,
                     capacityMds: team.total_capacity_mds,

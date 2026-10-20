@@ -291,6 +291,8 @@ describe('useGraphLayout Math Engine', () => {
                 { id: 'e2', jira_key: 'J-2', work_item_id: 'f2', team_id: 't1', effort_md: 5, target_start: '2026-03-26', target_end: '2026-04-22' },
                 // Another off-screen issue that would overlap e2 and create a new lane
                 { id: 'e3', jira_key: 'J-3', work_item_id: 'f1', team_id: 't1', effort_md: 3, target_start: '2026-04-01', target_end: '2026-04-15' },
+                // A third overlapping one, so the off-screen lanes outgrow the room the team label needs
+                { id: 'e4', jira_key: 'J-4', work_item_id: 'f2', team_id: 't1', effort_md: 2, target_start: '2026-04-02', target_end: '2026-04-10' },
             ]
         };
 
@@ -301,12 +303,13 @@ describe('useGraphLayout Math Engine', () => {
         expect(result.current.nodes.find(n => n.id === 'gantt-e1')).toBeDefined();
         expect(result.current.nodes.find(n => n.id === 'gantt-e2')).toBeUndefined();
         expect(result.current.nodes.find(n => n.id === 'gantt-e3')).toBeUndefined();
+        expect(result.current.nodes.find(n => n.id === 'gantt-e4')).toBeUndefined();
 
         // Team height should only account for 1 lane (e1), not 2 (e2+e3 overlap)
         const teamNode = result.current.nodes.find(n => n.id === 'team-t1');
         expect(teamNode).toBeDefined();
-        // With 1 lane: height = max(180, 1*45+100) = 180 -> baseY = startY - 90 + 90 = startY
-        // With 2 lanes: height = max(180, 2*45+100) = 190 -> baseY would be different
+        // With 1 lane the height is set by the node + its label (~194px)
+        // With 3 lanes: height = 3*45+100 = 235 -> baseY would be different
         // The team node Y should reflect only 1 lane of height
         const teamY = teamNode!.position.y;
 
@@ -314,14 +317,14 @@ describe('useGraphLayout Math Engine', () => {
         const { result: resultShifted } = renderHook(() => useGraphLayout(DATA_WITH_OFFSCREEN, null, 2));
 
         // With offset 2, visible sprints are s3-s8 which includes both e2 and e3
-        // These overlap, requiring 2 lanes -> taller team
+        // These overlap, requiring 3 lanes -> taller team
         const teamNodeShifted = resultShifted.current.nodes.find(n => n.id === 'team-t1');
         expect(teamNodeShifted).toBeDefined();
         const teamYShifted = teamNodeShifted!.position.y;
 
         // If off-screen issues were incorrectly reserving lanes, both Y values would be the same
         // With the fix, the first view (1 visible lane) should have a smaller or equal team area
-        // than the shifted view (2 visible lanes that overlap)
+        // than the shifted view (3 visible lanes that overlap)
         expect(teamYShifted).not.toBe(teamY);
     });
 
