@@ -24,6 +24,7 @@ export interface Issue {
 ## Visual Representation
 - **Node Type:** `GanttBarNode`.
 - **Placement:** Positioned on the X-axis based on `target_start`/`target_end` relative to the visible sprint window. Positioned on the Y-axis inside the swimlane of their assigned `team_id`.
+- **Row order:** Within a team, issues are ordered by their work item's priority under the active metric (Core score, Product Value or stackrank; issues without a work item last), then by `target_start`, and packed into rows: each issue takes the topmost row where it fits after the row's last bar. An issue never goes above an issue of a higher priority; it may share the lowest row higher-priority issues use, placed after them in time. Issues without both dates get no row.
 - **Color:** Inherits the specific color assigned to its parent `WorkItem`.
 - **Intensity:** The brightness of segments indicates the concentration of effort in a specific sprint.
 

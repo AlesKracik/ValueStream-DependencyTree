@@ -270,6 +270,41 @@ describe('useGraphLayout Math Engine', () => {
         expect(ganttE1!.position.y).toBeLessThan(ganttE3!.position.y);
     });
 
+    it('never puts a Jira above a higher-priority one, even when it would fit in a gap', () => {
+        const PRIORITY_DATA: ValueStreamData = {
+            ...MOCK_DATA,
+            workItems: [
+                { id: 'p1', name: 'P1', total_effort_mds: 1, score: 40, calculated_score: 40, status: 'Backlog', customer_targets: [] },
+                { id: 'p2', name: 'P2', total_effort_mds: 1, score: 30, calculated_score: 30, status: 'Backlog', customer_targets: [] },
+                { id: 'p3', name: 'P3', total_effort_mds: 1, score: 20, calculated_score: 20, status: 'Backlog', customer_targets: [] },
+                { id: 'p4', name: 'P4', total_effort_mds: 1, score: 10, calculated_score: 10, status: 'Backlog', customer_targets: [] },
+            ],
+            issues: [
+                { id: 'e1', jira_key: 'J-1', work_item_id: 'p1', team_id: 't1', effort_md: 1, target_start: '2026-02-12', target_end: '2026-03-25' },
+                { id: 'e2', jira_key: 'J-2', work_item_id: 'p2', team_id: 't1', effort_md: 1, target_start: '2026-02-12', target_end: '2026-02-18' },
+                { id: 'e3', jira_key: 'J-3', work_item_id: 'p3', team_id: 't1', effort_md: 1, target_start: '2026-02-14', target_end: '2026-03-20' },
+                // Fits after e2 in lane 1, but that would put it above e3 (higher priority).
+                { id: 'e4', jira_key: 'J-4', work_item_id: 'p4', team_id: 't1', effort_md: 1, target_start: '2026-02-26', target_end: '2026-03-05' },
+                // Same work item as e2: may still pack after it in lane 1.
+                { id: 'e5', jira_key: 'J-5', work_item_id: 'p2', team_id: 't1', effort_md: 1, target_start: '2026-02-20', target_end: '2026-02-24' },
+            ],
+            sprints: [
+                { id: 's1', name: 'Sprint 1', start_date: '2026-02-12', end_date: '2026-02-25' },
+                { id: 's2', name: 'Sprint 2', start_date: '2026-02-26', end_date: '2026-03-11' },
+                { id: 's3', name: 'Sprint 3', start_date: '2026-03-12', end_date: '2026-03-25' },
+            ],
+        };
+
+        const { result } = renderHook(() => useGraphLayout(PRIORITY_DATA));
+        const y = (id: string) => result.current.nodes.find(n => n.id === `gantt-${id}`)!.position.y;
+
+        expect(y('e1')).toBeLessThan(y('e2'));
+        expect(y('e5')).toBe(y('e2'));
+        expect(y('e2')).toBeLessThan(y('e3'));
+        // e4 shares e3's lane (after it would overlap) or goes below — never above e3.
+        expect(y('e4')).toBeGreaterThanOrEqual(y('e3'));
+    });
+
     it('does not reserve lanes for issues completely outside the visible sprint window', () => {
         const DATA_WITH_OFFSCREEN: ValueStreamData = {
             ...MOCK_DATA,

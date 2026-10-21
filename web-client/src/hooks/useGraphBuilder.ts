@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { differenceInDays, parseISO, min, max, format, isWeekend } from 'date-fns';
 import type { Node, Edge } from '@xyflow/react';
-import type { ValueStreamData, WorkItem, WorkItemPriorityMetric } from '@valuestream/shared-types';
+import type { Issue, ValueStreamData, WorkItem, WorkItemPriorityMetric } from '@valuestream/shared-types';
 import Holidays from 'date-holidays';
 import { calculateIssueEffortPerSprint, calculateIssueIntensityRatio, hasUnestimatedWorkItemEffort } from '../utils/businessLogic';
 import type { GraphFilterResult } from './useGraphFilters';
@@ -383,13 +383,14 @@ export function useGraphBuilder(
 
         // Sort issues: by related work item priority (descending) so highest-priority items get top lanes,
         // then by start date as tiebreaker. Issues without dates go last.
+        const issuePriority = (issue: Issue) => workItemPriorityMap[issue.work_item_id || ''] ?? Number.MIN_SAFE_INTEGER;
         const sortedIssues = [...allIssuesToShow].sort((a, b) => {
             const hasDateA = !!(a.target_start && a.target_end);
             const hasDateB = !!(b.target_start && b.target_end);
 
             if (hasDateA && hasDateB) {
-                const priA = workItemPriorityMap[a.work_item_id || ''] ?? Number.MIN_SAFE_INTEGER;
-                const priB = workItemPriorityMap[b.work_item_id || ''] ?? Number.MIN_SAFE_INTEGER;
+                const priA = issuePriority(a);
+                const priB = issuePriority(b);
                 if (priA !== priB) return priB - priA; // Higher priority = top lane
                 return parseISO(a.target_start!).getTime() - parseISO(b.target_start!).getTime();
             }
@@ -399,13 +400,16 @@ export function useGraphBuilder(
         });
 
         const issueLanes: Record<string, number> = {};
+        // Per team, so reading lanes top to bottom follows priority: an issue
+        // never goes above an issue of a higher priority. It may share the
+        // lowest lane higher-priority issues use (placed after them in time).
+        const laneFloor: Record<string, { priority: number; floor: number; deepest: number }> = {};
 
         sortedIssues.forEach(issue => {
             const team = data.teams.find(t => t.id === issue.team_id);
             if (!team) return;
 
             const lanes = teamLanes[team.id].endDates;
-            let laneIdx = 0;
 
             if (issue.target_start && issue.target_end) {
                 const start = parseISO(issue.target_start);
@@ -414,10 +418,21 @@ export function useGraphBuilder(
                 // Skip issues completely outside the visible window so they don't occupy lanes
                 if (end < windowStartDate || start > windowEndDate) return;
 
+                // Issues arrive in descending priority; a lower priority starts
+                // at the deepest lane used so far.
+                const priority = issuePriority(issue);
+                const f = laneFloor[team.id] ??= { priority, floor: 0, deepest: 0 };
+                if (priority !== f.priority) {
+                    f.priority = priority;
+                    f.floor = f.deepest;
+                }
+
+                let laneIdx = f.floor;
                 while (laneIdx < lanes.length && start <= lanes[laneIdx]) {
                     laneIdx++;
                 }
                 lanes[laneIdx] = end;
+                f.deepest = Math.max(f.deepest, laneIdx);
 
                 issueLanes[issue.id] = laneIdx;
                 if (laneIdx + 1 > teamMaxLanes[team.id]) {
