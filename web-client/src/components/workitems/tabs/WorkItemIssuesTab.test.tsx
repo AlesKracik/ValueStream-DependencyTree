@@ -155,3 +155,38 @@ describe('WorkItemIssuesTab — Jira key saved on blur', () => {
         expect(updateIssue).not.toHaveBeenCalled();
     });
 });
+
+describe('WorkItemIssuesTab — detach', () => {
+    beforeEach(() => vi.clearAllMocks());
+
+    const linked: Issue = { id: 'e1', jira_key: 'ABC-1', name: 'Linked', effort_md: 3, team_id: 't1', work_item_id: 'wi1' };
+    const blank: Issue = { id: 'e2', jira_key: '', name: '', effort_md: 0, team_id: '', work_item_id: 'wi1' };
+
+    it('unassigns the issue without deleting it', () => {
+        const updateIssue = vi.fn();
+        const deleteIssue = vi.fn();
+        renderTab({ data: baseData([linked]), issues: [linked], updateIssue, deleteIssue });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Detach' }));
+
+        expect(updateIssue).toHaveBeenCalledWith('e1', { work_item_id: null }, true);
+        expect(deleteIssue).not.toHaveBeenCalled();
+    });
+
+    it('is not offered for a row without a Jira key', () => {
+        renderTab({ data: baseData([blank]), issues: [blank] });
+        expect(screen.queryByRole('button', { name: 'Detach' })).toBeNull();
+    });
+
+    it('on a new work item drops an existing issue from the list only', () => {
+        const setNewWorkItemIssues = vi.fn();
+        const updateIssue = vi.fn();
+        renderTab({ isNew: true, data: baseData([linked]), issues: [{ ...linked, work_item_id: 'new' }], setNewWorkItemIssues, updateIssue });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Detach' }));
+
+        expect(updateIssue).not.toHaveBeenCalled();
+        const updater = setNewWorkItemIssues.mock.calls[0][0];
+        expect(updater([{ ...linked, work_item_id: 'new' }])).toEqual([]);
+    });
+});

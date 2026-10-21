@@ -118,6 +118,21 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
         }
     };
 
+    // Unlink the issue from this work item; it stays imported, unassigned.
+    // On a work item not saved yet, nothing was linked in the database:
+    // just drop the row.
+    const handleDetachIssue = (id: string) => {
+        if (isNew) {
+            setNewWorkItemIssues(prev => prev.filter(e => e.id !== id));
+        } else {
+            updateIssue(id, { work_item_id: null }, true);
+        }
+    };
+
+    // Only an issue that exists as an imported/saved Jira can be kept when detached.
+    const canDetach = (issue: Issue) =>
+        !!issue.jira_key && issue.jira_key !== 'TBD' && (!isNew || (data?.issues || []).some(e => e.id === issue.id));
+
     const handleDeleteIssue = (id: string, name: string) => {
         if (isNew) {
             setNewWorkItemIssues(prev => prev.filter(e => e.id !== id));
@@ -183,6 +198,16 @@ export const WorkItemIssuesTab: React.FC<Props> = ({
                             <button className="btn-primary" style={{ fontSize: '12px' }} onClick={() => syncIssue(issue.id, issue.jira_key)} disabled={syncingId === issue.id}>
                                 {syncingId === issue.id ? 'Syncing...' : 'Sync from Jira'}
                             </button>
+                            {canDetach(issue) && (
+                                <button
+                                    className="btn-secondary"
+                                    style={{ fontSize: '12px' }}
+                                    title="Remove from this work item but keep the Jira issue imported (unassigned)"
+                                    onClick={() => handleDetachIssue(issue.id)}
+                                >
+                                    Detach
+                                </button>
+                            )}
                             <button className="btn-danger" onClick={() => handleDeleteIssue(issue.id, issue.name || issue.jira_key)}>
                                 Delete
                             </button>
