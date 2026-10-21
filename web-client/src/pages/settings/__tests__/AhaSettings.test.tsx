@@ -199,3 +199,18 @@ describe('AhaSettings — Jira cross links', () => {
     expect(props.updateIssue).toHaveBeenCalledWith('e1', { work_item_id: 'w1' }, true);
   });
 });
+
+describe('AhaSettings — failure details', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('sync lists the failed references with their error', async () => {
+    vi.mocked(api.syncAhaFeature).mockRejectedValue(new Error('Feature DR-106 not found in Aha!.'));
+    renderAha([syncedItem]);
+
+    fireEvent.click(screen.getByText('Sync Work Items from Aha!'));
+
+    await waitFor(() => expect(screen.getByText('1 failed')).toBeTruthy());
+    expect(screen.getByText('Feature DR-106 not found in Aha!.')).toBeTruthy();
+    expect(screen.getByText('DR-106')).toBeTruthy();
+  });
+});

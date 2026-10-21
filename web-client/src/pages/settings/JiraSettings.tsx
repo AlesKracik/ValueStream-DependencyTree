@@ -7,6 +7,8 @@ import { generateId } from '../../utils/security';
 import { ScopeIndicator } from '../../components/common/ScopeIndicator';
 import { jiraCleanupCandidates } from '../../utils/sourceCleanup';
 import { SourceCleanup } from './SourceCleanup';
+import { FailureDetails } from './FailureDetails';
+import { failureOf, type SyncFailure } from '../../utils/syncFailures';
 import { CrossLinksToggle } from './CrossLinksToggle';
 import {
   AHA_JIRA_PROPERTY, countCrossLink, crossLinkNote, crossLinksEnabled, emptyCrossLinkCounts, jiraAhaRefs, resolveCrossLink,
@@ -32,7 +34,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
 
   const [isTesting, setIsTesting] = useState(false);
   const [jiraTestResult, setJiraTestResult] = useState<{ success: boolean; message: string; } | null>(null);
-  const [importSyncResult, setImportSyncResult] = useState<{ success: boolean; message: string; } | null>(null);
+  const [importSyncResult, setImportSyncResult] = useState<{ success: boolean; message: string; failures?: SyncFailure[] } | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState<string>("");
   const [alignHierarchy, setAlignHierarchy] = useState(false);
@@ -42,7 +44,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
   const [importProgress, setImportProgress] = useState<string>("");
   const [isSyncingSupport, setIsSyncingSupport] = useState(false);
   const [supportSyncProgress, setSupportSyncProgress] = useState<string>("");
-  const [supportSyncResult, setSupportSyncResult] = useState<{ success: boolean; message: string; } | null>(null);
+  const [supportSyncResult, setSupportSyncResult] = useState<{ success: boolean; message: string; failures?: SyncFailure[] } | null>(null);
 
   const setSubTab = (subtab: string) => {
     setSearchParams((prev) => {
@@ -124,11 +126,13 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
     setImportSyncResult(null);
     let successCount = 0;
     let failCount = 0;
+    const failures: SyncFailure[] = [];
 
     // Batch via /api/jira/search with `key in (...)` — chunked at 50 keys per call
     // to stay well under JQL length limits and the server's maxResults: 100 cap.
     const CHUNK_SIZE = 50;
     const fetchedByKey = new Map<string, Record<string, unknown>>();
+    const failedChunkKeys = new Set<string>();
     const chunkCount = Math.ceil(issuesWithKeys.length / CHUNK_SIZE);
 
     for (let c = 0; c < chunkCount; c++) {
@@ -157,6 +161,9 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
         console.error(`Error fetching chunk ${c + 1}/${chunkCount}:`, err);
         // Whole chunk failed → mark each issue in chunk as failed
         failCount += chunk.length;
+        const f = failureOf("", err, "Failed to fetch Jira data");
+        chunk.forEach(e => failures.push({ key: e.jira_key, error: f.error }));
+        chunk.forEach(e => failedChunkKeys.add(e.jira_key));
       }
     }
 
@@ -164,7 +171,14 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
     for (let i = 0; i < issuesWithKeys.length; i++) {
       const issue = issuesWithKeys[i];
       const issueData = fetchedByKey.get(issue.jira_key);
-      if (!issueData) continue; // already counted as failed above
+      if (!issueData) {
+        // A failed chunk is already counted above; otherwise Jira did not return the issue.
+        if (!failedChunkKeys.has(issue.jira_key)) {
+          failCount++;
+          failures.push({ key: issue.jira_key, error: "Not returned by Jira (deleted, moved or no permission)" });
+        }
+        continue;
+      }
       setSyncProgress(`Updating ${i + 1}/${issuesWithKeys.length}: ${issue.jira_key}`);
       try {
         const updates = parseJiraIssue(issueData, data.teams, deployment);
@@ -176,6 +190,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
       } catch (err: unknown) {
         console.error(`Error updating ${issue.jira_key}:`, err);
         failCount++;
+        failures.push(failureOf(issue.jira_key, err));
       }
     }
 
@@ -212,6 +227,8 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
           } catch (err: unknown) {
             console.error(`Error reparenting work item ${u.workItemId}:`, err);
             alignFail++;
+            const f = failureOf(nameOf(u.workItemId), err);
+            failures.push({ ...f, error: `Hierarchy: ${f.error}` });
           }
         }
 
@@ -254,7 +271,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
 
     setIsSyncing(false);
     setSyncProgress("");
-    setImportSyncResult({ success: failCount === 0, message: `Sync complete. ${successCount} succeeded, ${failCount} failed.${crossLinkNote(crossLinks)}${hierarchyNote}` });
+    setImportSyncResult({ success: failCount === 0, message: `Sync complete. ${successCount} succeeded, ${failCount} failed.${crossLinkNote(crossLinks)}${hierarchyNote}`, failures });
   };
 
   const handleSyncSupportJiras = async () => {
@@ -299,6 +316,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
     const attemptedKeys = new Set<string>();
     const fetchedByKey = new Map<string, JiraIssue>();
     let successfulChunks = 0;
+    const failures: SyncFailure[] = [];
 
     const baseUrl = (jira.base_url || "").replace(/\/+$/, "");
     const now = new Date().toISOString();
@@ -335,13 +353,15 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
         }
       } catch (err: unknown) {
         console.error(`Error fetching chunk ${c + 1}/${chunkCount}:`, err);
+        const f = failureOf("", err, "Failed to fetch Jira data");
+        chunk.forEach(k => failures.push({ key: k, error: `${f.error} (left untouched)` }));
       }
     }
 
     if (successfulChunks === 0) {
       setIsSyncingSupport(false);
       setSupportSyncProgress("");
-      setSupportSyncResult({ success: false, message: "All Jira fetches failed. No customers updated." });
+      setSupportSyncResult({ success: false, message: "All Jira fetches failed. No customers updated.", failures });
       return;
     }
 
@@ -352,7 +372,11 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
       customerIdx++;
       setSupportSyncProgress(`Updating ${customerIdx}/${customerScopedKeys.size}…`);
       const customer = customers.find(x => x.id === customerId);
-      if (!customer) { customerFailCount++; continue; }
+      if (!customer) {
+        customerFailCount++;
+        failures.push({ key: customerId, error: "Customer not found" });
+        continue;
+      }
 
       // Replace only the entries whose key was attempted (in a successful chunk).
       // Keys not attempted (chunk failure) stay as-is; keys attempted but missing
@@ -371,6 +395,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
       } catch (err: unknown) {
         console.error(`Error updating customer ${customer.id}:`, err);
         customerFailCount++;
+        failures.push(failureOf(customer.name || customer.id, err));
       }
     }
 
@@ -381,6 +406,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
     setSupportSyncResult({
       success: customerFailCount === 0 && failedChunks === 0,
       message: `Sync complete. ${customerSuccessCount} customers updated, ${customerFailCount} failed.${chunkNote}`,
+      failures,
     });
   };
 
@@ -404,6 +430,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
     let failCount = 0;
     let createCount = 0;
     let updateCount = 0;
+    const failures: SyncFailure[] = [];
 
     try {
       setImportProgress(importChildren ? "Fetching issues + children..." : "Fetching issues...");
@@ -477,10 +504,11 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
         } catch (err: unknown) {
           console.error(`Error processing ${jiraKey}:`, err);
           failCount++;
+          failures.push(failureOf(jiraKey, err));
         }
       }
       const warning = resData.data.warning ? ` ${resData.data.warning}` : "";
-      setImportSyncResult({ success: failCount === 0, message: `Import complete. Created ${createCount}, Updated ${updateCount}, Failed ${failCount}.${crossLinkNote(crossLinks)}${warning}` });
+      setImportSyncResult({ success: failCount === 0, message: `Import complete. Created ${createCount}, Updated ${updateCount}, Failed ${failCount}.${crossLinkNote(crossLinks)}${warning}`, failures });
     } catch (err: unknown) {
       console.error("Import error:", err);
       const msg = err instanceof Error ? err.message : "Import failed.";
@@ -704,6 +732,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
                 {importSyncResult.message}
               </div>
             )}
+            <FailureDetails failures={importSyncResult?.failures} />
 
             {deleteIssue && (
               <SourceCleanup
@@ -783,6 +812,7 @@ export const JiraSettings: React.FC<SettingsTabWithDataProps> = ({
                 {supportSyncResult.message}
               </div>
             )}
+            <FailureDetails failures={supportSyncResult?.failures} />
           </div>
         )}
       </div>

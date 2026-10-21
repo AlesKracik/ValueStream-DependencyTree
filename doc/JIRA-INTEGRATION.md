@@ -73,3 +73,13 @@ The Jira settings are organized into three sub-tabs for better management:
 
 ## Error Handling
 `/api/jira/search` and `/api/jira/issue` propagate Jira's HTTP status and `errorMessages` back to the caller (a 401 includes a deployment-specific hint about the expected credentials) — a JQL syntax error or a 401 surfaces as `{ success: false, error: "<jira message>" }` with the original status code, rather than being swallowed as an empty result.
+
+### Failed Items
+
+Import, Sync Issues and Sync Support-Issue Jiras results list the items that failed below the counts, grouped
+by error message (largest group first, each collapsed). A group lists at most
+100 keys and counts the rest; **Copy all** copies every group with all its
+keys, and a filter box (by key or error) appears above 20 failures. Shared
+component: `web-client/src/pages/settings/FailureDetails.tsx`.
+A sync also reports an issue Jira no longer returns (deleted, moved or no
+permission) as failed.

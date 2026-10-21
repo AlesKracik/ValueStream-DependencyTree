@@ -139,6 +139,15 @@ An issue that is already assigned keeps its work item; an issue cross linked to
 several work items is left untouched. The result message reports both.
 Pure logic lives in `web-client/src/utils/crossLinks.ts`.
 
+
+### Failed Items
+
+Import and Sync results list the items that failed below the counts, grouped
+by error message (largest group first, each collapsed). A group lists at most
+100 keys and counts the rest; **Copy all** copies every group with all its
+keys, and a filter box (by key or error) appears above 20 failures. Shared
+component: `web-client/src/pages/settings/FailureDetails.tsx`.
+
 ## Data Flow
 
 ```mermaid

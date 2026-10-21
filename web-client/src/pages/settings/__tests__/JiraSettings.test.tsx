@@ -244,3 +244,36 @@ describe('JiraSettings — Jira ↔ Aha! cross links', () => {
     await waitFor(() => expect(screen.getByText(/Cross links: 1 assigned/)).toBeTruthy());
   });
 });
+
+describe('JiraSettings — failure details', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('sync lists issues Jira did not return', async () => {
+    (api.authorizedFetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, data: { issues: [{ key: 'PROJ-1', fields: { summary: 'Kept' } }], names: {} } })
+    });
+    const data = {
+      ...mockData,
+      issues: [
+        { id: 'e1', jira_key: 'PROJ-1', team_id: '', effort_md: 0 },
+        { id: 'e2', jira_key: 'PROJ-2', team_id: '', effort_md: 0 },
+      ],
+    } as unknown as ValueStreamData;
+    render(
+      <MemoryRouter initialEntries={['/?subtab=work-items']}>
+        <JiraSettings
+          localFormData={baseSettings} updateFormData={vi.fn()} onUpdateSettings={vi.fn()} settings={baseSettings}
+          data={data} updateIssue={vi.fn().mockResolvedValue(undefined)} addIssue={vi.fn()} updateCustomer={vi.fn()}
+          updateWorkItem={vi.fn()} addWorkItem={vi.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /sync issues from jira/i }));
+
+    await waitFor(() => expect(screen.getByText(/Sync complete. 1 succeeded, 1 failed./)).toBeTruthy());
+    expect(screen.getByText(/Not returned by Jira/)).toBeTruthy();
+    expect(screen.getByText('PROJ-2')).toBeTruthy();
+  });
+});

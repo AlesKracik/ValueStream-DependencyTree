@@ -8,6 +8,8 @@ import { ScopeIndicator } from '../../components/common/ScopeIndicator';
 import { ahaCleanupCandidates } from '../../utils/sourceCleanup';
 import { SourceCleanup } from './SourceCleanup';
 import { CrossLinksToggle } from './CrossLinksToggle';
+import { FailureDetails } from './FailureDetails';
+import { failureOf, type SyncFailure } from '../../utils/syncFailures';
 import { crossLinksEnabled, crossLinkNote, planCrossLinks } from '../../utils/crossLinks';
 import styles from '../List.module.css';
 import type { SettingsTabWithDataProps } from './types';
@@ -32,7 +34,7 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
   const [importProgress, setImportProgress] = useState<string>("");
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState<string>("");
-  const [importSyncResult, setImportSyncResult] = useState<{ success: boolean; message: string; } | null>(null);
+  const [importSyncResult, setImportSyncResult] = useState<{ success: boolean; message: string; failures?: SyncFailure[] } | null>(null);
 
   const setSubTab = (subtab: string) => {
     setSearchParams((prev) => {
@@ -77,10 +79,12 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
   };
 
   // With cross links on, assign each unassigned issue to the work item whose
-  // Aha! record Aha!'s Jira integration linked it to. Returns a message suffix.
-  const applyCrossLinks = async (workItems: WorkItem[]): Promise<string> => {
+  // Aha! record Aha!'s Jira integration linked it to. Returns a message suffix;
+  // failed assignments are added to `failures`.
+  const applyCrossLinks = async (workItems: WorkItem[], failures: SyncFailure[]): Promise<string> => {
     if (!crossLinksEnabled(localFormData, settings)) return "";
-    const plan = planCrossLinks(data?.issues || [], workItems);
+    const issues = data?.issues || [];
+    const plan = planCrossLinks(issues, workItems);
     let failed = 0;
     for (const a of plan.assign) {
       try {
@@ -88,6 +92,8 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
       } catch (err: unknown) {
         console.error(`Error assigning issue ${a.issueId} to work item ${a.workItemId}:`, err);
         failed++;
+        const f = failureOf(issues.find(i => i.id === a.issueId)?.jira_key || a.issueId, err);
+        failures.push({ ...f, error: `Cross link: ${f.error}` });
       }
     }
     plan.counts.assigned -= failed;
@@ -125,6 +131,7 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
       // Work items known so far, including the ones this import creates.
       const known: WorkItem[] = [...(data.workItems || [])];
       const counts = { epics: { created: 0, updated: 0, failed: 0 }, features: { created: 0, updated: 0, failed: 0 } };
+      const failures: SyncFailure[] = [];
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const records: { record: any; link: ExternalLink; kind: 'epics' | 'features' }[] = [
         ...epics.map(e => ({ record: e, link: parseAhaEpic(e), kind: 'epics' as const })),
@@ -158,22 +165,27 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
             if (created) {
               known.push({ ...fields, ...created });
               c.created++;
-            } else c.failed++;
+            } else {
+              c.failed++;
+              failures.push({ key: record.reference_num, error: "Work item could not be created" });
+            }
           }
         } catch (err: unknown) {
           console.error(`Error processing ${record.reference_num}:`, err);
           c.failed++;
+          failures.push(failureOf(record.reference_num, err));
         }
       }
 
       setImportProgress("Applying Jira cross links…");
-      const crossNote = await applyCrossLinks(known);
+      const crossNote = await applyCrossLinks(known, failures);
 
       const total = (k: 'created' | 'updated' | 'failed') => counts.epics[k] + counts.features[k];
       const part = (k: 'epics' | 'features') => `${k}: ${counts[k].created} created, ${counts[k].updated} updated, ${counts[k].failed} failed`;
       setImportSyncResult({
         success: total('failed') === 0,
         message: `Import complete. Created ${total('created')}, updated ${total('updated')}, failed ${total('failed')} (${part('epics')}; ${part('features')}).${crossNote}`,
+        failures,
       });
     } catch (err: unknown) {
       console.error("Aha! import error:", err);
@@ -208,6 +220,7 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
     setImportSyncResult(null);
     let successCount = 0;
     let failCount = 0;
+    const failures: SyncFailure[] = [];
 
     // Sequential (concurrency 1) — simplest, well within Aha!'s rate limit.
     for (let i = 0; i < workItemsWithRef.length; i++) {
@@ -227,15 +240,16 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
       } catch (err: unknown) {
         console.error(`Error syncing ${refNum}:`, err);
         failCount++;
+        failures.push(failureOf(refNum, err));
       }
     }
 
     setSyncProgress("Applying Jira cross links…");
-    const crossNote = await applyCrossLinks(known);
+    const crossNote = await applyCrossLinks(known, failures);
 
     setIsSyncing(false);
     setSyncProgress("");
-    setImportSyncResult({ success: failCount === 0, message: `Sync complete. ${successCount} succeeded, ${failCount} failed.${crossNote}` });
+    setImportSyncResult({ success: failCount === 0, message: `Sync complete. ${successCount} succeeded, ${failCount} failed.${crossNote}`, failures });
   };
 
   const isBusy = isTesting || isImporting || isSyncing;
@@ -375,6 +389,7 @@ export const AhaSettings: React.FC<SettingsTabWithDataProps> = ({
                 {importSyncResult.message}
               </div>
             )}
+            <FailureDetails failures={importSyncResult?.failures} />
 
             {deleteWorkItem && (
               <SourceCleanup
